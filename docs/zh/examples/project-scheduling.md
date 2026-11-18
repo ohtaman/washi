@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 相关链接 |
 | :--- | :--- | :--- | :--- |
-| CP / LCG (RCPSP 与 Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
+| CP / LCG (RCPSP 与 Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (项目调度)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
 
 **资源受限项目调度问题 (RCPSP)** 在满足工序**先行依赖关系**的同时，还必须遵守**独占单台设备的不重叠限制（析取约束）**以及**共享团队人力上限（累积资源约束）**，目标是最小化总完工时间（Makespan）。
 
@@ -27,7 +27,7 @@
 
 ## WaSHI 实现代码
 
-<CodeRunner>
+<CodeRunner preset="project_scheduling">
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";

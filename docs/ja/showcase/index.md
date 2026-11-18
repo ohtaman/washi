@@ -25,13 +25,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">HiGHS · Z3 · GLPK</span>
+          <span class="washi-showcase-badge">HiGHS · Pumpkin · Z3 · GLPK</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          LP・MIP・凸QP・SMT モデルを TypeScript / JavaScript で記述し、ブラウザ内の HiGHS・Z3・GLPK で即座に求解できる対話型オンライン環境。プリセット問題、LP/SMT-LIB 出力確認、感度分析、Z3 <code>unsatCore</code> による矛盾診断に対応しています。
+          LP・MIP・凸QP・CP・SMT モデルを TypeScript / JavaScript で記述し、ブラウザ内の HiGHS・Pumpkin・Z3・GLPK で即座に求解できる対話型オンライン環境。プリセット問題、LP 構文確認、感度分析、Pumpkin / Z3 <code>unsatCore</code> による矛盾診断に対応しています。
         </p>
       </div>
       <div class="washi-showcase-actions">

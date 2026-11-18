@@ -269,6 +269,44 @@ async function runBrowserVerification() {
     assert.equal(z3MipObj, "2200", `Z3 production planning optimal objective must be 2200, got ${z3MipObj}`);
     console.log(`   Z3 MIP solved successfully with objective ${z3MipObj}!`);
 
+    // 5d. Test Pumpkin CP Solver Execution & Zero-Header Unsat Core in Playground
+    console.log("5d. Testing Pumpkin CP solver and Unsat Core diagnosis in Playground...");
+    await page.selectOption("#preset-select", "project_scheduling");
+    await page.waitForTimeout(200);
+    const autoSolver = await page.evaluate(() => document.getElementById("solver-select")?.value);
+    assert.equal(autoSolver, "pumpkin", `Selecting project_scheduling must auto-select pumpkin, got ${autoSolver}`);
+    const pumpkinBadge = await page.evaluate(() => document.getElementById("solver-badge-text")?.textContent?.trim());
+    assert.equal(pumpkinBadge, "Pumpkin v0.5.0 (CP/LCG)", `Unexpected Pumpkin badge text: ${pumpkinBadge}`);
+
+    await runAndWait(page);
+    await page.waitForFunction(() => {
+      const el = document.getElementById("metric-status");
+      return el && el.textContent?.trim() === "Optimal";
+    }, { timeout: 20_000 });
+    const pumpkinObj = await page.evaluate(() => document.getElementById("metric-obj")?.textContent?.trim());
+    assert.equal(pumpkinObj, "12", `Pumpkin project scheduling makespan must be 12, got ${pumpkinObj}`);
+
+    await page.selectOption("#preset-select", "project_conflict_unsat");
+    await page.waitForTimeout(200);
+    await runAndWait(page);
+    await page.waitForFunction(() => {
+      const el = document.getElementById("metric-status");
+      return el && el.textContent?.trim() === "Unsat";
+    }, { timeout: 20_000 });
+    const unsatDisplay = await page.evaluate(() => {
+      const box = document.getElementById("unsat-core-box");
+      const list = document.getElementById("unsat-core-list");
+      return {
+        display: box ? window.getComputedStyle(box).display : "none",
+        text: list?.textContent ?? "",
+      };
+    });
+    assert.notEqual(unsatDisplay.display, "none", "Pumpkin unsat core box must be visible");
+    assert(unsatDisplay.text.includes("rig_maintenance_window"), `Expected rig_maintenance_window in unsatCore: ${unsatDisplay.text}`);
+    assert(unsatDisplay.text.includes("rush_ship_deadline"), `Expected rush_ship_deadline in unsatCore: ${unsatDisplay.text}`);
+    assert(!unsatDisplay.text.includes("crew_limit"), `Did not expect unrelated crew_limit in unsatCore: ${unsatDisplay.text}`);
+    console.log(`   Pumpkin CP solved makespan=${pumpkinObj} and extracted Unsat Core cleanly!`);
+
     // Reset solver select back to default for subsequent tests
     await page.selectOption("#solver-select", "highs");
     await page.waitForTimeout(300);
@@ -314,6 +352,19 @@ async function runBrowserVerification() {
     assert(failLogs.includes("Z3 solver execution aborted"), `Log output should explain reason, got: ${failLogs}`);
     assert(failLogs.includes("Cross-Origin-Opener-Policy: same-origin"), "Log output should explain required headers");
     console.log("   Graceful abort verified: displayed clear reason without crashing or hanging!");
+
+    // Verify Pumpkin runs cleanly even when crossOriginIsolated is false (zero COOP/COEP headers)
+    await failPage.selectOption("#preset-select", "project_scheduling");
+    await failPage.waitForTimeout(200);
+    await runAndWait(failPage);
+    await failPage.waitForFunction(() => {
+      const el = document.getElementById("metric-status");
+      return el && el.textContent?.trim() === "Optimal";
+    }, { timeout: 20_000 });
+    const nonCoiPumpkinObj = await failPage.evaluate(() => document.getElementById("metric-obj")?.textContent?.trim());
+    assert.equal(nonCoiPumpkinObj, "12", `Pumpkin without crossOriginIsolated must solve to makespan 12, got ${nonCoiPumpkinObj}`);
+    console.log("   Verified Pumpkin CP solves cleanly in Worker even when crossOriginIsolated === false!");
+
     await failContext.close();
 
     // 9. Test Nurse Shift Scheduling Demo Basic Data Tab Layout & Scrolling

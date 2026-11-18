@@ -2,6 +2,7 @@ import { afterAll, describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Model } from "../src/index.js";
+import "../src/modeler/solvers/pumpkin/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import { killZ3Threads } from "../src/modeler/solvers/z3/index.js";
 import enLocale from "../examples/web-demo/src/locales/en.json";
@@ -50,6 +51,33 @@ describe("Playground Conflicts vs. Unsat Core Distinction", () => {
     expect(resZ3.unsatCore).not.toContain("minimum_one_employee");
     expect(resZ3.conflicts).toEqual(resZ3.unsatCore);
     expect(mZ3.unsatCore).toEqual(resZ3.unsatCore);
+  });
+
+  it("extracts exact Pumpkin CP Unsat Core over bounded integer and boolean constraints", async () => {
+    const mPumpkin = new Model({ name: "PumpkinConflictDiagnosis", solver: "pumpkin" });
+    const engineers = mPumpkin.integer("engineers", { lb: 0, ub: 20 });
+    const budget = mPumpkin.integer("budget", { lb: 0, ub: 100000 });
+    const rush = mPumpkin.bool("rushDelivery");
+
+    mPumpkin.constraint(engineers.mul(8000).le(budget), "budget_limit");
+    mPumpkin.constraint(rush, "rush_required");
+    mPumpkin.constraint(rush.implies(engineers.ge(8)), "rush_staffing_rule");
+    mPumpkin.constraint(budget.le(50000), "strict_board_budget_cap");
+    mPumpkin.constraint(engineers.ge(1), "minimum_one_employee");
+
+    const resPumpkin = await mPumpkin.check({ solver: "pumpkin" });
+    expect(resPumpkin.status).toBe("Unsat");
+    expect(resPumpkin.unsatCore).toEqual(
+      expect.arrayContaining([
+        "budget_limit",
+        "rush_required",
+        "rush_staffing_rule",
+        "strict_board_budget_cap",
+      ])
+    );
+    expect(resPumpkin.unsatCore).not.toContain("minimum_one_employee");
+    expect(resPumpkin.conflicts).toEqual(resPumpkin.unsatCore);
+    expect(mPumpkin.unsatCore).toEqual(resPumpkin.unsatCore);
   });
 
   it("provides accurate, non-confusing i18n text for conflicts vs. unsat core across all locales", () => {

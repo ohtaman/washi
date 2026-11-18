@@ -6,7 +6,7 @@
     <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WaSHI Playground — Mathematical Optimization Modeler Online Demo</title>
-    <meta name="description" content="Interactive demo and online playground for WaSHI algebraic modeler: formulate LP, MIP, QP, and SMT problems in TypeScript/JavaScript and solve natively in WebAssembly (HiGHS, Z3, GLPK)." />
+    <meta name="description" content="Interactive demo and online playground for WaSHI algebraic modeler: formulate LP, MIP, QP, CP, and SMT problems in TypeScript/JavaScript and solve natively in WebAssembly (HiGHS, Pumpkin, Z3, GLPK)." />
     <link rel="canonical" href="https://washi.ohtaman.dev/demo/" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,29 +84,30 @@
       <section class="editor-pane" aria-label="Optimization Model Code Editor">
         <div class="editor-toolbar">
           <div class="preset-selector-group">
-            <span class="toolbar-label" data-i18n="modelSelectLabel">Problem:</span>
-            <select id="preset-select" class="custom-select" aria-label="Problem Model Selector">
-              <!-- Dynamically populated with 5 focused presets -->
+            <label for="preset-select" class="toolbar-label" data-i18n="modelSelectLabel">Problem:</label>
+            <select id="preset-select" name="preset" class="custom-select">
+              <!-- Dynamically populated with focused presets -->
             </select>
           </div>
 
           <div class="solver-selector-group">
-            <span class="toolbar-label" data-i18n="solverSelectLabel">Solver:</span>
-            <select id="solver-select" class="custom-select custom-select-sm" aria-label="Solver Engine Selector">
+            <label for="solver-select" class="toolbar-label" data-i18n="solverSelectLabel">Solver:</label>
+            <select id="solver-select" name="solver" class="custom-select custom-select-sm">
               <option value="highs" selected>HiGHS (WASM)</option>
+              <option value="pumpkin">Pumpkin (CP / LCG)</option>
               <option value="glpk">GLPK (WASM)</option>
               <option value="z3">Z3 (SMT / SAT / MIP)</option>
             </select>
           </div>
 
           <div class="editor-actions">
-            <button id="reset-btn" class="btn btn-secondary" title="Reset to original code" data-i18n="resetButton">
+            <button type="button" id="reset-btn" class="btn btn-secondary" title="Reset to original code" data-i18n="resetButton">
               Reset
             </button>
-            <button id="gen-lp-btn" class="btn btn-secondary" title="View CPLEX LP string" data-i18n="viewLpButton">
+            <button type="button" id="gen-lp-btn" class="btn btn-secondary" title="View CPLEX LP string" data-i18n="viewLpButton">
               View LP
             </button>
-            <button id="run-btn" class="btn btn-primary" title="Solve with HiGHS WASM" data-i18n="runButton">
+            <button type="button" id="run-btn" class="btn btn-primary" title="Run selected WebAssembly solver" data-i18n="runButton">
               Run Optimization
             </button>
           </div>
@@ -131,6 +132,7 @@
         <!-- Navigation Tabs -->
         <nav class="tabs-header" role="tablist">
           <button
+            type="button"
             class="tab-btn active"
             data-tab="tab-results"
             role="tab"
@@ -141,6 +143,7 @@
             Solution & Variables
           </button>
           <button
+            type="button"
             class="tab-btn"
             data-tab="tab-lp"
             role="tab"
@@ -151,6 +154,7 @@
             CPLEX LP Format
           </button>
           <button
+            type="button"
             class="tab-btn"
             data-tab="tab-logs"
             role="tab"
