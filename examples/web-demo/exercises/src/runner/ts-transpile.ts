@@ -14,14 +14,60 @@ function isIdentStart(ch: string): boolean {
 
 /** Mask strings, template literal static parts, and comments into neutral placeholder segments. */
 interface CodeChunk {
-  kind: "code" | "verbatim";
+  kind: "code" | "verbatim" | "comment";
   text: string;
+}
+
+const REGEX_PREFIX_KEYWORDS = new Set([
+  "return",
+  "throw",
+  "case",
+  "delete",
+  "void",
+  "typeof",
+  "await",
+  "yield",
+  "in",
+  "instanceof",
+  "new",
+  "else",
+  "do",
+  "as",
+  "export",
+  "default",
+]);
+
+function scanRegexLiteralEnd(src: string, start: number): number {
+  let i = start + 1;
+  let inClass = false;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === "\\" && i + 1 < src.length && src[i + 1] !== "\n") {
+      i += 2;
+      continue;
+    }
+    if (ch === "\n" || ch === "\r") {
+      return -1;
+    }
+    if (ch === "[" && !inClass) {
+      inClass = true;
+    } else if (ch === "]" && inClass) {
+      inClass = false;
+    } else if (ch === "/" && !inClass) {
+      i++;
+      while (i < src.length && /[a-zA-Z]/.test(src[i])) i++;
+      return i;
+    }
+    i++;
+  }
+  return -1;
 }
 
 function splitProtectedRegions(src: string): CodeChunk[] {
   const chunks: CodeChunk[] = [];
   let i = 0;
   let codeStart = 0;
+  let regexAllowed = true;
 
   const pushCode = (end: number) => {
     if (end > codeStart) {
@@ -39,7 +85,7 @@ function splitProtectedRegions(src: string): CodeChunk[] {
       const start = i;
       i += 2;
       while (i < src.length && src[i] !== "\n") i++;
-      chunks.push({ kind: "verbatim", text: src.slice(start, i) });
+      chunks.push({ kind: "comment", text: src.slice(start, i) });
       codeStart = i;
       continue;
     }
@@ -51,9 +97,22 @@ function splitProtectedRegions(src: string): CodeChunk[] {
       i += 2;
       while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) i++;
       i = Math.min(src.length, i + 2);
-      chunks.push({ kind: "verbatim", text: src.slice(start, i) });
+      chunks.push({ kind: "comment", text: src.slice(start, i) });
       codeStart = i;
       continue;
+    }
+
+    // Regex literal when division is not valid at current lexer state
+    if (ch === "/" && next !== "/" && next !== "*" && regexAllowed) {
+      const regexEnd = scanRegexLiteralEnd(src, i);
+      if (regexEnd > i) {
+        pushCode(i);
+        chunks.push({ kind: "verbatim", text: src.slice(i, regexEnd) });
+        i = regexEnd;
+        codeStart = i;
+        regexAllowed = false;
+        continue;
+      }
     }
 
     // Single or double quoted string
@@ -75,10 +134,11 @@ function splitProtectedRegions(src: string): CodeChunk[] {
       }
       chunks.push({ kind: "verbatim", text: src.slice(start, i) });
       codeStart = i;
+      regexAllowed = false;
       continue;
     }
 
-    // Template literal: preserve static parts and `${...}` delimiters, keep inner expression transformable
+    // Template literal: preserve static parts and `${...}` delimiters, recursively split `${...}` expressions
     if (ch === "`") {
       pushCode(i);
       let verbatimStart = i;
@@ -98,8 +158,28 @@ function splitProtectedRegions(src: string): CodeChunk[] {
           chunks.push({ kind: "verbatim", text: src.slice(verbatimStart, i) });
           const exprStart = i;
           let depth = 1;
+          let exprRegexAllowed = true;
           while (i < src.length && depth > 0) {
             const c = src[i];
+            if (c === "/" && src[i + 1] === "/") {
+              i += 2;
+              while (i < src.length && src[i] !== "\n") i++;
+              continue;
+            }
+            if (c === "/" && src[i + 1] === "*") {
+              i += 2;
+              while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) i++;
+              i = Math.min(src.length, i + 2);
+              continue;
+            }
+            if (c === "/" && src[i + 1] !== "/" && src[i + 1] !== "*" && exprRegexAllowed) {
+              const rEnd = scanRegexLiteralEnd(src, i);
+              if (rEnd > i) {
+                i = rEnd;
+                exprRegexAllowed = false;
+                continue;
+              }
+            }
             if (c === '"' || c === "'" || c === "`") {
               const q = c;
               i++;
@@ -114,14 +194,24 @@ function splitProtectedRegions(src: string): CodeChunk[] {
                 }
                 i++;
               }
+              exprRegexAllowed = false;
               continue;
             }
-            if (c === "{") depth++;
-            else if (c === "}") depth--;
-            if (depth === 0) break;
+            if (c === "{") {
+              depth++;
+              exprRegexAllowed = true;
+            } else if (c === "}") {
+              depth--;
+              if (depth === 0) break;
+              exprRegexAllowed = true;
+            } else if (c === ")" || c === "]" || /[0-9a-zA-Z_$]/.test(c)) {
+              exprRegexAllowed = false;
+            } else if (!/\s/.test(c)) {
+              exprRegexAllowed = true;
+            }
             i++;
           }
-          chunks.push({ kind: "code", text: src.slice(exprStart, i) });
+          chunks.push(...splitProtectedRegions(src.slice(exprStart, i)));
           if (src[i] === "}") i++;
           verbatimStart = i;
           chunks.push({ kind: "verbatim", text: "}" });
@@ -130,7 +220,40 @@ function splitProtectedRegions(src: string): CodeChunk[] {
         i++;
       }
       codeStart = i;
+      regexAllowed = false;
       continue;
+    }
+
+    // Track token state for regex vs division disambiguation
+    if (isIdentStart(ch)) {
+      const start = i;
+      while (i < src.length && isIdentChar(src[i])) i++;
+      const word = src.slice(start, i);
+      regexAllowed = REGEX_PREFIX_KEYWORDS.has(word);
+      continue;
+    }
+
+    if (/[0-9]/.test(ch)) {
+      while (i < src.length && /[0-9._a-fA-FxXoObBn]/.test(src[i])) i++;
+      regexAllowed = false;
+      continue;
+    }
+
+    if (ch === "+" && next === "+") {
+      i += 2;
+      regexAllowed = false;
+      continue;
+    }
+    if (ch === "-" && next === "-") {
+      i += 2;
+      regexAllowed = false;
+      continue;
+    }
+
+    if (ch === ")" || ch === "]") {
+      regexAllowed = false;
+    } else if (!/\s/.test(ch)) {
+      regexAllowed = true;
     }
 
     i++;
@@ -140,7 +263,7 @@ function splitProtectedRegions(src: string): CodeChunk[] {
   return chunks;
 }
 
-/** Replace protected verbatim chunks with unique opaque placeholders so top-level TS transforms never inspect strings. */
+/** Replace comments with newline-preserving whitespace and mask strings/regexes so TS stripping never touches literals. */
 function maskVerbatim(src: string): { masked: string; tokens: string[] } {
   const chunks = splitProtectedRegions(src);
   const tokens: string[] = [];
@@ -150,6 +273,8 @@ function maskVerbatim(src: string): { masked: string; tokens: string[] } {
       const idx = tokens.length;
       tokens.push(chunk.text);
       masked += `\uE000LIT_${idx}\uE001`;
+    } else if (chunk.kind === "comment") {
+      masked += chunk.text.replace(/[^\n]/g, " ");
     } else {
       masked += chunk.text;
     }
@@ -211,6 +336,22 @@ function readTypeExpressionEnd(s: string, start: number, terminators: string[]):
   return i;
 }
 
+const PRIMITIVE_TYPES = new Set([
+  "number",
+  "string",
+  "boolean",
+  "void",
+  "any",
+  "unknown",
+  "never",
+  "object",
+  "symbol",
+  "bigint",
+  "null",
+  "undefined",
+  "this",
+]);
+
 function skipWsHorizontal(s: string, i: number): number {
   while (i < s.length && (s[i] === " " || s[i] === "\t")) i++;
   return i;
@@ -233,24 +374,38 @@ function readSingleTypeAtomEnd(s: string, start: number): number {
     if (ch === "(") {
       const afterParen = skipWsHorizontal(s, i);
       if (s.startsWith("=>", afterParen)) {
-        return readAsTypeEnd(s, afterParen + 2);
+        return readTypeEnd(s, afterParen + 2);
       }
     }
   } else if (ch === "\uE000") {
     const endTok = s.indexOf("\uE001", i);
     i = endTok >= 0 ? endTok + 1 : i + 1;
   } else if (isIdentStart(ch) || /[0-9]/.test(ch)) {
+    const firstStart = i;
     while (i < s.length && isIdentChar(s[i])) i++;
+    let lastIdent = s.slice(firstStart, i);
     while (true) {
       const after = skipWsHorizontal(s, i);
       if (s[after] === "." && isIdentStart(s[after + 1] ?? "")) {
         i = after + 1;
+        const segStart = i;
         while (i < s.length && isIdentChar(s[i])) i++;
+        lastIdent = s.slice(segStart, i);
         continue;
       }
-      if (s[after] === "<") {
-        i = skipBalanced(s, after, "<", ">");
-        continue;
+      if (
+        after === i &&
+        s[after] === "<" &&
+        !PRIMITIVE_TYPES.has(lastIdent)
+      ) {
+        const endAng = skipBalanced(s, after, "<", ">");
+        if (s[endAng - 1] === ">" && s[endAng] !== "=") {
+          const inner = s.slice(after + 1, endAng - 1);
+          if (looksLikeGenericTypeArgList(inner)) {
+            i = endAng;
+            continue;
+          }
+        }
       }
       break;
     }
@@ -270,7 +425,7 @@ function readSingleTypeAtomEnd(s: string, start: number): number {
   return i;
 }
 
-function readAsTypeEnd(s: string, start: number): number {
+function readTypeEnd(s: string, start: number): number {
   let i = readSingleTypeAtomEnd(s, start);
   if (i === start) return start;
   while (true) {
@@ -483,8 +638,10 @@ function stripParameterAndReturnTypes(s: string): string {
           out += s[i++];
         }
         if (s[i] === ":") {
-          i++;
-          i = readTypeExpressionEnd(s, i, ["{"]);
+          const afterType = readTypeEnd(s, i + 1);
+          if (afterType > i + 1) {
+            i = afterType;
+          }
         }
         continue;
       }
@@ -502,7 +659,7 @@ function stripParameterAndReturnTypes(s: string): string {
       if (s.slice(after, after + 2) === "=>") {
         isArrowWithTypes = true;
       } else if (s[after] === ":") {
-        const afterColon = readTypeExpressionEnd(s, after + 1, ["=>", "{", ";"]);
+        const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1));
         if (s.slice(afterColon, afterColon + 2) === "=>") {
           isArrowWithTypes = true;
           bodyStart = afterColon;
@@ -614,7 +771,7 @@ function stripVarAnnotationsAndGenerics(s: string): string {
       const prevTrim = out.trimEnd();
       const prevC = prevTrim[prevTrim.length - 1] ?? "";
       if (isIdentChar(prevC) || prevC === ")" || prevC === "]" || prevC === "\uE001") {
-        const typeEnd = readAsTypeEnd(s, j);
+        const typeEnd = readTypeEnd(s, j);
         if (typeEnd > j) {
           if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
             out = out.slice(0, -1);

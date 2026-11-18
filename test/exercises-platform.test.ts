@@ -86,6 +86,40 @@ export function solve(input: PointInput) {
     expect(fn({ x: 5, n: 4 })).toBe(16);
     expect(fn({ x: 5, n: 1 })).toBe(-1);
   });
+
+  it("handles inline object return types, regex literals with `!`, and `<` after `as Type` assertions", () => {
+    const sample = `
+export function solve(input: { s: string; v: number }): { ok: boolean; lt: boolean } {
+  const regexHit = /a!/.test(input.s);
+  const lt = input.v as number < 10;
+  const inv = /* keep logical not */ !regexHit;
+  return { ok: inv || regexHit, lt };
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    expect(js).toContain("/a!/");
+    expect(js).toContain("!regexHit");
+    expect(js).toMatch(/input\.v\s*<\s*10/);
+
+    const solve = new Function(`${js}; return solve;`)() as (inp: {
+      s: string;
+      v: number;
+    }) => { ok: boolean; lt: boolean };
+    expect(solve({ s: "a", v: 5 })).toEqual({ ok: true, lt: true });
+    expect(solve({ s: "a!", v: 12 })).toEqual({ ok: true, lt: false });
+    expect(/a!/.test("a")).toBe(false);
+    // Verify /a!/ inside transpiled solve genuinely distinguishes "a" from "a!"
+    const directRegexCheck = `
+export function check(s: string): { matched: boolean } {
+  return { matched: /a!/.test(s) };
+}
+`;
+    const checkFn = new Function(`${transpileExerciseTsToJs(directRegexCheck)}; return check;`)() as (
+      s: string
+    ) => { matched: boolean };
+    expect(checkFn("a").matched).toBe(false);
+    expect(checkFn("a!").matched).toBe(true);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {
