@@ -1,7 +1,8 @@
 import type { Var } from "../../variable.js";
-import { BoolVar, BoolOp, type LogicElement } from "../../boolean-expr.js";
-import type { LinExpr } from "../../expression.js";
+import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "../../boolean-expr.js";
+import type { LinExpr, NonlinearAtom } from "../../expression.js";
 import type { QuadExpr } from "../../quad-expr.js";
+import type { ComparisonSense } from "../../types.js";
 import { Constraint } from "../../constraint.js";
 import type {
   CheckModelData,
@@ -97,13 +98,37 @@ export class Z3Solver implements Solver {
       return ast;
     }
 
+    function isIntAst(ast: any): boolean {
+      return typeof ctx.isInt === "function" && ctx.isInt(ast);
+    }
+
     function ensureRealAst(ast: any) {
-      return typeof ctx.isInt === "function" && ctx.isInt(ast) ? ctx.ToReal(ast) : ast;
+      return isIntAst(ast) ? ctx.ToReal(ast) : ast;
+    }
+
+    function alignArithSorts(a: any, b: any): [any, any] {
+      const aIsInt = isIntAst(a);
+      const bIsInt = isIntAst(b);
+      if (aIsInt === bIsInt) return [a, b];
+      return [ensureRealAst(a), ensureRealAst(b)];
+    }
+
+    function iteArithAst(condAst: any, thenAst: any, elseAst: any) {
+      const [t, e] = alignArithSorts(thenAst, elseAst);
+      return ctx.If(condAst, t, e);
+    }
+
+    function compareArithAsts(a: any, sense: ComparisonSense, b: any) {
+      const [lhs, rhs] = alignArithSorts(a, b);
+      if (sense === "<=") return lhs.le(rhs);
+      if (sense === ">=") return lhs.ge(rhs);
+      if (sense === "!=") return lhs.neq(rhs);
+      return lhs.eq(rhs);
     }
 
     function addArithAst(a: any, b: any) {
-      const aIsInt = typeof ctx.isInt === "function" && ctx.isInt(a);
-      const bIsInt = typeof ctx.isInt === "function" && ctx.isInt(b);
+      const aIsInt = isIntAst(a);
+      const bIsInt = isIntAst(b);
       if (aIsInt && bIsInt) {
         return a.add(b);
       }
@@ -111,7 +136,7 @@ export class Z3Solver implements Solver {
     }
 
     function mulByConst(ast: any, coeff: number) {
-      const astIsInt = typeof ctx.isInt === "function" && ctx.isInt(ast);
+      const astIsInt = isIntAst(ast);
       if (astIsInt && Number.isInteger(coeff)) {
         return ast.mul(ctx.Int.val(coeff));
       }
@@ -119,8 +144,8 @@ export class Z3Solver implements Solver {
     }
 
     function mulArithAst(a: any, b: any) {
-      const aIsInt = typeof ctx.isInt === "function" && ctx.isInt(a);
-      const bIsInt = typeof ctx.isInt === "function" && ctx.isInt(b);
+      const aIsInt = isIntAst(a);
+      const bIsInt = isIntAst(b);
       if (aIsInt && bIsInt) {
         return a.mul(b);
       }
@@ -134,8 +159,8 @@ export class Z3Solver implements Solver {
       return ctx.Real.val(val);
     }
 
-    function compareAstWithNumber(lhsAst: any, sense: "<=" | ">=" | "==", rhsVal: number) {
-      const lhsIsInt = typeof ctx.isInt === "function" && ctx.isInt(lhsAst);
+    function compareAstWithNumber(lhsAst: any, sense: ComparisonSense, rhsVal: number) {
+      const lhsIsInt = isIntAst(lhsAst);
       const useInt = lhsIsInt && Number.isInteger(rhsVal);
       const lhs = useInt ? lhsAst : ensureRealAst(lhsAst);
       const rhs = useInt ? ctx.Int.val(rhsVal) : ctx.Real.val(rhsVal);
@@ -143,12 +168,57 @@ export class Z3Solver implements Solver {
         return lhs.le(rhs);
       } else if (sense === ">=") {
         return lhs.ge(rhs);
+      } else if (sense === "!=") {
+        return lhs.neq(rhs);
       } else {
         return lhs.eq(rhs);
       }
     }
 
-    function translateLinExpr(expr: LinExpr) {
+    function translateNonlinearAtom(atom: NonlinearAtom, domainGuards: any[]): any {
+      switch (atom.kind) {
+        case "abs": {
+          const argAst = translateLinExpr(atom.arg, domainGuards);
+          const zero = makeConstAst(0, isIntAst(argAst));
+          return iteArithAst(argAst.ge(zero), argAst, mulByConst(argAst, -1));
+        }
+        case "max": {
+          let acc = translateLinExpr(atom.args[0], domainGuards);
+          for (let i = 1; i < atom.args.length; i++) {
+            const nxt = translateLinExpr(atom.args[i], domainGuards);
+            const [a, b] = alignArithSorts(acc, nxt);
+            acc = ctx.If(a.ge(b), a, b);
+          }
+          return acc;
+        }
+        case "min": {
+          let acc = translateLinExpr(atom.args[0], domainGuards);
+          for (let i = 1; i < atom.args.length; i++) {
+            const nxt = translateLinExpr(atom.args[i], domainGuards);
+            const [a, b] = alignArithSorts(acc, nxt);
+            acc = ctx.If(a.le(b), a, b);
+          }
+          return acc;
+        }
+        case "at": {
+          const idxAst = translateLinExpr(atom.index, domainGuards);
+          const elemAsts = atom.array.map((el) => translateLinExpr(el, domainGuards));
+          domainGuards.push(
+            ctx.And(
+              compareAstWithNumber(idxAst, ">=", 0),
+              compareAstWithNumber(idxAst, "<=", elemAsts.length - 1)
+            )
+          );
+          let acc = elemAsts[elemAsts.length - 1];
+          for (let k = elemAsts.length - 2; k >= 0; k--) {
+            acc = iteArithAst(compareAstWithNumber(idxAst, "==", k), elemAsts[k], acc);
+          }
+          return acc;
+        }
+      }
+    }
+
+    function translateLinExpr(expr: LinExpr, domainGuards: any[] = []) {
       let result: any = null;
       if (expr && expr.terms) {
         for (const [v, coeff] of expr.terms.entries()) {
@@ -157,16 +227,24 @@ export class Z3Solver implements Solver {
           result = result === null ? term : addArithAst(result, term);
         }
       }
+      if (expr && Array.isArray(expr.nonlinearTerms)) {
+        for (const nl of expr.nonlinearTerms) {
+          if (nl.coeff === 0) continue;
+          const atomAst = translateNonlinearAtom(nl.atom, domainGuards);
+          const term = nl.coeff === 1 ? atomAst : mulByConst(atomAst, nl.coeff);
+          result = result === null ? term : addArithAst(result, term);
+        }
+      }
       const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
       if (constant !== 0 || result === null) {
-        const preferInt = result === null || (typeof ctx.isInt === "function" && ctx.isInt(result));
+        const preferInt = result === null || isIntAst(result);
         const offsetAst = makeConstAst(constant, preferInt);
         result = result === null ? offsetAst : addArithAst(result, offsetAst);
       }
       return result;
     }
 
-    function translateQuadExpr(expr: QuadExpr) {
+    function translateQuadExpr(expr: QuadExpr, domainGuards: any[] = []) {
       let result: any = null;
       if (expr.linearTerms) {
         for (const [v, coeff] of expr.linearTerms.entries()) {
@@ -184,29 +262,61 @@ export class Z3Solver implements Solver {
           result = result === null ? term : addArithAst(result, term);
         }
       }
+      if (Array.isArray(expr.nonlinearTerms)) {
+        for (const nl of expr.nonlinearTerms) {
+          if (nl.coeff === 0) continue;
+          const atomAst = translateNonlinearAtom(nl.atom, domainGuards);
+          const term = nl.coeff === 1 ? atomAst : mulByConst(atomAst, nl.coeff);
+          result = result === null ? term : addArithAst(result, term);
+        }
+      }
       const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
       if (constant !== 0 || result === null) {
-        const preferInt = result === null || (typeof ctx.isInt === "function" && ctx.isInt(result));
+        const preferInt = result === null || isIntAst(result);
         const cAst = makeConstAst(constant, preferInt);
         result = result === null ? cAst : addArithAst(result, cAst);
       }
       return result;
     }
 
-    function translateConstraint(c: Constraint) {
+    function translateConstraint(c: Constraint, domainGuards?: any[]) {
+      if (c._indicatorMeta) {
+        const meta = c._indicatorMeta;
+        const binAst = getVarAst(meta.binVar);
+        const condAst = compareAstWithNumber(binAst, "==", meta.activeValue);
+        const localGuards: any[] = [];
+        const targetGuards = domainGuards ?? localGuards;
+        const targetAst = compareAstWithNumber(
+          translateLinExpr(meta.targetLhs, targetGuards),
+          meta.targetSense,
+          meta.targetRhs
+        );
+        const consequent =
+          !domainGuards && localGuards.length > 0
+            ? ctx.And(targetAst, ...localGuards)
+            : targetAst;
+        return ctx.Implies(condAst, consequent);
+      }
+
+      const localGuards: any[] = [];
+      const guardsTarget = domainGuards ?? localGuards;
       const lhsAst =
         c.lhs instanceof Object && "quadTerms" in c.lhs
-          ? translateQuadExpr(c.lhs as any)
-          : translateLinExpr(c.lhs);
+          ? translateQuadExpr(c.lhs as any, guardsTarget)
+          : translateLinExpr(c.lhs, guardsTarget);
 
       const rhsVal = typeof c.rhs === "number" ? c.rhs : 0;
-      return compareAstWithNumber(lhsAst, c.sense, rhsVal);
+      const cmpAst = compareAstWithNumber(lhsAst, c.sense, rhsVal);
+      if (!domainGuards && localGuards.length > 0) {
+        return ctx.And(cmpAst, ...localGuards);
+      }
+      return cmpAst;
     }
 
-    function translateBoolExpr(be: LogicElement): any {
+    function translateBoolExpr(be: LogicElement, domainGuards: any[] = []): any {
       if (
         be instanceof BoolVar ||
-        (be && typeof be === "object" && "name" in be && typeof (be as any).id === "number" && !("op" in be) && !("lhs" in be))
+        (be && typeof be === "object" && "name" in be && typeof (be as any).id === "number" && !("op" in be) && !("lhs" in be) && !("spec" in be))
       ) {
         return getBoolVarAst(be as BoolVar);
       }
@@ -214,7 +324,80 @@ export class Z3Solver implements Solver {
         be instanceof Constraint ||
         (be && typeof be === "object" && "lhs" in be && "sense" in be)
       ) {
-        return translateConstraint(be as Constraint);
+        return translateConstraint(be as Constraint, domainGuards);
+      }
+      if (
+        be instanceof GlobalConstraint ||
+        (be && typeof be === "object" && "spec" in be && typeof (be as any).spec === "object")
+      ) {
+        const spec = (be as GlobalConstraint).spec;
+        switch (spec.kind) {
+          case "distinct": {
+            const asts = spec.args.map((a) => translateLinExpr(a, domainGuards));
+            if (asts.length <= 1) return ctx.Bool.val(true);
+            const hasReal = asts.some((a) => !isIntAst(a));
+            const normalized = hasReal ? asts.map(ensureRealAst) : asts;
+            return ctx.Distinct(...normalized);
+          }
+          case "disjoint": {
+            const starts = spec.tasks.map((t) => translateLinExpr(t.start, domainGuards));
+            const pairs: any[] = [];
+            for (let i = 0; i < spec.tasks.length; i++) {
+              for (let j = i + 1; j < spec.tasks.length; j++) {
+                const dI = spec.tasks[i].duration;
+                const dJ = spec.tasks[j].duration;
+                if (dI === 0 && dJ === 0) continue;
+                const endI = addArithAst(starts[i], makeConstAst(dI, isIntAst(starts[i])));
+                const endJ = addArithAst(starts[j], makeConstAst(dJ, isIntAst(starts[j])));
+                pairs.push(
+                  ctx.Or(
+                    compareArithAsts(endI, "<=", starts[j]),
+                    compareArithAsts(endJ, "<=", starts[i])
+                  )
+                );
+              }
+            }
+            return pairs.length === 0 ? ctx.Bool.val(true) : ctx.And(...pairs);
+          }
+          case "cumulative": {
+            const translatedTasks = spec.tasks.map((t) => ({
+              duration: t.duration,
+              demand: t.demand,
+              startAst: translateLinExpr(t.start, domainGuards),
+            }));
+            const active = translatedTasks.filter((t) => t.duration > 0 && t.demand > 0);
+            if (active.length === 0) return ctx.Bool.val(true);
+            if (active.some((t) => t.demand > spec.capacity)) return ctx.Bool.val(false);
+            const starts = active.map((t) => t.startAst);
+            const perEvent: any[] = [];
+            for (let k = 0; k < active.length; k++) {
+              let load: any = makeConstAst(active[k].demand, true);
+              for (let i = 0; i < active.length; i++) {
+                if (i === k) continue;
+                const cond = ctx.And(
+                  compareArithAsts(starts[i], "<=", starts[k]),
+                  compareArithAsts(
+                    starts[k],
+                    "<=",
+                    addArithAst(starts[i], makeConstAst(active[i].duration - 1, isIntAst(starts[i])))
+                  )
+                );
+                const contrib = ctx.If(cond, ctx.Int.val(active[i].demand), ctx.Int.val(0));
+                load = addArithAst(load, contrib);
+              }
+              perEvent.push(compareAstWithNumber(load, "<=", spec.capacity));
+            }
+            return ctx.And(...perEvent);
+          }
+          case "allowed": {
+            const varAsts = spec.vars.map((v) => translateLinExpr(v, domainGuards));
+            if (spec.tuples.length === 0) return ctx.Bool.val(false);
+            const disj = spec.tuples.map((row) =>
+              ctx.And(...row.map((val, j) => compareAstWithNumber(varAsts[j], "==", val)))
+            );
+            return disj.length === 1 ? disj[0] : ctx.Or(...disj);
+          }
+        }
       }
       if (
         be instanceof BoolOp ||
@@ -223,28 +406,28 @@ export class Z3Solver implements Solver {
         const opNode = be as BoolOp;
         switch (opNode.op) {
           case "and":
-            return ctx.And(...opNode.children.map(translateBoolExpr));
+            return ctx.And(...opNode.children.map((ch) => translateBoolExpr(ch, domainGuards)));
           case "or":
-            return ctx.Or(...opNode.children.map(translateBoolExpr));
+            return ctx.Or(...opNode.children.map((ch) => translateBoolExpr(ch, domainGuards)));
           case "not":
-            return ctx.Not(translateBoolExpr(opNode.children[0]));
+            return ctx.Not(translateBoolExpr(opNode.children[0], domainGuards));
           case "implies":
             return ctx.Implies(
-              translateBoolExpr(opNode.children[0]),
-              translateBoolExpr(opNode.children[1])
+              translateBoolExpr(opNode.children[0], domainGuards),
+              translateBoolExpr(opNode.children[1], domainGuards)
             );
           case "xor": {
             if (opNode.children.length === 0) {
               return ctx.Bool.val(false);
             }
             if (opNode.children.length === 1) {
-              return translateBoolExpr(opNode.children[0]);
+              return translateBoolExpr(opNode.children[0], domainGuards);
             }
             return opNode.children
               .slice(1)
               .reduce(
-                (acc, child) => ctx.Xor(acc, translateBoolExpr(child)),
-                translateBoolExpr(opNode.children[0])
+                (acc, child) => ctx.Xor(acc, translateBoolExpr(child, domainGuards)),
+                translateBoolExpr(opNode.children[0], domainGuards)
               );
           }
           default:
@@ -254,20 +437,44 @@ export class Z3Solver implements Solver {
       throw new Error(`Unknown logic element: ${String(be)}`);
     }
 
+    function parseSmtNumberString(s: string): number {
+      const trimmed = s.trim();
+      if (trimmed.startsWith("(- ") && trimmed.endsWith(")")) {
+        return -parseSmtNumberString(trimmed.slice(3, -1));
+      }
+      if (trimmed.startsWith("(/ ") && trimmed.endsWith(")")) {
+        const inner = trimmed.slice(3, -1).trim();
+        let depth = 0;
+        let splitIdx = -1;
+        for (let i = 0; i < inner.length; i++) {
+          const ch = inner[i];
+          if (ch === "(") depth++;
+          else if (ch === ")") depth--;
+          else if (depth === 0 && /\s/.test(ch)) {
+            splitIdx = i;
+            break;
+          }
+        }
+        if (splitIdx !== -1) {
+          const num = parseSmtNumberString(inner.slice(0, splitIdx));
+          const den = parseSmtNumberString(inner.slice(splitIdx + 1));
+          const q = num / den;
+          return q === 0 ? 0 : q;
+        }
+      }
+      const n = Number(trimmed);
+      return n === 0 ? 0 : n;
+    }
+
     function parseAstValue(val: any): number {
       if (!val) return 0;
       if (typeof val.asNumber === "function") {
-        return val.asNumber();
-      }
-      const s = val.toString();
-      if (s.startsWith("(/ ")) {
-        // Z3 rational format: (/ num denom)
-        const parts = s.slice(3, -1).trim().split(/\s+/);
-        if (parts.length === 2) {
-          return Number(parts[0]) / Number(parts[1]);
+        const n = val.asNumber();
+        if (typeof n === "number" && Number.isFinite(n)) {
+          return n === 0 ? 0 : n;
         }
       }
-      return Number(s);
+      return parseSmtNumberString(val.toString());
     }
 
     return {
@@ -375,13 +582,19 @@ export class Z3Solver implements Solver {
 
     // 2. Add tracked arithmetic and logical constraints
     for (const c of constraints) {
-      s.addAndTrack(trans.translateConstraint(c), createTracker(c.name));
+      const guards: any[] = [];
+      const cAst = trans.translateConstraint(c, guards);
+      const tracked = guards.length > 0 ? ctx.And(cAst, ...guards) : cAst;
+      s.addAndTrack(tracked, createTracker(c.name));
     }
     for (let i = 0; i < logicalConstraints.length; i++) {
       const item = logicalConstraints[i]!;
       const name = "name" in item && typeof item.name === "string" ? item.name : `lc_${i + 1}`;
       const expr = "expr" in item ? item.expr : (item as LogicElement);
-      s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
+      const guards: any[] = [];
+      const lcAst = trans.translateBoolExpr(expr, guards);
+      const tracked = guards.length > 0 ? ctx.And(lcAst, ...guards) : lcAst;
+      s.addAndTrack(tracked, createTracker(name));
     }
 
     if (options.signal?.aborted) {
@@ -473,12 +686,18 @@ export class Z3Solver implements Solver {
     }
     const startTime = performance.now();
     const obj = modelData.objective;
+    const objHasNonlinear =
+      obj !== null &&
+      obj !== undefined &&
+      Array.isArray((obj as { nonlinearTerms?: unknown[] }).nonlinearTerms) &&
+      (obj as { nonlinearTerms: unknown[] }).nonlinearTerms.length > 0;
     const hasObjective =
       obj !== null &&
       obj !== undefined &&
-      ("quadTerms" in obj
-        ? obj.linearTerms.size > 0 || obj.quadTerms.size > 0
-        : "terms" in obj && obj.terms.size > 0);
+      (objHasNonlinear ||
+        ("quadTerms" in obj
+          ? obj.linearTerms.size > 0 || obj.quadTerms.size > 0
+          : "terms" in obj && obj.terms.size > 0));
 
     if (!hasObjective) {
       const checkRes = await this.check(modelData, options);
@@ -557,24 +776,30 @@ export class Z3Solver implements Solver {
     // 1. Variable bounds
     this.addVariableBounds(opt, variables, trans);
 
+    const solveGuards: any[] = [];
+
     // 2. Arithmetic constraints
     for (const c of constraints) {
-      const cAst = trans.translateConstraint(c);
+      const cAst = trans.translateConstraint(c, solveGuards);
       opt.add(cAst);
     }
 
     // 3. Logical constraints
     for (const item of logicalConstraints) {
       const expr = "expr" in item ? item.expr : (item as LogicElement);
-      const lcAst = trans.translateBoolExpr(expr);
+      const lcAst = trans.translateBoolExpr(expr, solveGuards);
       opt.add(lcAst);
     }
 
     // 4. Objective
     const objAst =
       "quadTerms" in obj
-        ? trans.translateQuadExpr(obj)
-        : trans.translateLinExpr(obj);
+        ? trans.translateQuadExpr(obj, solveGuards)
+        : trans.translateLinExpr(obj, solveGuards);
+
+    for (const g of solveGuards) {
+      opt.add(g);
+    }
 
     const sense = (modelData.sense || "MINIMIZE").toUpperCase();
     const objHandle = sense === "MAXIMIZE" ? opt.maximize(objAst) : opt.minimize(objAst);

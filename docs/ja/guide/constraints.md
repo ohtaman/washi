@@ -107,6 +107,9 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 必要な境界が無限大（`Infinity` / `-Infinity`）の場合は、`m.indicator()` がエラーをスローして有限な境界の設定または明示的な `options.M` の指定を促します。
 
+> [!NOTE]
+> **Pumpkin / Z3 でのネイティブ・インジケータ変換**: `options.M` を省略した場合でも、`m.indicator()` は従来どおり Big-M 線形化された `Constraint[]` 行を返します（そのため `m.toLpString()` や HiGHS / GLPK の出力は完全な後方互換性を保ちます）が、内部メタデータを付与することで **Pumpkin**（`implied_by`）および **Z3**（`ctx.Implies`）では大きな Big-M 定数による数値劣化やオーバーフローを伴わないネイティブ条件制約として変換されます。返却された `Constraint` 行を直接書き換えた場合はメタデータが自動で破棄され、変更後の制約式がそのまま適用されます。
+
 ### 明示的な `M` の指定
 
 `{ M: number }` を渡すことで Big-M を明示的に上書きできます：
@@ -155,11 +158,56 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **条件側の変数** | 数値バイナリ変数 (`m.binary()`) | 命題変数 `BoolVar` (`m.bool()`)、`BoolOp`、または `Constraint` |
 | **帰結側の制約** | 線形制約 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp`、または線形制約 `Constraint` |
-| **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK, Z3）— Big-M 線形化 | **全ソルバー**（HiGHS, GLPK は 0-1 MIP 自動線形化、Z3 はネイティブ対応） |
+| **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK は Big-M、`M` 省略時は Pumpkin / Z3 でネイティブ変換） | **全ソルバー**（HiGHS, GLPK は 0-1 MIP 自動線形化、Pumpkin, Z3 はネイティブ対応） |
 | **主な用途** | バイナリ変数を含む数理最適化（`m.solve()`） | 論理ルールの記述・充足可能性判定（`m.check()`） |
 
 > [!NOTE]
-> **否定側に現れる比較制約（`implies` の前提・`not`・`xor` など）**: 参照される変数がすべて `Integer` または `Binary` で整数係数・整数右辺を持つ線形比較制約（Big-M インジケータに必要な有限境界を備えるもの。上記の `clearance` と `hasMfa` を使った ``implies(expr`${clearance} >= 4`, hasMfa)`` など）は、**HiGHS** や **GLPK** でも $\pm 1$ シフト（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$、$==$ は $\le b - 1$ または $\ge b + 1$）によって厳密に MIP 線形化され、**Z3** ではネイティブに処理されます。一方、`Continuous` 変数や非整数の係数・閾値を含む比較制約が否定側に現れた場合、厳密不等式の否定が開半空間となるため MIP ソルバー（HiGHS / GLPK での `solve()` / `check()`）ではエラーを送出します—`{ solver: "z3" }` を利用するか、許容幅 `eps` を用いた ``or(expr`... >= ... + eps`, ...)`` や `m.bool()` で明示的に記述してください。
+> **否定側に現れる比較制約（`implies` の前提・`not`・`xor` など）**: 参照される変数がすべて `Integer` または `Binary` で整数係数・整数右辺を持つ線形比較制約（Big-M インジケータに必要な有限境界を備えるもの。上記の `clearance` と `hasMfa` を使った ``implies(expr`${clearance} >= 4`, hasMfa)`` など）は、**HiGHS** や **GLPK** でも $\pm 1$ シフト（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$、$==$ は $\le b - 1$ または $\ge b + 1$）によって厳密に MIP 線形化され、**Pumpkin** や **Z3** ではネイティブに処理されます。一方、`Continuous` 変数や非整数の係数・閾値を含む比較制約が否定側に現れた場合、厳密不等式の否定が開半空間となるため MIP ソルバー（HiGHS / GLPK での `solve()` / `check()`）ではエラーを送出します—`{ solver: "z3" }` を利用するか、許容幅 `eps` を用いた ``or(expr`... >= ... + eps`, ...)`` や `m.bool()` で明示的に記述してください。
+
+---
+
+## 離散比較演算子 (`!=`, `<`, `>`)
+
+WaSHI では、`expr` テンプレート内（および `Var`, `LinExpr`, `QuadExpr` 上の `.ne()`, `.lt()`, `.gt()` メソッド）で離散比較演算子 `!=`, `<`, `>` を利用できます。これらは**整数値の式**（`Integer` / `Binary` 変数と整数係数・整数定数のみ）に限定されます：
+
+```typescript
+const rankA = m.integer("rankA", { lb: 1, ub: 4 });
+const rankB = m.integer("rankB", { lb: 1, ub: 4 });
+const roomA = m.integer("roomA", { lb: 1, ub: 3 });
+const roomB = m.integer("roomB", { lb: 1, ub: 3 });
+
+m.constraint(expr`${rankA} < ${rankB}`, "strict_order"); // rankA - rankB <= -1 へ正規化
+m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin: not_equals, Z3: neq, MIP: 単一バイナリ変数で線形化
+```
+
+`Continuous` 変数や小数定数を含む式に `!=`, `<`, `>` を適用すると、連続領域で開集合となるため即座にエラーが送出されます。
+
+---
+
+## CP グローバル制約 (`distinct`, `disjoint`, `cumulative`, `allowed`)
+
+`and` / `or` / `not` / `implies` / `xor` と合成可能な `BoolExpr` を返すグローバル制約を提供しています：
+
+| グローバル制約 | 意味論 | HiGHS / GLPK | Pumpkin | Z3 |
+| :--- | :--- | :--- | :--- | :--- |
+| `distinct(...args)` | 整数値式・1D/2D コンテナ全要素の pairwise 相異（`AllDifferent`） | pairwise `!=` MIP | `all_different` | `ctx.Distinct` |
+| `disjoint(tasks)` | 単一機械上の非重複区間 `[start, start + duration)`（`NoOverlap` / `Disjunctive`、整数 `duration >= 0`、duration=0 は境界のみ許容） | pairwise 順序バイナリ + Big-M | `disjunctive_strict`（Vilím エッジ発見） | pairwise `Or` 選言 |
+| `cumulative(tasks, capacity)` | 全時刻で総リソース要求量 $\le$ `capacity`（整数 `duration >= 0`, `demand >= 0`） | 時間離散化 MIP（スパン 5,000 / パルス変数 25,000 超で `{ solver: "pumpkin" }` 推奨エラー） | ネイティブ `cumulative`（タイムテーブル伝播） | 開始時刻イベント負荷表明 |
+| `allowed(vars, tuples)` | タプル集合への所属制約（`Table` / `AllowedAssignments`、禁止タプルは `not(allowed(...))`） | タプル選択バイナリ（2値変数の否定は 0-バイナリ・カット） | `table` / `negative_table` | タプル選言・連言 |
+
+```typescript
+import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";
+
+const m = new Model("ScheduleAndAssign");
+const s = m.integer(2, { lb: 0, ub: 10, prefix: "s" });
+const room = m.integer(2, { lb: 1, ub: 2, prefix: "room" });
+
+m.constraint(distinct(room), "unique_rooms");
+m.constraint(disjoint([{ start: s[0], duration: 4 }, { start: s[1], duration: 3 }]), "machine_1");
+m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
+m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
+m.objective(minimize(expr`${s[0]} + ${s[1]}`));
+```
 
 ---
 

@@ -205,6 +205,21 @@ export class Var {
     return new LinExpr(new Map([[this, 1]]), 0).eq(rhs, name);
   }
 
+  /** Create a discrete strict less-than constraint: this < rhs (normalized to this <= rhs - 1) */
+  lt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return new LinExpr(new Map([[this, 1]]), 0).lt(rhs, name);
+  }
+
+  /** Create a discrete strict greater-than constraint: this > rhs (normalized to this >= rhs + 1) */
+  gt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return new LinExpr(new Map([[this, 1]]), 0).gt(rhs, name);
+  }
+
+  /** Create a discrete not-equal constraint: this != rhs */
+  ne(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return new LinExpr(new Map([[this, 1]]), 0).ne(rhs, name);
+  }
+
   toString(): string {
     return this.name;
   }

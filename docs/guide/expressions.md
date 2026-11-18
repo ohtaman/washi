@@ -253,3 +253,38 @@ In addition to `expr`, `Var`, `LinExpr`, and `QuadExpr` provide immutable fluent
 | `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\le$ constraint (`lhs <= rhs`). |
 | `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\ge$ constraint (`lhs >= rhs`). |
 | `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds an $==$ equality constraint (`lhs == rhs`). |
+| `.lt(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a discrete $<$ constraint (`lhs - rhs <= -1`; integer-valued expressions only). |
+| `.gt(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a discrete $>$ constraint (`lhs - rhs >= 1`; integer-valued expressions only). |
+| `.ne(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a discrete $\ne$ constraint (`lhs != rhs`; integer-valued expressions only). |
+
+---
+
+## Piecewise-Linear & Element Expressions (`max`, `min`, `abs`, `at`)
+
+WaSHI provides backend-agnostic scalar piecewise-linear (`max`, `min`, `abs`) and 0-based variable-indexed lookup (`at`) primitives that work directly inside `` expr`...` `` or as standalone helpers imported from `@ohtaman/washi`:
+
+```typescript
+import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
+
+const m = new Model();
+const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
+const target = [4, 7, 10];
+const route = m.integer("route", { lb: 0, ub: 2 });
+const routeCost = [18, 12, 25];
+
+// Convex LP epigraph (zero binary variables on HiGHS / GLPK):
+m.objective(
+  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
+);
+m.constraint(expr`max(${w}) <= 15`, "peak_cap");
+
+// Nested composition and programmatic helpers also work:
+const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
+m.constraint(expr`${maxErr} <= 3`);
+```
+
+- **Element-wise container support**: Inside `expr`, `abs(${arr} - ${target})` evaluates element-wise across matching 1D/2D `Array`, `Iterable`, or `Record` containers so patterns like `` expr`sum(abs(${w} - ${target}))` `` and `` expr`max(abs(${pred} - ${actual}))` `` work naturally.
+- **Polarity-aware MIP lowering vs native CP/SMT**:
+  - In convex directions on HiGHS and GLPK (`minimize` or `<=` on `max`/`abs`, `maximize` or `>=` on `min`), WaSHI emits pure continuous LP epigraph constraints with **zero binary variables** (even on unbounded `Continuous` variables).
+  - In non-convex or equality contexts (`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs`), HiGHS and GLPK emit bounded MIP formulations (requiring finite variable bounds), Pumpkin lowers via native `maximum`/`minimum`/`absolute` propagators over bounded integers, and Z3 uses native `If` (`ITE`).
+- **0-based element lookup (`at(array, index)`)**: Models the classic CP `Element` constraint (`array[index]`). Requires an integer-valued `index` expression and automatically enforces $0 \le \text{index} < \text{array.length}$ across all solvers (native `element` propagator on Pumpkin, nested `If` + bounds guards on Z3, and binary convex-hull linearization on HiGHS/GLPK).

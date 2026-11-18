@@ -13,7 +13,7 @@
 2. **COOP / COEP 不要の Unsat Core 競合診断**:
    通常の Web ホスティング、CodePen、あるいは第三者 iframe 内（`SharedArrayBuffer` 不可環境）で、`await model.check({ solver: "pumpkin" })` による競合制約集合（`unsatCore` / `conflicts`）の抽出を行いたい場合。
 3. **追加インストール不要のプラグイン**:
-   `pumpkin.wasm`（約 906 kB）が `@ohtaman/washi` に同梱されているため、追加パッケージをインストールせずそのまま動作します。
+   `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に同梱されているため、追加パッケージをインストールせずそのまま動作します。
 
 > [!TIP]
 > **HiGHS・Z3・Pumpkin の使い分け**:
@@ -77,7 +77,8 @@ Pumpkin は**有界整数・真偽値専用の CP/LCG ソルバー**です。非
 - **有界整数 / Binary / BoolVar のみ対応**: すべての `Var` は有限整数上下界（`lb`, `ub` が `[-(2^30 - 1), 2^30 - 1]` の整数）である必要があります。無界整数（`-Infinity` / `Infinity`）や `Continuous` 変数はエラーになります。
 - **整数係数の線形制約**: 制約の係数、調整済み右辺値（`rhs - lhs.constant`）、およびスケーリング上下界はすべて 32bit 安全範囲（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）の整数である必要があります（目的関数の定数項は小数可）。
 - **ウォームスタート対応 (`initialValue`)**: 有界な `Integer` / `Binary` 変数に対して `solve()` と `check()` の双方で `initialValue` ヒント（`supportsWarmStart: true`）をサポートしており、Pumpkin の `WarmStart` brancher による探索ヒントとして適用されます（`Var.initialValue` は求解結果の `Var.value` とは独立して保持されます）。
-- **非対応機能**: `QuadExpr`（二次式）および LP 緩和（`relax: true`）は明示的にエラーになります。グローバル制約（`distinct` や `noOverlap` など）は今後の別 Issue で順次拡張予定です。
+- **ネイティブ CP・区分線形伝播器**: `distinct()`（Pumpkin `v0.5.0` の `all_different`、pairwise `binary_not_equals` 分解）、`disjoint()`（`disjunctive_strict` Vilím エッジ発見）、`cumulative()`（タイムテーブル伝播）、`allowed()` / `not(allowed())`（`table` / `negative_table`）、`at()`（`element`）、`max()`/`min()`/`abs()`（`maximum`/`minimum`/`absolute`）、離散 `!=`（`not_equals`）、および `M` 省略時の `m.indicator()`（`implied_by`）を Pumpkin ネイティブ制約へ直接変換します。
+- **非対応機能**: `QuadExpr`（二次式）、`Continuous` 変数、無界変数、および LP 緩和（`relax: true`）は明示的にエラーになります。
 
 ---
 

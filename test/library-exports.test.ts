@@ -19,6 +19,15 @@ import {
   not,
   implies,
   xor,
+  abs,
+  max,
+  min,
+  at,
+  distinct,
+  disjoint,
+  cumulative,
+  allowed,
+  GlobalConstraint,
   getSolver,
   setHighsWasmUrl,
   getHighsWasmUrl,
@@ -49,6 +58,15 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect(not).toBeDefined();
     expect(implies).toBeDefined();
     expect(xor).toBeDefined();
+    expect(abs).toBeDefined();
+    expect(max).toBeDefined();
+    expect(min).toBeDefined();
+    expect(at).toBeDefined();
+    expect(distinct).toBeDefined();
+    expect(disjoint).toBeDefined();
+    expect(cumulative).toBeDefined();
+    expect(allowed).toBeDefined();
+    expect(GlobalConstraint).toBeDefined();
     expect(getSolver).toBeDefined();
     expect(setHighsWasmUrl).toBeDefined();
     expect(getHighsWasmUrl).toBeDefined();

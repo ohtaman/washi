@@ -233,6 +233,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
       expect(savedCargo).toMatch(/^pumpkin-core = "0\.6\.0"/m);
       expect(savedCargo).toMatch(/^pumpkin-constraints = "0\.6\.0"/m);
       expect(savedCargo).toMatch(/^pumpkin-conflict-resolvers = "0\.6\.0"/m);
+      expect(savedCargo).toMatch(/^pumpkin-propagators = "0\.6\.0"/m);
       expect(savedCargo).toContain('js-sys = "0.3"');
       expect(savedCargo).toContain('serde = { version = "1.0", features = ["derive"] }');
       expect(savedCargo).toContain('serde_json = "1.0"');

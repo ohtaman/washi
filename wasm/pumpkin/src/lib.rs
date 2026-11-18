@@ -1,18 +1,21 @@
 use std::cell::Cell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use js_sys::Function;
 use pumpkin_conflict_resolvers::resolvers::ResolutionResolver;
 use pumpkin_constraints::{
-    clause, conjunction, equals, greater_than_or_equals, less_than_or_equals,
+    absolute, all_different, clause, conjunction, cumulative, disjunctive_strict, element,
+    equals, greater_than_or_equals, less_than_or_equals, maximum, minimum, negative_table,
+    not_equals, table,
 };
 use pumpkin_core::branching::branchers::warm_start::WarmStart;
 use pumpkin_core::branching::{Brancher, BrancherEvent, SelectionContext};
 use pumpkin_core::optimisation::linear_sat_unsat::LinearSatUnsat;
 use pumpkin_core::optimisation::OptimisationDirection;
 use pumpkin_core::options::SolverOptions;
+use pumpkin_core::predicate;
 use pumpkin_core::predicates::Predicate;
 use pumpkin_core::results::{
     OptimisationResult, ProblemSolution, SatisfactionResult, SatisfactionResultUnderAssumptions,
@@ -22,11 +25,12 @@ use pumpkin_core::statistics::StatisticLogger;
 use pumpkin_core::termination::{TerminationCondition, TimeBudget};
 use pumpkin_core::variables::{AffineView, DomainId, Literal, TransformableVariable};
 use pumpkin_core::{DefaultBrancher, Duration, Solver};
+use pumpkin_propagators::disjunctive::ArgDisjunctiveTask;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-/// Keep values within [-(2^30 - 1), 2^30 - 1] so scaled views, constraint negations (-rhs - 1),
-/// and propagator slack arithmetic never overflow signed 32-bit integers.
+/// Keep values within [-(2^30 - 1), 2^30 - 1] so signed 32-bit propagator arithmetic,
+/// constraint negations (-rhs - 1), and task end times never overflow signed 32-bit integers.
 const SAFE_I32_LIMIT: i64 = 1_073_741_823;
 
 #[derive(Deserialize)]
@@ -37,6 +41,8 @@ pub struct VarSpec {
     pub ub: i64,
     #[serde(default)]
     pub initial_value: Option<i64>,
+    #[serde(default)]
+    pub internal: bool,
 }
 
 #[derive(Deserialize, Clone)]
@@ -48,11 +54,79 @@ pub struct TermSpec {
 
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct IndicatorSpec {
+    pub bin_var_index: usize,
+    pub active_value: i64,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct LinearConstraintSpec {
     pub name: String,
     pub terms: Vec<TermSpec>,
     pub sense: String,
     pub rhs: i64,
+    #[serde(default)]
+    pub indicator: Option<IndicatorSpec>,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AuxPropagatorOwner {
+    Constraint { index: usize },
+    Logic { index: usize },
+    Objective,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AuxPropagatorSpec {
+    #[serde(rename_all = "camelCase")]
+    LinearEq {
+        terms: Vec<TermSpec>,
+        rhs: i64,
+        owner: AuxPropagatorOwner,
+    },
+    #[serde(rename_all = "camelCase")]
+    Abs {
+        arg_var: usize,
+        out_var: usize,
+        owner: AuxPropagatorOwner,
+    },
+    #[serde(rename_all = "camelCase")]
+    Max {
+        arg_vars: Vec<usize>,
+        out_var: usize,
+        owner: AuxPropagatorOwner,
+    },
+    #[serde(rename_all = "camelCase")]
+    Min {
+        arg_vars: Vec<usize>,
+        out_var: usize,
+        owner: AuxPropagatorOwner,
+    },
+    #[serde(rename_all = "camelCase")]
+    Element {
+        index_var: usize,
+        array_vars: Vec<usize>,
+        out_var: usize,
+        owner: AuxPropagatorOwner,
+    },
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DisjunctiveTaskSpec {
+    pub start_var: usize,
+    pub duration: i64,
+}
+
+#[derive(Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CumulativeTaskSpec {
+    pub start_var: usize,
+    pub duration: i64,
+    pub demand: i64,
 }
 
 #[derive(Deserialize, Clone)]
@@ -82,6 +156,20 @@ pub enum LogicNode {
     Xor {
         children: Vec<LogicNode>,
     },
+    AllDifferent {
+        vars: Vec<usize>,
+    },
+    Disjunctive {
+        tasks: Vec<DisjunctiveTaskSpec>,
+    },
+    Cumulative {
+        tasks: Vec<CumulativeTaskSpec>,
+        capacity: i64,
+    },
+    Table {
+        vars: Vec<usize>,
+        tuples: Vec<Vec<i64>>,
+    },
 }
 
 #[derive(Deserialize)]
@@ -98,6 +186,8 @@ pub struct CheckRequest {
     pub bool_vars: Vec<String>,
     pub constraints: Vec<LinearConstraintSpec>,
     pub logical_constraints: Vec<LogicalConstraintSpec>,
+    #[serde(default)]
+    pub aux_propagators: Vec<AuxPropagatorSpec>,
     pub time_limit_ms: Option<u64>,
 }
 
@@ -108,6 +198,8 @@ pub struct SolveRequest {
     pub bool_vars: Vec<String>,
     pub constraints: Vec<LinearConstraintSpec>,
     pub logical_constraints: Vec<LogicalConstraintSpec>,
+    #[serde(default)]
+    pub aux_propagators: Vec<AuxPropagatorSpec>,
     pub sense: String,
     pub objective_terms: Vec<TermSpec>,
     pub objective_constant: f64,
@@ -226,6 +318,15 @@ fn validate_safe_i32(val: i64, context: &str) -> Result<i32, String> {
     Ok(val as i32)
 }
 
+fn validate_var_index(idx: usize, num_vars: usize, context: &str) -> Result<(), String> {
+    if idx >= num_vars {
+        return Err(format!(
+            "Variable index {idx} out of range ({num_vars} variables) in {context}."
+        ));
+    }
+    Ok(())
+}
+
 fn validate_vars(var_specs: &[VarSpec]) -> Result<Vec<(i32, i32)>, String> {
     let mut bounds = Vec::with_capacity(var_specs.len());
     for v in var_specs {
@@ -270,8 +371,6 @@ impl PumpkinBrancher {
         let warm_start = if hint_vars.is_empty() {
             None
         } else {
-            // `WarmStart::new` internally reverses slices and iterates `0..len`;
-            // reverse upfront so hints are tried in variable declaration order.
             hint_vars.reverse();
             hint_vals.reverse();
             Some(WarmStart::new(&hint_vars, &hint_vals))
@@ -346,8 +445,6 @@ impl Brancher for PumpkinBrancher {
     }
 
     fn is_restart_pointless(&mut self) -> bool {
-        // Retire any remaining unsatisfied warm-start prefix at the first restart point so an
-        // infeasible or conflicting hint cannot trap search across restarts.
         self.warm_start = None;
         self.default.is_restart_pointless()
     }
@@ -378,7 +475,7 @@ fn normalize_linear(
     context: &str,
 ) -> Result<NormalizedLinear, String> {
     match sense {
-        "<=" | ">=" | "==" => {}
+        "<=" | ">=" | "==" | "!=" => {}
         other => return Err(format!("Unsupported constraint sense: {other}")),
     }
 
@@ -436,6 +533,102 @@ fn normalize_linear(
     })
 }
 
+fn validate_indicator(
+    var_specs: &[VarSpec],
+    ind: &IndicatorSpec,
+    context: &str,
+) -> Result<(), String> {
+    validate_var_index(ind.bin_var_index, var_specs.len(), context)?;
+    if ind.active_value != 0 && ind.active_value != 1 {
+        return Err(format!(
+            "Invalid indicator activeValue ({}) in {context}: must be 0 or 1.",
+            ind.active_value
+        ));
+    }
+    Ok(())
+}
+
+fn validate_aux_owner(
+    owner: &AuxPropagatorOwner,
+    num_constraints: usize,
+    num_logic: usize,
+    context: &str,
+) -> Result<(), String> {
+    match owner {
+        AuxPropagatorOwner::Constraint { index } => {
+            if *index >= num_constraints {
+                return Err(format!(
+                    "AuxPropagator constraint index {index} out of range ({num_constraints}) in {context}."
+                ));
+            }
+        }
+        AuxPropagatorOwner::Logic { index } => {
+            if *index >= num_logic {
+                return Err(format!(
+                    "AuxPropagator logical constraint index {index} out of range ({num_logic}) in {context}."
+                ));
+            }
+        }
+        AuxPropagatorOwner::Objective => {}
+    }
+    Ok(())
+}
+
+fn validate_aux_propagator(
+    var_specs: &[VarSpec],
+    num_constraints: usize,
+    num_logic: usize,
+    aux: &AuxPropagatorSpec,
+) -> Result<(), String> {
+    match aux {
+        AuxPropagatorSpec::LinearEq { terms, rhs, owner } => {
+            validate_aux_owner(owner, num_constraints, num_logic, "aux linearEq")?;
+            normalize_linear(var_specs, terms, "==", *rhs, "aux linearEq").map(|_| ())
+        }
+        AuxPropagatorSpec::Abs { arg_var, out_var, owner } => {
+            validate_aux_owner(owner, num_constraints, num_logic, "aux abs")?;
+            validate_var_index(*arg_var, var_specs.len(), "aux abs arg")?;
+            validate_var_index(*out_var, var_specs.len(), "aux abs out")
+        }
+        AuxPropagatorSpec::Max { arg_vars, out_var, owner } => {
+            validate_aux_owner(owner, num_constraints, num_logic, "aux max")?;
+            if arg_vars.is_empty() {
+                return Err("aux max requires at least one argument variable.".into());
+            }
+            for &v in arg_vars {
+                validate_var_index(v, var_specs.len(), "aux max arg")?;
+            }
+            validate_var_index(*out_var, var_specs.len(), "aux max out")
+        }
+        AuxPropagatorSpec::Min { arg_vars, out_var, owner } => {
+            validate_aux_owner(owner, num_constraints, num_logic, "aux min")?;
+            if arg_vars.is_empty() {
+                return Err("aux min requires at least one argument variable.".into());
+            }
+            for &v in arg_vars {
+                validate_var_index(v, var_specs.len(), "aux min arg")?;
+            }
+            validate_var_index(*out_var, var_specs.len(), "aux min out")
+        }
+        AuxPropagatorSpec::Element {
+            index_var,
+            array_vars,
+            out_var,
+            owner,
+        } => {
+            validate_aux_owner(owner, num_constraints, num_logic, "aux element")?;
+            if array_vars.is_empty() {
+                return Err("aux element requires a non-empty array.".into());
+            }
+            validate_var_index(*index_var, var_specs.len(), "aux element index")?;
+            for &v in array_vars {
+                validate_var_index(v, var_specs.len(), "aux element array item")?;
+            }
+            validate_var_index(*out_var, var_specs.len(), "aux element out")
+        }
+    }
+}
+
 fn validate_logic_node(
     var_specs: &[VarSpec],
     num_bools: usize,
@@ -467,6 +660,86 @@ fn validate_logic_node(
             }
             Ok(())
         }
+        LogicNode::AllDifferent { vars } => {
+            for &idx in vars {
+                validate_var_index(idx, var_specs.len(), &format!("allDifferent in {context}"))?;
+            }
+            Ok(())
+        }
+        LogicNode::Disjunctive { tasks } => {
+            for (i, t) in tasks.iter().enumerate() {
+                validate_var_index(
+                    t.start_var,
+                    var_specs.len(),
+                    &format!("disjunctive task[{i}] in {context}"),
+                )?;
+                let dur = validate_safe_i32(t.duration, &format!("disjunctive task[{i}] duration in {context}"))?;
+                if dur < 0 {
+                    return Err(format!("disjunctive task[{i}] duration cannot be negative in {context}."));
+                }
+                let s_spec = &var_specs[t.start_var];
+                let end_ub = s_spec.ub.saturating_add(dur as i64);
+                if end_ub > (i32::MAX as i64) - 1 {
+                    return Err(format!(
+                        "disjunctive task[{i}] end bound exceeds safe 32-bit range in {context}."
+                    ));
+                }
+            }
+            Ok(())
+        }
+        LogicNode::Cumulative { tasks, capacity } => {
+            let cap = validate_safe_i32(*capacity, &format!("cumulative capacity in {context}"))?;
+            if cap < 0 {
+                return Err(format!("cumulative capacity cannot be negative in {context}."));
+            }
+            let mut sum_demands: i64 = 0;
+            for (i, t) in tasks.iter().enumerate() {
+                validate_var_index(
+                    t.start_var,
+                    var_specs.len(),
+                    &format!("cumulative task[{i}] in {context}"),
+                )?;
+                let dur = validate_safe_i32(t.duration, &format!("cumulative task[{i}] duration in {context}"))?;
+                let dem = validate_safe_i32(t.demand, &format!("cumulative task[{i}] demand in {context}"))?;
+                if dur < 0 || dem < 0 {
+                    return Err(format!("cumulative task[{i}] duration/demand cannot be negative in {context}."));
+                }
+                let end_ub = var_specs[t.start_var].ub.saturating_add(dur as i64);
+                if end_ub > (i32::MAX as i64) - 1 {
+                    return Err(format!(
+                        "cumulative task[{i}] end bound exceeds safe 32-bit range in {context}."
+                    ));
+                }
+                sum_demands = sum_demands.saturating_add(dem as i64);
+            }
+            if sum_demands > (i32::MAX as i64) - 1 {
+                return Err(format!(
+                    "cumulative total task demand exceeds safe 32-bit range in {context}."
+                ));
+            }
+            Ok(())
+        }
+        LogicNode::Table { vars, tuples } => {
+            if vars.is_empty() {
+                return Err(format!("table requires at least one variable in {context}."));
+            }
+            for &idx in vars {
+                validate_var_index(idx, var_specs.len(), &format!("table var in {context}"))?;
+            }
+            for (r, row) in tuples.iter().enumerate() {
+                if row.len() != vars.len() {
+                    return Err(format!(
+                        "table row {r} length ({}) does not match vars length ({}) in {context}.",
+                        row.len(),
+                        vars.len()
+                    ));
+                }
+                for (c_idx, &val) in row.iter().enumerate() {
+                    validate_safe_i32(val, &format!("table[{r}][{c_idx}] in {context}"))?;
+                }
+            }
+            Ok(())
+        }
     }
 }
 
@@ -482,6 +755,7 @@ fn eval_zero_linear(sense: &str, rhs: i32) -> Result<bool, String> {
         "<=" => Ok(0 <= rhs),
         ">=" => Ok(0 >= rhs),
         "==" => Ok(0 == rhs),
+        "!=" => Ok(0 != rhs),
         other => Err(format!("Unsupported constraint sense: {other}")),
     }
 }
@@ -495,24 +769,50 @@ fn post_linear(
     sense: &str,
     rhs: i64,
     context: &str,
+    indicator: Option<&IndicatorSpec>,
     implied_by_lit: Option<Literal>,
 ) -> Result<bool, String> {
     let norm = normalize_linear(var_specs, terms, sense, rhs, context)?;
     let tag = solver.new_constraint_tag();
+
+    let effective_lit = match (indicator, implied_by_lit) {
+        (None, lit) => lit,
+        (Some(ind), None) => {
+            let active_val = validate_safe_i32(ind.active_value, context)?;
+            Some(solver.new_literal_for_predicate(
+                predicate![vars[ind.bin_var_index] == active_val],
+                tag,
+            ))
+        }
+        (Some(ind), Some(sel)) => {
+            let active_val = validate_safe_i32(ind.active_value, context)?;
+            let act_lit = solver.new_literal_for_predicate(
+                predicate![vars[ind.bin_var_index] == active_val],
+                tag,
+            );
+            let Some(gate) = new_safe_literal(solver) else {
+                return Ok(false);
+            };
+            // (sel /\ act_lit) => gate
+            solver.add_constraint(clause([!sel, !act_lit, gate], tag)).post();
+            Some(gate)
+        }
+    };
+
     let scaled = build_scaled_terms(vars, &norm.terms);
 
     if scaled.is_empty() {
         let holds = eval_zero_linear(sense, norm.rhs)?;
         if !holds {
-            match implied_by_lit {
+            match effective_lit {
                 Some(sel) => solver.add_constraint(clause([!sel], tag)).post(),
                 None => return Ok(false),
             }
         }
-        return Ok(true);
+        return Ok(!solver.is_inconsistent());
     }
 
-    match (sense, implied_by_lit) {
+    match (sense, effective_lit) {
         ("<=", None) => solver
             .add_constraint(less_than_or_equals(scaled, norm.rhs, tag))
             .post(),
@@ -529,10 +829,74 @@ fn post_linear(
         ("==", Some(sel)) => solver
             .add_constraint(equals(scaled, norm.rhs, tag))
             .implied_by(sel),
+        ("!=", None) => solver
+            .add_constraint(not_equals(scaled, norm.rhs, tag))
+            .post(),
+        ("!=", Some(sel)) => solver
+            .add_constraint(not_equals(scaled, norm.rhs, tag))
+            .implied_by(sel),
         (other, _) => return Err(format!("Unsupported constraint sense: {other}")),
     }
 
     Ok(!solver.is_inconsistent())
+}
+
+fn post_aux_propagator(
+    solver: &mut Solver,
+    var_specs: &[VarSpec],
+    vars: &[DomainId],
+    aux: &AuxPropagatorSpec,
+    implied_by_lit: Option<Literal>,
+) -> Result<bool, String> {
+    match aux {
+        AuxPropagatorSpec::LinearEq { terms, rhs, .. } => {
+            post_linear(solver, var_specs, vars, terms, "==", *rhs, "aux linearEq", None, implied_by_lit)
+        }
+        AuxPropagatorSpec::Abs { arg_var, out_var, .. } => {
+            let tag = solver.new_constraint_tag();
+            let poster = solver.add_constraint(absolute(vars[*arg_var], vars[*out_var], tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        AuxPropagatorSpec::Max { arg_vars, out_var, .. } => {
+            let tag = solver.new_constraint_tag();
+            let arr: Vec<DomainId> = arg_vars.iter().map(|&idx| vars[idx]).collect();
+            let poster = solver.add_constraint(maximum(arr, vars[*out_var], tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        AuxPropagatorSpec::Min { arg_vars, out_var, .. } => {
+            let tag = solver.new_constraint_tag();
+            let arr: Vec<DomainId> = arg_vars.iter().map(|&idx| vars[idx]).collect();
+            let poster = solver.add_constraint(minimum(arr, vars[*out_var], tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        AuxPropagatorSpec::Element {
+            index_var,
+            array_vars,
+            out_var,
+            ..
+        } => {
+            let tag = solver.new_constraint_tag();
+            let arr: Vec<DomainId> = array_vars.iter().map(|&idx| vars[idx]).collect();
+            let poster = solver.add_constraint(element(vars[*index_var], arr, vars[*out_var], tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+    }
 }
 
 fn new_safe_literal(solver: &mut Solver) -> Option<Literal> {
@@ -540,6 +904,45 @@ fn new_safe_literal(solver: &mut Solver) -> Option<Literal> {
         None
     } else {
         Some(solver.new_literal())
+    }
+}
+
+fn make_const_lit(solver: &mut Solver, holds: bool) -> Option<Literal> {
+    let lit = new_safe_literal(solver)?;
+    let tag = solver.new_constraint_tag();
+    solver
+        .add_constraint(clause([if holds { lit } else { !lit }], tag))
+        .post();
+    if solver.is_inconsistent() {
+        None
+    } else {
+        Some(lit)
+    }
+}
+
+fn reify_var_diff_ge(
+    solver: &mut Solver,
+    vars: &[DomainId],
+    a_idx: usize,
+    b_idx: usize,
+    rhs: i32,
+) -> Option<Literal> {
+    if a_idx == b_idx {
+        return make_const_lit(solver, 0 >= rhs);
+    }
+    let lit = new_safe_literal(solver)?;
+    let tag = solver.new_constraint_tag();
+    solver
+        .add_constraint(greater_than_or_equals(
+            [vars[a_idx].scaled(1), vars[b_idx].scaled(-1)],
+            rhs,
+            tag,
+        ))
+        .reify(lit);
+    if solver.is_inconsistent() {
+        None
+    } else {
+        Some(lit)
     }
 }
 
@@ -588,6 +991,9 @@ fn reify_logic_node(
                     .reify(lit),
                 "==" => solver
                     .add_constraint(equals(scaled, norm.rhs, tag))
+                    .reify(lit),
+                "!=" => solver
+                    .add_constraint(not_equals(scaled, norm.rhs, tag))
                     .reify(lit),
                 other => return Err(format!("Unsupported linear sense in logic: {other}")),
             }
@@ -663,12 +1069,10 @@ fn reify_logic_node(
         }
         LogicNode::Xor { children } => {
             if children.is_empty() {
-                let Some(lit) = new_safe_literal(solver) else {
-                    return Ok(Reified::Inconsistent);
+                return match make_const_lit(solver, false) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
                 };
-                let tag = solver.new_constraint_tag();
-                solver.add_constraint(clause([!lit], tag)).post();
-                return Ok(Reified::Lit(lit));
             }
             let mut acc = match reify_logic_node(solver, var_specs, vars, bool_lits, &children[0], context)? {
                 Reified::Lit(l) => l,
@@ -698,6 +1102,222 @@ fn reify_logic_node(
             }
             Ok(Reified::Lit(acc))
         }
+        LogicNode::AllDifferent { vars: v_indices } => {
+            if v_indices.len() <= 1 {
+                return match make_const_lit(solver, true) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            let seen: HashSet<usize> = v_indices.iter().copied().collect();
+            if seen.len() < v_indices.len() {
+                return match make_const_lit(solver, false) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            let Some(lit) = new_safe_literal(solver) else {
+                return Ok(Reified::Inconsistent);
+            };
+            let tag = solver.new_constraint_tag();
+            let domain_vars: Vec<DomainId> = v_indices.iter().map(|&idx| vars[idx]).collect();
+            solver
+                .add_constraint(all_different(domain_vars, tag))
+                .implied_by(lit);
+
+            let mut eq_lits = Vec::new();
+            for i in 0..v_indices.len() {
+                for j in (i + 1)..v_indices.len() {
+                    let Some(eq_lit) = new_safe_literal(solver) else {
+                        return Ok(Reified::Inconsistent);
+                    };
+                    let eq_tag = solver.new_constraint_tag();
+                    solver
+                        .add_constraint(equals(
+                            [vars[v_indices[i]].scaled(1), vars[v_indices[j]].scaled(-1)],
+                            0,
+                            eq_tag,
+                        ))
+                        .reify(eq_lit);
+                    eq_lits.push(eq_lit);
+                }
+            }
+            // !lit -> OR eq_lits
+            let mut back_clause = Vec::with_capacity(1 + eq_lits.len());
+            back_clause.push(lit);
+            back_clause.extend(eq_lits);
+            let back_tag = solver.new_constraint_tag();
+            solver.add_constraint(clause(back_clause, back_tag)).post();
+            if solver.is_inconsistent() {
+                return Ok(Reified::Inconsistent);
+            }
+            Ok(Reified::Lit(lit))
+        }
+        LogicNode::Disjunctive { tasks } => {
+            let mut active_pairs = Vec::new();
+            for i in 0..tasks.len() {
+                for j in (i + 1)..tasks.len() {
+                    if tasks[i].duration > 0 || tasks[j].duration > 0 {
+                        active_pairs.push((i, j));
+                    }
+                }
+            }
+            if active_pairs.is_empty() {
+                return match make_const_lit(solver, true) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            let Some(lit) = new_safe_literal(solver) else {
+                return Ok(Reified::Inconsistent);
+            };
+            if tasks.len() >= 2 {
+                let arg_tasks: Vec<ArgDisjunctiveTask<DomainId>> = tasks
+                    .iter()
+                    .map(|t| ArgDisjunctiveTask {
+                        start_time: vars[t.start_var],
+                        processing_time: t.duration as i32,
+                    })
+                    .collect();
+                let tag = solver.new_constraint_tag();
+                solver
+                    .add_constraint(disjunctive_strict(arg_tasks, tag))
+                    .implied_by(lit);
+            }
+            // Backward: !lit -> OR_{active pair (i,j)} ((s_i - s_j >= 1 - d_i) /\ (s_j - s_i >= 1 - d_j))
+            let mut ov_lits = Vec::with_capacity(active_pairs.len());
+            for (i, j) in active_pairs {
+                let d_i = tasks[i].duration as i32;
+                let d_j = tasks[j].duration as i32;
+                let Some(l1) = reify_var_diff_ge(solver, vars, tasks[i].start_var, tasks[j].start_var, 1 - d_i) else {
+                    return Ok(Reified::Inconsistent);
+                };
+                let Some(l2) = reify_var_diff_ge(solver, vars, tasks[j].start_var, tasks[i].start_var, 1 - d_j) else {
+                    return Ok(Reified::Inconsistent);
+                };
+                let Some(ov) = new_safe_literal(solver) else {
+                    return Ok(Reified::Inconsistent);
+                };
+                let conj_tag = solver.new_constraint_tag();
+                solver.add_constraint(conjunction([l1, l2], conj_tag)).reify(ov);
+                ov_lits.push(ov);
+            }
+            let mut back_clause = Vec::with_capacity(1 + ov_lits.len());
+            back_clause.push(lit);
+            back_clause.extend(ov_lits);
+            let back_tag = solver.new_constraint_tag();
+            solver.add_constraint(clause(back_clause, back_tag)).post();
+            if solver.is_inconsistent() {
+                return Ok(Reified::Inconsistent);
+            }
+            Ok(Reified::Lit(lit))
+        }
+        LogicNode::Cumulative { tasks, capacity } => {
+            let cap = *capacity as i32;
+            let active: Vec<&CumulativeTaskSpec> = tasks
+                .iter()
+                .filter(|t| t.duration > 0 && t.demand > 0)
+                .collect();
+            if active.is_empty() {
+                return match make_const_lit(solver, true) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            if active.iter().any(|t| (t.demand as i32) > cap) {
+                return match make_const_lit(solver, false) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            if active.len() == 1 {
+                return match make_const_lit(solver, true) {
+                    Some(lit) => Ok(Reified::Lit(lit)),
+                    None => Ok(Reified::Inconsistent),
+                };
+            }
+            let Some(lit) = new_safe_literal(solver) else {
+                return Ok(Reified::Inconsistent);
+            };
+            let starts: Vec<DomainId> = active.iter().map(|t| vars[t.start_var]).collect();
+            let durations: Vec<i32> = active.iter().map(|t| t.duration as i32).collect();
+            let demands: Vec<i32> = active.iter().map(|t| t.demand as i32).collect();
+            let tag = solver.new_constraint_tag();
+            solver
+                .add_constraint(cumulative(starts, durations, demands, cap, tag))
+                .implied_by(lit);
+
+            // Backward: !lit -> exists k in active where demand_k + sum_{i != k} demand_i * a_{i,k} >= cap + 1
+            let mut ov_lits = Vec::with_capacity(active.len());
+            for k in 0..active.len() {
+                let mut load_terms: Vec<AffineView<DomainId>> = Vec::with_capacity(active.len() - 1);
+                for i in 0..active.len() {
+                    if i == k {
+                        continue;
+                    }
+                    let d_i = active[i].duration as i32;
+                    // s_i <= s_k <=> s_k - s_i >= 0
+                    let Some(l1) = reify_var_diff_ge(solver, vars, active[k].start_var, active[i].start_var, 0) else {
+                        return Ok(Reified::Inconsistent);
+                    };
+                    // s_k <= s_i + d_i - 1 <=> s_i - s_k >= -(d_i - 1)
+                    let Some(l2) = reify_var_diff_ge(solver, vars, active[i].start_var, active[k].start_var, 1 - d_i) else {
+                        return Ok(Reified::Inconsistent);
+                    };
+                    let Some(act_lit) = new_safe_literal(solver) else {
+                        return Ok(Reified::Inconsistent);
+                    };
+                    let c_tag = solver.new_constraint_tag();
+                    solver.add_constraint(conjunction([l1, l2], c_tag)).reify(act_lit);
+
+                    let act_var = solver.new_bounded_integer(0, 1);
+                    let eq_tag = solver.new_constraint_tag();
+                    solver
+                        .add_constraint(equals([act_var.scaled(1)], 1, eq_tag))
+                        .reify(act_lit);
+                    load_terms.push(act_var.scaled(active[i].demand as i32));
+                }
+                let Some(ov_k) = new_safe_literal(solver) else {
+                    return Ok(Reified::Inconsistent);
+                };
+                let rhs = cap - (active[k].demand as i32) + 1;
+                let ov_tag = solver.new_constraint_tag();
+                solver
+                    .add_constraint(greater_than_or_equals(load_terms, rhs, ov_tag))
+                    .reify(ov_k);
+                ov_lits.push(ov_k);
+            }
+            let mut back_clause = Vec::with_capacity(1 + ov_lits.len());
+            back_clause.push(lit);
+            back_clause.extend(ov_lits);
+            let back_tag = solver.new_constraint_tag();
+            solver.add_constraint(clause(back_clause, back_tag)).post();
+            if solver.is_inconsistent() {
+                return Ok(Reified::Inconsistent);
+            }
+            Ok(Reified::Lit(lit))
+        }
+        LogicNode::Table {
+            vars: v_indices,
+            tuples,
+        } => {
+            let Some(lit) = new_safe_literal(solver) else {
+                return Ok(Reified::Inconsistent);
+            };
+            let tag = solver.new_constraint_tag();
+            let domain_vars: Vec<DomainId> = v_indices.iter().map(|&idx| vars[idx]).collect();
+            let rows: Vec<Vec<i32>> = tuples
+                .iter()
+                .map(|r| r.iter().map(|&x| x as i32).collect())
+                .collect();
+            solver
+                .add_constraint(table(domain_vars, rows, tag))
+                .reify(lit);
+            if solver.is_inconsistent() {
+                return Ok(Reified::Inconsistent);
+            }
+            Ok(Reified::Lit(lit))
+        }
     }
 }
 
@@ -710,16 +1330,139 @@ fn post_top_level_logic(
     context: &str,
     implied_by_lit: Option<Literal>,
 ) -> Result<bool, String> {
-    match reify_logic_node(solver, var_specs, vars, bool_lits, node, context)? {
-        Reified::Inconsistent => Ok(false),
-        Reified::Lit(root_lit) => {
-            let tag = solver.new_constraint_tag();
-            match implied_by_lit {
-                None => solver.add_constraint(clause([root_lit], tag)).post(),
-                Some(sel) => solver.add_constraint(clause([!sel, root_lit], tag)).post(),
+    if solver.is_inconsistent() {
+        return Ok(false);
+    }
+    match node {
+        LogicNode::Linear { terms, sense, rhs } => {
+            post_linear(solver, var_specs, vars, terms, sense, *rhs, context, None, implied_by_lit)
+        }
+        LogicNode::And { children } => {
+            for ch in children {
+                if !post_top_level_logic(solver, var_specs, vars, bool_lits, ch, context, implied_by_lit)? {
+                    return Ok(false);
+                }
             }
             Ok(!solver.is_inconsistent())
         }
+        LogicNode::AllDifferent { vars: v_indices } => {
+            if v_indices.len() <= 1 {
+                return Ok(true);
+            }
+            let seen: HashSet<usize> = v_indices.iter().copied().collect();
+            if seen.len() < v_indices.len() {
+                let tag = solver.new_constraint_tag();
+                match implied_by_lit {
+                    None => return Ok(false),
+                    Some(sel) => solver.add_constraint(clause([!sel], tag)).post(),
+                }
+                return Ok(!solver.is_inconsistent());
+            }
+            let tag = solver.new_constraint_tag();
+            let domain_vars: Vec<DomainId> = v_indices.iter().map(|&idx| vars[idx]).collect();
+            let poster = solver.add_constraint(all_different(domain_vars, tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        LogicNode::Disjunctive { tasks } => {
+            if tasks.len() < 2 {
+                return Ok(true);
+            }
+            let tag = solver.new_constraint_tag();
+            let arg_tasks: Vec<ArgDisjunctiveTask<DomainId>> = tasks
+                .iter()
+                .map(|t| ArgDisjunctiveTask {
+                    start_time: vars[t.start_var],
+                    processing_time: t.duration as i32,
+                })
+                .collect();
+            let poster = solver.add_constraint(disjunctive_strict(arg_tasks, tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        LogicNode::Cumulative { tasks, capacity } => {
+            let cap = *capacity as i32;
+            let active: Vec<&CumulativeTaskSpec> = tasks
+                .iter()
+                .filter(|t| t.duration > 0 && t.demand > 0)
+                .collect();
+            if active.is_empty() {
+                return Ok(true);
+            }
+            if active.iter().any(|t| (t.demand as i32) > cap) {
+                let tag = solver.new_constraint_tag();
+                match implied_by_lit {
+                    None => return Ok(false),
+                    Some(sel) => solver.add_constraint(clause([!sel], tag)).post(),
+                }
+                return Ok(!solver.is_inconsistent());
+            }
+            let starts: Vec<DomainId> = active.iter().map(|t| vars[t.start_var]).collect();
+            let durations: Vec<i32> = active.iter().map(|t| t.duration as i32).collect();
+            let demands: Vec<i32> = active.iter().map(|t| t.demand as i32).collect();
+            let tag = solver.new_constraint_tag();
+            let poster = solver.add_constraint(cumulative(starts, durations, demands, cap, tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        LogicNode::Table {
+            vars: v_indices,
+            tuples,
+        } => {
+            let tag = solver.new_constraint_tag();
+            let domain_vars: Vec<DomainId> = v_indices.iter().map(|&idx| vars[idx]).collect();
+            let rows: Vec<Vec<i32>> = tuples
+                .iter()
+                .map(|r| r.iter().map(|&x| x as i32).collect())
+                .collect();
+            let poster = solver.add_constraint(table(domain_vars, rows, tag));
+            match implied_by_lit {
+                None => poster.post(),
+                Some(sel) => poster.implied_by(sel),
+            }
+            Ok(!solver.is_inconsistent())
+        }
+        LogicNode::Not { child } if matches!(**child, LogicNode::Table { .. }) => {
+            if let LogicNode::Table {
+                vars: v_indices,
+                tuples,
+            } = &**child
+            {
+                let tag = solver.new_constraint_tag();
+                let domain_vars: Vec<DomainId> = v_indices.iter().map(|&idx| vars[idx]).collect();
+                let rows: Vec<Vec<i32>> = tuples
+                    .iter()
+                    .map(|r| r.iter().map(|&x| x as i32).collect())
+                    .collect();
+                let poster = solver.add_constraint(negative_table(domain_vars, rows, tag));
+                match implied_by_lit {
+                    None => poster.post(),
+                    Some(sel) => poster.implied_by(sel),
+                }
+                return Ok(!solver.is_inconsistent());
+            }
+            unreachable!()
+        }
+        _ => match reify_logic_node(solver, var_specs, vars, bool_lits, node, context)? {
+            Reified::Inconsistent => Ok(false),
+            Reified::Lit(root_lit) => {
+                let tag = solver.new_constraint_tag();
+                match implied_by_lit {
+                    None => solver.add_constraint(clause([root_lit], tag)).post(),
+                    Some(sel) => solver.add_constraint(clause([!sel, root_lit], tag)).post(),
+                }
+                Ok(!solver.is_inconsistent())
+            }
+        },
     }
 }
 
@@ -732,7 +1475,9 @@ fn extract_solution<S: ProblemSolution>(
 ) -> (Vec<(String, i32)>, Vec<(String, bool)>) {
     let mut values = Vec::with_capacity(var_specs.len());
     for (spec, &v) in var_specs.iter().zip(vars.iter()) {
-        values.push((spec.name.clone(), sol.get_integer_value(v)));
+        if !spec.internal {
+            values.push((spec.name.clone(), sol.get_integer_value(v)));
+        }
     }
     let mut bool_values = Vec::with_capacity(bool_names.len());
     for (name, &lit) in bool_names.iter().zip(bool_lits.iter()) {
@@ -777,14 +1522,14 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
         Err(e) => return check_error_response(e),
     };
     for c in &req.constraints {
-        if let Err(e) = normalize_linear(
-            &req.vars,
-            &c.terms,
-            &c.sense,
-            c.rhs,
-            &format!("constraint \"{}\"", c.name),
-        ) {
+        let ctx = format!("constraint \"{}\"", c.name);
+        if let Err(e) = normalize_linear(&req.vars, &c.terms, &c.sense, c.rhs, &ctx) {
             return check_error_response(e);
+        }
+        if let Some(ref ind) = c.indicator {
+            if let Err(e) = validate_indicator(&req.vars, ind, &ctx) {
+                return check_error_response(e);
+            }
         }
     }
     for lc in &req.logical_constraints {
@@ -793,6 +1538,16 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
             req.bool_vars.len(),
             &lc.expr,
             &format!("logical constraint \"{}\"", lc.name),
+        ) {
+            return check_error_response(e);
+        }
+    }
+    for aux in &req.aux_propagators {
+        if let Err(e) = validate_aux_propagator(
+            &req.vars,
+            req.constraints.len(),
+            req.logical_constraints.len(),
+            aux,
         ) {
             return check_error_response(e);
         }
@@ -831,7 +1586,36 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
         logic_sels.push(sel);
     }
 
-    for (c, sel) in req.constraints.iter().zip(constr_sels.into_iter()) {
+    for aux in &req.aux_propagators {
+        let owner = match aux {
+            AuxPropagatorSpec::LinearEq { owner, .. }
+            | AuxPropagatorSpec::Abs { owner, .. }
+            | AuxPropagatorSpec::Max { owner, .. }
+            | AuxPropagatorSpec::Min { owner, .. }
+            | AuxPropagatorSpec::Element { owner, .. } => owner,
+        };
+        let sel_opt = match owner {
+            AuxPropagatorOwner::Constraint { index } => Some(constr_sels[*index]),
+            AuxPropagatorOwner::Logic { index } => Some(logic_sels[*index]),
+            AuxPropagatorOwner::Objective => continue,
+        };
+        match post_aux_propagator(&mut solver, &req.vars, &vars, aux, sel_opt) {
+            Ok(true) => {}
+            Ok(false) => {
+                return serde_json::to_string(&CheckResponse {
+                    status: "Unsat".into(),
+                    values: None,
+                    bool_values: None,
+                    unsat_core: Some(Vec::new()),
+                    error: None,
+                })
+                .unwrap();
+            }
+            Err(err) => return check_error_response(err),
+        }
+    }
+
+    for (c, &sel) in req.constraints.iter().zip(constr_sels.iter()) {
         match post_linear(
             &mut solver,
             &req.vars,
@@ -840,6 +1624,7 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
             &c.sense,
             c.rhs,
             &format!("constraint \"{}\"", c.name),
+            c.indicator.as_ref(),
             Some(sel),
         ) {
             Ok(true) => {}
@@ -857,7 +1642,7 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
         }
     }
 
-    for (lc, sel) in req.logical_constraints.iter().zip(logic_sels.into_iter()) {
+    for (lc, &sel) in req.logical_constraints.iter().zip(logic_sels.iter()) {
         match post_top_level_logic(
             &mut solver,
             &req.vars,
@@ -963,20 +1748,20 @@ pub fn solve_with_callback(
         return solve_error_response("Objective constant must be finite.".into());
     }
 
-    // Validate all variables, constraints, logic, and objective upfront
+    // Validate all variables, constraints, logic, aux propagators, and objective upfront
     let var_bounds = match validate_vars(&req.vars) {
         Ok(b) => b,
         Err(e) => return solve_error_response(e),
     };
     for c in &req.constraints {
-        if let Err(e) = normalize_linear(
-            &req.vars,
-            &c.terms,
-            &c.sense,
-            c.rhs,
-            &format!("constraint \"{}\"", c.name),
-        ) {
+        let ctx = format!("constraint \"{}\"", c.name);
+        if let Err(e) = normalize_linear(&req.vars, &c.terms, &c.sense, c.rhs, &ctx) {
             return solve_error_response(e);
+        }
+        if let Some(ref ind) = c.indicator {
+            if let Err(e) = validate_indicator(&req.vars, ind, &ctx) {
+                return solve_error_response(e);
+            }
         }
     }
     for lc in &req.logical_constraints {
@@ -985,6 +1770,16 @@ pub fn solve_with_callback(
             req.bool_vars.len(),
             &lc.expr,
             &format!("logical constraint \"{}\"", lc.name),
+        ) {
+            return solve_error_response(e);
+        }
+    }
+    for aux in &req.aux_propagators {
+        if let Err(e) = validate_aux_propagator(
+            &req.vars,
+            req.constraints.len(),
+            req.logical_constraints.len(),
+            aux,
         ) {
             return solve_error_response(e);
         }
@@ -1039,6 +1834,24 @@ pub fn solve_with_callback(
         Some(solver.new_bounded_integer(obj_lb_i64 as i32, obj_ub_i64 as i32))
     };
 
+    for aux in &req.aux_propagators {
+        match post_aux_propagator(&mut solver, &req.vars, &vars, aux, None) {
+            Ok(true) => {}
+            Ok(false) => {
+                return serde_json::to_string(&SolveResponse {
+                    status: "Infeasible".into(),
+                    termination_status: "Infeasible".into(),
+                    objective_value: None,
+                    values: None,
+                    bool_values: None,
+                    error: None,
+                })
+                .unwrap();
+            }
+            Err(err) => return solve_error_response(err),
+        }
+    }
+
     for c in &req.constraints {
         match post_linear(
             &mut solver,
@@ -1048,6 +1861,7 @@ pub fn solve_with_callback(
             &c.sense,
             c.rhs,
             &format!("constraint \"{}\"", c.name),
+            c.indicator.as_ref(),
             None,
         ) {
             Ok(true) => {}

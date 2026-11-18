@@ -1,5 +1,14 @@
 import { Var } from "./variable.js";
-import { LinExpr, dot } from "./expression.js";
+import {
+  LinExpr,
+  dot,
+  abs,
+  max,
+  min,
+  at,
+  type NonlinearTerm,
+  cloneNonlinearAtom,
+} from "./expression.js";
 import { QuadExpr, type QuadTerm } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import type { ComparisonSense } from "./types.js";
@@ -93,13 +102,20 @@ function tokenize(input: string, numberMap?: ReadonlyMap<string, number>): Token
     } else if (ch === ",") {
       tokens.push({ type: "COMMA", value: "," });
       i++;
-    } else if (ch === "<" || ch === ">" || ch === "=") {
+    } else if (ch === "<" || ch === ">" || ch === "=" || ch === "!") {
       let comp = ch;
-      if (i + 1 < len && (input[i + 1] === "=" || input[i + 1] === "<" || input[i + 1] === ">")) {
+      if (
+        i + 1 < len &&
+        (input[i + 1] === "=" ||
+          (ch !== "!" && (input[i + 1] === "<" || input[i + 1] === ">")))
+      ) {
         comp += input[i + 1];
         i += 2;
       } else {
         i++;
+      }
+      if (comp === "!") {
+        throw new Error(`Unexpected character '!' at position ${i - 1} in: "${input}"`);
       }
       tokens.push({ type: "COMP", value: comp });
     } else if (/[0-9.]/.test(ch)) {
@@ -174,7 +190,7 @@ function tokenize(input: string, numberMap?: ReadonlyMap<string, number>): Token
 
 function normalizeScalarExpr(e: ScalarExpr): ScalarExpr {
   if (e instanceof QuadExpr && e.quadTerms.size === 0) {
-    return new LinExpr(e.linearTerms, e.constant);
+    return new LinExpr(e.linearTerms, e.constant, e.nonlinearTerms);
   }
   return e;
 }
@@ -429,7 +445,8 @@ function applyScalarPower(base: ScalarExpr, totalPower: number): ScalarExpr {
   const isQuad = base instanceof QuadExpr;
   const quadTermsCount = isQuad ? base.quadTerms.size : 0;
   const linTermsCount = isQuad ? base.linearTerms.size : base.terms.size;
-  const isPureConstant = quadTermsCount === 0 && linTermsCount === 0;
+  const nlTermsCount = Array.isArray(base.nonlinearTerms) ? base.nonlinearTerms.length : 0;
+  const isPureConstant = quadTermsCount === 0 && linTermsCount === 0 && nlTermsCount === 0;
 
   if (isPureConstant) {
     const val = Math.pow(base.constant, totalPower);
@@ -444,6 +461,11 @@ function applyScalarPower(base: ScalarExpr, totalPower: number): ScalarExpr {
   }
   if (totalPower === 1) {
     return base;
+  }
+  if (nlTermsCount > 0) {
+    throw new Error(
+      "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+    );
   }
   if (totalPower === 2) {
     return base.mul(base);
@@ -719,7 +741,12 @@ class Parser {
     if (t?.type === "IDENT") {
       const identToken = this.consume();
       if (
-        (identToken.value === "sum" || identToken.value === "dot") &&
+        (identToken.value === "sum" ||
+          identToken.value === "dot" ||
+          identToken.value === "abs" ||
+          identToken.value === "max" ||
+          identToken.value === "min" ||
+          identToken.value === "at") &&
         this.peek()?.type === "LPAREN"
       ) {
         return this.parseFunctionCall(identToken.value);
@@ -732,7 +759,7 @@ class Parser {
     return inner;
   }
 
-  private parseFunctionCall(funcName: "sum" | "dot"): ScalarExpr {
+  private parseFunctionCall(funcName: "sum" | "dot" | "abs" | "max" | "min" | "at"): EvalNode {
     this.consume("LPAREN");
 
     let parenDepth = 1;
@@ -745,21 +772,173 @@ class Parser {
       } else if (tok.type === "COMP") {
         if (funcName === "sum") {
           throw new Error(
-            "Cannot sum a constraint comparison (<=, >=, ==) in sum(): expected a number, Var, LinExpr, or QuadExpr."
+            "Cannot sum a constraint comparison (<=, >=, ==, !=, <, >) in sum(): expected arithmetic expressions."
+          );
+        }
+        if (funcName === "dot") {
+          throw new Error(
+            "Cannot use a constraint comparison (<=, >=, ==, !=, <, >) in dot(): expected 1D or 2D Array or Record containers."
           );
         }
         throw new Error(
-          "Cannot use a constraint comparison (<=, >=, ==) in dot(): expected 1D or 2D Array or Record containers."
+          `Cannot use a constraint comparison (<=, >=, ==, !=, <, >) in ${funcName}(): expected arithmetic expressions.`
         );
       }
     }
 
     if (this.peek()?.type === "RPAREN") {
       this.consume("RPAREN");
-      if (funcName === "sum") {
-        throw new Error("sum() in template expression requires at least 1 argument.");
+      if (funcName === "dot") {
+        throw new Error("dot() in template expression requires exactly 2 arguments: dot(a, b).");
       }
-      throw new Error("dot() in template expression requires exactly 2 arguments: dot(a, b).");
+      if (funcName === "at") {
+        throw new Error("at() in template expression requires exactly 2 arguments: at(array, index).");
+      }
+      if (funcName === "abs") {
+        throw new Error("abs() in template expression requires 1 argument.");
+      }
+      throw new Error(`${funcName}() in template expression requires at least 1 argument.`);
+    }
+
+    if (funcName === "abs") {
+      const arg = this.parseExpressionNode();
+      if (this.peek()?.type === "COMMA") {
+        throw new Error("abs() in template expression accepts exactly 1 argument.");
+      }
+      this.consume("RPAREN");
+      if (isContainerNode(arg)) {
+        return {
+          kind: "container",
+          data: mapContainerLeaves(arg.data, (leaf) => abs(leaf)),
+          fromNonArrayIterable: arg.fromNonArrayIterable,
+        };
+      }
+      return abs(arg);
+    }
+
+    if (funcName === "at") {
+      const firstArg = this.parseExpressionNode();
+      if (this.peek()?.type !== "COMMA") {
+        throw new Error("at() in template expression requires exactly 2 arguments: at(array, index).");
+      }
+      this.consume("COMMA");
+      const secondArg = this.parseExpressionNode();
+      if (this.peek()?.type === "COMMA") {
+        throw new Error("at() in template expression requires exactly 2 arguments: at(array, index).");
+      }
+      this.consume("RPAREN");
+      if (!isContainerNode(firstArg) || firstArg.fromNonArrayIterable || !Array.isArray(firstArg.data)) {
+        throw new Error("at(array, index) requires a 1D Array as its first argument.");
+      }
+      if (isContainerNode(secondArg)) {
+        throw new Error("at(array, index) requires a discrete scalar expression as its index.");
+      }
+      const res = at(firstArg.data as any, secondArg as any);
+      validateTemplateExprNumericSanity(res);
+      return res;
+    }
+
+    if (funcName === "max" || funcName === "min") {
+      // Check raw container + mapper form: max(${items}, ${mapFn})
+      let scanPos = this.pos;
+      let openParens = 0;
+      while (this.tokens[scanPos]?.type === "LPAREN") {
+        openParens++;
+        scanPos++;
+      }
+      if (
+        this.tokens[scanPos]?.type === "IDENT" &&
+        this.templateCtx?.rawContainerMap.has(this.tokens[scanPos].value)
+      ) {
+        const rawIdent = this.tokens[scanPos].value;
+        let closePos = scanPos + 1;
+        let closeParens = 0;
+        while (closeParens < openParens && this.tokens[closePos]?.type === "RPAREN") {
+          closeParens++;
+          closePos++;
+        }
+        if (closeParens === openParens && this.tokens[closePos]?.type === "COMMA") {
+          const fnTok = this.tokens[closePos + 1];
+          if (
+            fnTok?.type === "IDENT" &&
+            this.templateCtx.functionMap.has(fnTok.value) &&
+            this.tokens[closePos + 2]?.type === "RPAREN"
+          ) {
+            this.pos = closePos + 2;
+            this.consume("RPAREN");
+            const fn = this.templateCtx.functionMap.get(fnTok.value)!;
+            return this.evalExtremumWithMapper(
+              funcName,
+              this.templateCtx.rawContainerMap.get(rawIdent)!,
+              fn
+            );
+          }
+        }
+      }
+
+      // If single raw container argument without comma, pass straight to max/min
+      if (
+        this.tokens[this.pos]?.type === "IDENT" &&
+        this.templateCtx?.rawContainerMap.has(this.tokens[this.pos].value) &&
+        this.tokens[this.pos + 1]?.type === "RPAREN"
+      ) {
+        const rawToken = this.consume();
+        this.consume("RPAREN");
+        const rawContainer = this.templateCtx.rawContainerMap.get(rawToken.value)!;
+        const res = funcName === "max" ? max(rawContainer as any) : min(rawContainer as any);
+        validateTemplateExprNumericSanity(res);
+        return res;
+      }
+
+      const firstArg = this.parseExpressionNode();
+      if (this.peek()?.type === "COMMA") {
+        const afterComma = this.tokens[this.pos + 1];
+        if (
+          afterComma &&
+          afterComma.type === "IDENT" &&
+          this.templateCtx?.functionMap.has(afterComma.value)
+        ) {
+          this.consume("COMMA");
+          const fnToken = this.consume();
+          if (this.peek()?.type === "COMMA") {
+            throw new Error(
+              `${funcName}(itemsOrCount, mapFn) accepts at most 2 arguments when using a mapper.`
+            );
+          }
+          this.consume("RPAREN");
+          const mapFn = this.templateCtx.functionMap.get(fnToken.value)!;
+          if (typeof firstArg === "number") {
+            return this.evalExtremumWithMapper(funcName, firstArg, mapFn);
+          }
+          if (!isContainerNode(firstArg) && firstArg instanceof LinExpr && firstArg.terms.size === 0 && firstArg.nonlinearTerms.length === 0) {
+            return this.evalExtremumWithMapper(funcName, firstArg.constant, mapFn);
+          }
+          if (isContainerNode(firstArg)) {
+            return this.evalExtremumWithMapper(funcName, firstArg.data, mapFn);
+          }
+          throw new Error(
+            `Invalid first argument in ${funcName}(itemsOrCount, mapFn): expected an Iterable, Record, or non-negative integer count.`
+          );
+        }
+
+        // Variadic comma-separated arguments: max(a, b, c...)
+        const argValues: unknown[] = [isContainerNode(firstArg) ? firstArg.data : firstArg];
+        while (this.peek()?.type === "COMMA") {
+          this.consume("COMMA");
+          const nextArg = this.parseExpressionNode();
+          argValues.push(isContainerNode(nextArg) ? nextArg.data : nextArg);
+        }
+        this.consume("RPAREN");
+        const res = funcName === "max" ? max(...(argValues as any)) : min(...(argValues as any));
+        validateTemplateExprNumericSanity(res);
+        return res;
+      }
+
+      this.consume("RPAREN");
+      const singleVal = isContainerNode(firstArg) ? firstArg.data : firstArg;
+      const res = funcName === "max" ? max(singleVal as any) : min(singleVal as any);
+      validateTemplateExprNumericSanity(res);
+      return res;
     }
 
     if (funcName === "sum") {
@@ -875,6 +1054,7 @@ class Parser {
   ): ScalarExpr {
     const linearTerms = new Map<Var, number>();
     const quadTerms = new Map<string, QuadTerm>();
+    const nonlinearTerms: NonlinearTerm[] = [];
     let constant = 0;
 
     const addItem = (val: unknown, depth: number = 0): void => {
@@ -934,6 +1114,13 @@ class Parser {
             quadTerms.set(k, { var1: term.var1, var2: term.var2, coeff: term.coeff });
           }
         }
+        if (Array.isArray(q.nonlinearTerms)) {
+          for (const nl of q.nonlinearTerms) {
+            if (nl.coeff !== 0) {
+              nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: nl.coeff });
+            }
+          }
+        }
         return;
       }
       if (
@@ -959,6 +1146,13 @@ class Parser {
             );
           }
           linearTerms.set(v, next);
+        }
+        if (Array.isArray(l.nonlinearTerms)) {
+          for (const nl of l.nonlinearTerms) {
+            if (nl.coeff !== 0) {
+              nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: nl.coeff });
+            }
+          }
         }
         return;
       }
@@ -1023,9 +1217,22 @@ class Parser {
     }
 
     if (quadTerms.size > 0) {
-      return new QuadExpr(linearTerms, quadTerms, constant);
+      return new QuadExpr(linearTerms, quadTerms, constant, nonlinearTerms);
     }
-    return new LinExpr(linearTerms, constant);
+    return new LinExpr(linearTerms, constant, nonlinearTerms);
+  }
+
+  private evalExtremumWithMapper(
+    fnName: "max" | "min",
+    itemsOrCount: unknown,
+    mapFn: (item: any, index: number) => unknown
+  ): LinExpr {
+    const res =
+      fnName === "max"
+        ? max(itemsOrCount as any, mapFn as any)
+        : min(itemsOrCount as any, mapFn as any);
+    validateTemplateExprNumericSanity(res);
+    return res;
   }
 
   private evalSumSingle(arg: EvalNode): ScalarExpr {
@@ -1245,13 +1452,14 @@ function findTopLevelComparison(text: string): { rawOp: string; index: number } 
         twoChar === "<=" ||
         twoChar === ">=" ||
         twoChar === "==" ||
+        twoChar === "!=" ||
         twoChar === "=<" ||
         twoChar === "=>"
       ) {
         return { rawOp: twoChar, index: i };
       }
-      if (ch === "=") {
-        return { rawOp: "=", index: i };
+      if (ch === "=" || ch === "<" || ch === ">") {
+        return { rawOp: ch, index: i };
       }
     }
   }
@@ -1267,7 +1475,7 @@ function parseConstraintInternal(
 ): Constraint {
   const compMatch = findTopLevelComparison(text);
   if (!compMatch) {
-    throw new Error(`Constraint must contain a comparison operator (<=, >=, ==, =): "${text}"`);
+    throw new Error(`Constraint must contain a comparison operator (<=, >=, ==, !=, <, >): "${text}"`);
   }
 
   const rawOp = compMatch.rawOp;
@@ -1275,10 +1483,13 @@ function parseConstraintInternal(
   const leftStr = text.substring(0, idx).trim();
   const rightStr = text.substring(idx + rawOp.length).trim();
 
-  let sense: ComparisonSense;
-  if (rawOp === "<=" || rawOp === "=<") sense = "<=";
-  else if (rawOp === ">=" || rawOp === "=>") sense = ">=";
-  else if (rawOp === "==" || rawOp === "=") sense = "==";
+  let normOp: ComparisonSense | "<" | ">";
+  if (rawOp === "<=" || rawOp === "=<") normOp = "<=";
+  else if (rawOp === ">=" || rawOp === "=>") normOp = ">=";
+  else if (rawOp === "==" || rawOp === "=") normOp = "==";
+  else if (rawOp === "!=") normOp = "!=";
+  else if (rawOp === "<") normOp = "<";
+  else if (rawOp === ">") normOp = ">";
   else throw new Error(`Unsupported operator "${rawOp}"`);
 
   const lhsExpr = parseExprInternal(leftStr, resolver, numberMap, templateCtx);
@@ -1291,17 +1502,29 @@ function parseConstraintInternal(
     throw new Error("Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)");
   }
 
-  const lhsLin = lhsExpr instanceof QuadExpr ? new LinExpr(lhsExpr.linearTerms, lhsExpr.constant) : lhsExpr;
-  const rhsLin = rhsExpr instanceof QuadExpr ? new LinExpr(rhsExpr.linearTerms, rhsExpr.constant) : rhsExpr;
+  const lhsLin =
+    lhsExpr instanceof QuadExpr
+      ? new LinExpr(lhsExpr.linearTerms, lhsExpr.constant, lhsExpr.nonlinearTerms)
+      : lhsExpr;
+  const rhsLin =
+    rhsExpr instanceof QuadExpr
+      ? new LinExpr(rhsExpr.linearTerms, rhsExpr.constant, rhsExpr.nonlinearTerms)
+      : rhsExpr;
 
   // Normalization: lhs - rhs terms <= rhs_constant - lhs_constant
   let constr: Constraint;
-  if (sense === "<=") {
+  if (normOp === "<=") {
     constr = lhsLin.le(rhsLin, name);
-  } else if (sense === ">=") {
+  } else if (normOp === ">=") {
     constr = lhsLin.ge(rhsLin, name);
-  } else {
+  } else if (normOp === "==") {
     constr = lhsLin.eq(rhsLin, name);
+  } else if (normOp === "!=") {
+    constr = lhsLin.ne(rhsLin, name);
+  } else if (normOp === "<") {
+    constr = lhsLin.lt(rhsLin, name);
+  } else {
+    constr = lhsLin.gt(rhsLin, name);
   }
   validateTemplateExprNumericSanity(constr.lhs);
   if (!Number.isFinite(constr.rhs)) {
@@ -1375,6 +1598,25 @@ function validateTemplateExprNumericSanity(val: Var | LinExpr | QuadExpr): void 
       }
     }
   }
+  if ("nonlinearTerms" in val && Array.isArray((val as { nonlinearTerms?: unknown }).nonlinearTerms)) {
+    for (const nl of (val as { nonlinearTerms: NonlinearTerm[] }).nonlinearTerms) {
+      if (!Number.isFinite(nl.coeff)) {
+        throw new Error(`Invalid non-finite coefficient "${nl.coeff}" in expression.`);
+      }
+      if (nl.atom.kind === "abs") {
+        validateTemplateExprNumericSanity(nl.atom.arg);
+      } else if (nl.atom.kind === "max" || nl.atom.kind === "min") {
+        for (const a of nl.atom.args) {
+          validateTemplateExprNumericSanity(a);
+        }
+      } else if (nl.atom.kind === "at") {
+        validateTemplateExprNumericSanity(nl.atom.index);
+        for (const item of nl.atom.array) {
+          validateTemplateExprNumericSanity(item);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -1427,7 +1669,8 @@ function isConstraintLike(val: unknown): val is Constraint {
     "sense" in val &&
     ((val as { sense: unknown }).sense === "<=" ||
       (val as { sense: unknown }).sense === ">=" ||
-      (val as { sense: unknown }).sense === "==") &&
+      (val as { sense: unknown }).sense === "==" ||
+      (val as { sense: unknown }).sense === "!=") &&
     "lhs" in val &&
     "rhs" in val &&
     typeof (val as { rhs: unknown }).rhs === "number" &&

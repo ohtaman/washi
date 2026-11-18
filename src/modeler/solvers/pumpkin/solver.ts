@@ -1,8 +1,8 @@
-import { BoolOp, BoolVar, type LogicElement } from "../../boolean-expr.js";
+import { BoolOp, BoolVar, GlobalConstraint, type LogicElement } from "../../boolean-expr.js";
 import { Constraint } from "../../constraint.js";
-import { LinExpr } from "../../expression.js";
+import { LinExpr, type NonlinearAtom } from "../../expression.js";
 import { QuadExpr } from "../../quad-expr.js";
-import { normalizeSense } from "../../types.js";
+import { type ComparisonSense, normalizeSense } from "../../types.js";
 import type { Var } from "../../variable.js";
 import { registerSolver } from "../registry.js";
 import type {
@@ -34,6 +34,7 @@ interface SerializedVar {
   lb: number;
   ub: number;
   initialValue?: number;
+  internal?: boolean;
 }
 
 interface SerializedTerm {
@@ -41,21 +42,43 @@ interface SerializedTerm {
   coeff: number;
 }
 
+interface SerializedIndicator {
+  binVarIndex: number;
+  activeValue: number;
+}
+
 interface SerializedLinearConstraint {
   name: string;
   terms: SerializedTerm[];
-  sense: "<=" | ">=" | "==";
+  sense: ComparisonSense;
   rhs: number;
+  indicator?: SerializedIndicator;
 }
+
+type SerializedAuxOwner =
+  | { kind: "constraint"; index: number }
+  | { kind: "logic"; index: number }
+  | { kind: "objective" };
+
+type SerializedAuxPropagator =
+  | { kind: "linearEq"; terms: SerializedTerm[]; rhs: number; owner: SerializedAuxOwner }
+  | { kind: "abs"; argVar: number; outVar: number; owner: SerializedAuxOwner }
+  | { kind: "max"; argVars: number[]; outVar: number; owner: SerializedAuxOwner }
+  | { kind: "min"; argVars: number[]; outVar: number; owner: SerializedAuxOwner }
+  | { kind: "element"; indexVar: number; arrayVars: number[]; outVar: number; owner: SerializedAuxOwner };
 
 type SerializedLogicNode =
   | { kind: "boolVar"; index: number }
-  | { kind: "linear"; terms: SerializedTerm[]; sense: "<=" | ">=" | "=="; rhs: number }
+  | { kind: "linear"; terms: SerializedTerm[]; sense: ComparisonSense; rhs: number }
   | { kind: "and"; children: SerializedLogicNode[] }
   | { kind: "or"; children: SerializedLogicNode[] }
   | { kind: "not"; child: SerializedLogicNode }
   | { kind: "implies"; left: SerializedLogicNode; right: SerializedLogicNode }
-  | { kind: "xor"; children: SerializedLogicNode[] };
+  | { kind: "xor"; children: SerializedLogicNode[] }
+  | { kind: "allDifferent"; vars: number[] }
+  | { kind: "disjunctive"; tasks: Array<{ startVar: number; duration: number }> }
+  | { kind: "cumulative"; tasks: Array<{ startVar: number; duration: number; demand: number }>; capacity: number }
+  | { kind: "table"; vars: number[]; tuples: number[][] };
 
 interface SerializedLogicalConstraint {
   name: string;
@@ -231,87 +254,258 @@ function serializeVariables(variables: Var[]): {
   return { vars, varIndexMap, hasEmptyDomain };
 }
 
-function serializeLinearTerms(
-  expr: LinExpr,
+function createLowerer(
   varIndexMap: Map<Var, number>,
   vars: SerializedVar[],
-  context: string
-): { terms: SerializedTerm[]; sumMaxAbs: number } {
-  const coeffByVar = new Map<number, number>();
-  for (const [termVar, termCoeff] of expr.terms.entries()) {
-    const varIndex = varIndexMap.get(termVar);
-    if (varIndex === undefined) {
-      throw new Error(`Variable "${termVar.name}" in ${context} is not registered in the model.`);
-    }
-    if (typeof termCoeff !== "number" || !Number.isFinite(termCoeff)) {
-      throw new Error(`Invalid non-finite coefficient for "${termVar.name}" in ${context}.`);
-    }
-    if (!Number.isInteger(termCoeff)) {
-      throw new Error(
-        `PumpkinSolver only supports integer coefficients (variable "${termVar.name}" in ${context} has ${termCoeff}).`
-      );
-    }
-    const next = (coeffByVar.get(varIndex) ?? 0) + normalizeZero(termCoeff);
-    if (!Number.isSafeInteger(next)) {
-      throw new Error(`Coefficient sum overflow for "${termVar.name}" in ${context}.`);
-    }
-    coeffByVar.set(varIndex, next);
+  auxPropagators: SerializedAuxPropagator[]
+) {
+  let auxCounter = 0;
+
+  function addInternalVar(lb: number, ub: number, label: string): number {
+    const safeLb = validateSafeInt(lb, `internal ${label} lb`);
+    const safeUb = validateSafeInt(ub, `internal ${label} ub`);
+    const idx = vars.length;
+    vars.push({
+      name: `__pumpkin_${label}_${++auxCounter}`,
+      lb: safeLb,
+      ub: safeUb,
+      internal: true,
+    });
+    return idx;
   }
 
-  const terms: SerializedTerm[] = [];
-  let sumMaxAbs = 0;
-
-  for (const [varIndex, rawCoeff] of coeffByVar.entries()) {
-    const coeff = normalizeZero(rawCoeff);
-    if (coeff === 0) {
-      continue;
+  function serializeCombinedTerms(
+    linearTerms: Map<Var, number>,
+    extraTerms: SerializedTerm[],
+    context: string
+  ): { terms: SerializedTerm[]; sumMaxAbs: number } {
+    const coeffByVar = new Map<number, number>();
+    for (const [termVar, termCoeff] of linearTerms.entries()) {
+      const varIndex = varIndexMap.get(termVar);
+      if (varIndex === undefined) {
+        throw new Error(`Variable "${termVar.name}" in ${context} is not registered in the model.`);
+      }
+      if (typeof termCoeff !== "number" || !Number.isFinite(termCoeff)) {
+        throw new Error(`Invalid non-finite coefficient for "${termVar.name}" in ${context}.`);
+      }
+      if (!Number.isInteger(termCoeff)) {
+        throw new Error(
+          `PumpkinSolver only supports integer coefficients (variable "${termVar.name}" in ${context} has ${termCoeff}).`
+        );
+      }
+      const next = (coeffByVar.get(varIndex) ?? 0) + normalizeZero(termCoeff);
+      if (!Number.isSafeInteger(next)) {
+        throw new Error(`Coefficient sum overflow for "${termVar.name}" in ${context}.`);
+      }
+      coeffByVar.set(varIndex, next);
     }
-    const vSpec = vars[varIndex];
-    validateSafeInt(coeff, `coefficient of "${vSpec.name}" in ${context}`);
-    const prodLb = coeff * vSpec.lb;
-    const prodUb = coeff * vSpec.ub;
-    validateSafeInt(prodLb, `scaled lower bound of "${vSpec.name}" in ${context}`);
-    validateSafeInt(prodUb, `scaled upper bound of "${vSpec.name}" in ${context}`);
 
-    sumMaxAbs += Math.max(Math.abs(prodLb), Math.abs(prodUb));
-    if (sumMaxAbs > MAX_PROPAGATOR_MAGNITUDE) {
+    for (const et of extraTerms) {
+      const next = (coeffByVar.get(et.varIndex) ?? 0) + normalizeZero(et.coeff);
+      if (!Number.isSafeInteger(next)) {
+        throw new Error(`Coefficient sum overflow in ${context}.`);
+      }
+      coeffByVar.set(et.varIndex, next);
+    }
+
+    const terms: SerializedTerm[] = [];
+    let sumMaxAbs = 0;
+
+    for (const [varIndex, rawCoeff] of coeffByVar.entries()) {
+      const coeff = normalizeZero(rawCoeff);
+      if (coeff === 0) continue;
+      const vSpec = vars[varIndex];
+      validateSafeInt(coeff, `coefficient of "${vSpec.name}" in ${context}`);
+      const prodLb = coeff * vSpec.lb;
+      const prodUb = coeff * vSpec.ub;
+      validateSafeInt(prodLb, `scaled lower bound of "${vSpec.name}" in ${context}`);
+      validateSafeInt(prodUb, `scaled upper bound of "${vSpec.name}" in ${context}`);
+
+      sumMaxAbs += Math.max(Math.abs(prodLb), Math.abs(prodUb));
+      if (sumMaxAbs > MAX_PROPAGATOR_MAGNITUDE) {
+        throw new Error(
+          `Linear expression magnitude in ${context} exceeds Pumpkin safe 32-bit propagator overflow limit.`
+        );
+      }
+      terms.push({ varIndex, coeff });
+    }
+
+    return { terms, sumMaxAbs };
+  }
+
+  function computeBoundsFromTerms(
+    terms: SerializedTerm[],
+    constant: number,
+    context: string
+  ): { lb: number; ub: number } {
+    let lb = constant;
+    let ub = constant;
+    for (const t of terms) {
+      const vSpec = vars[t.varIndex];
+      const prodA = t.coeff * vSpec.lb;
+      const prodB = t.coeff * vSpec.ub;
+      lb += Math.min(prodA, prodB);
+      ub += Math.max(prodA, prodB);
+    }
+    return {
+      lb: validateSafeInt(normalizeZero(lb), `lower bound of ${context}`),
+      ub: validateSafeInt(normalizeZero(ub), `upper bound of ${context}`),
+    };
+  }
+
+  function materializeAtomToVar(
+    atom: NonlinearAtom,
+    owner: SerializedAuxOwner,
+    context: string
+  ): number {
+    switch (atom.kind) {
+      case "abs": {
+        const argVar = materializeExprToVarIndex(atom.arg, owner, `${context} abs()`);
+        const s = vars[argVar];
+        const lb = s.lb <= 0 && s.ub >= 0 ? 0 : Math.min(Math.abs(s.lb), Math.abs(s.ub));
+        const ub = Math.max(Math.abs(s.lb), Math.abs(s.ub));
+        const outVar = addInternalVar(lb, ub, "abs");
+        auxPropagators.push({ kind: "abs", argVar, outVar, owner });
+        return outVar;
+      }
+      case "max": {
+        const argVars = atom.args.map((a, i) =>
+          materializeExprToVarIndex(a, owner, `${context} max()[${i}]`)
+        );
+        const lb = Math.max(...argVars.map((idx) => vars[idx].lb));
+        const ub = Math.max(...argVars.map((idx) => vars[idx].ub));
+        const outVar = addInternalVar(lb, ub, "max");
+        auxPropagators.push({ kind: "max", argVars, outVar, owner });
+        return outVar;
+      }
+      case "min": {
+        const argVars = atom.args.map((a, i) =>
+          materializeExprToVarIndex(a, owner, `${context} min()[${i}]`)
+        );
+        const lb = Math.min(...argVars.map((idx) => vars[idx].lb));
+        const ub = Math.min(...argVars.map((idx) => vars[idx].ub));
+        const outVar = addInternalVar(lb, ub, "min");
+        auxPropagators.push({ kind: "min", argVars, outVar, owner });
+        return outVar;
+      }
+      case "at": {
+        const indexVar = materializeExprToVarIndex(atom.index, owner, `${context} at() index`);
+        const arrayVars = atom.array.map((el, k) =>
+          materializeExprToVarIndex(el, owner, `${context} at()[${k}]`)
+        );
+        const lb = Math.min(...arrayVars.map((idx) => vars[idx].lb));
+        const ub = Math.max(...arrayVars.map((idx) => vars[idx].ub));
+        const outVar = addInternalVar(lb, ub, "elem");
+        auxPropagators.push({ kind: "element", indexVar, arrayVars, outVar, owner });
+        return outVar;
+      }
+    }
+  }
+
+  function lowerLinExpr(
+    expr: LinExpr,
+    owner: SerializedAuxOwner,
+    context: string,
+    allowFloatConstant = false
+  ): { terms: SerializedTerm[]; constant: number; sumMaxAbs: number } {
+    if (typeof expr.constant !== "number" || !Number.isFinite(expr.constant)) {
+      throw new Error(`Invalid non-finite constant in ${context}.`);
+    }
+    let safeConst: number;
+    if (allowFloatConstant) {
+      safeConst = normalizeZero(expr.constant);
+    } else {
+      if (!Number.isInteger(expr.constant)) {
+        throw new Error(
+          `PumpkinSolver only supports integer constants (${context}: got ${expr.constant}).`
+        );
+      }
+      safeConst = validateSafeInt(normalizeZero(expr.constant), `constant of ${context}`);
+    }
+    const extraTerms: SerializedTerm[] = [];
+    if (Array.isArray(expr.nonlinearTerms)) {
+      for (const nl of expr.nonlinearTerms) {
+        if (nl.coeff === 0) continue;
+        if (typeof nl.coeff !== "number" || !Number.isFinite(nl.coeff) || !Number.isInteger(nl.coeff)) {
+          throw new Error(
+            `PumpkinSolver only supports safe integer coefficients in ${context} (got ${nl.coeff}).`
+          );
+        }
+        const coeff = validateSafeInt(normalizeZero(nl.coeff), `nonlinear coefficient in ${context}`);
+        const atomVar = materializeAtomToVar(nl.atom, owner, context);
+        extraTerms.push({ varIndex: atomVar, coeff });
+      }
+    }
+    const { terms, sumMaxAbs } = serializeCombinedTerms(expr.terms, extraTerms, context);
+    return { terms, constant: safeConst, sumMaxAbs };
+  }
+
+  function materializeExprToVarIndex(
+    expr: LinExpr,
+    owner: SerializedAuxOwner,
+    context: string
+  ): number {
+    const { terms, constant } = lowerLinExpr(expr, owner, context);
+    if (terms.length === 1 && terms[0].coeff === 1 && constant === 0) {
+      return terms[0].varIndex;
+    }
+    const { lb, ub } = computeBoundsFromTerms(terms, constant, context);
+    const auxIdx = addInternalVar(lb, ub, "expr");
+    if (terms.length > 0) {
+      const eqTerms: SerializedTerm[] = [...terms, { varIndex: auxIdx, coeff: -1 }];
+      const negConst = validateSafeInt(normalizeZero(-constant), `linearEq RHS in ${context}`);
+      const eqSumMaxAbs = eqTerms.reduce((acc, t) => {
+        const s = vars[t.varIndex];
+        return acc + Math.max(Math.abs(t.coeff * s.lb), Math.abs(t.coeff * s.ub));
+      }, 0);
+      if (Math.abs(negConst) + eqSumMaxAbs > MAX_PROPAGATOR_MAGNITUDE) {
+        throw new Error(
+          `Linear expression magnitude in ${context} exceeds Pumpkin safe 32-bit propagator overflow limit.`
+        );
+      }
+      auxPropagators.push({
+        kind: "linearEq",
+        terms: eqTerms,
+        rhs: negConst,
+        owner,
+      });
+    }
+    return auxIdx;
+  }
+
+  function serializeConstraintSide(
+    lhs: LinExpr,
+    rhs: number,
+    owner: SerializedAuxOwner,
+    context: string
+  ): { terms: SerializedTerm[]; rhs: number } {
+    if (typeof rhs !== "number" || !Number.isFinite(rhs)) {
+      throw new Error(`Invalid non-finite RHS in ${context}.`);
+    }
+    if (!Number.isInteger(rhs)) {
+      throw new Error(`PumpkinSolver only supports integer RHS (${context}: got ${rhs}).`);
+    }
+    const { terms, constant, sumMaxAbs } = lowerLinExpr(lhs, owner, context);
+    const adjustedRhs = validateSafeInt(normalizeZero(rhs - constant), `RHS of ${context}`);
+    if (Math.abs(adjustedRhs) + sumMaxAbs > MAX_PROPAGATOR_MAGNITUDE) {
       throw new Error(
         `Linear expression magnitude in ${context} exceeds Pumpkin safe 32-bit propagator overflow limit.`
       );
     }
-    terms.push({ varIndex, coeff });
+    return { terms, rhs: adjustedRhs };
   }
 
-  return { terms, sumMaxAbs };
-}
-
-function serializeLinearConstraintTerms(
-  lhs: LinExpr,
-  rhs: number,
-  varIndexMap: Map<Var, number>,
-  vars: SerializedVar[],
-  context: string
-): { terms: SerializedTerm[]; rhs: number } {
-  if (typeof lhs.constant !== "number" || !Number.isFinite(lhs.constant) || !Number.isFinite(rhs)) {
-    throw new Error(`Invalid non-finite constant/RHS in ${context}.`);
-  }
-  const adjustedRhs = normalizeZero(rhs - lhs.constant);
-  const safeRhs = validateSafeInt(adjustedRhs, `RHS of ${context}`);
-  const { terms, sumMaxAbs } = serializeLinearTerms(lhs, varIndexMap, vars, context);
-
-  if (Math.abs(safeRhs) + sumMaxAbs > MAX_PROPAGATOR_MAGNITUDE) {
-    throw new Error(
-      `Linear expression magnitude in ${context} exceeds Pumpkin safe 32-bit propagator overflow limit.`
-    );
-  }
-
-  return { terms, rhs: safeRhs };
+  return {
+    lowerLinExpr,
+    materializeExprToVarIndex,
+    serializeConstraintSide,
+  };
 }
 
 function serializeLogicNode(
   node: LogicElement,
-  varIndexMap: Map<Var, number>,
-  vars: SerializedVar[],
+  lowerer: ReturnType<typeof createLowerer>,
+  owner: SerializedAuxOwner,
   boolVarIndexMap: Map<BoolVar, number>,
   context: string
 ): SerializedLogicNode {
@@ -323,7 +517,8 @@ function serializeLogicNode(
       "name" in node &&
       "id" in node &&
       !("op" in node) &&
-      !("lhs" in node))
+      !("lhs" in node) &&
+      !("spec" in node))
   ) {
     const bvNode = node as BoolVar;
     const index = boolVarIndexMap.get(bvNode);
@@ -340,14 +535,57 @@ function serializeLogicNode(
         `PumpkinSolver does not support quadratic constraints inside ${context}.`
       );
     }
-    const { terms, rhs } = serializeLinearConstraintTerms(
+    const { terms, rhs } = lowerer.serializeConstraintSide(
       cNode.lhs as LinExpr,
       cNode.rhs,
-      varIndexMap,
-      vars,
+      owner,
       context
     );
     return { kind: "linear", terms, sense: cNode.sense, rhs };
+  }
+
+  if (
+    node instanceof GlobalConstraint ||
+    (typeof node === "object" && node !== null && "spec" in node && typeof (node as any).spec === "object")
+  ) {
+    const spec = (node as GlobalConstraint).spec;
+    switch (spec.kind) {
+      case "distinct":
+        return {
+          kind: "allDifferent",
+          vars: spec.args.map((a, i) =>
+            lowerer.materializeExprToVarIndex(a, owner, `${context} distinct()[${i}]`)
+          ),
+        };
+      case "disjoint":
+        return {
+          kind: "disjunctive",
+          tasks: spec.tasks.map((t, i) => ({
+            startVar: lowerer.materializeExprToVarIndex(t.start, owner, `${context} disjoint()[${i}]`),
+            duration: validateSafeInt(t.duration, `duration of ${context} disjoint()[${i}]`),
+          })),
+        };
+      case "cumulative":
+        return {
+          kind: "cumulative",
+          tasks: spec.tasks.map((t, i) => ({
+            startVar: lowerer.materializeExprToVarIndex(t.start, owner, `${context} cumulative()[${i}]`),
+            duration: validateSafeInt(t.duration, `duration of ${context} cumulative()[${i}]`),
+            demand: validateSafeInt(t.demand, `demand of ${context} cumulative()[${i}]`),
+          })),
+          capacity: validateSafeInt(spec.capacity, `capacity of ${context} cumulative()`),
+        };
+      case "allowed":
+        return {
+          kind: "table",
+          vars: spec.vars.map((v, i) =>
+            lowerer.materializeExprToVarIndex(v, owner, `${context} allowed() vars[${i}]`)
+          ),
+          tuples: spec.tuples.map((row, r) =>
+            row.map((val, cIdx) => validateSafeInt(val, `tuple[${r}][${cIdx}] in ${context}`))
+          ),
+        };
+    }
   }
 
   if (node instanceof BoolOp || ("op" in node && "children" in node)) {
@@ -357,14 +595,14 @@ function serializeLogicNode(
         return {
           kind: "and",
           children: opNode.children.map((c) =>
-            serializeLogicNode(c, varIndexMap, vars, boolVarIndexMap, context)
+            serializeLogicNode(c, lowerer, owner, boolVarIndexMap, context)
           ),
         };
       case "or":
         return {
           kind: "or",
           children: opNode.children.map((c) =>
-            serializeLogicNode(c, varIndexMap, vars, boolVarIndexMap, context)
+            serializeLogicNode(c, lowerer, owner, boolVarIndexMap, context)
           ),
         };
       case "not":
@@ -373,7 +611,7 @@ function serializeLogicNode(
         }
         return {
           kind: "not",
-          child: serializeLogicNode(opNode.children[0], varIndexMap, vars, boolVarIndexMap, context),
+          child: serializeLogicNode(opNode.children[0], lowerer, owner, boolVarIndexMap, context),
         };
       case "implies":
         if (opNode.children.length !== 2) {
@@ -381,14 +619,14 @@ function serializeLogicNode(
         }
         return {
           kind: "implies",
-          left: serializeLogicNode(opNode.children[0], varIndexMap, vars, boolVarIndexMap, context),
-          right: serializeLogicNode(opNode.children[1], varIndexMap, vars, boolVarIndexMap, context),
+          left: serializeLogicNode(opNode.children[0], lowerer, owner, boolVarIndexMap, context),
+          right: serializeLogicNode(opNode.children[1], lowerer, owner, boolVarIndexMap, context),
         };
       case "xor":
         return {
           kind: "xor",
           children: opNode.children.map((c) =>
-            serializeLogicNode(c, varIndexMap, vars, boolVarIndexMap, context)
+            serializeLogicNode(c, lowerer, owner, boolVarIndexMap, context)
           ),
         };
       default:
@@ -406,10 +644,14 @@ function serializeCommonModel(modelData: CheckModelData): {
   boolVars: string[];
   constraints: SerializedLinearConstraint[];
   logicalConstraints: SerializedLogicalConstraint[];
+  auxPropagators: SerializedAuxPropagator[];
   varIndexMap: Map<Var, number>;
+  lowerer: ReturnType<typeof createLowerer>;
   hasEmptyDomain: boolean;
 } {
   const { vars, varIndexMap, hasEmptyDomain } = serializeVariables(modelData.variables);
+  const auxPropagators: SerializedAuxPropagator[] = [];
+  const lowerer = createLowerer(varIndexMap, vars, auxPropagators);
 
   const boolVarsList = modelData.boolVars ?? [];
   const boolVarIndexMap = new Map<BoolVar, number>();
@@ -420,29 +662,62 @@ function serializeCommonModel(modelData: CheckModelData): {
   }
 
   const constraints: SerializedLinearConstraint[] = [];
-  for (const c of modelData.constraints) {
+  for (let cIdx = 0; cIdx < modelData.constraints.length; cIdx++) {
+    const c = modelData.constraints[cIdx];
     const context = `constraint "${c.name}"`;
+    const owner: SerializedAuxOwner = { kind: "constraint", index: cIdx };
+
+    if (c._indicatorMeta) {
+      const meta = c._indicatorMeta;
+      const binVarIndex = varIndexMap.get(meta.binVar);
+      if (binVarIndex === undefined) {
+        throw new Error(
+          `Indicator binary variable "${meta.binVar.name}" in ${context} is not registered in the model.`
+        );
+      }
+      const { terms, rhs } = lowerer.serializeConstraintSide(
+        meta.targetLhs,
+        meta.targetRhs,
+        owner,
+        context
+      );
+      constraints.push({
+        name: c.name,
+        terms,
+        sense: meta.targetSense,
+        rhs,
+        indicator: { binVarIndex, activeValue: meta.activeValue },
+      });
+      continue;
+    }
+
     if (isQuadraticExpr(c.lhs)) {
       throw new Error(`PumpkinSolver does not support quadratic constraints (${context}).`);
     }
-    const { terms, rhs } = serializeLinearConstraintTerms(
-      c.lhs as LinExpr,
-      c.rhs,
-      varIndexMap,
-      vars,
-      context
-    );
+    const { terms, rhs } = lowerer.serializeConstraintSide(c.lhs as LinExpr, c.rhs, owner, context);
     constraints.push({ name: c.name, terms, sense: c.sense, rhs });
   }
 
   const logicalConstraints: SerializedLogicalConstraint[] = [];
-  for (const lc of modelData.logicalConstraints ?? []) {
+  const rawLogic = modelData.logicalConstraints ?? [];
+  for (let lIdx = 0; lIdx < rawLogic.length; lIdx++) {
+    const lc = rawLogic[lIdx];
     const context = `logical constraint "${lc.name}"`;
-    const expr = serializeLogicNode(lc.expr, varIndexMap, vars, boolVarIndexMap, context);
+    const owner: SerializedAuxOwner = { kind: "logic", index: lIdx };
+    const expr = serializeLogicNode(lc.expr, lowerer, owner, boolVarIndexMap, context);
     logicalConstraints.push({ name: lc.name, expr });
   }
 
-  return { vars, boolVars, constraints, logicalConstraints, varIndexMap, hasEmptyDomain };
+  return {
+    vars,
+    boolVars,
+    constraints,
+    logicalConstraints,
+    auxPropagators,
+    varIndexMap,
+    lowerer,
+    hasEmptyDomain,
+  };
 }
 
 function tuplesToValuesRecord(
@@ -557,6 +832,7 @@ export class PumpkinSolver implements Solver {
       boolVars: common.boolVars,
       constraints: common.constraints,
       logicalConstraints: common.logicalConstraints,
+      auxPropagators: common.auxPropagators,
       timeLimitMs,
     });
 
@@ -641,11 +917,11 @@ export class PumpkinSolver implements Solver {
       throw new Error("Invalid non-finite objective constant.");
     }
     const objectiveConstant = normalizeZero(objExpr.constant);
-    const { terms: objectiveTerms, sumMaxAbs: objMaxAbs } = serializeLinearTerms(
+    const { terms: objectiveTerms, sumMaxAbs: objMaxAbs } = common.lowerer.lowerLinExpr(
       objExpr,
-      common.varIndexMap,
-      common.vars,
-      "objective expression"
+      { kind: "objective" },
+      "objective expression",
+      true
     );
     if (objMaxAbs > SAFE_I32_LIMIT) {
       throw new Error(
@@ -680,6 +956,7 @@ export class PumpkinSolver implements Solver {
       boolVars: common.boolVars,
       constraints: common.constraints,
       logicalConstraints: common.logicalConstraints,
+      auxPropagators: common.auxPropagators,
       sense,
       objectiveTerms,
       objectiveConstant,

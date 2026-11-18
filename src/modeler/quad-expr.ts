@@ -1,5 +1,10 @@
 import type { Var } from "./variable.js";
-import { LinExpr } from "./expression.js";
+import {
+  LinExpr,
+  type NonlinearTerm,
+  cloneNonlinearAtom,
+  evaluateNonlinearAtomValue,
+} from "./expression.js";
 
 /**
  * Key representation for quadratic pair (v1, v2) with normalized ordering (id1 <= id2)
@@ -27,11 +32,13 @@ export class QuadExpr {
   public linearTerms: Map<Var, number>;
   public quadTerms: Map<string, QuadTerm>;
   public constant: number;
+  public nonlinearTerms: NonlinearTerm[];
 
   constructor(
     linearTerms: Map<Var, number> = new Map(),
     quadTerms: Map<string, QuadTerm> = new Map(),
-    constant: number = 0
+    constant: number = 0,
+    nonlinearTerms: ReadonlyArray<NonlinearTerm> = []
   ) {
     this.linearTerms = new Map(linearTerms);
     this.quadTerms = new Map();
@@ -39,13 +46,20 @@ export class QuadExpr {
       this.quadTerms.set(key, { ...term });
     }
     this.constant = constant;
+    this.nonlinearTerms = nonlinearTerms
+      .filter((t) => t.coeff !== 0)
+      .map((t) => ({ atom: cloneNonlinearAtom(t.atom), coeff: t.coeff }));
+  }
+
+  hasNonlinearTerms(): boolean {
+    return this.nonlinearTerms.length > 0;
   }
 
   /**
    * Clone this quadratic expression
    */
   clone(): QuadExpr {
-    return new QuadExpr(this.linearTerms, this.quadTerms, this.constant);
+    return new QuadExpr(this.linearTerms, this.quadTerms, this.constant, this.nonlinearTerms);
   }
 
   /**
@@ -99,6 +113,13 @@ export class QuadExpr {
         }
       }
       result.constant += other.constant;
+      if (Array.isArray(other.nonlinearTerms)) {
+        for (const t of other.nonlinearTerms) {
+          if (t.coeff !== 0) {
+            result.nonlinearTerms.push({ atom: cloneNonlinearAtom(t.atom), coeff: t.coeff });
+          }
+        }
+      }
       return result;
     }
 
@@ -114,6 +135,13 @@ export class QuadExpr {
         }
       }
       result.constant += other.constant;
+      if (Array.isArray(other.nonlinearTerms)) {
+        for (const t of other.nonlinearTerms) {
+          if (t.coeff !== 0) {
+            result.nonlinearTerms.push({ atom: cloneNonlinearAtom(t.atom), coeff: t.coeff });
+          }
+        }
+      }
       return result;
     }
 
@@ -157,7 +185,8 @@ export class QuadExpr {
       );
     }
     if (typeof operand === "number") {
-      const hasTerms = this.linearTerms.size > 0 || this.quadTerms.size > 0;
+      const hasTerms =
+        this.linearTerms.size > 0 || this.quadTerms.size > 0 || this.nonlinearTerms.length > 0;
       const rawConst =
         this.constant === 0 && hasTerms ? 0 : this.constant * operand;
       if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
@@ -186,6 +215,17 @@ export class QuadExpr {
           });
         }
       }
+      if (operand !== 0) {
+        for (const nl of this.nonlinearTerms) {
+          const prod = nl.coeff * operand;
+          if (nl.coeff !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          if (prod !== 0) {
+            result.nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: prod });
+          }
+        }
+      }
       return result;
     }
 
@@ -195,12 +235,37 @@ export class QuadExpr {
       !("terms" in operand) &&
       !("quadTerms" in operand);
     const otherQuadSize = "quadTerms" in operand ? operand.quadTerms.size : 0;
+    const otherNlSize =
+      !isVar && "nonlinearTerms" in operand && Array.isArray((operand as any).nonlinearTerms)
+        ? (operand as any).nonlinearTerms.length
+        : 0;
     const otherLinTerms: ReadonlyMap<Var, number> = isVar
       ? new Map([[operand as Var, 1]])
       : "quadTerms" in operand
         ? operand.linearTerms
         : operand.terms;
     const otherConstant = isVar ? 0 : operand.constant;
+
+    if (this.nonlinearTerms.length > 0) {
+      if (!isVar && otherQuadSize === 0 && otherLinTerms.size === 0 && otherNlSize === 0) {
+        return this.mul(otherConstant);
+      }
+      throw new Error(
+        "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+      );
+    }
+    if (otherNlSize > 0) {
+      if (this.quadTerms.size === 0 && this.linearTerms.size === 0) {
+        const scaled = (operand as QuadExpr | LinExpr).mul(this.constant);
+        if ("quadTerms" in scaled) {
+          return scaled;
+        }
+        return new QuadExpr(scaled.terms, new Map(), scaled.constant, scaled.nonlinearTerms);
+      }
+      throw new Error(
+        "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+      );
+    }
 
     if (
       (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) ||
@@ -219,7 +284,7 @@ export class QuadExpr {
       if ("quadTerms" in scaled) {
         return scaled;
       }
-      return new QuadExpr(scaled.terms, new Map(), scaled.constant);
+      return new QuadExpr(scaled.terms, new Map(), scaled.constant, scaled.nonlinearTerms);
     }
 
     return QuadExpr.multiplyLinearTerms(
@@ -258,6 +323,11 @@ export class QuadExpr {
       if (term.var1.value === null || term.var2.value === null) return null;
       sum += term.coeff * term.var1.value * term.var2.value;
     }
+    for (const nl of this.nonlinearTerms) {
+      const val = evaluateNonlinearAtomValue(nl.atom);
+      if (val === null) return null;
+      sum += nl.coeff * val;
+    }
     return sum;
   }
 
@@ -273,6 +343,32 @@ export class QuadExpr {
     return this.toConstraint("==", rhs, name);
   }
 
+  public lt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison("<", rhs, name);
+  }
+
+  public gt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison(">", rhs, name);
+  }
+
+  public ne(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison("!=", rhs, name);
+  }
+
+  private toDiscreteComparison(
+    op: "<" | ">" | "!=",
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    if (this.quadTerms.size > 0) {
+      throw new Error(
+        `Quadratic expressions are not supported in discrete comparisons (${op}): quadratic terms are only allowed in objectives.`
+      );
+    }
+    const lin = new LinExpr(this.linearTerms, this.constant, this.nonlinearTerms);
+    return op === "<" ? lin.lt(rhs, name) : op === ">" ? lin.gt(rhs, name) : lin.ne(rhs, name);
+  }
+
   private toConstraint(
     sense: "<=" | ">=" | "==",
     rhs: number | Var | LinExpr | QuadExpr | Constraint,
@@ -283,7 +379,7 @@ export class QuadExpr {
         `Quadratic expressions are not supported in linear constraints (${sense}): quadratic terms are only allowed in objectives.`
       );
     }
-    const lin = new LinExpr(this.linearTerms, this.constant);
+    const lin = new LinExpr(this.linearTerms, this.constant, this.nonlinearTerms);
     return sense === "<="
       ? lin.le(rhs, name)
       : sense === ">="
@@ -344,6 +440,15 @@ export class QuadExpr {
       const coeffStr = absC === 1 ? "" : `${absC} `;
       parts.push(`${sign}${coeffStr}${v.name}`);
       isFirst = false;
+    }
+
+    if (this.nonlinearTerms.length > 0) {
+      const nlLin = new LinExpr(new Map(), 0, this.nonlinearTerms);
+      const nlStr = nlLin.toString();
+      if (nlStr !== "0") {
+        parts.push(isFirst ? nlStr : nlStr.startsWith("-") ? `- ${nlStr.slice(2)}` : `+ ${nlStr}`);
+        isFirst = false;
+      }
     }
 
     if (this.constant !== 0 || parts.length === 0) {
@@ -449,7 +554,11 @@ export class QuadExpr {
     }
     const linSize = "quadTerms" in divisor ? divisor.linearTerms.size : divisor.terms.size;
     const quadSize = "quadTerms" in divisor ? divisor.quadTerms.size : 0;
-    if (linSize > 0 || quadSize > 0) {
+    const nlSize =
+      "nonlinearTerms" in divisor && Array.isArray(divisor.nonlinearTerms)
+        ? divisor.nonlinearTerms.length
+        : 0;
+    if (linSize > 0 || quadSize > 0 || nlSize > 0) {
       throw new Error("Cannot divide by variable in expression");
     }
     if (divisor.constant === 0) {

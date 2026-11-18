@@ -107,6 +107,9 @@ When `options.M` is omitted, WaSHI automatically derives a minimal valid Big-M v
 
 If any referenced variable lacks the required finite bound, `m.indicator()` throws an error prompting for finite bounds or an explicit `options.M`.
 
+> [!NOTE]
+> **Native Indicator Lowering on Pumpkin & Z3**: When `options.M` is omitted, `m.indicator()` still returns Big-M-linearized `Constraint[]` rows (so `m.toLpString()`, HiGHS, and GLPK stay identical and backward compatible) while annotating those rows so **Pumpkin** lowers natively via `implied_by` and **Z3** lowers natively via `ctx.Implies` without Big-M numerical degradation. Mutating a returned row clears that metadata so subsequent edits take effect directly.
+
 ### Explicit `M` Override
 
 You can override the derived Big-M by passing `{ M: number }`:
@@ -155,11 +158,56 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **Trigger variable** | Numeric `Binary` variable (`m.binary()`) | `BoolVar` (`m.bool()`), `BoolOp`, or `Constraint` |
 | **Consequent** | Linear `Constraint` (`<=`, `>=`, `==`) | `BoolVar`, `BoolOp`, or linear `Constraint` |
-| **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK, Z3) via Big-M linearization | **All solvers** (HiGHS and GLPK via automatic 0-1 MIP linearization, Z3 natively) |
+| **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK via Big-M; Pumpkin/Z3 natively when `M` omitted) | **All solvers** (HiGHS and GLPK via automatic 0-1 MIP linearization, Pumpkin and Z3 natively) |
 | **Primary Use Case** | MIP optimization models with arithmetic binary variables (`m.solve()`) | Logical rule systems and SMT feasibility (`m.check()`) |
 
 > [!NOTE]
-> **Comparison Constraints in Negated Positions (`implies` Antecedents, `not`, `xor`)**: Linear comparison constraints whose referenced variables are all `Integer` or `Binary` with integer coefficients and integer right-hand sides (plus required finite bounds for Big-M indicators, such as ``implies(expr`${clearance} >= 4`, hasMfa)`` above) are linearized automatically on **HiGHS** and **GLPK** via exact $\pm 1$ integer shifts ($\neg(a^\top x \le b) \iff a^\top x \ge b + 1$, and $a^\top x \ne b \iff a^\top x \le b - 1 \lor a^\top x \ge b + 1$), and solved natively on **Z3**. When a comparison constraint containing `Continuous` variables or non-integer coefficients/thresholds appears in a negated position, MIP `solve()` / `check()` throws an error because strict-inequality negation forms an open half-space—use `{ solver: "z3" }`, or write an explicit closed-tolerance disjunction such as ``or(expr`... >= ... + eps`, ...)`` or an `m.bool()` proposition.
+> **Comparison Constraints in Negated Positions (`implies` Antecedents, `not`, `xor`)**: Linear comparison constraints whose referenced variables are all `Integer` or `Binary` with integer coefficients and integer right-hand sides (plus required finite bounds for Big-M indicators, such as ``implies(expr`${clearance} >= 4`, hasMfa)`` above) are linearized automatically on **HiGHS** and **GLPK** via exact $\pm 1$ integer shifts ($\neg(a^\top x \le b) \iff a^\top x \ge b + 1$, and $a^\top x \ne b \iff a^\top x \le b - 1 \lor a^\top x \ge b + 1$), and solved natively on **Pumpkin** and **Z3**. When a comparison constraint containing `Continuous` variables or non-integer coefficients/thresholds appears in a negated position, MIP `solve()` / `check()` throws an error because strict-inequality negation forms an open half-space—use `{ solver: "z3" }`, or write an explicit closed-tolerance disjunction such as ``or(expr`... >= ... + eps`, ...)`` or an `m.bool()` proposition.
+
+---
+
+## Discrete Comparisons (`!=`, `<`, `>`)
+
+WaSHI supports discrete comparisons `!=`, `<`, and `>` in `expr` (and fluent `.ne()`, `.lt()`, `.gt()` on `Var`, `LinExpr`, and `QuadExpr`) strictly for **integer-valued expressions** (`Integer` or `Binary` variables with safe-integer coefficients and constants):
+
+```typescript
+const rankA = m.integer("rankA", { lb: 1, ub: 4 });
+const rankB = m.integer("rankB", { lb: 1, ub: 4 });
+const roomA = m.integer("roomA", { lb: 1, ub: 3 });
+const roomB = m.integer("roomB", { lb: 1, ub: 3 });
+
+m.constraint(expr`${rankA} < ${rankB}`, "strict_order"); // lowered via rankA - rankB <= -1
+m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // native not_equals on Pumpkin, neq on Z3, single-binary MIP on HiGHS/GLPK
+```
+
+Expressions involving `Continuous` variables or fractional numbers in `!=`, `<`, or `>` are rejected immediately because open inequalities ($x < b$, $x \ne b$) are not closed polyhedra on continuous domains.
+
+---
+
+## CP Global Constraints (`distinct`, `disjoint`, `cumulative`, `allowed`)
+
+WaSHI provides backend-agnostic Constraint Programming predicates returning composable `BoolExpr` objects (combinable with `and`, `or`, `not`, `implies`, `xor`):
+
+| Predicate | Semantics | HiGHS / GLPK | Pumpkin | Z3 |
+| :--- | :--- | :--- | :--- | :--- |
+| `distinct(...args)` | Pairwise `a != b` across integer expressions / 1D–2D containers (`AllDifferent`) | Pairwise `!=` MIP | `all_different` | `ctx.Distinct` |
+| `disjoint(tasks)` | Non-overlapping intervals `[start, start + duration)` on unary resource (`NoOverlap` / `Disjunctive`; `duration >= 0` integer; duration-0 only at boundaries) | Pairwise binary precedence + Big-M | `disjunctive_strict` (Vilím edge-finding) | Pairwise `Or` disjunctions |
+| `cumulative(tasks, capacity)` | Resource usage $\le$ `capacity` across all time points (`duration >= 0`, `demand >= 0` integer) | Time-indexed MIP (throws horizon guard error above 5,000 span / 25,000 pulse vars recommending `{ solver: "pumpkin" }`) | Native `cumulative` time-table filtering | Start-event load assertions |
+| `allowed(vars, tuples)` | Tuple `(vars[0], ...) in tuples` (`Table` / `AllowedAssignments`; use `not(allowed(...))` for forbidden tuples) | Tuple selector binaries (`not` emits 0-binary cuts on 2-valued vars) | `table` / `negative_table` | Tuple `Or` / `And` |
+
+```typescript
+import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";
+
+const m = new Model("ScheduleAndAssign");
+const s = m.integer(2, { lb: 0, ub: 10, prefix: "s" });
+const room = m.integer(2, { lb: 1, ub: 2, prefix: "room" });
+
+m.constraint(distinct(room), "unique_rooms");
+m.constraint(disjoint([{ start: s[0], duration: 4 }, { start: s[1], duration: 3 }]), "machine_1");
+m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
+m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
+m.objective(minimize(expr`${s[0]} + ${s[1]}`));
+```
 
 ---
 

@@ -6,7 +6,29 @@ import { BoolOp, type LogicInput } from "./boolean-expr.js";
 let constrIdCounter = 0;
 
 /**
- * Represents a linear constraint: lhs (terms) <=, >=, or == rhs (constant)
+ * Internal metadata recording that an indicator constraint row was constructed
+ * via `Model.indicator(binVar, targetConstraint)` without an explicit `{ M }` override.
+ * Enables CP (Pumpkin) and SMT (Z3) backends to lower indicators natively instead of Big-M.
+ */
+export interface IndicatorOrigin {
+  readonly binVar: Var;
+  readonly activeValue: 0 | 1;
+  readonly targetLhs: LinExpr;
+  readonly targetSense: "<=" | ">=";
+  readonly targetRhs: number;
+  readonly derivedM: number;
+}
+
+interface IndicatorRowSnapshot {
+  readonly lhsRef: LinExpr;
+  readonly terms: ReadonlyMap<Var, number>;
+  readonly constant: number;
+  readonly sense: ComparisonSense;
+  readonly rhs: number;
+}
+
+/**
+ * Represents a linear constraint: lhs (terms) <=, >=, ==, or != rhs (constant)
  */
 export class Constraint {
   public readonly kind = "constraint" as const;
@@ -17,6 +39,9 @@ export class Constraint {
   private _name: string;
   public hasExplicitName: boolean;
   public ownerModel: { notifyMutation?: () => void } | null = null;
+  private _indicatorOrigin?: IndicatorOrigin;
+  private _indicatorSnapshot?: IndicatorRowSnapshot;
+  private _discreteVars?: ReadonlySet<Var>;
   /** Slack value after solve */
   public slack: number | null = null;
   /** Dual value (shadow price) after solve */
@@ -29,6 +54,8 @@ export class Constraint {
    */
   addTerm(v: Var, coeff: number): this {
     if (coeff === 0) return this;
+    this._indicatorOrigin = undefined;
+    this._indicatorSnapshot = undefined;
     this._lhs.addTerm(v, coeff);
     this.ownerModel?.notifyMutation?.();
     return this;
@@ -39,6 +66,8 @@ export class Constraint {
    * Triggers model mutation notification if this constraint belongs to a model.
    */
   setTerm(v: Var, coeff: number): this {
+    this._indicatorOrigin = undefined;
+    this._indicatorSnapshot = undefined;
     this._lhs.setTerm(v, coeff);
     this.ownerModel?.notifyMutation?.();
     return this;
@@ -70,6 +99,8 @@ export class Constraint {
 
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._lhs = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -80,7 +111,14 @@ export class Constraint {
   }
 
   set sense(value: ComparisonSense) {
+    if (value === "!=" && !Number.isSafeInteger(this._rhs)) {
+      throw new Error(
+        `Discrete "!=" in constraint "${this._name}" requires a safe integer RHS, received ${this._rhs}.`
+      );
+    }
     if (this._sense !== value) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._sense = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -91,7 +129,14 @@ export class Constraint {
   }
 
   set rhs(value: number) {
+    if (this._sense === "!=" && !Number.isSafeInteger(value)) {
+      throw new Error(
+        `Discrete "!=" in constraint "${this._name}" requires a safe integer RHS, received ${value}.`
+      );
+    }
     if (!Object.is(this._rhs, value)) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._rhs = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -107,6 +152,87 @@ export class Constraint {
       this.ownerModel?.notifyMutation?.();
     }
     this.hasExplicitName = true;
+  }
+
+  /** @internal */
+  get _indicatorMeta(): IndicatorOrigin | undefined {
+    const origin = this._indicatorOrigin;
+    const snap = this._indicatorSnapshot;
+    if (!origin || !snap) {
+      return undefined;
+    }
+    if (
+      this._lhs !== snap.lhsRef ||
+      this._sense !== snap.sense ||
+      !Object.is(this._rhs, snap.rhs) ||
+      !Object.is(this._lhs.constant, snap.constant) ||
+      this._lhs.nonlinearTerms.length > 0 ||
+      this._lhs.terms.size !== snap.terms.size
+    ) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
+      return undefined;
+    }
+    for (const [v, coeff] of snap.terms) {
+      if (!this._lhs.terms.has(v) || !Object.is(this._lhs.terms.get(v), coeff)) {
+        this._indicatorOrigin = undefined;
+        this._indicatorSnapshot = undefined;
+        return undefined;
+      }
+    }
+
+    // Verify variable bounds still fit within the derived Big-M used for row construction
+    const effectiveRhs = origin.targetRhs - (origin.targetLhs.constant ?? 0);
+    let extremeLhs = 0;
+    for (const [v, coeff] of origin.targetLhs.terms) {
+      if (coeff === 0) continue;
+      const boundVal =
+        origin.targetSense === "<="
+          ? coeff > 0
+            ? v.ub
+            : v.lb
+          : coeff > 0
+            ? v.lb
+            : v.ub;
+      if (!Number.isFinite(boundVal)) return undefined;
+      extremeLhs += coeff * boundVal;
+      if (!Number.isFinite(extremeLhs)) return undefined;
+    }
+    const neededM =
+      origin.targetSense === "<="
+        ? extremeLhs - effectiveRhs
+        : effectiveRhs - extremeLhs;
+    if (neededM > origin.derivedM + 1e-9) {
+      return undefined;
+    }
+    return origin;
+  }
+
+  /** @internal */
+  _setIndicatorOrigin(origin: IndicatorOrigin | undefined): void {
+    if (!origin) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
+      return;
+    }
+    this._indicatorOrigin = origin;
+    this._indicatorSnapshot = {
+      lhsRef: this._lhs,
+      terms: new Map(this._lhs.terms),
+      constant: this._lhs.constant,
+      sense: this._sense,
+      rhs: this._rhs,
+    };
+  }
+
+  /** @internal */
+  get _requiredDiscreteVars(): ReadonlySet<Var> | undefined {
+    return this._discreteVars;
+  }
+
+  /** @internal */
+  _setDiscreteVars(vars: ReadonlySet<Var> | undefined): void {
+    this._discreteVars = vars;
   }
 
   /** @internal Assigns a model-scoped name and explicit flag without triggering setter mutation notifications */
@@ -197,6 +323,24 @@ export class Constraint {
     );
   }
 
+  public lt(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (<): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public gt(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (>): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public ne(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (!=): expected a number, Var, or LinExpr."
+    );
+  }
+
   public get value(): never {
     throw new Error(
       "Cannot read numeric value of a Constraint: expected a Var, LinExpr, or QuadExpr."
@@ -210,12 +354,16 @@ export class Constraint {
   }
 
   public clone(): Constraint {
-    return new Constraint(
+    const copy = new Constraint(
       this._lhs.clone(),
       this._sense,
       this._rhs,
       this.hasExplicitName ? this._name : undefined
     );
+    if (this._discreteVars) {
+      copy._setDiscreteVars(new Set(this._discreteVars));
+    }
+    return copy;
   }
 
   toString(): string {

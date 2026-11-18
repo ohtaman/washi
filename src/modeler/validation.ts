@@ -1,8 +1,8 @@
 import type { Model } from "./model.js";
 import { Var } from "./variable.js";
-import { BoolVar, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "./boolean-expr.js";
 import { Constraint } from "./constraint.js";
-import { LinExpr } from "./expression.js";
+import { LinExpr, type NonlinearTerm, collectAndValidateDiscreteExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 
 const varOwner = new WeakMap<Var, Model>();
@@ -189,6 +189,84 @@ export function normalizeVarInitialValue(v: Var): number | undefined {
   return Object.is(clamped, -0) ? 0 : clamped;
 }
 
+function validateDiscreteVarTypes(
+  vars: ReadonlySet<Var> | undefined,
+  contextLabel: string
+): void {
+  if (!vars) return;
+  for (const v of vars) {
+    if (v.type !== "Integer" && v.type !== "Binary") {
+      throw new Error(
+        `${contextLabel} requires Integer or Binary variables, but variable "${v.name}" has type "${v.type}".`
+      );
+    }
+  }
+}
+
+function validateNonlinearTermsOwnership(
+  nonlinearTerms: ReadonlyArray<NonlinearTerm> | undefined,
+  contextLabel: string,
+  modelName: string,
+  isOwnedVar: (v: Var) => boolean
+): void {
+  if (!nonlinearTerms || nonlinearTerms.length === 0) return;
+  for (const nl of nonlinearTerms) {
+    if (!Number.isFinite(nl.coeff)) {
+      throw new Error(
+        `Nonlinear expression in ${contextLabel} has invalid coefficient: ${nl.coeff}. Coefficients must be finite numbers.`
+      );
+    }
+    const atom = nl.atom;
+    if (atom.kind === "abs") {
+      validateLinExprTree(atom.arg, contextLabel, modelName, isOwnedVar);
+    } else if (atom.kind === "max" || atom.kind === "min") {
+      for (const arg of atom.args) {
+        validateLinExprTree(arg, contextLabel, modelName, isOwnedVar);
+      }
+    } else if (atom.kind === "at") {
+      validateDiscreteVarTypes(atom.discreteVars, `at() index in ${contextLabel}`);
+      validateLinExprTree(atom.index, contextLabel, modelName, isOwnedVar);
+      for (const elem of atom.array) {
+        validateLinExprTree(elem, contextLabel, modelName, isOwnedVar);
+      }
+    }
+  }
+}
+
+function validateLinExprTree(
+  expr: LinExpr,
+  contextLabel: string,
+  modelName: string,
+  isOwnedVar: (v: Var) => boolean,
+  options?: {
+    constantPrefix?: string;
+    constantKind?: string;
+    varLocationPhrase?: string;
+  }
+): void {
+  if (expr.constant !== undefined && !Number.isFinite(expr.constant)) {
+    const prefix = options?.constantPrefix ?? contextLabel;
+    const kind = options?.constantKind ?? "constant";
+    throw new Error(
+      `${prefix} has invalid ${kind}: ${expr.constant}. Constant must be a finite number.`
+    );
+  }
+  const locationPhrase = options?.varLocationPhrase ?? `in ${contextLabel}`;
+  for (const [v, coeff] of expr.terms) {
+    if (!isOwnedVar(v)) {
+      throw new Error(
+        `Variable "${v.name}" ${locationPhrase} does not belong to model "${modelName}". All variables must belong to the model by object identity.`
+      );
+    }
+    if (!Number.isFinite(coeff)) {
+      throw new Error(
+        `Variable "${v.name}" in ${contextLabel} has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
+      );
+    }
+  }
+  validateNonlinearTermsOwnership(expr.nonlinearTerms, contextLabel, modelName, isOwnedVar);
+}
+
 /**
  * Validates objective expression constants, coefficients, and variable ownership.
  */
@@ -232,24 +310,11 @@ export function validateObjectiveExpr(
         );
       }
     }
+    validateNonlinearTermsOwnership(expr.nonlinearTerms, "objective function", modelName, isOwnedVar);
   } else if ("terms" in expr) {
-    if (!Number.isFinite(expr.constant)) {
-      throw new Error(
-        `Objective function has invalid constant: ${expr.constant}. Constant must be a finite number.`
-      );
-    }
-    for (const [v, coeff] of expr.terms) {
-      if (!isOwnedVar(v)) {
-        throw new Error(
-          `Variable "${v.name}" in objective function does not belong to model "${modelName}". All variables must belong to the model by object identity.`
-        );
-      }
-      if (!Number.isFinite(coeff)) {
-        throw new Error(
-          `Variable "${v.name}" in objective function has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
-        );
-      }
-    }
+    validateLinExprTree(expr, "objective function", modelName, isOwnedVar, {
+      constantPrefix: "Objective function",
+    });
   }
 }
 
@@ -267,20 +332,29 @@ export function validateLinearConstraint(
       `Constraint "${constrName}" has invalid right-hand side (RHS): ${c.rhs}. RHS must be a finite number.`
     );
   }
-  if (c.lhs.constant !== undefined && !Number.isFinite(c.lhs.constant)) {
-    throw new Error(
-      `Constraint "${constrName}" has invalid LHS constant: ${c.lhs.constant}. Constant must be a finite number.`
-    );
-  }
-  for (const [v, coeff] of c.lhs.terms) {
-    if (!isOwnedVar(v)) {
+  validateDiscreteVarTypes(c._requiredDiscreteVars, `Discrete constraint "${constrName}"`);
+  validateLinExprTree(c.lhs, `constraint "${constrName}"`, modelName, isOwnedVar);
+  if (c.sense === "!=") {
+    if (!Number.isSafeInteger(c.rhs)) {
       throw new Error(
-        `Variable "${v.name}" in constraint "${constrName}" does not belong to model "${modelName}". All variables must belong to the model by object identity.`
+        `Discrete "!=" in constraint "${constrName}" requires a safe integer RHS, received ${c.rhs}.`
       );
     }
-    if (!Number.isFinite(coeff)) {
+    collectAndValidateDiscreteExpr(c.lhs, `Discrete "!=" in constraint "${constrName}"`);
+  }
+  if (c._indicatorMeta) {
+    const binVar = c._indicatorMeta.binVar;
+    if (!isOwnedVar(binVar)) {
       throw new Error(
-        `Variable "${v.name}" in constraint "${constrName}" has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
+        `Indicator binary variable "${binVar.name}" in constraint "${constrName}" does not belong to model "${modelName}".`
+      );
+    }
+    const isValidBinary =
+      binVar.type === "Binary" ||
+      (binVar.type === "Integer" && binVar.lb === 0 && binVar.ub === 1);
+    if (!isValidBinary) {
+      throw new Error(
+        `Indicator variable "${binVar.name}" in constraint "${constrName}" has invalid type "${binVar.type}" or bounds [${binVar.lb}, ${binVar.ub}]: expected Binary or Integer [0, 1].`
       );
     }
   }
@@ -307,6 +381,31 @@ export function validateLogicElement(
     for (const child of elem.children) {
       validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar, ownerModel);
     }
+  } else if (elem instanceof GlobalConstraint) {
+    validateDiscreteVarTypes(elem.discreteVars, `Global constraint "${lcName}"`);
+    const label = `logical constraint "${lcName}"`;
+    switch (elem.spec.kind) {
+      case "distinct":
+        for (const arg of elem.spec.args) {
+          validateLinExprTree(arg, label, modelName, isOwnedVar);
+        }
+        break;
+      case "disjoint":
+        for (const task of elem.spec.tasks) {
+          validateLinExprTree(task.start, label, modelName, isOwnedVar);
+        }
+        break;
+      case "cumulative":
+        for (const task of elem.spec.tasks) {
+          validateLinExprTree(task.start, label, modelName, isOwnedVar);
+        }
+        break;
+      case "allowed":
+        for (const vExpr of elem.spec.vars) {
+          validateLinExprTree(vExpr, label, modelName, isOwnedVar);
+        }
+        break;
+    }
   } else if (elem instanceof Constraint) {
     if (ownerModel) {
       const existingOwner = constrOwner.get(elem) ?? ((elem.ownerModel as Model | null) ?? undefined);
@@ -321,22 +420,31 @@ export function validateLogicElement(
         `Constraint "${elem.name}" embedded in logical constraint "${lcName}" has invalid RHS: ${elem.rhs}.`
       );
     }
-    if (elem.lhs.constant !== undefined && !Number.isFinite(elem.lhs.constant)) {
-      throw new Error(
-        `Constraint "${elem.name}" embedded in logical constraint "${lcName}" has invalid LHS constant: ${elem.lhs.constant}.`
+    validateDiscreteVarTypes(
+      elem._requiredDiscreteVars,
+      `Discrete constraint "${elem.name}" embedded in logical constraint "${lcName}"`
+    );
+    validateLinExprTree(
+      elem.lhs,
+      `constraint "${elem.name}" embedded in logical constraint "${lcName}"`,
+      modelName,
+      isOwnedVar,
+      {
+        constantPrefix: `Constraint "${elem.name}" embedded in logical constraint "${lcName}"`,
+        constantKind: "LHS constant",
+        varLocationPhrase: `embedded in logical constraint "${lcName}"`,
+      }
+    );
+    if (elem.sense === "!=") {
+      if (!Number.isSafeInteger(elem.rhs)) {
+        throw new Error(
+          `Discrete "!=" in constraint "${elem.name}" embedded in logical constraint "${lcName}" requires a safe integer RHS, received ${elem.rhs}.`
+        );
+      }
+      collectAndValidateDiscreteExpr(
+        elem.lhs,
+        `Discrete "!=" in constraint "${elem.name}" embedded in logical constraint "${lcName}"`
       );
-    }
-    for (const [v, coeff] of elem.lhs.terms) {
-      if (!isOwnedVar(v)) {
-        throw new Error(
-          `Variable "${v.name}" embedded in logical constraint "${lcName}" does not belong to model "${modelName}".`
-        );
-      }
-      if (!Number.isFinite(coeff)) {
-        throw new Error(
-          `Variable "${v.name}" embedded in logical constraint "${lcName}" has invalid coefficient: ${coeff}.`
-        );
-      }
     }
   }
 }

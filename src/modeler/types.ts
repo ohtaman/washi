@@ -38,7 +38,7 @@ export function normalizeSense(sense?: OptimizationSense): "Maximize" | "Minimiz
 }
 
 
-export type ComparisonSense = "<=" | ">=" | "==";
+export type ComparisonSense = "<=" | ">=" | "==" | "!=";
 
 export type SolverStatus =
   | "Optimal"
