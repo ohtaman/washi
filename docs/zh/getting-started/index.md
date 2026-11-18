@@ -2,29 +2,6 @@
 
 **WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）为 TypeScript / JavaScript 带来了类似于 Python **PuLP** 的代数建模方式。通过标签模板字面量（`expr`）直观地编写代数公式，并借助 WebAssembly 求解器（**HiGHS**, **Pumpkin**, **Z3**, **GLPK**）直接在 **Node.js 与浏览器** 中求解数理优化与约束规划问题。
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("production");
-
-// 1. 定义决策变量（设置合理的有限上下界 lb / ub）
-const desks = m.integer("desks", { lb: 0, ub: 100 });
-const chairs = m.integer("chairs", { lb: 0, ub: 100 });
-
-// 2. 设定目标函数与约束条件
-m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
-m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
-
-// 3. 求解（默认内置 HiGHS WebAssembly）并验证结果
-const status = await m.solve();
-if (m.hasPrimalSolution) {
-  const report = m.validateSolution();
-  console.log(status, report.valid); // "Optimal", true
-  console.log(`利润: ${m.objectiveValue} (书桌=${desks.value}, 椅子=${chairs.value})`); // 1100 (书桌=20, 椅子=10)
-}
-```
-
 ---
 
 ## 📦 安装
@@ -63,19 +40,42 @@ npx skills add ohtaman/washi
 
 ---
 
-## 🔍 基本工作流要点
+## 🚀 快速开始
 
-开篇代码涵盖了 WaSHI 建模的三个核心要点：
+以下生产规划问题展示了 WaSHI 建模的基本流程（1. 定义变量 $\to$ 2. 设置目标函数与约束 $\to$ 3. 求解与校验）：
 
-1. **为变量提供合理的有限上下界（`lb`, `ub`）**：使用 `m.continuous` / `m.integer` / `m.binary` 定义变量时，指定有限上下界有助于强化 MIP 预处理（Presolve）并为逻辑约束自动推导紧凑的 Big-M。
-2. **用 `expr` 编写目标函数与约束**：使用 `` m.objective(maximize(expr`...`)) `` 与 `` m.constraint(expr`... <= ...`, "名称") ``。为约束命名可在模型不可行（Infeasible）时直接定位冲突规则。
-3. **检查 `hasPrimalSolution` 并调用 `validateSolution()`**：在 `await m.solve()` 之后，先通过 `m.hasPrimalSolution` 确认存在可行解再读取变量的 `.value`；调用 `m.validateSolution()` 可在容差范围内独立校验边界、整数性与约束满足情况。
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model("production");
+
+// 1. 定义决策变量（设置合理的有限上下界 lb / ub）
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
+
+// 2. 设定目标函数与约束条件
+m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
+
+// 3. 求解（默认内置 HiGHS WebAssembly）并验证结果
+const status = await m.solve();
+if (m.hasPrimalSolution) {
+  const report = m.validateSolution();
+  console.log(status, report.valid); // "Optimal", true
+  console.log(`利润: ${m.objectiveValue} (书桌=${desks.value}, 椅子=${chairs.value})`); // 1100 (书桌=20, 椅子=10)
+}
+```
+
+1. **定义决策变量（`lb`, `ub`）**：使用 `m.continuous()`、`m.integer()` 或 `m.binary()` 定义变量，并在已知范围时指定有限上下界。
+2. **用 `expr` 编写目标函数与约束**：使用 `` expr`...` `` 直观书写代数公式；为约束命名可在模型不可行（`Infeasible`）时快速定位冲突原因。
+3. **求解并校验结果（`solve`, `validateSolution`）**：调用 `await m.solve()` 使用内置 HiGHS 求解器求解。先检查 `m.hasPrimalSolution` 再读取变量的 `.value`，并可调用 `m.validateSolution()` 独立校验边界、整数性与约束满足情况。
 
 ---
 
 ## 🧭 下一步
 
-- **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与不可行冲突诊断（Unsat Core）
-- **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 11 个可在页面内直接运行的建模示例
+- **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与冲突诊断
+- **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 12 个可参考与运行的建模示例
 - **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与 Pumpkin，以及可选 Z3、GLPK 求解器的特性对比与切换方式
 - **[运行时环境配置](/zh/getting-started/runtimes)**：Node.js、Vite / Next.js 打包工具、CDN 与静态托管配置说明

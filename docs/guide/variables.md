@@ -117,10 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). |
+| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). Pass `-Infinity` for free lower bounds. |
 | `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
+| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalar variables and indexed arrays/matrices (e.g., `queen_0_0`). |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
 | `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP warm start), kept distinct from solved `variable.value`. |
+
+### Designing Bounds (`lb` & `ub`)
+
+- **Default non-negativity**: Numeric variables default to `lb: 0, ub: Infinity`. If a variable can take negative values (such as net inventory change or deviation), explicitly pass `{ lb: -Infinity }`.
+- **Prefer realistic finite bounds**: Specifying finite `lb` and `ub` values strengthens MIP presolve, allows `m.indicator()` to derive tight Big-M constants automatically, and is required by bounded-integer CP solvers such as **Pumpkin**.
 
 ---
 

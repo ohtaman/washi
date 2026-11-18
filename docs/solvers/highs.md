@@ -16,26 +16,6 @@ In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly compiled directly from o
 
 ---
 
-## Architecture & WebAssembly Runtime
-
-WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) with `-fwasm-exceptions` and single-threaded universal portability (`-DHIGHS_NO_DEFAULT_THREADS=ON`). By interfacing directly with HiGHS's native C API (`highs_c_api.h`), WaSHI achieves zero-copy solution extraction via typed array views on WebAssembly linear memory, rapid upstream release tracking, and a self-contained zero-dependency distribution.
-
-### Callbacks & Solver Interactivity
-
-- **Progress Monitoring & Cancellation (Supported)**:
-  Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
-- **Dynamic Cuts / Lazy Constraints (Not Exposed in WASM Driver)**:
-  WaSHI's HiGHS WebAssembly C API driver currently binds logging, progress, interrupt, and incumbent callbacks and does not expose in-tree lazy constraint or user cut callbacks across the WASM-to-JS boundary. For problems requiring dynamic subtour elimination or Benders decomposition, use [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-decomposition-solvebenders) (or a manual outer cutting-plane loop: solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve), which iteratively separates cuts and converges to the same exact optimal solution.
-
-### WebAssembly Asset Lifecycle & On-Demand Builds
-
-HiGHS's WebAssembly binary (`public/highs.wasm`) and runtime driver (`runtime.js`) are managed via `highs.config.json` with cryptographic SHA-256 verification:
-- **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-highs-wasm.mjs`, verifying local assets in milliseconds before bundling.
-- **On-Demand Release Download**: When assets are missing or updated, `ensure-highs-wasm.mjs` automatically downloads verified binaries from WaSHI's GitHub Release assets.
-- **Compiling from Source**: When updating HiGHS or modifying compiler flags, run `npm run build:highs-wasm` with the Emscripten SDK (`emcc`), CMake, and Ninja installed, and upload the rebuilt assets to the `highs-<version>` GitHub Release tag (`gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber`) so on-demand downloads match `highs.config.json` (or run `.github/workflows/build-wasm.yml` and commit the `highs-wasm-assets` artifact including `highs.config.json`).
-
----
-
 ## Supported Problem Classes
 
 ### 1. Linear Programming (LP)
@@ -123,6 +103,21 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## Architecture & WebAssembly Runtime
+
+WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) with `-fwasm-exceptions` and single-threaded universal portability (`-DHIGHS_NO_DEFAULT_THREADS=ON`). By interfacing directly with HiGHS's native C API (`highs_c_api.h`), WaSHI achieves zero-copy solution extraction via typed array views on WebAssembly linear memory, rapid upstream release tracking, and a self-contained zero-dependency distribution.
+
+Bundled `highs.wasm` and `runtime.js` artifacts are tracked and verified via SHA-256 checksums in `highs.config.json`. Maintainers rebuilding HiGHS from source can follow the instructions in [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow).
+
+### Callbacks & Solver Interactivity
+
+- **Progress Monitoring & Cancellation (Supported)**:
+  Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
+- **Dynamic Cuts / Lazy Constraints (Not Exposed in WASM Driver)**:
+  WaSHI's HiGHS WebAssembly C API driver currently binds logging, progress, interrupt, and incumbent callbacks and does not expose in-tree lazy constraint or user cut callbacks across the WASM-to-JS boundary. For problems requiring dynamic subtour elimination or Benders decomposition, use [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-decomposition-solvebenders) (or a manual outer cutting-plane loop: solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve), which iteratively separates cuts and converges to the same exact optimal solution.
 
 ---
 

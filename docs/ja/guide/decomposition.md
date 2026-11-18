@@ -9,65 +9,6 @@
 
 ---
 
-## 基礎プリミティブ
-
-分解オーケストレーターの内部でも利用されている以下の低レベル API は、独自の反復アルゴリズムからも直接呼び出せます。
-
-### 1. 制約の双対変数 (`c.dual`)
-連続線形計画（LP）を解いた後、各制約の右辺定数（RHS）を 1 単位変化させたときの目的関数への限界寄与（シャドウプライス）を取得します：
-
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model();
-const x = m.continuous("x", { lb: 0 });
-const y = m.continuous("y", { lb: 0 });
-
-m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
-await m.solve();
-
-console.log(c.dual);                    // 双対変数 / シャドウプライス
-console.log(m.solution?.duals.capacity); // 制約名からの参照
-```
-
-### 2. 連続 LP 緩和 (`m.relax()`)
-`m.relax()` は、モデル内のすべての `Integer` / `Binary` 変数を `[lb, ub]` 内の連続変数として一時的に緩和して LP を解き、`m.solution.duals` に双対変数を格納します：
-
-```typescript
-// 連続 LP 緩和を解き、制約のシャドウプライスを m.solution.duals にセット
-const status = await m.relax();
-console.log("LP 緩和の目的関数値:", m.objectiveValue);
-```
-
-### 3. 動的な列追加 (`m.addColumn()`)
-新しい決定変数の作成、目的関数係数の設定、および既存の名前付き制約への係数追加を 1 回の呼び出しで行います：
-
-```typescript
-const col = m.addColumn({
-  name: "pattern_1",
-  type: "Integer", // または "Continuous" / "Binary"
-  lb: 0,
-  cost: 1, // 目的関数の係数
-  coefficients: {
-    capacity: 2,
-  },
-});
-```
-
-### 4. 制約項の動的更新 (`c.addTerm()` / `c.setTerm()`)
-既存の線形制約に含まれる特定変数の係数を動的に加算または上書きします：
-
-```typescript
-const extra = m.continuous("extra", { lb: 0 });
-const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
-
-budget.addTerm(extra, 5); // 左辺に +5 * extra を加算
-budget.setTerm(extra, 0); // 0 をセットすると該当変数の項を削除
-```
-
----
-
 ## 列生成法 (`solveColumnGeneration`)
 
 `master.solveColumnGeneration(options)` は、少数の初期列を持つ**制限主問題（Restricted Master Problem, RMP）**から開始し、以下のループを実行します：
@@ -255,6 +196,65 @@ const result = await master.solveBenders({
 });
 
 console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
+```
+
+---
+
+## 低レベルプリミティブ（独自ループ向け）
+
+上記の分解オーケストレーターは内部で以下の4つの低レベル API を利用しており、独自の切除平面ループや列生成アルゴリズムを組む際に直接呼び出すこともできます：
+
+### 1. 制約の双対変数 (`c.dual`)
+連続線形計画（LP）を解いた後、各制約の右辺定数（RHS）を 1 単位変化させたときの目的関数への限界寄与（シャドウプライス）を取得します：
+
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
+const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+await m.solve();
+
+console.log(c.dual);                    // 双対変数 / シャドウプライス
+console.log(m.solution?.duals.capacity); // 制約名からの参照
+```
+
+### 2. 連続 LP 緩和 (`m.relax()`)
+`m.relax()` は、モデル内のすべての `Integer` / `Binary` 変数を `[lb, ub]` 内の連続変数として一時的に緩和して LP を解き、`m.solution.duals` に双対変数を格納します：
+
+```typescript
+// 連続 LP 緩和を解き、制約のシャドウプライスを m.solution.duals にセット
+const status = await m.relax();
+console.log("LP 緩和の目的関数値:", m.objectiveValue);
+```
+
+### 3. 動的な列追加 (`m.addColumn()`)
+新しい決定変数の作成、目的関数係数の設定、および既存の名前付き制約への係数追加を 1 回の呼び出しで行います：
+
+```typescript
+const col = m.addColumn({
+  name: "pattern_1",
+  type: "Integer", // または "Continuous" / "Binary"
+  lb: 0,
+  cost: 1, // 目的関数の係数
+  coefficients: {
+    capacity: 2,
+  },
+});
+```
+
+### 4. 制約項の動的更新 (`c.addTerm()` / `c.setTerm()`)
+既存の線形制約に含まれる特定変数の係数を動的に加算または上書きします：
+
+```typescript
+const extra = m.continuous("extra", { lb: 0 });
+const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
+
+budget.addTerm(extra, 5); // 左辺に +5 * extra を加算
+budget.setTerm(extra, 0); // 0 をセットすると該当変数の項を削除
 ```
 
 ---

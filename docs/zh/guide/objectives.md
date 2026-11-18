@@ -66,6 +66,57 @@ const status = await m.solve({
 
 ---
 
+## 读取结果、边界与求解器状态
+
+求解完成后，可在 `Model` 实例上读取状态、最优值以及 MIP 最优性边界指标：
+
+```typescript
+const status = await m.solve();
+
+console.log("Status:", m.status);                         // 例如 "Optimal" 或 "Feasible"
+console.log("Termination Reason:", m.terminationStatus);  // 例如 "Optimal", "TimeLimit", "Interrupted"
+console.log("Has Primal Solution:", m.hasPrimalSolution); // 当 x.value / m.objectiveValue 可用时为 true
+
+// 目标函数与 MIP 间隙指标
+console.log("Objective Value:", m.objectiveValue);        // 最佳原问题目标值 (或 null)
+console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (或 undefined)
+console.log("Relative Gap:", m.relGap);                   // 相对 MIP 间隙 (别名: m.mipGap)
+console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
+
+// 读取变量值（通过 .value 或按名称索引的 m.values Map）
+console.log("x =", x.value, "y =", y.value);
+console.log("x by name:", m.values.get("x"));
+```
+
+> [!TIP]
+> 如需在容差范围内独立校验返回解是否满足所有变量边界、整数性与约束，请调用 `m.validateSolution()`——详见[冲突诊断、验证与调试](./unsat-core.md)。
+
+### 理解 `m.status` 与 `m.terminationStatus` 的区别
+
+当 MIP 求解器因时间上限（`timeLimit`）、迭代次数上限或 `AbortSignal` 而提前停止时，需要区分两个核心问题：
+1. **是否存在可用的可行解？**（`m.hasPrimalSolution` / `m.status`）
+2. **求解器为什么停止？**（`m.terminationStatus`）
+
+如果在触发 `timeLimit` 或 `signal.abort()` 之前已经找到了满足整数约束的可行解（Incumbent），WaSHI 会将 `m.status` 设为 `"Feasible"`（表示 `x.value` 和 `m.objectiveValue` 中保存了合法的可行解），同时将 `m.terminationStatus` 设为 `"TimeLimit"`（或 `"Interrupted"`）。如果在停止前尚未找到任何可行解，则 `m.hasPrimalSolution` 为 `false`，`m.terminationStatus` 记录停止原因（`"TimeLimit"`、`"IterationLimit"` 或 `"Interrupted"`），而 `m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`（当通过 `AbortSignal` 取消且尚无可行解时）。
+
+### 所有 `SolverStatus` 状态值一览
+
+| 状态 | `hasPrimalSolution` | 含义 |
+| :--- | :--- | :--- |
+| `"Optimal"` | `true` | 已证明找到全局最优解（在容差范围内）。 |
+| `"Feasible"` | `true` | 已找到合法的原问题可行解（Incumbent），但在证明全局最优性之前停止（具体停止原因见 `terminationStatus`：`"TimeLimit"`、`"IterationLimit"`、`"Interrupted"` 等）。 |
+| `"Sat"` | `true` | 约束集合可满足（`m.check()`）。 |
+| `"Infeasible"` | `false` | 数学上已证明模型不可行；不存在同时满足所有约束的解。 |
+| `"Unsat"` | `false` | 逻辑或算术约束集合不可满足（`m.check()`）。 |
+| `"Unbounded"` | `false` | 在不违反任何约束的前提下，目标函数值可以无限优化（无界）。 |
+| `"TimeLimit"` | `false` | 在找到任何原问题可行解之前已达到时间上限。 |
+| `"IterationLimit"` | `false` | 在找到任何原问题可行解之前已达到迭代次数上限。 |
+| `"Unknown"` | `false` | 求解器未得出确定结论且未找到合法原问题解（包括在找到可行解前被 `AbortSignal` 取消的情况，此时 `terminationStatus === "Interrupted"`）。 |
+| `"Error"` | `false` | 求解器遇到内部执行错误。 |
+| `"NotSolved"` | `false` | 求解前的初始状态，或模型被修改后已重置解状态。 |
+
+---
+
 ## 实时进度回调 (`onProgress`) 与取消执行 (`AbortSignal`)
 
 在交互式 UI 中运行耗时较长的 MIP 优化时，您可以通过 `onProgress` 实时获取分支定界法的进度流（`SolveProgressEvent`），并借助 `AbortController` 让用户随时安全地中断求解：
@@ -109,54 +160,6 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 | `nodes` | `number \| undefined` | 截至目前已探索的分支定界节点数。 |
 | `iterations` | `number \| undefined` | 求解器迭代次数（单纯形法、内点法或 MIP LP 迭代）。 |
 | `message` | `string \| undefined` | 求解器输出的原始进度日志行。 |
-
----
-
-## 读取结果、边界与求解器状态
-
-求解完成后，可在 `Model` 实例上读取状态、最优值以及 MIP 最优性边界指标：
-
-```typescript
-const status = await m.solve();
-
-console.log("Status:", m.status);                         // 例如 "Optimal" 或 "Feasible"
-console.log("Termination Reason:", m.terminationStatus);  // 例如 "Optimal", "TimeLimit", "Interrupted"
-console.log("Has Primal Solution:", m.hasPrimalSolution); // 当 x.value / m.objectiveValue 可用时为 true
-
-// 目标函数与 MIP 间隙指标
-console.log("Objective Value:", m.objectiveValue);        // 最佳原问题目标值 (或 null)
-console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (或 undefined)
-console.log("Relative Gap:", m.relGap);                   // 相对 MIP 间隙 (别名: m.mipGap)
-console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
-
-// 读取变量值（通过 .value 或按名称索引的 m.values Map）
-console.log("x =", x.value, "y =", y.value);
-console.log("x by name:", m.values.get("x"));
-```
-
-### 理解 `m.status` 与 `m.terminationStatus` 的区别
-
-当 MIP 求解器因时间上限（`timeLimit`）、迭代次数上限或 `AbortSignal` 而提前停止时，需要区分两个核心问题：
-1. **是否存在可用的可行解？**（`m.hasPrimalSolution` / `m.status`）
-2. **求解器为什么停止？**（`m.terminationStatus`）
-
-如果在触发 `timeLimit` 或 `signal.abort()` 之前已经找到了满足整数约束的可行解（Incumbent），WaSHI 会将 `m.status` 设为 `"Feasible"`（表示 `x.value` 和 `m.objectiveValue` 中保存了合法的可行解），同时将 `m.terminationStatus` 设为 `"TimeLimit"`（或 `"Interrupted"`）。如果在停止前尚未找到任何可行解，则 `m.hasPrimalSolution` 为 `false`，`m.terminationStatus` 记录停止原因（`"TimeLimit"`、`"IterationLimit"` 或 `"Interrupted"`），而 `m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`（当通过 `AbortSignal` 取消且尚无可行解时）。
-
-### 所有 `SolverStatus` 状态值一览
-
-| 状态 | `hasPrimalSolution` | 含义 |
-| :--- | :--- | :--- |
-| `"Optimal"` | `true` | 已证明找到全局最优解（在容差范围内）。 |
-| `"Feasible"` | `true` | 已找到合法的原问题可行解（Incumbent），但在证明全局最优性之前停止（具体停止原因见 `terminationStatus`：`"TimeLimit"`、`"IterationLimit"`、`"Interrupted"` 等）。 |
-| `"Sat"` | `true` | 约束集合可满足（`m.check()`）。 |
-| `"Infeasible"` | `false` | 数学上已证明模型不可行；不存在同时满足所有约束的解。 |
-| `"Unsat"` | `false` | 逻辑或算术约束集合不可满足（`m.check()`）。 |
-| `"Unbounded"` | `false` | 在不违反任何约束的前提下，目标函数值可以无限优化（无界）。 |
-| `"TimeLimit"` | `false` | 在找到任何原问题可行解之前已达到时间上限。 |
-| `"IterationLimit"` | `false` | 在找到任何原问题可行解之前已达到迭代次数上限。 |
-| `"Unknown"` | `false` | 求解器未得出确定结论且未找到合法原问题解（包括在找到可行解前被 `AbortSignal` 取消的情况，此时 `terminationStatus === "Interrupted"`）。 |
-| `"Error"` | `false` | 求解器遇到内部执行错误。 |
-| `"NotSolved"` | `false` | 求解前的初始状态，或模型被修改后已重置解状态。 |
 
 ---
 

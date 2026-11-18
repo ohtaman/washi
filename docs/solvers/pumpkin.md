@@ -11,29 +11,9 @@ Unlike multi-threaded WASM engines, Pumpkin runs as a single-threaded WebAssembl
 - **Bundled & Zero External Dependencies**: `pumpkin.wasm` (`~1.4 MB`) is shipped directly with `@ohtaman/washi` and tree-shaken into `@ohtaman/washi/solvers/pumpkin`—no separate `npm install` peer dependency or Rust toolchain required.
 - **Permissive MIT License**: 100% commercially friendly, including all transitive Rust WASM dependencies (`MIT`, `Apache-2.0`, `Unicode-3.0`).
 - **Background Web Worker & Zero `COOP` / `COEP`**: Runs in a dedicated Web Worker on HTTP(S) origins without `SharedArrayBuffer` or Cross-Origin Isolation headers, keeping UI rendering responsive while working in standard static hosts and third-party iframes.
-- **Native CP Global Constraints & Propagators**: Lowers `distinct()`, `disjoint()`, `cumulative()`, `allowed()`, `at()`, `max()` / `min()` / `abs()`, discrete `!=`, and `m.indicator()` (with `M` omitted) directly to Pumpkin propagators and native `implied_by` constraints.
+- **Native CP Global Constraints & Propagators**: Lowers `distinct()` (`all_different` via pairwise `binary_not_equals` in Pumpkin `v0.5.0`), `disjoint()` (`disjunctive_strict` Vilím edge-finding), `cumulative()` (time-table filtering), `allowed()` / `not(allowed())` (`table` / `negative_table`), `at()` (`element`), `max()` / `min()` / `abs()` (`maximum` / `minimum` / `absolute`), discrete `!=` (`not_equals`), and `m.indicator()` (with `M` omitted, via `implied_by`) directly to Pumpkin constraints.
 - **Zero-`COOP` / `COEP` Unsat Core Diagnosis**: `await model.check({ solver: "pumpkin" })` extracts conflicting named rules (`unsatCore` / `conflicts`) over bounded integer and boolean constraints in standard browser contexts.
-- **Warm-Start Support (`initialValue`)**: Supports primal initial value hints (`initialValue`) on bounded `Integer` and `Binary` variables in both `solve()` and `check()` via Pumpkin's `WarmStart` brancher.
-
----
-
-## Architecture & WebAssembly Runtime
-
-WaSHI compiles its Rust WebAssembly wrapper (`wasm/pumpkin`, linking `pumpkin-core`, `pumpkin-constraints`, `pumpkin-propagators`, and `pumpkin-conflict-resolvers` `v0.5.0` to `wasm32-unknown-unknown`) directly to `pumpkin.wasm` with `wasm-bindgen` bindings.
-
-### Callbacks & Solver Interactivity
-
-- **Progress Monitoring & Cancellation (Supported)**:
-  During `solve()`, Pumpkin emits real-time incumbent progress callbacks (`onProgress`, providing `elapsedTime` and `objectiveValue`) and honors `AbortSignal`: browser Web Worker execution supports preemptive mid-solve Worker termination and queue cancellation, while main-thread and Node.js runs poll cooperative `should_abort` checkpoints across branching and termination hooks.
-- **Exact Discrete Optimality**:
-  As an exact LCG solver over finite integer domains, Pumpkin proves optimality via nogood clause learning and objective-bound strengthening (`LinearSatUnsat`) rather than LP relaxation tolerances (`mipGap`, `relGap`, `absGap`, or `presolve`).
-
-### WebAssembly Asset Lifecycle & On-Demand Builds
-
-Pumpkin's WebAssembly binary (`public/pumpkin.wasm`) and JS/TS runtime bindings (`runtime.js` / `runtime.d.ts`) are tracked via `pumpkin.config.json` with cryptographic SHA-256 verification:
-- **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-pumpkin-wasm.mjs`, verifying local assets in milliseconds before bundling.
-- **On-Demand Release Download**: When assets are missing or updated, `ensure-pumpkin-wasm.mjs` automatically downloads verified binaries from WaSHI's `pumpkin-v<version>` GitHub Release assets (`downloadUrl` in `pumpkin.config.json`).
-- **Compiling from Source**: When upgrading Pumpkin or modifying `wasm/pumpkin`, install Rust with the `wasm32-unknown-unknown` target, optionally bump crate/config versions with `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>`, run `npm run build:pumpkin-wasm`, and sync the rebuilt assets to the `pumpkin-v<version>` GitHub Release tag (`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`, or create the release with `gh release create` / trigger `.github/workflows/build-pumpkin-wasm.yml` and commit the updated files from the `pumpkin-wasm-assets` artifact).
+- **Warm-Start Support (`initialValue`)**: Supports non-binding primal initial value hints (`initialValue`, `supportsWarmStart: true`) on bounded `Integer` and `Binary` variables in both `solve()` and `check()` via Pumpkin's `WarmStart` brancher (kept distinct from solved `Var.value`).
 
 ---
 
@@ -131,8 +111,6 @@ Pumpkin is strictly a **bounded integer & boolean CP/LCG solver**. Unsupported c
 
 - **Bounded integer / binary / boolean variables only**: All `Var` instances must be finite integers (`Integer` or `Binary`) with `lb` and `ub` within `[-(2^30 - 1), 2^30 - 1]`. Unbounded integers (`-Infinity` / `Infinity`) and `Continuous` variables throw an explicit error.
 - **Integer linear arithmetic**: Constraint coefficients, adjusted RHS values (`rhs - lhs.constant`), and scaled variable bounds must be exact integers within safe signed 32-bit range (`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`). Objective constants (`f64`) may be fractional.
-- **Warm-start hints (`initialValue`)**: Optional primal initial values (`supportsWarmStart: true`) are supported on bounded `Integer` and `Binary` variables in both `solve()` and `check()`, applied as non-binding branching hints via Pumpkin's `WarmStart` brancher (with `Var.initialValue` kept distinct from solved `Var.value`).
-- **Native CP & Piecewise Propagators**: WaSHI lowers `distinct()` (`all_different`, pairwise `binary_not_equals` decomposition in Pumpkin `v0.5.0`), `disjoint()` (`disjunctive_strict` Vilím edge-finding), `cumulative()` (time-table filtering), `allowed()` / `not(allowed())` (`table` / `negative_table`), `at()` (`element`), `max()`/`min()`/`abs()` (`maximum`/`minimum`/`absolute`), discrete `!=` (`not_equals`), and `m.indicator()` with omitted `M` (`implied_by`) directly to Pumpkin constraints.
 - **Unsupported features**: `QuadExpr` objectives/constraints, `Continuous` variables, unbounded variables, and `relax: true` throw explicit errors.
 
 ---
@@ -160,6 +138,21 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 If `pumpkin.wasm` cannot be loaded or returns an HTML SPA fallback instead of a WebAssembly binary, Pumpkin rejects explicitly with the attempted URL and performs **no silent CDN fallback**.
+
+---
+
+## Architecture & WebAssembly Runtime
+
+WaSHI compiles its Rust WebAssembly wrapper (`wasm/pumpkin`, linking `pumpkin-core`, `pumpkin-constraints`, `pumpkin-propagators`, and `pumpkin-conflict-resolvers` `v0.5.0` to `wasm32-unknown-unknown`) directly to `pumpkin.wasm` with `wasm-bindgen` bindings.
+
+Bundled `pumpkin.wasm` and `runtime.js` / `runtime.d.ts` artifacts are tracked and verified via SHA-256 checksums in `pumpkin.config.json`. Maintainers rebuilding Pumpkin from source can follow the instructions in [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow).
+
+### Callbacks & Solver Interactivity
+
+- **Progress Monitoring & Cancellation (Supported)**:
+  During `solve()`, Pumpkin emits real-time incumbent progress callbacks (`onProgress`, providing `elapsedTime` and `objectiveValue`) and honors `AbortSignal`: browser Web Worker execution supports preemptive mid-solve Worker termination and queue cancellation, while main-thread and Node.js runs poll cooperative `should_abort` checkpoints across branching and termination hooks.
+- **Exact Discrete Optimality**:
+  As an exact LCG solver over finite integer domains, Pumpkin proves optimality via nogood clause learning and objective-bound strengthening (`LinearSatUnsat`) rather than LP relaxation tolerances (`mipGap`, `relGap`, `absGap`, or `presolve`).
 
 ---
 

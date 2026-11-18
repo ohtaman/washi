@@ -83,6 +83,22 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ---
 
+## 双対変数（潜在価格）とスラックの取得
+
+連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.getConstraintByName()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
+
+```typescript
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+
+await m.solve();
+
+console.log("潜在価格 (dual):", woodConstraint.dual);
+console.log("余剰 (slack):", woodConstraint.slack);
+console.log("線形制約の総数:", m.numConstrs);
+```
+
+---
+
 ## 条件付き制約 / インジケータ制約 (`m.indicator`)
 
 バイナリ決定変数（`m.binary()`）が特定の値（`1` または `0`）のときだけ線形制約を有効にしたい場合は、`m.indicator()` を使用します：
@@ -153,6 +169,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
+名前付きの論理制約は `m.getLogicalConstraintByName(name)` で検索できます。
+
 ### `m.indicator()` と `implies()` の使い分け
 
 | 項目 | `m.indicator(binVar, constraint, opts)` | `implies(a, b)` / `a.implies(b)` |
@@ -187,7 +205,7 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin: not_equals,
 
 ## CP グローバル制約 (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-`and` / `or` / `not` / `implies` / `xor` と合成可能な `BoolExpr` を返すグローバル制約を提供しています：
+`and` / `or` / `not` / `implies` / `xor` と合成可能な `BoolExpr` を返すグローバル制約を提供しています。区間スケジューリング・対称性除去・**Pumpkin** 向け定式化の詳細は [制約プログラミング (CP) モデリングガイド](./constraint-programming.md) を参照してください。
 
 | グローバル制約 | 意味論 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -209,24 +227,6 @@ m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
 m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
 m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
-
----
-
-## 双対変数（潜在価格）とスラックの取得
-
-連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.getConstraintByName()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
-
-```typescript
-const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
-
-await m.solve();
-
-console.log("潜在価格 (dual):", woodConstraint.dual);
-console.log("余剰 (slack):", woodConstraint.slack);
-console.log("線形制約の総数:", m.numConstrs);
-```
-
-名前付きの論理制約は `m.getLogicalConstraintByName(name)` で検索できます。
 
 > [!TIP]
 > **スラック変数を用いたソフト制約化**や**同一リソースの対称性除去（Symmetry Breaking）**などの定式化テクニックについては、[定式化パターン・Tips](./formulation-tips.md#constraint-design) を参照してください。

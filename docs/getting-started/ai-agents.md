@@ -342,7 +342,7 @@ export function verifyNegativePatterns() {
 ### Practical OR Modeling Guardrails
 
 - **Prefer inequalities (`>=` / `<=`) over exact equalities (`==`)** for demand coverage and resource limits when objective costs are positive; reserve `==` for physical conservation laws (e.g., flow balance, portfolio weights summing to `1`).
-- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M instead of falling back to `1e6`.
+- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M (`m.indicator()` throws if required bounds are infinite and no explicit `M` is provided).
 - **Use soft constraints (elastic slack variables)** for non-rigid business targets (e.g., preferred staffing, safety stock, day-off requests) by adding a non-negative slack variable (`lb: 0`) with a tiered objective penalty, reserving hard constraints for physical or legal invariants.
 
 

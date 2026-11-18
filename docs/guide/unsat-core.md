@@ -1,10 +1,11 @@
-# Conflict Diagnosis (`unsatCore`) & Solution Validation
+# Conflict Diagnosis (`unsatCore`), Validation & Debugging
 
-When building real-world optimization and configuration systems, two verification questions arise constantly:
-1. **Why is my model infeasible?** Which specific business rules contradict each other?
-2. **Does the solver's solution genuinely satisfy every constraint?** How do I verify tolerances, integrality, and formulations?
+When building real-world optimization and rule systems, you need to diagnose infeasible models, verify returned solutions, and inspect or unit-test formulations cleanly.
 
-WaSHI provides built-in tools for both: **conflict diagnosis** via built-in HiGHS elastic relaxation, bundled Pumpkin Unsat Core, or Z3 Unsat Core (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
+WaSHI provides a unified verification and debugging toolkit for all three:
+- **Conflict diagnosis (`m.check()`)**: Pinpoint contradictory constraints via built-in HiGHS elastic relaxation, bundled Pumpkin Unsat Core, or Z3 Unsat Core.
+- **Solution validation & LP inspection (`m.validateSolution()`, `m.toLpString()`)**: Independently verify variable bounds, integrality, and constraints, and export CPLEX `.lp` text to inspect generated equations.
+- **Fast unit testing (`MockSolver`)**: Test application model-building and post-processing logic in CI without loading WebAssembly.
 
 ---
 

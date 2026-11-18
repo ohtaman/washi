@@ -16,26 +16,6 @@
 
 ---
 
-## アーキテクチャと WebAssembly ランタイム
-
-WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接ビルドし（`-fwasm-exceptions`、シングルスレッド可搬性 `-DHIGHS_NO_DEFAULT_THREADS=ON`）、ネイティブ C API（`highs_c_api.h`）を通じて直接連携しています。これにより、WebAssembly 線形メモリ上の TypedArray ビューによるゼロコピー解抽出、上流リリースの迅速な追従、および依存ゼロの自己完結型パッケージングを実現しています。
-
-### コールバックと対話的制御
-
-- **進捗監視と途中中断（対応済み）**:
-  HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
-- **動的カット生成・遅延制約（WASM ドライバで未公開）**:
-  WaSHI の HiGHS WebAssembly C API ドライバは現在ロギング・進捗・割り込み・暫定解コールバックのみをバインドしており、探索木内部の遅延制約（lazy constraints）やユーザーカット（user cuts）コールバックは WASM ↔ JS 境界越しに公開していません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、外側の反復カット分離ループとして同じ厳密最適解へ収束する [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（または手動の切除平面ループ：解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）をご利用ください。
-
-### WebAssembly アセットの管理とオンデマンドビルド
-
-HiGHS の WebAssembly バイナリ（`public/highs.wasm`）とランタイム（`runtime.js`）は、`highs.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
-- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-highs-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
-- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-highs-wasm.mjs` が WaSHI リポジトリの GitHub Release アセットから検証済みバイナリを自動取得します。
-- **ソースからのコンパイル**: HiGHS のバージョンアップやビルドフラグ変更時は、Emscripten SDK（`emcc`）、CMake、Ninja があれば `npm run build:highs-wasm` でローカル再ビルドでき、マージ後に `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` で Release アセットを同期します（`.github/workflows/build-wasm.yml` でビルド・Release 反映し、生成された `highs-wasm-assets` アーティファクトの `highs.config.json` 等をコミットすることも可能です）。
-
----
-
 ## 対応する問題クラス
 
 ### 1. 線形計画問題 (LP)
@@ -118,6 +98,21 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## アーキテクチャと WebAssembly ランタイム
+
+WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接ビルドし（`-fwasm-exceptions`、シングルスレッド可搬性 `-DHIGHS_NO_DEFAULT_THREADS=ON`）、ネイティブ C API（`highs_c_api.h`）を通じて直接連携しています。これにより、WebAssembly 線形メモリ上の TypedArray ビューによるゼロコピー解抽出、上流リリースの迅速な追従、および依存ゼロの自己完結型パッケージングを実現しています。
+
+同梱の `highs.wasm` と `runtime.js` は `highs.config.json` の SHA-256 チェックサムで整合性が検証されています。ソースからの再ビルドや Release 更新を行うメンテナー向け手順は [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow) を参照してください。
+
+### コールバックと対話的制御
+
+- **進捗監視と途中中断（対応済み）**:
+  HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
+- **動的カット生成・遅延制約（WASM ドライバで未公開）**:
+  WaSHI の HiGHS WebAssembly C API ドライバは現在ロギング・進捗・割り込み・暫定解コールバックのみをバインドしており、探索木内部の遅延制約（lazy constraints）やユーザーカット（user cuts）コールバックは WASM ↔ JS 境界越しに公開していません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、外側の反復カット分離ループとして同じ厳密最適解へ収束する [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（または手動の切除平面ループ：解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）をご利用ください。
 
 ---
 

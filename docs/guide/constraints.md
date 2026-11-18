@@ -83,6 +83,22 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ---
 
+## Dual Values, Shadow Prices & Lookups
+
+For continuous Linear Programming (LP) problems, query the shadow price (`dual`) and surplus (`slack`) on each constraint (returned by `m.constraint()` or looked up via `m.getConstraintByName()`):
+
+```typescript
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+
+await m.solve();
+
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
+console.log("Total linear constraints:", m.numConstrs);
+```
+
+---
+
 ## Conditional / Indicator Constraints (`m.indicator`)
 
 When a linear constraint should only take effect when a binary decision variable (`m.binary()`) equals `1` (or `0`), use `m.indicator()`:
@@ -153,6 +169,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
+For named logical constraints, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.
+
 ### Choosing Between `m.indicator()` and `implies()`
 
 | Feature | `m.indicator(binVar, constraint, opts)` | `implies(a, b)` / `a.implies(b)` |
@@ -187,7 +205,7 @@ Expressions involving `Continuous` variables or fractional numbers in `!=`, `<`,
 
 ## CP Global Constraints (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-WaSHI provides backend-agnostic Constraint Programming predicates returning composable `BoolExpr` objects (combinable with `and`, `or`, `not`, `implies`, `xor`):
+WaSHI provides backend-agnostic Constraint Programming predicates returning composable `BoolExpr` objects (combinable with `and`, `or`, `not`, `implies`, `xor`). For interval scheduling, symmetry breaking, and solver modeling patterns with **Pumpkin**, see the dedicated [Constraint Programming (CP) Modeling Guide](./constraint-programming.md).
 
 | Predicate | Semantics | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -209,24 +227,6 @@ m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
 m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
 m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
-
----
-
-## Dual Values, Shadow Prices & Lookups
-
-For continuous Linear Programming (LP) problems, query the shadow price (`dual`) and surplus (`slack`) on each constraint (returned by `m.constraint()` or looked up via `m.getConstraintByName()`):
-
-```typescript
-const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
-
-await m.solve();
-
-console.log("Shadow price (dual):", woodConstraint.dual);
-console.log("Slack surplus:", woodConstraint.slack);
-console.log("Total linear constraints:", m.numConstrs);
-```
-
-For named logical constraints, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.
 
 > [!TIP]
 > For modeling techniques such as **soft constraints with slack variables** and **symmetry breaking**, see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_3-constraint-design-numerical-conditioning).

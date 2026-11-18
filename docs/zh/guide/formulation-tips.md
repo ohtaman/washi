@@ -77,7 +77,9 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 
 ### Min-Max 与 Max-Min 目标函数（负载均衡）
 
-LP/MIP 目标函数不能直接调用 `Math.max(...)`。若要最小化峰值负荷 $\min \max_i (\text{load}_i)$，可引入辅助上限变量 $z$，对每个个体施加约束 $\text{load}_i \le z$，然后最小化 $z$：
+WaSHI 内置的 `max(...)` 和 `min(...)` 原语（参见[分段线性与下标索引表达式](./expressions.md#分段线性与下标索引表达式-max-min-abs-at)）已自动完成 HiGHS/GLPK 的凸 LP 上境图变换，并在 Pumpkin 中直接映射为原生传播器。
+
+如果您需要在第 4 节的词典序两阶段优化等场景中显式引用上下界变量 $z$，可以手动引入辅助上限变量 $z$，对每个个体施加 $\text{load}_i \le z$ 后最小化 $z$（对称地，Max-Min 最大化最低水平时施加 $u_i \ge z$ 并最大化 $z$）：
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -96,8 +98,6 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 // 最小化 maxHours 即可将 60 小时均匀分配（每人 20 小时）
 m.objective(minimize(maxHours));
 ```
-
-*（同理，若要**最大化最低水平** $\max \min_i u_i$，只需对所有 $i$ 施加 $u_i \ge z$ 并设置 `m.objective(maximize(z))`。WaSHI 内置的 `max(...)` 和 `min(...)` 也会自动完成上述凸 LP 上境图变换，并在使用 Pumpkin 时直接映射为原生传播器——详见 [数学表达式（分段线性与元素查找）](./expressions.md)。）*
 
 ---
 

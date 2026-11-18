@@ -12,7 +12,7 @@ $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S
 
 Because there are $2^n - 2$ subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Benders Decomposition (Lazy Constraint Separation)**, constraints are added only when violated:
 1. **Master Problem**: Solves the degree-assignment relaxation (each city has 1 incoming and 1 outgoing edge).
-2. **Separation Subproblem**: Inspects the candidate solution graph. If disconnected cycles exist, it adds a **Benders Feasibility Cut** eliminating the smallest cycle and resolves until a single connected tour is obtained.
+2. **Separation Subproblem**: Inspects the candidate solution graph. If disconnected cycles exist, it adds **Benders Feasibility Cuts** eliminating all detected subtours simultaneously (multi-cut separation) and resolves until a single connected tour is obtained.
 
 ## Problem Inputs
 

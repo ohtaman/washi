@@ -279,7 +279,7 @@ export default withMermaid(
               { text: "Expressions", link: "/guide/expressions" },
               { text: "Constraints", link: "/guide/constraints" },
               { text: "Objectives & Sense", link: "/guide/objectives" },
-              { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
+              { text: "Diagnosis, Validation & Debugging", link: "/guide/unsat-core" },
               { text: "Constraint Programming (CP)", link: "/guide/constraint-programming" },
               { text: "Decomposition Methods", link: "/guide/decomposition" },
               { text: "Formulation Patterns & Tips", link: "/guide/formulation-tips" },

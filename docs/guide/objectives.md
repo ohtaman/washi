@@ -66,6 +66,57 @@ You can also pass a solver name directly as the first argument: `await m.solve("
 
 ---
 
+## Reading Results, Bounds & Solver Status
+
+After solving, query the status, optimal values, and MIP optimality bounds on the `Model`:
+
+```typescript
+const status = await m.solve();
+
+console.log("Status:", m.status);                         // e.g. "Optimal" or "Feasible"
+console.log("Termination Reason:", m.terminationStatus);  // e.g. "Optimal", "TimeLimit", "Interrupted"
+console.log("Has Primal Solution:", m.hasPrimalSolution); // true when x.value / m.objectiveValue are populated
+
+// Objective & MIP Gap Metrics
+console.log("Objective Value:", m.objectiveValue);        // Best primal objective (or null)
+console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or undefined)
+console.log("Relative Gap:", m.relGap);                   // Relative MIP gap (alias: m.mipGap)
+console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
+
+// Variable Values (via .value or name-keyed m.values Map)
+console.log("x =", x.value, "y =", y.value);
+console.log("x by name:", m.values.get("x"));
+```
+
+> [!TIP]
+> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.validateSolution()`—see [Diagnosis, Validation & Debugging](./unsat-core.md#independent-solution-validation-m-validatesolution).
+
+### Understanding `m.status` vs. `m.terminationStatus`
+
+When a MIP solver stops early due to a time limit, iteration limit, or `AbortSignal`, two distinct questions matter:
+1. **Is there a usable solution?** (`m.hasPrimalSolution` / `m.status`)
+2. **Why did the solver stop?** (`m.terminationStatus`)
+
+If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, `m.hasPrimalSolution` is `false`, `m.terminationStatus` records why the solver stopped (`"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`), and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"` (when aborted via `AbortSignal` without an incumbent).
+
+### All `SolverStatus` Values
+
+| Status | `hasPrimalSolution` | Meaning |
+| :--- | :--- | :--- |
+| `"Optimal"` | `true` | Global optimal solution proven (within tolerances). |
+| `"Feasible"` | `true` | Valid primal solution (incumbent) found, but optimality was not proven before stopping (`terminationStatus` indicates why: `"TimeLimit"`, `"IterationLimit"`, `"Interrupted"`, etc.). |
+| `"Sat"` | `true` | Constraints are satisfiable (`m.check()`). |
+| `"Infeasible"` | `false` | Proven mathematically infeasible; no solution satisfies all constraints. |
+| `"Unsat"` | `false` | Logical/arithmetic constraints are unsatisfiable (`m.check()`). |
+| `"Unbounded"` | `false` | Objective can improve indefinitely without violating constraints. |
+| `"TimeLimit"` | `false` | Time limit reached before finding any feasible primal solution. |
+| `"IterationLimit"` | `false` | Iteration limit reached before finding any feasible primal solution. |
+| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution (including when cancelled via `AbortSignal` before finding an incumbent, where `terminationStatus === "Interrupted"`). |
+| `"Error"` | `false` | Solver encountered an internal execution error. |
+| `"NotSolved"` | `false` | Initial state before solving, or after the model has been mutated. |
+
+---
+
 ## Real-Time Progress (`onProgress`) & Cancellation (`AbortSignal`)
 
 For long-running MIP optimizations in interactive UIs, you can stream live branch-and-bound progress (`SolveProgressEvent`) and allow users to cancel the solve cleanly with `AbortController`:
@@ -109,54 +160,6 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 | `nodes` | `number \| undefined` | Branch-and-bound nodes explored so far. |
 | `iterations` | `number \| undefined` | Solver iteration count (simplex, IPM, or MIP LP iterations). |
 | `message` | `string \| undefined` | Raw progress line emitted by the solver. |
-
----
-
-## Reading Results, Bounds & Solver Status
-
-After solving, query the status, optimal values, and MIP optimality bounds on the `Model`:
-
-```typescript
-const status = await m.solve();
-
-console.log("Status:", m.status);                         // e.g. "Optimal" or "Feasible"
-console.log("Termination Reason:", m.terminationStatus);  // e.g. "Optimal", "TimeLimit", "Interrupted"
-console.log("Has Primal Solution:", m.hasPrimalSolution); // true when x.value / m.objectiveValue are populated
-
-// Objective & MIP Gap Metrics
-console.log("Objective Value:", m.objectiveValue);        // Best primal objective (or null)
-console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or undefined)
-console.log("Relative Gap:", m.relGap);                   // Relative MIP gap (alias: m.mipGap)
-console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
-
-// Variable Values (via .value or name-keyed m.values Map)
-console.log("x =", x.value, "y =", y.value);
-console.log("x by name:", m.values.get("x"));
-```
-
-### Understanding `m.status` vs. `m.terminationStatus`
-
-When a MIP solver stops early due to a time limit, iteration limit, or `AbortSignal`, two distinct questions matter:
-1. **Is there a usable solution?** (`m.hasPrimalSolution` / `m.status`)
-2. **Why did the solver stop?** (`m.terminationStatus`)
-
-If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, `m.hasPrimalSolution` is `false`, `m.terminationStatus` records why the solver stopped (`"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`), and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"` (when aborted via `AbortSignal` without an incumbent).
-
-### All `SolverStatus` Values
-
-| Status | `hasPrimalSolution` | Meaning |
-| :--- | :--- | :--- |
-| `"Optimal"` | `true` | Global optimal solution proven (within tolerances). |
-| `"Feasible"` | `true` | Valid primal solution (incumbent) found, but optimality was not proven before stopping (`terminationStatus` indicates why: `"TimeLimit"`, `"IterationLimit"`, `"Interrupted"`, etc.). |
-| `"Sat"` | `true` | Constraints are satisfiable (`m.check()`). |
-| `"Infeasible"` | `false` | Proven mathematically infeasible; no solution satisfies all constraints. |
-| `"Unsat"` | `false` | Logical/arithmetic constraints are unsatisfiable (`m.check()`). |
-| `"Unbounded"` | `false` | Objective can improve indefinitely without violating constraints. |
-| `"TimeLimit"` | `false` | Time limit reached before finding any feasible primal solution. |
-| `"IterationLimit"` | `false` | Iteration limit reached before finding any feasible primal solution. |
-| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution (including when cancelled via `AbortSignal` before finding an incumbent, where `terminationStatus === "Interrupted"`). |
-| `"Error"` | `false` | Solver encountered an internal execution error. |
-| `"NotSolved"` | `false` | Initial state before solving, or after the model has been mutated. |
 
 ---
 

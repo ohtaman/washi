@@ -11,29 +11,9 @@
 - **標準同梱・追加依存なし**: `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に同梱され、`@ohtaman/washi/solvers/pumpkin` からそのまま利用できます。追加の `npm install`（peer dependency）や Rust ツールチェーンは不要です。
 - **商用利用しやすい MIT ライセンス**: トランジティブな Rust WASM 依存を含め、すべてパーミッシブなライセンス（`MIT`, `Apache-2.0`, `Unicode-3.0`）で構成されています。
 - **Web Worker バックグラウンド実行 & COOP / COEP 不要**: 通常の HTTP(S) オリジン上では `SharedArrayBuffer` や Cross-Origin Isolation ヘッダーなしで専用 Web Worker により非同期実行され、UI スレッドをブロックせず第三者 iframe でもそのまま動作します。
-- **ネイティブ CP グローバル制約・伝播器**: `distinct()`、`disjoint()`、`cumulative()`、`allowed()`、`at()`、`max()` / `min()` / `abs()`、離散 `!=`、および `M` 省略時の `m.indicator()`（`implied_by`）を Pumpkin ネイティブ制約へ直接変換します。
+- **ネイティブ CP グローバル制約・伝播器**: `distinct()`（Pumpkin `v0.5.0` の `all_different`、pairwise `binary_not_equals` 分解）、`disjoint()`（`disjunctive_strict` Vilím エッジ発見）、`cumulative()`（タイムテーブル伝播）、`allowed()` / `not(allowed())`（`table` / `negative_table`）、`at()`（`element`）、`max()` / `min()` / `abs()`（`maximum` / `minimum` / `absolute`）、離散 `!=`（`not_equals`）、および `M` 省略時の `m.indicator()`（`implied_by`）を Pumpkin ネイティブ制約へ直接変換します。
 - **COOP / COEP 不要の Unsat Core 競合診断**: `await model.check({ solver: "pumpkin" })` により、通常のブラウザ環境のまま有界整数・真偽値制約の矛盾コア（`unsatCore` / `conflicts`）を抽出できます。
-- **ウォームスタート対応 (`initialValue`)**: 有界 `Integer` / `Binary` 変数に対して `solve()`・`check()` の双方で `initialValue` ヒントをサポートし、Pumpkin の `WarmStart` brancher を通じて探索ヒントとして利用できます。
-
----
-
-## アーキテクチャと WebAssembly ランタイム
-
-WaSHI は専用の Rust WebAssembly ラッパークレート（`wasm/pumpkin`、`pumpkin-core` / `pumpkin-constraints` / `pumpkin-propagators` / `pumpkin-conflict-resolvers` `v0.5.0` を `wasm32-unknown-unknown` へビルド）から `pumpkin.wasm` と `wasm-bindgen` バインディングを直接生成しています。
-
-### コールバックと対話的制御
-
-- **進捗監視と途中中断（対応済み）**:
-  `solve()` 中は暫定解が見つかるたびにリアルタイムの進捗通知（`onProgress` で `elapsedTime`・`objectiveValue` を配信）を行い、`AbortSignal` による中断にも対応します。ブラウザ Web Worker 環境では実行中 Worker の即時停止とキューキャンセルが行われ、メインスレッドおよび Node.js 環境では探索フック上の協調的中断チェック（`should_abort`）が機能します。
-- **離散最適性の厳密証明**:
-  有限整数領域上の厳密 LCG ソルバーとして動作するため、LP 緩和ベースのギャップオプション（`mipGap`, `relGap`, `absGap`, `presolve`）ではなく、節学習（nogood learning）と目的境界の厳密化（`LinearSatUnsat`）によって最適性を証明します。
-
-### WebAssembly アセットの管理とオンデマンドビルド
-
-Pumpkin の WebAssembly バイナリ（`public/pumpkin.wasm`）と JS/TS ランタイム（`runtime.js` / `runtime.d.ts`）は、`pumpkin.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
-- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-pumpkin-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
-- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-pumpkin-wasm.mjs` が WaSHI リポジトリの `pumpkin-v<version>` GitHub Release アセット（`pumpkin.config.json` の `downloadUrl`）から検証済みバイナリを自動取得します。
-- **ソースからのコンパイル**: Pumpkin のバージョンアップや `wasm/pumpkin` 変更時は、`wasm32-unknown-unknown` ターゲット付き Rust 環境で（必要に応じて `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>` で設定・`Cargo.toml` を更新したうえで）`npm run build:pumpkin-wasm` を実行し、`pumpkin-v<version>` の GitHub Release アセットへ反映します（`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`、初回は `gh release create`、または `.github/workflows/build-pumpkin-wasm.yml` を実行して `pumpkin-wasm-assets` アーティファクトの変更をコミット）。
+- **ウォームスタート対応 (`initialValue`)**: 有界 `Integer` / `Binary` 変数に対して `solve()`・`check()` の双方で `initialValue` ヒント（`supportsWarmStart: true`）をサポートし、Pumpkin の `WarmStart` brancher を通じた非拘束の探索ヒントとして利用できます（`Var.initialValue` は求解結果の `Var.value` とは独立して保持されます）。
 
 ---
 
@@ -131,8 +111,6 @@ Pumpkin は**有界整数・真偽値専用の CP/LCG ソルバー**です。非
 
 - **有界整数 / Binary / BoolVar のみ対応**: すべての `Var` は有限整数上下界（`lb`, `ub` が `[-(2^30 - 1), 2^30 - 1]` の整数）である必要があります。無界整数（`-Infinity` / `Infinity`）や `Continuous` 変数はエラーになります。
 - **整数係数の線形制約**: 制約の係数、調整済み右辺値（`rhs - lhs.constant`）、およびスケーリング上下界はすべて 32bit 安全範囲（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）の整数である必要があります（目的関数の定数項は小数可）。
-- **ウォームスタート対応 (`initialValue`)**: 有界な `Integer` / `Binary` 変数に対して `solve()` と `check()` の双方で `initialValue` ヒント（`supportsWarmStart: true`）をサポートしており、Pumpkin の `WarmStart` brancher による探索ヒントとして適用されます（`Var.initialValue` は求解結果の `Var.value` とは独立して保持されます）。
-- **ネイティブ CP・区分線形伝播器**: `distinct()`（Pumpkin `v0.5.0` の `all_different`、pairwise `binary_not_equals` 分解）、`disjoint()`（`disjunctive_strict` Vilím エッジ発見）、`cumulative()`（タイムテーブル伝播）、`allowed()` / `not(allowed())`（`table` / `negative_table`）、`at()`（`element`）、`max()`/`min()`/`abs()`（`maximum`/`minimum`/`absolute`）、離散 `!=`（`not_equals`）、および `M` 省略時の `m.indicator()`（`implied_by`）を Pumpkin ネイティブ制約へ直接変換します。
 - **非対応機能**: `QuadExpr`（二次式）、`Continuous` 変数、無界変数、および LP 緩和（`relax: true`）は明示的にエラーになります。
 
 ---
@@ -160,6 +138,21 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 `pumpkin.wasm` の取得失敗や HTML フォールバック応答が返された場合、WaSHI は試行した URL を含めて即座にエラーを報告し、**暗黙的な CDN フォールバックは一切行いません**。
+
+---
+
+## アーキテクチャと WebAssembly ランタイム
+
+WaSHI は専用の Rust WebAssembly ラッパークレート（`wasm/pumpkin`、`pumpkin-core` / `pumpkin-constraints` / `pumpkin-propagators` / `pumpkin-conflict-resolvers` `v0.5.0` を `wasm32-unknown-unknown` へビルド）から `pumpkin.wasm` と `wasm-bindgen` バインディングを直接生成しています。
+
+同梱の `pumpkin.wasm` と `runtime.js` / `runtime.d.ts` は `pumpkin.config.json` の SHA-256 チェックサムで整合性が検証されています。ソースからの再ビルドや Release 更新を行うメンテナー向け手順は [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow) を参照してください。
+
+### コールバックと対話的制御
+
+- **進捗監視と途中中断（対応済み）**:
+  `solve()` 中は暫定解が見つかるたびにリアルタイムの進捗通知（`onProgress` で `elapsedTime`・`objectiveValue` を配信）を行い、`AbortSignal` による中断にも対応します。ブラウザ Web Worker 環境では実行中 Worker の即時停止とキューキャンセルが行われ、メインスレッドおよび Node.js 環境では探索フック上の協調的中断チェック（`should_abort`）が機能します。
+- **離散最適性の厳密証明**:
+  有限整数領域上の厳密 LCG ソルバーとして動作するため、LP 緩和ベースのギャップオプション（`mipGap`, `relGap`, `absGap`, `presolve`）ではなく、節学習（nogood learning）と目的境界の厳密化（`LinearSatUnsat`）によって最適性を証明します。
 
 ---
 

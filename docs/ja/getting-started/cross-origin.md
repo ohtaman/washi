@@ -99,7 +99,7 @@ app.use((req, res, next) => {
 
 GitHub Pages のようにカスタム HTTP レスポンスヘッダーを設定できない環境では、Service Worker でクライアント側から分離ヘッダーを付与する **`coi-serviceworker`** を利用できます：
 
-1. `coi-serviceworker.js` をサイトのルートディレクトリに配置します。
+1. [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker)（GitHub / npm）または WaSHI リポジトリの [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js) を入手し、サイトのルートディレクトリに配置します。
 2. HTML の `<head>` 内に以下を追加します：
 
 ```html

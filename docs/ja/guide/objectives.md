@@ -66,6 +66,57 @@ const status = await m.solve({
 
 ---
 
+## 結果・ギャップ指標・ステータスの読み取り
+
+求解完了後、ステータス、最適値、MIP の境界値とギャップをモデルから取得できます：
+
+```typescript
+const status = await m.solve();
+
+console.log("Status:", m.status);                         // 例: "Optimal", "Feasible"
+console.log("Termination Reason:", m.terminationStatus);  // 例: "Optimal", "TimeLimit", "Interrupted"
+console.log("Has Primal Solution:", m.hasPrimalSolution); // 解が利用可能なとき true
+
+// 目的関数値と MIP ギャップ指標
+console.log("Objective Value:", m.objectiveValue);        // 目的関数値 (または null)
+console.log("Objective Bound:", m.objectiveBound);        // 双対境界値 (または undefined)
+console.log("Relative Gap:", m.relGap);                   // 相対ギャップ (別名: m.mipGap)
+console.log("Absolute Gap:", m.absGap);                   // 絶対ギャップ |objectiveValue - objectiveBound|
+
+// 変数値の取得 (.value または変数名キーの m.values Map)
+console.log("x =", x.value, "y =", y.value);
+console.log("x by name:", m.values.get("x"));
+```
+
+> [!TIP]
+> 得られた解が元の境界条件・整数条件・制約を許容誤差内で満たしているかを独立検証したい場合は、`m.validateSolution()` を呼び出してください（[競合診断・検証・デバッグ](./unsat-core.md)）。
+
+### `m.status` と `m.terminationStatus` の違い
+
+MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSignal`）で停止した場合、以下の2点を区別できます：
+1. **利用可能な実行可能解（暫定解）が見つかったか？**（`m.hasPrimalSolution` / `m.status`）
+2. **なぜソルバーが停止したか？**（`m.terminationStatus`）
+
+停止前に実行可能な整数解（Incumbent）が見つかっていた場合、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` から暫定解を取得可能）、`m.terminationStatus` には `"TimeLimit"` や `"Interrupted"` が記録されます。まだ実行可能解が1つも見つかっていない段階で停止した場合は、`m.hasPrimalSolution` は `false`、`m.terminationStatus` は `"TimeLimit"` / `"IterationLimit"` / `"Interrupted"` となり、`m.status` は `"TimeLimit"`、`"IterationLimit"`、または `"Unknown"`（暫定解なしで `AbortSignal` により中断された場合）となります。
+
+### 全 `SolverStatus` 一覧
+
+| ステータス | `hasPrimalSolution` | 意味 |
+| :--- | :--- | :--- |
+| `"Optimal"` | `true` | 大域的最適解が証明されました（許容誤差内）。 |
+| `"Feasible"` | `true` | 実行可能解（暫定解）が見つかりましたが、最適性の証明前に停止しました（停止理由は `terminationStatus` を参照）。 |
+| `"Sat"` | `true` | すべての制約を充足する解が見つかりました（`m.check()`）。 |
+| `"Infeasible"` | `false` | すべての制約を同時に満たす解が存在しないことが証明されました。 |
+| `"Unsat"` | `false` | 制約集合が充足不能（矛盾）であることが証明されました（`m.check()`）。 |
+| `"Unbounded"` | `false` | 制約を満たしたまま目的関数値を無限に改善できます（非有界）。 |
+| `"TimeLimit"` | `false` | 実行可能解が見つかる前に制限時間に達しました。 |
+| `"IterationLimit"` | `false` | 実行可能解が見つかる前に反復上限に達しました。 |
+| `"Unknown"` | `false` | 解が見つからないまま判定不能で終了しました（暫定解が見つかる前に `AbortSignal` で中断された場合も含み、その際は `terminationStatus === "Interrupted"` となります）。 |
+| `"Error"` | `false` | ソルバー内部でエラーが発生しました。 |
+| `"NotSolved"` | `false` | 求解前、またはモデル変更により解がリセットされた初期状態です。 |
+
+---
+
 ## リアルタイム進捗 (`onProgress`) と中断 (`AbortSignal`)
 
 時間のかかる MIP 計算を UI 上で実行する際、`onProgress` で分枝限定法の進捗（暫定解・双対境界・MIPギャップ）をリアルタイムに取得し、`AbortController` で安全に中断できます：
@@ -108,54 +159,6 @@ console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在す
 | `nodes` | `number \| undefined` | 探索済みの分枝限定ノード数。 |
 | `iterations` | `number \| undefined` | ソルバーの反復回数（シンプレックス、内点法、または MIP LP 反復）。 |
 | `message` | `string \| undefined` | ソルバーが出力した生の進捗ログ行。 |
-
----
-
-## 結果・ギャップ指標・ステータスの読み取り
-
-求解完了後、ステータス、最適値、MIP の境界値とギャップをモデルから取得できます：
-
-```typescript
-const status = await m.solve();
-
-console.log("Status:", m.status);                         // 例: "Optimal", "Feasible"
-console.log("Termination Reason:", m.terminationStatus);  // 例: "Optimal", "TimeLimit", "Interrupted"
-console.log("Has Primal Solution:", m.hasPrimalSolution); // 解が利用可能なとき true
-
-// 目的関数値と MIP ギャップ指標
-console.log("Objective Value:", m.objectiveValue);        // 目的関数値 (または null)
-console.log("Objective Bound:", m.objectiveBound);        // 双対境界値 (または undefined)
-console.log("Relative Gap:", m.relGap);                   // 相対ギャップ (別名: m.mipGap)
-console.log("Absolute Gap:", m.absGap);                   // 絶対ギャップ |objectiveValue - objectiveBound|
-
-// 変数値の取得 (.value または変数名キーの m.values Map)
-console.log("x =", x.value, "y =", y.value);
-console.log("x by name:", m.values.get("x"));
-```
-
-### `m.status` と `m.terminationStatus` の違い
-
-MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSignal`）で停止した場合、以下の2点を区別できます：
-1. **利用可能な実行可能解（暫定解）が見つかったか？**（`m.hasPrimalSolution` / `m.status`）
-2. **なぜソルバーが停止したか？**（`m.terminationStatus`）
-
-停止前に実行可能な整数解（Incumbent）が見つかっていた場合、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` から暫定解を取得可能）、`m.terminationStatus` には `"TimeLimit"` や `"Interrupted"` が記録されます。まだ実行可能解が1つも見つかっていない段階で停止した場合は、`m.hasPrimalSolution` は `false`、`m.terminationStatus` は `"TimeLimit"` / `"IterationLimit"` / `"Interrupted"` となり、`m.status` は `"TimeLimit"`、`"IterationLimit"`、または `"Unknown"`（暫定解なしで `AbortSignal` により中断された場合）となります。
-
-### 全 `SolverStatus` 一覧
-
-| ステータス | `hasPrimalSolution` | 意味 |
-| :--- | :--- | :--- |
-| `"Optimal"` | `true` | 大域的最適解が証明されました（許容誤差内）。 |
-| `"Feasible"` | `true` | 実行可能解（暫定解）が見つかりましたが、最適性の証明前に停止しました（停止理由は `terminationStatus` を参照）。 |
-| `"Sat"` | `true` | すべての制約を充足する解が見つかりました（`m.check()`）。 |
-| `"Infeasible"` | `false` | すべての制約を同時に満たす解が存在しないことが証明されました。 |
-| `"Unsat"` | `false` | 制約集合が充足不能（矛盾）であることが証明されました（`m.check()`）。 |
-| `"Unbounded"` | `false` | 制約を満たしたまま目的関数値を無限に改善できます（非有界）。 |
-| `"TimeLimit"` | `false` | 実行可能解が見つかる前に制限時間に達しました。 |
-| `"IterationLimit"` | `false` | 実行可能解が見つかる前に反復上限に達しました。 |
-| `"Unknown"` | `false` | 解が見つからないまま判定不能で終了しました（暫定解が見つかる前に `AbortSignal` で中断された場合も含み、その際は `terminationStatus === "Interrupted"` となります）。 |
-| `"Error"` | `false` | ソルバー内部でエラーが発生しました。 |
-| `"NotSolved"` | `false` | 求解前、またはモデル変更により解がリセットされた初期状態です。 |
 
 ---
 
