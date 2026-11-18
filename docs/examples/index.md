@@ -4,7 +4,7 @@ Explore runnable optimization and logic formulations built with WaSHI. Every exa
 
 ## Examples
 
-| Example | Problem Class | Solver | Key WaSHI APIs | Description | Code Editor |
+| Example | Problem Class | Solver | Key WaSHI APIs | Description | Playground / Guide |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[Production Planning](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | Basic variables, tagged template literal equations, and maximizing profit under resource limits. | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
 | **[0-1 Knapsack](./knapsack.md)** | Binary MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 1D dictionary of `Binary` variables and linear aggregation over item arrays. | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |

@@ -4,7 +4,7 @@
 
 ## 案例一览
 
-| 案例 | 问题类型 | 求解器 | 核心 WaSHI API | 演示内容 | 代码编辑 |
+| 案例 | 问题类型 | 求解器 | 核心 WaSHI API | 演示内容 | Playground / 指南 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[生产计划问题](/zh/examples/production)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 决策变量定义、标签模板字面量方程，以及在资源约束下最大化总利润。 | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
 | **[0-1 背包问题](/zh/examples/knapsack)** | Binary MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 一维 `Binary` 变量字典及物品数组上的线性聚合。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |

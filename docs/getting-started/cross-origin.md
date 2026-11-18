@@ -99,7 +99,7 @@ app.use((req, res, next) => {
 
 Platforms like GitHub Pages do not allow customizing HTTP response headers directly. You can use **`coi-serviceworker`** to inject the isolation headers via a client-side Service Worker:
 
-1. Place `coi-serviceworker.js` at your site root.
+1. Obtain `coi-serviceworker.js` from [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) (GitHub / npm) or WaSHI's reference [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js), and place it at your site root.
 2. Load it in your HTML `<head>`:
 
 ```html

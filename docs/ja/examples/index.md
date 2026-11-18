@@ -4,7 +4,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 
 ## サンプル一覧
 
-| サンプル | 問題クラス | ソルバー | 主な API | 概要 | コード編集 |
+| サンプル | 問題クラス | ソルバー | 主な API | 概要 | Playground / ガイド |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[生産計画問題](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
 | **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 1次元キー配列からの `Binary` 変数生成と、`expr` 内の `dot()` による内積集計。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |

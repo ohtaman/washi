@@ -99,7 +99,7 @@ app.use((req, res, next) => {
 
 GitHub Pages 等平台不支持直接自定义 HTTP 响应头。此时可使用 **`coi-serviceworker`** 通过客户端 Service Worker 注入隔离响应头：
 
-1. 将 `coi-serviceworker.js` 放置在站点根目录。
+1. 从 [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker)（GitHub / npm）或 WaSHI 仓库的 [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js) 获取 `coi-serviceworker.js`，并放置在站点根目录。
 2. 在 HTML `<head>` 中引入：
 
 ```html

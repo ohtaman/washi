@@ -83,6 +83,22 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ---
 
+## 对偶值（影子价格）与松弛变量
+
+对于连续线性规划（LP）问题，求解后可在每条约束（由 `m.constraint()` 返回，或通过 `m.getConstraintByName()` 查询）上读取其影子价格/对偶值（`dual`）与松弛量（`slack`）：
+
+```typescript
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+
+await m.solve();
+
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
+console.log("Total linear constraints:", m.numConstrs);
+```
+
+---
+
 ## 条件约束 / 指示约束 (`m.indicator`)
 
 当某条线性约束仅在某个 0-1 二元决策变量（`m.binary()`）取特定值（`1` 或 `0`）时才生效，请使用 `m.indicator()`：
@@ -153,6 +169,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
+对于已命名的逻辑约束，可使用 `m.getLogicalConstraintByName(name)` 查询已注册的 `LogicalConstraintItem`。
+
 ### 如何选择 `m.indicator()` 与 `implies()`
 
 | 特性 | `m.indicator(binVar, constraint, opts)` | `implies(a, b)` / `a.implies(b)` |
@@ -187,7 +205,7 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin 原生 not_e
 
 ## CP 全局约束 (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束：
+WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束。关于区间调度、对称性破缺与 **Pumpkin** 求解建模技巧，请参阅专门的 [约束规划 (CP) 建模指南](./constraint-programming.md)。
 
 | 全局约束 | 语义 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -209,24 +227,6 @@ m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
 m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
 m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
-
----
-
-## 对偶值（影子价格）、松弛变量与查询
-
-对于连续线性规划（LP）问题，求解后可在每条约束（由 `m.constraint()` 返回，或通过 `m.getConstraintByName()` 查询）上读取其影子价格/对偶值（`dual`）与松弛量（`slack`）：
-
-```typescript
-const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
-
-await m.solve();
-
-console.log("Shadow price (dual):", woodConstraint.dual);
-console.log("Slack surplus:", woodConstraint.slack);
-console.log("Total linear constraints:", m.numConstrs);
-```
-
-对于已命名的逻辑约束，可使用 `m.getLogicalConstraintByName(name)` 查询已注册的 `LogicalConstraintItem`。
 
 > [!TIP]
 > 关于**使用松弛变量构建软约束**与**同构资源对称性破缺（Symmetry Breaking）**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。

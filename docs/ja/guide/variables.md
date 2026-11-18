@@ -117,10 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | オプション | 型 | デフォルト | 説明 |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | 下限（Lower bound）。デフォルトは非負制約 `0`。 |
+| `lb` | `number` | `0` | 下限（Lower bound）。デフォルトは非負制約 `0`。負値を許す場合は `-Infinity` を指定します。 |
 | `ub` | `number` | `Infinity`（`binary` は `1`） | 上限（Upper bound）。 |
+| `prefix` | `string` | `"x"`（`m.bool()` は `"p"`） | 無名スカラー変数や配列・2次元コンテナの変数名プレフィックス（例：`queen_0_0`）。 |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | メソッドから自動推論 | 変数のドメイン種別。 |
 | `initialValue` | `number` | `undefined` | オプションの主問題初期値ヒント（MIP ウォームスタート）。求解結果の `variable.value` とは独立して保持されます。 |
+
+### 上下限（`lb`, `ub`）の設計ポイント
+
+- **デフォルトは非負制約**: 数値変数はデフォルトで `lb: 0, ub: Infinity` になります。差分や過不足など負の値をとり得る変数には `{ lb: -Infinity }` を明示してください。
+- **現実的な有限境界の指定を推奨**: 有限の上下限（`lb`, `ub`）を設定すると MIP の前処理（Presolve）が効きやすくなるほか、`m.indicator()` が安全でタイトな Big-M を自動導出できます。また **Pumpkin** のような有界整数 CP ソルバーでは有限の整数上下限が必須となります。
 
 ---
 
