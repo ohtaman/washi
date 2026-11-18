@@ -93,3 +93,10 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 If `pumpkin.wasm` cannot be loaded or returns an HTML SPA fallback instead of a WebAssembly binary, Pumpkin rejects explicitly with the attempted URL and performs **no silent CDN fallback**.
+
+### WebAssembly Asset Lifecycle & On-Demand Builds
+
+Pumpkin's WebAssembly binary (`public/pumpkin.wasm`) and JS/TS runtime bindings (`runtime.js` / `runtime.d.ts`) are tracked via `pumpkin.config.json` with cryptographic SHA-256 verification:
+- **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-pumpkin-wasm.mjs`, verifying local assets in milliseconds before bundling.
+- **On-Demand Release Download**: When assets are missing or updated, `ensure-pumpkin-wasm.mjs` downloads verified binaries from WaSHI's `pumpkin-v<version>` GitHub Release assets (`downloadUrl` in `pumpkin.config.json`).
+- **Compiling from Source**: When upgrading Pumpkin or modifying `wasm/pumpkin`, install Rust with the `wasm32-unknown-unknown` target, optionally bump crate/config versions with `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>`, run `npm run build:pumpkin-wasm`, and sync the rebuilt assets to the `pumpkin-v<version>` GitHub Release tag (`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`, or create the release with `gh release create` / trigger `.github/workflows/build-pumpkin-wasm.yml` and commit the updated files from the `pumpkin-wasm-assets` artifact).

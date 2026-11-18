@@ -5,10 +5,12 @@
   "repo": "https://github.com/ConSol-Lab/Pumpkin.git",
   "wasm": {
     "path": "public/pumpkin.wasm",
-    "sha256": "613d79e628ee84a4e3d44d192dca3915e58641b02394aa120c8501e1fd8cac89"
+    "sha256": "613d79e628ee84a4e3d44d192dca3915e58641b02394aa120c8501e1fd8cac89",
+    "downloadUrl": "https://github.com/ohtaman/washi/releases/download/pumpkin-v0.5.0/pumpkin.wasm"
   },
   "runtime": {
     "path": "src/modeler/solvers/pumpkin/runtime.js",
-    "sha256": "8ee9a950376d7f6e533eda5e2f324f1bed783da42ff3632b935efc68f0258a28"
+    "sha256": "8ee9a950376d7f6e533eda5e2f324f1bed783da42ff3632b935efc68f0258a28",
+    "downloadUrl": "https://github.com/ohtaman/washi/releases/download/pumpkin-v0.5.0/runtime.js"
   }
 }

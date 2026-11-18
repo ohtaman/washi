@@ -49,6 +49,73 @@ export function updateHashes(customPath = configPath, root = repoRoot) {
   return config;
 }
 
+const PUMPKIN_CRATE_DEPS = [
+  "pumpkin-core",
+  "pumpkin-constraints",
+  "pumpkin-conflict-resolvers",
+];
+
+/**
+ * Updates pumpkin.config.json (version + downloadUrl) and wasm/pumpkin/Cargo.toml
+ * ([package] version + Pumpkin crate dependencies) consistently before a WASM build.
+ */
+export function applyPumpkinVersionOverride(rawVersion, options = {}) {
+  const trimmed = typeof rawVersion === "string" ? rawVersion.trim() : "";
+  if (!/^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(trimmed)) {
+    throw new Error(
+      `[WaSHI] Invalid Pumpkin version "${String(rawVersion)}". Expected semantic version such as "0.5.0" or "v0.5.0".`
+    );
+  }
+
+  const version = trimmed.replace(/^v/, "");
+  const root = options.repoRoot || repoRoot;
+  const targetConfigPath = options.configPath || path.resolve(root, "pumpkin.config.json");
+  const cargoTomlPath = options.cargoTomlPath || path.resolve(root, "wasm/pumpkin/Cargo.toml");
+
+  const config = loadConfig(targetConfigPath);
+  if (!fs.existsSync(cargoTomlPath)) {
+    throw new Error(`[WaSHI] Cargo.toml not found at: ${cargoTomlPath}`);
+  }
+
+  let cargoToml = fs.readFileSync(cargoTomlPath, "utf-8");
+  const pkgVersionRe = /(\[package\](?:(?!^\[)[\s\S])*?\nversion\s*=\s*)"[^"]+"/m;
+  if (!pkgVersionRe.test(cargoToml)) {
+    throw new Error(`[WaSHI] Could not find [package] version in ${cargoTomlPath}`);
+  }
+  cargoToml = cargoToml.replace(pkgVersionRe, `$1"${version}"`);
+
+  for (const crate of PUMPKIN_CRATE_DEPS) {
+    const escapedCrate = crate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const simpleDepRe = new RegExp(`^(${escapedCrate}\\s*=\\s*)"[^"]+"`, "m");
+    const tableDepRe = new RegExp(
+      `^(${escapedCrate}\\s*=\\s*\\{[^}\\n]*?\\bversion\\s*=\\s*)"[^"]+"`,
+      "m"
+    );
+    if (simpleDepRe.test(cargoToml)) {
+      cargoToml = cargoToml.replace(simpleDepRe, `$1"${version}"`);
+    } else if (tableDepRe.test(cargoToml)) {
+      cargoToml = cargoToml.replace(tableDepRe, `$1"${version}"`);
+    } else {
+      throw new Error(
+        `[WaSHI] Required dependency "${crate}" not found in ${cargoTomlPath}`
+      );
+    }
+  }
+
+  if (!config.wasm || !config.runtime) {
+    throw new Error(`[WaSHI] Invalid pumpkin.config.json: missing wasm or runtime entry.`);
+  }
+
+  config.version = version;
+  config.wasm.downloadUrl = `https://github.com/ohtaman/washi/releases/download/pumpkin-v${version}/pumpkin.wasm`;
+  config.runtime.downloadUrl = `https://github.com/ohtaman/washi/releases/download/pumpkin-v${version}/runtime.js`;
+
+  fs.writeFileSync(cargoTomlPath, cargoToml, "utf-8");
+  fs.writeFileSync(targetConfigPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  console.log(`[WaSHI] Updated Pumpkin version to ${version} in config and Cargo.toml`);
+  return { version, config };
+}
+
 export function checkAssetsMatch(config, root = repoRoot) {
   const wasmPath = path.resolve(root, config.wasm.path);
   const runtimePath = path.resolve(root, config.runtime.path);
@@ -138,12 +205,28 @@ export async function ensurePumpkinAssets(options = {}) {
 
   throw new Error(
     `[WaSHI] Pumpkin WebAssembly assets (${config.wasm.path}, ${config.runtime.path}) are missing or out of date with ${config.version}.\n` +
-    `To compile from source using Rust, run "npm run build:pumpkin-wasm".`
+    `No download URLs are configured. To compile from source using Rust, run "npm run build:pumpkin-wasm".`
   );
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const args = process.argv.slice(2);
+  const setVersionEq = args.find((a) => a.startsWith("--set-version="));
+  const setVersionIdx = args.indexOf("--set-version");
+  if (setVersionEq !== undefined || setVersionIdx !== -1) {
+    const rawVersion =
+      setVersionEq !== undefined
+        ? setVersionEq.slice("--set-version=".length)
+        : args[setVersionIdx + 1];
+    try {
+      applyPumpkinVersionOverride(rawVersion);
+      process.exit(0);
+    } catch (err) {
+      console.error(err.message);
+      process.exit(1);
+    }
+  }
+
   if (args.includes("--update-hashes")) {
     updateHashes();
     process.exit(0);

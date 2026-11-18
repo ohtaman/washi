@@ -93,3 +93,10 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 `pumpkin.wasm` の取得失敗や HTML フォールバック応答が返された場合、WaSHI は試行した URL を含めて即座にエラーを報告し、暗黙的な CDN フォールバックは行いません。
+
+### WebAssembly アセットの管理とオンデマンドビルド
+
+Pumpkin の WebAssembly バイナリ（`public/pumpkin.wasm`）と JS/TS ランタイム（`runtime.js` / `runtime.d.ts`）は、`pumpkin.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
+- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-pumpkin-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
+- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-pumpkin-wasm.mjs` が WaSHI リポジトリの `pumpkin-v<version>` GitHub Release アセット（`pumpkin.config.json` の `downloadUrl`）から検証済みバイナリを自動取得します。
+- **ソースからのコンパイル**: Pumpkin のバージョンアップや `wasm/pumpkin` 変更時は、`wasm32-unknown-unknown` ターゲット付き Rust 環境で（必要に応じて `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>` で設定・`Cargo.toml` を更新したうえで）`npm run build:pumpkin-wasm` を実行し、`pumpkin-v<version>` の GitHub Release アセットへ反映します（`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`、初回は `gh release create`、または `.github/workflows/build-pumpkin-wasm.yml` を実行して `pumpkin-wasm-assets` アーティファクトの変更をコミット）。

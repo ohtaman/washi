@@ -93,3 +93,10 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 若目标 URL 缺失或错误地返回了 HTML 回退页面，加载器会立即报错并指明实际请求的 URL，绝不会暗中切换回公共 CDN。
+
+### WebAssembly 资源管理与按需构建
+
+Pumpkin 的 WebAssembly 二进制（`public/pumpkin.wasm`）与 JS/TS 运行时（`runtime.js` / `runtime.d.ts`）通过 `pumpkin.config.json` 结合 SHA-256 校验和进行版本控制：
+- **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-pumpkin-wasm.mjs`，在打包前于毫秒内验证本地资源。
+- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-pumpkin-wasm.mjs` 会自动从 WaSHI 的 `pumpkin-v<version>` GitHub Release 资产（`pumpkin.config.json` 中的 `downloadUrl`）下载已验证的二进制包。
+- **从源码编译**：升级 Pumpkin 或修改 `wasm/pumpkin` 时，在安装了 Rust 及 `wasm32-unknown-unknown` 目标的环境下（如需更新版本，可先执行 `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>`）运行 `npm run build:pumpkin-wasm` 重新构建，合并后通过 `gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`（首次发布使用 `gh release create`）同步 Release 资产，或触发 `.github/workflows/build-pumpkin-wasm.yml` 并将 `pumpkin-wasm-assets` 产物中的更新提交到仓库。
