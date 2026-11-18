@@ -1,11 +1,11 @@
 ---
 name: washi
-description: Formulate, inspect, solve, and verify mathematical optimization (LP, MILP/MIP, convex QP) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Z3, GLPK) for shift scheduling, timetabling, resource allocation, bin packing, routing, portfolio optimization, and rule conflict diagnosis.
+description: Formulate, inspect, solve, and verify mathematical optimization (LP, MILP/MIP, convex QP, CP/LCG) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Pumpkin, Z3, GLPK) for shift scheduling, timetabling, resource allocation, bin packing, routing, portfolio optimization, and rule conflict diagnosis.
 ---
 
 # WaSHI Modeling & Verification Skill
 
-Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md) (available locally at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md` in consumer projects or `docs/getting-started/ai-agents.md` in the repository).
+Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP, CP/LCG) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md) (available locally at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md` in consumer projects or `docs/getting-started/ai-agents.md` in the repository).
 
 ---
 
@@ -16,12 +16,13 @@ Select the solver engine and execution method that match the problem class:
 | Problem Class | Recommended Solver | Setup & Import | Execution Method |
 | :--- | :--- | :--- | :--- |
 | **LP / MIP / Convex QP** (including `m.indicator()` Big-M and `initialValue` warm starts) | **HiGHS** (default) | Built-in (`import { Model } from "@ohtaman/washi"`) | `await m.solve()` |
-| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP) or **Z3** (native SMT) | Built-in for HiGHS; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
-| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (elastic slack `conflicts`) or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.check()` |
+| **CP/LCG Bounded Integer & Propositional Logic** (including `initialValue` warm starts and zero-`COOP`/`COEP` `unsatCore`) | **Pumpkin** plugin (bundled WASM) | `import "@ohtaman/washi/solvers/pumpkin"` | `await m.solve({ solver: "pumpkin" })` or `await m.check({ solver: "pumpkin" })` |
+| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP), **Pumpkin** (bounded int), or **Z3** (native SMT incl. `Continuous`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
+| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (elastic slack `conflicts`), **Pumpkin** (zero-`COOP`/`COEP` `unsatCore`), or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `import "@ohtaman/washi/solvers/z3"` | `await m.check()` |
 | **LP / MIP with GLPK** (GPL-3.0; no QP or `initialValue`) | **GLPK** plugin | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` | `await m.solve({ solver: "glpk" })` |
 
 - **Browser runtime notes**:
-  - HiGHS and GLPK load local `.wasm` and Worker assets relative to the bundle (never falling back to an external CDN).
+  - HiGHS, Pumpkin, and GLPK load local `.wasm` and Worker assets relative to the bundle (never falling back to an external CDN) and work without `COOP`/`COEP`.
   - Z3 uses `SharedArrayBuffer` pthreads and requires `window.isSecureContext === true` and `window.crossOriginIsolated === true` (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`).
 
 ---
@@ -38,7 +39,7 @@ Select the solver engine and execution method that match the problem class:
    - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${xVec} - ${target})^2)` `` (purely continuous models on HiGHS; MIQP with integer/binary/boolean variables is not supported)
    - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${y} <= 40` ``, `` expr`sum(${qty}) <= 100` `` (supports `<=`, `>=`, `==`, `=`)
    - Vector & Record aggregations: `sum(containerOrItems, mapper?)` and `dot(a, b)` (both usable inside `expr` or standalone; `sum` accepts 1D/2D `Array`, `Iterable`, and `Record` directly without `Object.values()`, plus element-wise container arithmetic `+`, `-`, `*`, `/`, `^2` inside `expr`; `dot` computes the 1D inner product or 2D Frobenius inner product)
-   - Propositional logic: `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`). Automatically linearized into 0-1 MIP binary variables and linear constraints on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact `+/- 1` shifts over integer-valued `Integer`/`Binary` expressions; negated `Continuous` or non-integer `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`), or solved natively on Z3.
+   - Propositional logic: `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`). Automatically linearized into 0-1 MIP binary variables and linear constraints on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact `+/- 1` shifts over integer-valued `Integer`/`Binary` expressions; negated `Continuous` or non-integer `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`), or solved natively on Z3 or Pumpkin (`import "@ohtaman/washi/solvers/pumpkin"` for bounded integer/boolean models without `COOP`/`COEP` headers).
 3. **Register objective and named constraints**:
    - Constructing an `expr` or `.le()` / `.ge()` / `.eq()` object does **not** attach it to the model.
    - Register the objective with `m.objective(maximize(e))` or `m.objective(minimize(e))`.
@@ -65,9 +66,9 @@ Never report a model solution as final without executing the verification step:
    - If `report.valid === false`, inspect `report.violations`, `report.missingVariables`, `report.uncheckedConstraints`, and `report.maxViolation`.
    - Note: `m.validateSolution()` independently checks variable finiteness, variable bounds (`lb`/`ub`), integrality (`Integer`, `Binary`, `BoolVar`), linear constraint residuals, and logical constraints. It does **not** recompute `m.objectiveValue` or verify natural-language problem coverage.
 2. **When a model is infeasible (`"Infeasible"` or `"Unsat"`)**:
-   - Run `const res = await m.check()` (diagnoses with built-in HiGHS via single-solve elastic slack relaxation) or `const res = await m.check({ solver: "z3" })` (for exact SMT unsat core).
-   - When `res.status === "Unsat"`, inspect `res.conflicts` (also stored on `m.conflicts`). On HiGHS, `conflicts` reports the subset of constraints requiring relaxation to restore feasibility (with `unsatCore: undefined` for semantic rigor). On Z3, both `unsatCore` and `conflicts` report the contradictory constraint subset.
-   - Because Z3 asserts variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking named constraints, `res.conflicts` returns a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (not guaranteed minimal).
+   - Run `const res = await m.check()` (diagnoses with built-in HiGHS via single-solve elastic slack relaxation), `const res = await m.check({ solver: "pumpkin" })` (for `unsatCore` on bounded integer/boolean models without `COOP`/`COEP` requirements), or `const res = await m.check({ solver: "z3" })` (for exact SMT `unsatCore` including `Continuous`/fractional constraints).
+   - When `res.status === "Unsat"`, inspect `res.conflicts` (also stored on `m.conflicts`). On HiGHS, `conflicts` reports the subset of constraints requiring relaxation to restore feasibility (with `unsatCore: undefined` for semantic rigor). On Z3 and Pumpkin, both `unsatCore` and `conflicts` report the contradictory constraint subset.
+   - Because Z3 and Pumpkin assert variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking named constraints, `res.conflicts` returns a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (not guaranteed minimal).
 
 ---
 

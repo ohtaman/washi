@@ -23,6 +23,12 @@
       "import": "./dist/lib/solvers/glpk.js",
       "default": "./dist/lib/solvers/glpk.js"
     },
+    "./solvers/pumpkin": {
+      "types": "./dist/types/modeler/solvers/pumpkin/index.d.ts",
+      "import": "./dist/lib/solvers/pumpkin.js",
+      "default": "./dist/lib/solvers/pumpkin.js"
+    },
+    "./solvers/pumpkin.wasm": "./dist/lib/solvers/pumpkin.wasm",
     "./browser": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/browser/washi.js",
@@ -41,6 +47,12 @@
       "default": "./dist/browser/solvers/z3.js"
     },
     "./browser/solvers/z3.min.js": "./dist/browser/solvers/z3.min.js",
+    "./browser/solvers/pumpkin": {
+      "types": "./dist/types/modeler/solvers/pumpkin/index.d.ts",
+      "import": "./dist/browser/solvers/pumpkin.js",
+      "default": "./dist/browser/solvers/pumpkin.js"
+    },
+    "./browser/solvers/pumpkin.min.js": "./dist/browser/solvers/pumpkin.min.js",
     "./solvers/z3-built.js": "./dist/lib/solvers/z3-built.js",
     "./solvers/z3-built.wasm": "./dist/lib/solvers/z3-built.wasm"
   },
@@ -66,21 +78,23 @@
     "dev": "vite",
     "ensure:highs": "node scripts/ensure-highs-wasm.mjs",
     "build:highs-wasm": "bash scripts/build-highs-wasm.sh",
+    "ensure:pumpkin": "node scripts/ensure-pumpkin-wasm.mjs",
+    "build:pumpkin-wasm": "bash scripts/build-pumpkin-wasm.sh",
     "build:demo": "vite build",
     "build:types": "node -e \"import('node:fs').then(fs => fs.rmSync('dist/types', { recursive: true, force: true }))\" && tsc -p tsconfig.lib.json",
-    "build:lib": "node scripts/ensure-highs-wasm.mjs && node scripts/build-library.mjs",
+    "build:lib": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && node scripts/build-library.mjs",
     "build:llms": "node scripts/generate-llms.mjs",
-    "build": "node scripts/ensure-highs-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:demo",
-    "build:site": "node scripts/ensure-highs-wasm.mjs && node scripts/build-site.mjs",
+    "build": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:demo",
+    "build:site": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && node scripts/build-site.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs && node scripts/generate-llms.mjs",
     "docs:preview": "vitepress preview docs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "RUN_E2E=1 vitest run test/e2e.test.ts",
-    "prepublishOnly": "node scripts/ensure-highs-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:llms",
-    "build:browser": "node scripts/ensure-highs-wasm.mjs && node scripts/build-browser.mjs",
-    "test:distribution": "node scripts/ensure-highs-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:llms && node --experimental-vm-modules scripts/check-distribution.mjs",
+    "prepublishOnly": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:llms",
+    "build:browser": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && node scripts/build-browser.mjs",
+    "test:distribution": "node scripts/ensure-highs-wasm.mjs && node scripts/ensure-pumpkin-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:llms && node --experimental-vm-modules scripts/check-distribution.mjs",
     "test:demo": "BASE_URL=/ npm run build:demo && node scripts/check-demo-browser.mjs",
     "test:site": "npm run build:site && REQUIRE_SITE_DIST=1 vitest run test/site-seo.test.ts",
     "bench": "node scripts/run-benchmarks.mjs"
@@ -104,6 +118,8 @@
     "z3",
     "highs",
     "glpk",
+    "pumpkin",
+    "lcg",
     "pulp",
     "jump",
     "operations-research",

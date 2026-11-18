@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pumpkin WebAssembly Build Configuration",
+  "type": "object",
+  "required": ["version", "crate", "repo", "wasm", "runtime"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string", "minLength": 1 },
+    "crate": { "type": "string", "minLength": 1 },
+    "repo": { "type": "string", "format": "uri" },
+    "wasm": { "$ref": "#/$defs/asset" },
+    "runtime": { "$ref": "#/$defs/asset" }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string" },
+        "downloadUrl": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

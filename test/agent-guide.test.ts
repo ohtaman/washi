@@ -79,6 +79,7 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
 
     const rewriteImports = (src: string) =>
       src
+        .replaceAll('"@ohtaman/washi/solvers/pumpkin"', '"../src/modeler/solvers/pumpkin/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')
         .replaceAll('"@ohtaman/washi"', '"../src/index.js"');
@@ -768,6 +769,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
 
     const rewriteImports = (src: string) =>
       src
+        .replaceAll('"@ohtaman/washi/solvers/pumpkin"', '"../src/modeler/solvers/pumpkin/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')
         .replaceAll('"@ohtaman/washi"', '"../src/index.js"');

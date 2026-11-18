@@ -67,7 +67,7 @@ export interface BoundsOptions {
   /**
    * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
    * Validated within tolerance `1e-6` against `[lb, ub]` and integer domain.
-   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   * Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
    */
   initialValue?: number;
   [Symbol.iterator]?: never;
@@ -80,7 +80,7 @@ export interface BinaryOptions {
   prefix?: string;
   /**
    * Optional finite primal initial value (`0` or `1` within tolerance `1e-6`), distinct from solved `Var.value`.
-   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   * Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
    */
   initialValue?: number;
   [Symbol.iterator]?: never;
@@ -178,13 +178,17 @@ function assertValidCount(count: number, label: string): void {
 }
 
 /**
- * High-level mathematical programming and SMT model for LP, MIP, convex QP, and SAT/SMT,
- * running with WebAssembly solvers (HiGHS, GLPK, Z3) in Node.js and browsers.
+ * High-level mathematical programming and SMT model for LP, MIP, convex QP, CP/LCG, and SAT/SMT,
+ * running with WebAssembly solvers (HiGHS, Pumpkin, GLPK, Z3) in Node.js and browsers.
  *
  * **Solver capability notes**:
  * - `"highs"` (default, built-in): Supports LP, MIP, convex QP objectives (`supportsQP: true`),
  *   and `initialValue` warm starts (`supportsWarmStart: true`). Also supports `m.check()` on purely
  *   linear models via a zero-objective feasibility fallback. Throws if `BoolVar`/logical constraints are present.
+ * - `"pumpkin"` (`import "@ohtaman/washi/solvers/pumpkin"`): Supports bounded `Integer`/`Binary` variables,
+ *   integer linear constraints, native `BoolVar`/logical constraints (`and`, `or`, `not`, `implies`, `xor`),
+ *   `initialValue` warm-start hints (`supportsWarmStart: true`), and `unsatCore` extraction (`m.check()`)
+ *   without requiring `COOP`/`COEP` headers. Throws on `Continuous` variables, quadratic objectives, or `relax: true`.
  * - `"glpk"` (`import "@ohtaman/washi/solvers/glpk"`): Supports LP and MIP, and `m.check()` on purely
  *   linear models via LP feasibility fallback. Throws on quadratic objectives, `BoolVar`/logical constraints,
  *   or `initialValue` warm starts.
@@ -582,7 +586,7 @@ export class Model {
    * **Warm-start (`initialValue`) semantics**:
    * - `options.initialValue` supplies an optional finite primal hint (`0` or `1` within tolerance `1e-6`),
    *   kept distinct from solved `v.value`.
-   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   * - Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on GLPK and Z3.
    *
    * @example
    * ```ts
@@ -639,7 +643,7 @@ export class Model {
    * **Warm-start (`initialValue`) semantics**:
    * - `options.initialValue` supplies an optional finite integer primal hint within tolerance `1e-6` of `[lb, ub]`,
    *   kept distinct from solved `v.value`.
-   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   * - Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on GLPK and Z3.
    *
    * @example
    * ```ts
@@ -696,7 +700,7 @@ export class Model {
    * **Warm-start (`initialValue`) semantics**:
    * - `options.initialValue` supplies an optional finite primal hint within tolerance `1e-6` of `[lb, ub]`,
    *   kept distinct from solved `v.value`.
-   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   * - Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on GLPK and Z3.
    *
    * @example
    * ```ts
@@ -1829,9 +1833,9 @@ export class Model {
    *
    * **Solver capability preconditions**:
    * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on GLPK and Z3).
-   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) require `supportsSMT`
-   *   (supported by Z3; throws on HiGHS and GLPK).
-   * - Primal `initialValue` warm starts require `supportsWarmStart` (supported by HiGHS; throws on GLPK and Z3).
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) execute natively on solvers
+   *   with `supportsLogicalConstraints` or `supportsSMT` (Pumpkin, Z3), and are auto-linearized for MIP solvers (HiGHS, GLPK).
+   * - Primal `initialValue` warm starts require `supportsWarmStart` (supported by HiGHS and Pumpkin; throws on GLPK and Z3).
    * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
    *   result and rejects the pending promise.
    *
@@ -1869,12 +1873,16 @@ export class Model {
     }
 
     // Handle logical constraints:
-    // If solver natively supports SMT (e.g. Z3), pass logical constraints as-is.
+    // If solver natively supports logical constraints or SMT (e.g. Pumpkin, Z3), pass logical constraints as-is.
     // If solver is LP/MIP (HiGHS, GLPK), auto-linearize logical constraints into binary MIP formulation.
     let modelData: SolveModelData;
     let linResult: ReturnType<typeof linearizeModelForMip> | null = null;
 
-    if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
+    const supportsNativeLogic =
+      activeSolver.capabilities?.supportsLogicalConstraints === true ||
+      activeSolver.capabilities?.supportsSMT === true;
+
+    if ((this.logicalConstraints.length > 0 || this.boolVars.length > 0) && !supportsNativeLogic) {
       linResult = linearizeModelForMip(
         this.variables,
         this.boolVars,
@@ -1908,7 +1916,7 @@ export class Model {
       activeSolver.capabilities?.supportsWarmStart !== true
     ) {
       throw new Error(
-        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
 
@@ -2150,7 +2158,7 @@ export class Model {
       activeSolver.capabilities?.supportsWarmStart !== true
     ) {
       throw new Error(
-        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
 

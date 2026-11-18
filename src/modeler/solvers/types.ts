@@ -120,6 +120,8 @@ export interface SolverCapabilities {
   supportsQCQP?: boolean;
   /** Supports satisfiability modulo theories / logical constraints */
   supportsSMT?: boolean;
+  /** Supports native boolean/propositional logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) without SMT continuous theories */
+  supportsLogicalConstraints?: boolean;
   /** Supports extracting an unsatisfiable core (conflicting constraint subset; minimality is not guaranteed) */
   supportsUnsatCore?: boolean;
   /** Supports primal initial values (MIP starts / warm-start hints) */

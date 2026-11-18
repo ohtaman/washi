@@ -143,9 +143,9 @@ const openWarehouse2 = m2.binary("open_warehouse", {
 const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial start: no initialValue needed
 ```
 
-- **Hint vs. Hard Constraint**: `initialValue` is an optional solver hint (passed to HiGHS via `setSolution`). It does **not** fix the variable or add a constraint, and `variable.value` remains `null` until solved. *(To penalize deviations from a previous plan, see [Formulation Patterns & Tips](./formulation-tips.md#minimal-perturbation-rescheduling-vs-warm-starting).)*
+- **Hint vs. Hard Constraint**: `initialValue` is an optional solver hint (passed to HiGHS via `setSolution`, or to Pumpkin's `WarmStart` branching strategy). It does **not** fix the variable or add a constraint, and `variable.value` remains `null` until solved. *(To penalize deviations from a previous plan, see [Formulation Patterns & Tips](./formulation-tips.md#minimal-perturbation-rescheduling-vs-warm-starting).)*
 - **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer for `"Integer"` and `"Binary"` variables). Partial starts are accepted without needing to satisfy every model constraint, though supplying a complete constraint-feasible assignment gives MIP solvers an immediate incumbent bound.
-- **Solver Support**: Supported by **HiGHS** (`capabilities.supportsWarmStart === true`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
+- **Solver Support**: Supported by **HiGHS** and **Pumpkin** (`capabilities.supportsWarmStart === true`; Pumpkin supports `initialValue` on bounded `Integer` and `Binary` variables in both `solve()` and `check()`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
 
 ---
 

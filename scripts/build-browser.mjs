@@ -29,3 +29,13 @@ await build({ configFile: "vite.config.browser.ts" });
 process.env.WASHI_BROWSER_FORMAT = "iife";
 process.env.WASHI_BROWSER_TARGET = "z3";
 await build({ configFile: "vite.config.browser.ts" });
+
+// 7. Pumpkin ESM (solvers/pumpkin.js, solvers/pumpkin-worker.js, solvers/pumpkin.wasm)
+delete process.env.WASHI_BROWSER_FORMAT;
+process.env.WASHI_BROWSER_TARGET = "pumpkin";
+await build({ configFile: "vite.config.browser.ts" });
+
+// 8. Pumpkin IIFE (solvers/pumpkin.min.js)
+process.env.WASHI_BROWSER_FORMAT = "iife";
+process.env.WASHI_BROWSER_TARGET = "pumpkin";
+await build({ configFile: "vite.config.browser.ts" });

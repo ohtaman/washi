@@ -143,9 +143,9 @@ const openWarehouse2 = m2.binary("open_warehouse", {
 const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的な指定も可能
 ```
 
-- **ヒントとしての扱い**: `initialValue` はソルバーへの初期解ヒント（HiGHS の `setSolution`）であり、変数の固定や制約追加ではありません。求解前の `variable.value` は `null` のまま保たれます。（*既存計画からの変更件数を抑えたい場合は [定式化パターン・Tips](./formulation-tips.md#minimal-perturbation) を参照してください。*）
+- **ヒントとしての扱い**: `initialValue` はソルバーへの初期解ヒント（HiGHS の `setSolution` や Pumpkin の `WarmStart` 分岐ヒューリスティクス）であり、変数の固定や制約追加ではありません。求解前の `variable.value` は `null` のまま保たれます。（*既存計画からの変更件数を抑えたい場合は [定式化パターン・Tips](./formulation-tips.md#minimal-perturbation) を参照してください。*）
 - **検証と許容誤差 (`1e-6`)**: 境界 `[lb - 1e-6, ub + 1e-6]` 内の有限値であること（整数・バイナリ変数は整数から `1e-6` 以内）が検証されます。一部の変数のみの指定も可能ですが、すべての制約を満たす完全な実行可能解を渡すと、MIP ソルバーが初期ステップから暫定境界（Incumbent）を得られます。
-- **対応ソルバー**: **HiGHS**（`capabilities.supportsWarmStart === true`）がサポートしています。ウォームスタート非対応のソルバー（**GLPK**, **Z3**, または `supportsWarmStart: true` を持たないカスタムソルバー）では、`initialValue` を黙って無視せず明示的なエラーをスローします。
+- **対応ソルバー**: **HiGHS** と **Pumpkin**（`capabilities.supportsWarmStart === true`；Pumpkin は有界 `Integer` / `Binary` 変数に対して `solve()` と `check()` の双方で対応）がサポートしています。ウォームスタート非対応のソルバー（**GLPK**, **Z3**, または `supportsWarmStart: true` を持たないカスタムソルバー）では、`initialValue` を黙って無視せず明示的なエラーをスローします。
 
 ---
 

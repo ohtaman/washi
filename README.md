@@ -78,11 +78,12 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 | Solver | License | Problem Classes | Primary Use Case | Setup |
 | :--- | :--- | :--- | :--- | :--- |
 | **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & elastic conflict repair | Built-in default |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, Logic, Bounded Integer | Combinatorial scheduling & zero-COOP/COEP `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"` (bundled WASM) |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, Logic, MIP | Logical rules, satisfiability & exact `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | Linear & mixed-integer optimization | `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | Deterministic unit & integration testing | Built-in (`MockSolver`) |
 
-Pass `{ solver: "z3" }` or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(...)`, or `m.check(...)` after importing the plugin.
+Pass `{ solver: "pumpkin" }`, `{ solver: "z3" }`, or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(...)`, or `m.check(...)` after importing the plugin.
 
 ---
 

@@ -409,9 +409,49 @@ try {
     assert(err.message.includes("Please import '@ohtaman/washi/solvers/z3'"));
     return true;
   });
-  console.log("PASS npm tarball: unimported GLPK and Z3 solvers throw helpful import errors in Node.js");
+  await assert.rejects(async () => model.solve({ solver: "pumpkin" }), (err) => {
+    assert(err.message.includes("Please import '@ohtaman/washi/solvers/pumpkin'"));
+    return true;
+  });
+  console.log("PASS npm tarball: unimported GLPK, Z3, and Pumpkin solvers throw helpful import errors in Node.js");
 
-  // Install optional peers in fixture to test solver plugins in Node.js
+  // Test bundled Pumpkin plugin in Node.js BEFORE installing optional peers
+  await import(new URL(`file://${packageRoot}/dist/lib/solvers/pumpkin.js`));
+  const pumpkinOptModel = new Model("PumpkinNodeOpt", { solver: "pumpkin" });
+  const px = pumpkinOptModel.integer("px", { lb: 0, ub: 10 });
+  pumpkinOptModel.constraint(px.le(6));
+  pumpkinOptModel.objective(maximize(px.mul(4)));
+  assert.equal(await pumpkinOptModel.solve(), "Optimal");
+  assert.equal(pumpkinOptModel.objectiveValue, 24);
+  assert.equal(px.value, 6);
+
+  const pumpkinWarmModel = new Model("PumpkinNodeWarm", { solver: "pumpkin" });
+  const pw4 = pumpkinWarmModel.binary("pw4", { initialValue: 1 });
+  const pw3 = pumpkinWarmModel.binary("pw3");
+  const pw2 = pumpkinWarmModel.binary("pw2");
+  const pw1 = pumpkinWarmModel.binary("pw1", { initialValue: 1 });
+  pumpkinWarmModel.constraint(pw1.add(pw2).add(pw3).add(pw4).le(2));
+  pumpkinWarmModel.constraint(pw1.add(pw2).ge(1));
+  pumpkinWarmModel.constraint(pw3.add(pw4).ge(1));
+  pumpkinWarmModel.objective(maximize(pw1.mul(10).add(pw2.mul(10)).add(pw3.mul(10)).add(pw4.mul(10))));
+  assert.equal(await pumpkinWarmModel.solve(), "Optimal");
+  assert.deepEqual([pw1.value, pw2.value, pw3.value, pw4.value], [1, 0, 0, 1]);
+  assert.equal((await pumpkinWarmModel.check()).status, "Sat");
+  assert.deepEqual([pw1.value, pw2.value, pw3.value, pw4.value], [1, 0, 0, 1]);
+
+  const pumpkinCheckModel = new Model("PumpkinNodeCheck", { solver: "pumpkin" });
+  const pa = pumpkinCheckModel.bool("pa");
+  const pb = pumpkinCheckModel.integer("pb", { lb: 0, ub: 5 });
+  pumpkinCheckModel.constraint(pa, "require_pa");
+  pumpkinCheckModel.constraint(pa.not(), "forbid_pa");
+  pumpkinCheckModel.constraint(pb.ge(1), "unrelated");
+  const pumpkinCheckRes = await pumpkinCheckModel.check();
+  assert.equal(pumpkinCheckRes.status, "Unsat");
+  assert(pumpkinCheckRes.unsatCore?.includes("require_pa"));
+  assert(!pumpkinCheckRes.unsatCore?.includes("unrelated"));
+  console.log("PASS npm tarball: Pumpkin plugin solves and extracts unsatCore in Node.js without peer dependencies");
+
+  // Install optional peers in fixture to test remaining solver plugins in Node.js
   npm(["install", "--ignore-scripts", "glpk.js", "z3-solver"], fixture);
 
   // Test GLPK plugin in Node.js
@@ -436,7 +476,10 @@ try {
   console.log("PASS npm tarball: Z3 plugin solves SMT check in Node.js");
 
   await writeFile(path.join(fixture, "index.html"), '<script type="module" src="./main.js"></script>');
-  await writeFile(path.join(fixture, "main.js"), `import { Model } from '@ohtaman/washi';\nimport '@ohtaman/washi/solvers/glpk';\nimport '@ohtaman/washi/solvers/z3';\n${source}`);
+  await writeFile(
+    path.join(fixture, "main.js"),
+    `import { Model } from '@ohtaman/washi';\nimport '@ohtaman/washi/solvers/glpk';\nimport '@ohtaman/washi/solvers/z3';\nimport '@ohtaman/washi/solvers/pumpkin';\n${source}`
+  );
   const viteRoot = path.join(fixture, "vite-output");
   await build({ root: fixture, configFile: false, base: "./", logLevel: "warn", build: { outDir: viteRoot } });
   const html = await readFile(path.join(viteRoot, "index.html"), "utf8");
@@ -446,7 +489,9 @@ try {
   const viteFiles = (await readdir(viteRoot, { recursive: true })).map(String);
   assert(viteFiles.some(f => f.includes("z3-built") && f.endsWith(".js")), "Vite output missing z3-built.js");
   assert(viteFiles.some(f => f.includes("z3-built") && f.endsWith(".wasm")), "Vite output missing z3-built.wasm");
-  console.log("PASS consumer Vite build: discovers and emits Z3 assets");
+  assert(viteFiles.some(f => f.includes("pumpkin") && f.endsWith(".wasm")), "Vite output missing pumpkin.wasm");
+  assert(viteFiles.some(f => f.includes("pumpkin-worker") && f.endsWith(".js")), "Vite output missing pumpkin-worker.js");
+  console.log("PASS consumer Vite build: discovers and emits Z3 and Pumpkin assets");
 
   const webpackRoot = path.join(fixture, "webpack-output");
   await new Promise((resolve, reject) => webpack({
@@ -462,7 +507,13 @@ try {
   const webpackFiles = (await readdir(webpackRoot, { recursive: true })).map(String);
   assert(webpackFiles.some(f => f.includes("z3-built") && f.endsWith(".js")), "Webpack output missing z3-built.js");
   assert(webpackFiles.some(f => f.includes("z3-built") && f.endsWith(".wasm")), "Webpack output missing z3-built.wasm");
-  console.log("PASS consumer Webpack build: discovers and emits Z3 assets");
+  assert(webpackFiles.some(f => f.includes("pumpkin") && f.endsWith(".wasm")), "Webpack output missing pumpkin.wasm");
+  const webpackJsFiles = webpackFiles.filter(f => f !== "app.js" && f.endsWith(".js"));
+  const hasPumpkinWorkerChunk = (
+    await Promise.all(webpackJsFiles.map(async (f) => (await readFile(path.join(webpackRoot, f), "utf8")).includes("check_with_callback")))
+  ).some(Boolean);
+  assert(hasPumpkinWorkerChunk, "Webpack output missing Pumpkin worker chunk");
+  console.log("PASS consumer Webpack build: discovers and emits Z3 and Pumpkin assets");
 
   await runtime(path.join(packageRoot, "dist/browser"), "washi.js", true);
   await runtime(path.join(packageRoot, "dist/browser"), "washi.min.js", false);
@@ -765,6 +816,99 @@ try {
       </script>`;
       await writeFile(path.join(fixture, "pages", "z3-missing.html"), z3MissingPage);
       const standardSite = await serve(path.join(fixture, "pages"), false);
+
+      // Test Pumpkin ESM and IIFE in Chromium WITHOUT Cross-Origin-Isolation headers (coopCoep = false)
+      const buildPumpkinHtml = (name, extraHead) => `<!doctype html><html><body>${extraHead}<script ${name === "pumpkin-esm" ? 'type="module"' : ""}>
+        window.runPumpkin = async () => {
+          if (window.crossOriginIsolated !== false) {
+            throw new Error("Expected window.crossOriginIsolated === false");
+          }
+          const { Model, maximize } = window.Washi || await import('${cdn}/factory/washi.js');
+          const pumpkinMod = window.WashiPumpkin || await import('${cdn}/factory/solvers/pumpkin.js');
+
+          const mOpt = new Model({ solver: 'pumpkin' });
+          const x = mOpt.integer('x', { lb: 0, ub: 10 });
+          mOpt.objective(maximize(x.mul(10)));
+          mOpt.constraint(x.le(6));
+          const status = await mOpt.solve();
+
+          const mCheck = new Model({ solver: 'pumpkin' });
+          const a = mCheck.bool('a');
+          const u = mCheck.integer('u', { lb: 0, ub: 5 });
+          mCheck.constraint(a, 'must_a');
+          mCheck.constraint(a.not(), 'forbid_a');
+          mCheck.constraint(u.ge(1), 'unrelated');
+          const checkRes = await mCheck.check();
+
+          pumpkinMod.setPumpkinWasmUrl(window.location.href);
+          let htmlErr = null;
+          try {
+            const mBad = new Model({ solver: 'pumpkin' });
+            mBad.constraint(mBad.bool('z'));
+            await mBad.check({ useWorker: false });
+          } catch (e) {
+            htmlErr = e?.message || String(e);
+          } finally {
+            pumpkinMod.setPumpkinWasmUrl(null);
+          }
+
+          const mRec = new Model({ solver: 'pumpkin' });
+          const rb = mRec.bool('rb');
+          mRec.constraint(rb);
+          const recRes = await mRec.check();
+
+          const mWarm = new Model({ solver: 'pumpkin' });
+          const pw4 = mWarm.binary('pw4', { initialValue: 1 });
+          const pw3 = mWarm.binary('pw3');
+          const pw2 = mWarm.binary('pw2');
+          const pw1 = mWarm.binary('pw1', { initialValue: 1 });
+          mWarm.constraint(pw1.add(pw2).add(pw3).add(pw4).le(2));
+          mWarm.constraint(pw1.add(pw2).ge(1));
+          mWarm.constraint(pw3.add(pw4).ge(1));
+          mWarm.objective(maximize(pw1.mul(10).add(pw2.mul(10)).add(pw3.mul(10)).add(pw4.mul(10))));
+          const warmStatus = await mWarm.solve();
+
+          return {
+            status,
+            x: x.value,
+            objective: mOpt.objectiveValue,
+            checkStatus: checkRes.status,
+            unsatCore: checkRes.unsatCore,
+            htmlErr,
+            recStatus: recRes.status,
+            recVal: recRes.values.rb,
+            warmStatus,
+            warmVals: [pw1.value, pw2.value, pw3.value, pw4.value],
+          };
+        };
+      </script></body></html>`;
+
+      const pumpkinCases = [
+        ["pumpkin-esm", buildPumpkinHtml("pumpkin-esm", `<script type="module">import '${cdn}/factory/solvers/pumpkin.js';</script>`)],
+        ["pumpkin-iife", buildPumpkinHtml("pumpkin-iife", `<script src="${cdn}/factory/washi.min.js"></script><script src="${cdn}/factory/solvers/pumpkin.min.js"></script>`)],
+      ];
+      for (const [name, content] of pumpkinCases) {
+        await writeFile(path.join(fixture, "pages", `${name}.html`), content);
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        await page.goto(`${standardSite}/${name}.html`);
+        await page.waitForFunction(() => typeof window.runPumpkin === "function");
+        const res = await timeout(page.evaluate(() => window.runPumpkin()));
+        assert.equal(res.status, "Optimal");
+        assert.equal(res.objective, 60);
+        assert.equal(res.x, 6);
+        assert.equal(res.checkStatus, "Unsat");
+        assert(res.unsatCore?.includes("must_a") && res.unsatCore?.includes("forbid_a"));
+        assert(!res.unsatCore?.includes("unrelated"));
+        assert(res.htmlErr && /html|wasm/i.test(res.htmlErr) && res.htmlErr.includes("no CDN fallback"), res.htmlErr);
+        assert.equal(res.recStatus, "Sat");
+        assert.equal(res.recVal, true);
+        assert.equal(res.warmStatus, "Optimal");
+        assert.deepEqual(res.warmVals, [1, 0, 0, 1]);
+        await context.close();
+        console.log(`PASS Chromium: ${name} (zero COOP/COEP, Worker solve, warm-start, unsatCore, HTML fallback rejection & recovery)`);
+      }
+
       const z3Ctx1 = await browser.newContext();
       const z3Page1 = await z3Ctx1.newPage();
       await z3Page1.goto(`${standardSite}/z3-missing.html`);

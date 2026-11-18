@@ -78,11 +78,12 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 | 求解器 | 许可证 | 支持问题类型 | 主要用途 | 引入方式 |
 | :--- | :--- | :--- | :--- | :--- |
 | **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数值优化与弹性冲突修复诊断 | 默认内置 |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 逻辑, 有界整数 | 组合调度与免 COOP/COEP 的 `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（内置 WASM） |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 逻辑, MIP | 逻辑规则、可满足性判定与精确 `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 线性与混合整数规划 | `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | 单元与集成测试模拟响应 | 内置 (`MockSolver`) |
 
-导入对应插件后，可在 `new Model(...)`、`m.solve(...)` 或 `m.check(...)` 中传入 `{ solver: "z3" }` 或 `{ solver: "glpk" }`。
+导入对应插件后，可在 `new Model(...)`、`m.solve(...)` 或 `m.check(...)` 中传入 `{ solver: "pumpkin" }`、`{ solver: "z3" }` 或 `{ solver: "glpk" }`。
 
 ---
 

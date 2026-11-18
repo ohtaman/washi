@@ -291,6 +291,7 @@ export default withMermaid(
               { text: "HiGHS (Built-in default)", link: "/solvers/highs" },
               { text: "Z3 (SMT / Unsat Core)", link: "/solvers/z3" },
               { text: "GLPK (LP / MIP)", link: "/solvers/glpk" },
+              { text: "Pumpkin (CP / LCG / Logic)", link: "/solvers/pumpkin" },
               { text: "Custom Solver Adapter", link: "/solvers/custom-solver" },
             ],
           },
@@ -358,7 +359,8 @@ export default withMermaid(
               { text: jaLocale.sidebar[2].items[1].text, link: "/ja/solvers/highs" },
               { text: jaLocale.sidebar[2].items[2].text, link: "/ja/solvers/z3" },
               { text: jaLocale.sidebar[2].items[3].text, link: "/ja/solvers/glpk" },
-              { text: jaLocale.sidebar[2].items[4].text, link: "/ja/solvers/custom-solver" },
+              { text: jaLocale.sidebar[2].items[4].text, link: "/ja/solvers/pumpkin" },
+              { text: jaLocale.sidebar[2].items[5].text, link: "/ja/solvers/custom-solver" },
             ],
           },
           {
@@ -435,7 +437,8 @@ export default withMermaid(
               { text: zhLocale.sidebar[2].items[1].text, link: "/zh/solvers/highs" },
               { text: zhLocale.sidebar[2].items[2].text, link: "/zh/solvers/z3" },
               { text: zhLocale.sidebar[2].items[3].text, link: "/zh/solvers/glpk" },
-              { text: zhLocale.sidebar[2].items[4].text, link: "/zh/solvers/custom-solver" },
+              { text: zhLocale.sidebar[2].items[4].text, link: "/zh/solvers/pumpkin" },
+              { text: zhLocale.sidebar[2].items[5].text, link: "/zh/solvers/custom-solver" },
             ],
           },
           {
@@ -541,7 +544,7 @@ export default withMermaid(
     resolve: {
       alias: [
         {
-          find: /^(.*\/highs\/worker)\.js$/,
+          find: /^(.*\/(?:highs|pumpkin)\/worker)\.js$/,
           replacement: "$1.ts",
         },
       ],

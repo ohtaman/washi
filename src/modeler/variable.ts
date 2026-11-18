@@ -15,7 +15,7 @@ export interface VarOptions {
   /**
    * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
    * Validated within tolerance `1e-6` against `[lb, ub]` and integer/binary domains.
-   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   * Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
    */
   initialValue?: number;
 }
@@ -131,7 +131,7 @@ export class Var {
 
   /**
    * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
-   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   * Supported by HiGHS and Pumpkin (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
    */
   get initialValue(): number | undefined {
     return this._initialValue;

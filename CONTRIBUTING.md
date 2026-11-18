@@ -63,7 +63,7 @@ node scripts/run-benchmarks.mjs --browser
 
 ---
 
-## 4. Rebuilding HiGHS WebAssembly & Release Workflow
+## 4. Rebuilding WebAssembly Assets & Release Workflow
 
 ### Rebuilding / Updating HiGHS WebAssembly Assets (`highs.config.json`)
 
@@ -71,14 +71,32 @@ node scripts/run-benchmarks.mjs --browser
 # Compile ERGO-Code/HiGHS to public/highs.wasm + runtime.js and update SHA-256 hashes in highs.config.json
 npm run build:highs-wasm
 
-# After merging to main, upload the updated assets to the highs-<version> GitHub Release tag
+# After merging to main, create or update the highs-<version> GitHub Release tag
 # so on-demand downloads (scripts/ensure-highs-wasm.mjs) match highs.config.json SHA-256 hashes:
 gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
 ```
 
 Alternatively, trigger the **Build HiGHS WebAssembly** workflow (`.github/workflows/build-wasm.yml`) via `workflow_dispatch` with `create_release: true`, then download the `highs-wasm-assets` workflow artifact (`public/highs.wasm`, `src/modeler/solvers/highs/runtime.js`, and `highs.config.json`) and commit those updated files to `main` so repository checksums stay synchronized with the published Release assets.
 
+### Rebuilding / Updating Pumpkin WebAssembly Assets (`pumpkin.config.json`)
+
+```bash
+# Optional: bump the Pumpkin crate version in pumpkin.config.json and wasm/pumpkin/Cargo.toml
+node scripts/ensure-pumpkin-wasm.mjs --set-version 0.5.0
+
+# Compile wasm/pumpkin (Rust wasm32-unknown-unknown) to public/pumpkin.wasm + runtime.{js,d.ts}
+# and update SHA-256 hashes in pumpkin.config.json
+npm run build:pumpkin-wasm
+
+# After merging to main, create (or upload --clobber to) the pumpkin-v<version> GitHub Release tag
+# so on-demand downloads (scripts/ensure-pumpkin-wasm.mjs) match pumpkin.config.json SHA-256 hashes:
+gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber
+```
+
+If `pumpkin-v<version>` does not exist yet on GitHub Releases, create it first with `gh release create pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --title "Pumpkin WebAssembly v0.5.0" --generate-notes` (or trigger the **Build Pumpkin WebAssembly** workflow `.github/workflows/build-pumpkin-wasm.yml` via `workflow_dispatch` with `create_release: true` and commit the updated files from the `pumpkin-wasm-assets` artifact to `main`).
+
 ### Publishing `@ohtaman/washi` to npm
 
 - Merging to `main` automatically deploys the updated documentation and web demo to GitHub Pages (`.github/workflows/deploy-demo.yml`), but does **not** publish to npm automatically.
-- To publish a new version to npm, bump `"version"` in `package.json` on `main` and publish a GitHub Release (e.g., `gh release create v0.6.0 --generate-notes`). Publishing the GitHub Release triggers `.github/workflows/publish-npm.yml`, which runs unit and Playwright distribution checks before publishing to npm via OIDC Trusted Publishing.
+- To publish a new version to npm, bump `"version"` in `package.json` on `main` and publish a `v*` GitHub Release (e.g., `gh release create v0.7.0 --generate-notes`).
+- `.github/workflows/publish-npm.yml` only publishes for GitHub Releases whose tag starts with `v` (such as `v0.7.0`), running unit and Playwright distribution checks before publishing to npm via OIDC Trusted Publishing; solver asset releases (`highs-*` and `pumpkin-*`) are ignored by the npm publish workflow.

@@ -3,6 +3,7 @@ import {
   Model,
   Var,
   expr,
+  implies,
   maximize,
   minimize,
   HighsSolver,
@@ -12,11 +13,13 @@ import {
 } from "../src/index.js";
 import * as workerClient from "../src/modeler/solvers/highs/worker-client.js";
 import { GLPKSolver } from "../src/modeler/solvers/glpk/index.js";
+import { PumpkinSolver } from "../src/modeler/solvers/pumpkin/index.js";
 import { Z3Solver, killZ3Threads } from "../src/modeler/solvers/z3/index.js";
 
 describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
   beforeAll(async () => {
     await import("../src/modeler/solvers/glpk/index.js");
+    await import("../src/modeler/solvers/pumpkin/index.js");
     await import("../src/modeler/solvers/z3/index.js");
   });
 
@@ -407,6 +410,8 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
     it("declares supportsWarmStart accurately across built-in solver adapters", () => {
       expect(HighsSolver.capabilities.supportsWarmStart).toBe(true);
       expect(new HighsSolver().capabilities.supportsWarmStart).toBe(true);
+      expect(PumpkinSolver.capabilities.supportsWarmStart).toBe(true);
+      expect(new PumpkinSolver().capabilities.supportsWarmStart).toBe(true);
       expect(GLPKSolver.capabilities.supportsWarmStart).toBe(false);
       expect(new GLPKSolver().capabilities.supportsWarmStart).toBe(false);
       expect(new Z3Solver().capabilities.supportsWarmStart).toBe(false);
@@ -474,6 +479,177 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(await m.solve("glpk")).toBe("Optimal");
       expect(x.value).toBe(2);
       expect((await m.check("z3")).status).toBe("Sat");
+    });
+  });
+
+  describe("5. Pumpkin CP/LCG WarmStart support (solve() and check())", () => {
+    function buildTiedPumpkinModel(kind: "linear" | "constant" | "check") {
+      const m = new Model(`PumpkinTied-${kind}`);
+      // Declare x4 before x1 to ensure declaration order works cleanly
+      const x4 = m.binary("x4");
+      const x3 = m.binary("x3");
+      const x2 = m.binary("x2");
+      const x1 = m.binary("x1");
+
+      m.constraint(expr`${x1} + ${x2} + ${x3} + ${x4} <= 2`, "cap");
+      m.constraint(expr`${x1} + ${x2} >= 1`, "group_12");
+      m.constraint(expr`${x3} + ${x4} >= 1`, "group_34");
+
+      if (kind === "linear") {
+        m.objective(maximize(expr`10 * ${x1} + 10 * ${x2} + 10 * ${x3} + 10 * ${x4}`));
+      } else if (kind === "constant") {
+        m.objective(minimize(expr`5`));
+      }
+      return { m, x1, x2, x3, x4 };
+    }
+
+    it("breaks ties according to partial/complete initialValue hints in solve() (linear & constant) and check()", async () => {
+      for (const kind of ["linear", "constant", "check"] as const) {
+        const partialA = buildTiedPumpkinModel(kind);
+        partialA.x1.initialValue = 1;
+        partialA.x4.initialValue = 1;
+
+        if (kind === "check") {
+          const resA = await partialA.m.check({ solver: "pumpkin" });
+          expect(resA.status).toBe("Sat");
+        } else {
+          expect(await partialA.m.solve({ solver: "pumpkin" })).toBe("Optimal");
+          expect(partialA.m.objectiveValue).toBe(kind === "linear" ? 20 : 5);
+        }
+        expect([
+          partialA.x1.value,
+          partialA.x2.value,
+          partialA.x3.value,
+          partialA.x4.value,
+        ]).toEqual([1, 0, 0, 1]);
+        expect(partialA.x1.initialValue).toBe(1);
+        expect(partialA.x2.initialValue).toBeUndefined();
+        expect(partialA.m.validateSolution().valid).toBe(true);
+
+        const partialB = buildTiedPumpkinModel(kind);
+        partialB.x2.initialValue = 1;
+        partialB.x4.initialValue = 1;
+
+        if (kind === "check") {
+          const resB = await partialB.m.check({ solver: "pumpkin" });
+          expect(resB.status).toBe("Sat");
+        } else {
+          expect(await partialB.m.solve({ solver: "pumpkin" })).toBe("Optimal");
+          expect(partialB.m.objectiveValue).toBe(kind === "linear" ? 20 : 5);
+        }
+        expect([
+          partialB.x1.value,
+          partialB.x2.value,
+          partialB.x3.value,
+          partialB.x4.value,
+        ]).toEqual([0, 1, 0, 1]);
+        expect(partialB.x2.initialValue).toBe(1);
+        expect(partialB.x1.initialValue).toBeUndefined();
+        expect(partialB.m.validateSolution().valid).toBe(true);
+      }
+    });
+
+    it("treats initialValue as a non-binding hint and recovers from suboptimal or conflicting hints while preserving unsatCore", async () => {
+      // 1. Suboptimal hint does not prevent reaching true optimum
+      const mSub = new Model("PumpkinSuboptimalHint");
+      const x = mSub.integer("x", { lb: -5, ub: 10, initialValue: -3 });
+      mSub.objective(maximize(x));
+      mSub.constraint(expr`${x} <= 7`, "cap");
+      expect(await mSub.solve({ solver: "pumpkin" })).toBe("Optimal");
+      expect(mSub.objectiveValue).toBe(7);
+      expect(x.value).toBe(7);
+      expect(x.initialValue).toBe(-3);
+      expect(mSub.validateSolution().valid).toBe(true);
+
+      // 2. Constraint-violating hint recovers cleanly via CDCL backtracking in both solve() and check()
+      const mBad = new Model("PumpkinConflictingHint");
+      const y1 = mBad.binary("y1", { initialValue: 1 });
+      const y2 = mBad.binary("y2", { initialValue: 1 });
+      const flag = mBad.bool("flag");
+      mBad.constraint(expr`${y1} + ${y2} == 1`, "sum_one");
+      mBad.constraint(flag, "require_flag");
+      mBad.constraint(implies(flag, expr`${y2} == 1`), "flag_forces_y2");
+      mBad.objective(maximize(expr`5 * ${y1} + 2 * ${y2}`));
+
+      const chk = await mBad.check({ solver: "pumpkin" });
+      expect(chk.status).toBe("Sat");
+      expect([y1.value, y2.value]).toEqual([0, 1]);
+      expect(mBad.validateSolution().valid).toBe(true);
+
+      expect(await mBad.solve({ solver: "pumpkin" })).toBe("Optimal");
+      expect(mBad.objectiveValue).toBe(2);
+      expect([y1.value, y2.value]).toEqual([0, 1]);
+      expect(y1.initialValue).toBe(1);
+      expect(y2.initialValue).toBe(1);
+      expect(mBad.validateSolution().valid).toBe(true);
+
+      // 3. Truly unsatisfiable model with initialValue still extracts named unsatCore / conflicts
+      const mUnsat = new Model("PumpkinUnsatWithHint");
+      const u1 = mUnsat.integer("u1", { lb: 0, ub: 5, initialValue: 4 });
+      mUnsat.constraint(expr`${u1} >= 4`, "need_4");
+      mUnsat.constraint(expr`${u1} <= 2`, "cap_2");
+      const unsatRes = await mUnsat.check({ solver: "pumpkin" });
+      expect(unsatRes.status).toBe("Unsat");
+      expect(unsatRes.unsatCore).toBeDefined();
+      expect(unsatRes.unsatCore).toContain("need_4");
+      expect(unsatRes.unsatCore).toContain("cap_2");
+      expect(unsatRes.conflicts).toEqual(unsatRes.unsatCore);
+    });
+
+    it("handles 1e-6 near-integer initialValue tolerance and rejects invalid bypassed initialValue on direct PumpkinSolver calls", async () => {
+      const mTol = new Model("PumpkinToleranceHint");
+      const b = mTol.binary("b", { initialValue: 1 - 5e-7 });
+      const i = mTol.integer("i", { lb: -5, ub: 5, initialValue: -3 + 4e-7 });
+      mTol.constraint(expr`${b} + ${i} <= 3`, "ok");
+      mTol.objective(minimize(expr`0`));
+      expect(await mTol.solve({ solver: "pumpkin" })).toBe("Optimal");
+      expect(b.value).toBe(1);
+      expect(i.value).toBe(-3);
+      expect(mTol.validateSolution().valid).toBe(true);
+
+      const solver = new PumpkinSolver();
+      const makeRawVar = (overrides: Record<string, unknown>) => {
+        const v = new Var({ name: "v", type: "Integer", lb: 0, ub: 3 });
+        Object.defineProperty(v, "initialValue", {
+          value: undefined,
+          writable: true,
+          configurable: true,
+        });
+        Object.assign(v, overrides);
+        return v;
+      };
+
+      const invalidCases = [
+        { name: "nan", v: makeRawVar({ initialValue: NaN }), msg: /invalid initialValue/i },
+        { name: "inf", v: makeRawVar({ initialValue: Infinity }), msg: /invalid initialValue/i },
+        { name: "frac", v: makeRawVar({ initialValue: 1.5 }), msg: /non-integral|initialValue/i },
+        { name: "oob", v: makeRawVar({ initialValue: 5 }), msg: /outside its bounds/i },
+        {
+          name: "empty_binary",
+          v: makeRawVar({ type: "Binary", lb: 2, ub: 3, initialValue: 1 }),
+          msg: /outside its bounds|empty/i,
+        },
+      ];
+
+      for (const tc of invalidCases) {
+        await expect(
+          solver.solve({
+            name: `bad_${tc.name}`,
+            sense: "minimize",
+            objective: expr`${tc.v}`,
+            variables: [tc.v],
+            constraints: [],
+          })
+        ).rejects.toThrow(tc.msg);
+
+        await expect(
+          solver.check({
+            name: `bad_${tc.name}`,
+            variables: [tc.v],
+            constraints: [],
+          })
+        ).rejects.toThrow(tc.msg);
+      }
     });
   });
 });

@@ -205,6 +205,7 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
               "@ohtaman/washi": ["../../dist/types/index.d.ts"],
               "@ohtaman/washi/solvers/z3": ["../../dist/types/modeler/solvers/z3/index.d.ts"],
               "@ohtaman/washi/solvers/glpk": ["../../dist/types/modeler/solvers/glpk/index.d.ts"],
+              "@ohtaman/washi/solvers/pumpkin": ["../../dist/types/modeler/solvers/pumpkin/index.d.ts"],
             },
           },
           include: ["./*.ts"],

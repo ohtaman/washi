@@ -122,6 +122,17 @@ export default defineConfig({
     },
   },
   assetsInclude: ["**/*.wasm"],
+  worker: {
+    format: "es",
+  },
+  resolve: {
+    alias: [
+      {
+        find: /^(.*\/(?:highs|pumpkin)\/worker)\.js$/,
+        replacement: "$1.ts",
+      },
+    ],
+  },
   optimizeDeps: {
     exclude: ["highs"],
   },

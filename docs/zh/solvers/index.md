@@ -9,6 +9,7 @@ WaSHI 采用可插拔、解耦的求解器架构设计。你可以使用统一�
 | 求解器 | 引擎许可证 | 支持的问题类型 | 适用场景 | WaSHI 中的状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, 凸QP** | 工业级规模优化、运筹学、生产计划、金融组合优化 | **内置默认**（零配置） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | **MIT** | **CP, LCG, 逻辑, 有界整数** | 排班调度、组合逻辑、免 COOP/COEP 的 `unsatCore` | 可选插件（`@ohtaman/washi/solvers/pumpkin`，内置 WASM） |
 | **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, 逻辑, MIP** | 命题逻辑、不可行冲突诊断（`unsatCore`）、规则引擎 | 可选插件（`@ohtaman/washi/solvers/z3`） |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | 学术基准测试、既有 GLPK 模型兼容性验证 | 可选插件（`@ohtaman/washi/solvers/glpk`） |
 | **Mock** | **MIT** | *任意* | 无需加载 WebAssembly 的 CI 超高速单元测试 | **内置** |
@@ -23,13 +24,17 @@ WaSHI 采用可插拔、解耦的求解器架构设计。你可以使用统一�
 // 1. 内置 HiGHS（默认）
 const m1 = new Model({ solver: "highs" });
 
-// 2. Z3 SMT 求解器
-import "@ohtaman/washi/solvers/z3";
-const m2 = new Model({ solver: "z3" });
+// 2. Pumpkin CP/LCG 求解器（内置 WASM，免 COOP/COEP）
+import "@ohtaman/washi/solvers/pumpkin";
+const m2 = new Model({ solver: "pumpkin" });
 
-// 3. GLPK 求解器
+// 3. Z3 SMT 求解器
+import "@ohtaman/washi/solvers/z3";
+const m3 = new Model({ solver: "z3" });
+
+// 4. GLPK 求解器
 import "@ohtaman/washi/solvers/glpk";
-const m3 = new Model({ solver: "glpk" });
+const m4 = new Model({ solver: "glpk" });
 ```
 
 ---
@@ -37,6 +42,7 @@ const m3 = new Model({ solver: "glpk" });
 ## 求解器详细指南
 
 - [HiGHS 指南](/zh/solvers/highs)：Web Worker 后台执行、MIP 容差设置、凸二次规划（QP）求解、进度回调与中断控制。
+- [Pumpkin 指南](/zh/solvers/pumpkin)：内置 LCG 约束规划、调度逻辑以及免跨源隔离的 `unsatCore` 提取。
 - [Z3 指南](/zh/solvers/z3)：SMT 逻辑断言、逻辑建模、`m.check()` 冲突约束集（Unsat Core）分析与跨源隔离要求。
 - [GLPK 指南](/zh/solvers/glpk)：GLPK 适配器用法、GPL-3.0 许可证注意事项、状态映射与浏览器使用方式。
 - [自定义求解器开发指南](/zh/solvers/custom-solver)：将私有求解器、商业求解器或云端 REST 求解服务集成为 WaSHI 插件的分步开发教程。

@@ -1,0 +1,95 @@
+name: Build Pumpkin WebAssembly
+
+on:
+  workflow_dispatch:
+    inputs:
+      pumpkin_version:
+        description: "Pumpkin crate version to compile (e.g. 0.5.0; leave blank to use pumpkin.config.json)"
+        required: false
+        type: string
+        default: ""
+      create_release:
+        description: "Create or update GitHub Release tag (pumpkin-v<version>) with compiled assets"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'pumpkin.config.json'
+      - 'wasm/pumpkin/**'
+      - 'scripts/build-pumpkin-wasm.sh'
+      - '.github/workflows/build-pumpkin-wasm.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-pumpkin-wasm:
+    name: Compile Pumpkin WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Pumpkin WebAssembly
+        env:
+          PUMPKIN_VERSION_OVERRIDE: ${{ inputs.pumpkin_version }}
+        run: |
+          if [ -n "$PUMPKIN_VERSION_OVERRIDE" ]; then
+            node scripts/ensure-pumpkin-wasm.mjs --set-version "$PUMPKIN_VERSION_OVERRIDE"
+          fi
+          npm run build:pumpkin-wasm
+
+      - name: Verify WebAssembly solver execution
+        run: npm test
+
+      - name: Upload WebAssembly build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pumpkin-wasm-assets
+          path: |
+            public/pumpkin.wasm
+            src/modeler/solvers/pumpkin/runtime.js
+            src/modeler/solvers/pumpkin/runtime.d.ts
+            pumpkin.config.json
+            wasm/pumpkin/Cargo.toml
+            wasm/pumpkin/Cargo.lock
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('pumpkin.config.json', 'utf8')).version.replace(/^v/, ''))")
+          TAG_NAME="pumpkin-v${VERSION}"
+          echo "Target Release Tag: ${TAG_NAME}"
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" \
+              public/pumpkin.wasm \
+              src/modeler/solvers/pumpkin/runtime.js \
+              src/modeler/solvers/pumpkin/runtime.d.ts \
+              --clobber
+          else
+            gh release create "${TAG_NAME}" \
+              --target "${GITHUB_SHA}" \
+              public/pumpkin.wasm \
+              src/modeler/solvers/pumpkin/runtime.js \
+              src/modeler/solvers/pumpkin/runtime.d.ts \
+              --title "Pumpkin WebAssembly v${VERSION}" \
+              --notes "Prebuilt WebAssembly assets (pumpkin.wasm & runtime.{js,d.ts}) compiled from upstream ConSol-Lab/Pumpkin v${VERSION} with Rust wasm32-unknown-unknown."
+          fi

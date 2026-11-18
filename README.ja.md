@@ -78,11 +78,12 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 | ソルバー | ライセンス | 対応クラス | 主な用途 | 導入方法 |
 | :--- | :--- | :--- | :--- | :--- |
 | **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・エラスティック矛盾修復 | 標準搭載（設定不要） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 論理, 有界整数 | スケジューリング・COOP/COEP不要の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱） |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 論理, MIP | 論理ルール・充足判定・厳密な `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 線形・混合整数最適化 | `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | テスト用の決定論的な模擬応答 | 標準搭載 (`MockSolver`) |
 
-プラグインを import した上で、`new Model(...)`・`m.solve(...)`・`m.check(...)` に `{ solver: "z3" }` または `{ solver: "glpk" }` を渡して切り替えます。
+プラグインを import した上で、`new Model(...)`・`m.solve(...)`・`m.check(...)` に `{ solver: "pumpkin" }`・`{ solver: "z3" }`・`{ solver: "glpk" }` を渡して切り替えます。
 
 ---
 
