@@ -185,3 +185,6 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 ```
 
 在场景 B 中应用此软约束模型后，HiGHS 会自动保留其余 3 项休假申请（`Alice (Sat)`、`Charlie (Sat)`、`Diana (Wed)`），仅让日薪比 Alice（`$220`）低 `$10` 的资深员工 `Bob (Sat)`（`$210`）在周六值班，一步完成冲突修复。
+
+> [!TIP]
+> **无需 `COOP` / `COEP` 响应头的 `unsatCore` 诊断**：由于该排班模型中的决策变量全部为带整数系数的 0-1 二元变量（`m.binary(...)`），在引入 `import "@ohtaman/washi/solvers/pumpkin"` 后，也可以直接通过 `await model.check({ solver: "pumpkin" })` 在不配置 `COOP` / `COEP` 响应头、不安装外部依赖的普通浏览器环境中提取 `unsatCore`。

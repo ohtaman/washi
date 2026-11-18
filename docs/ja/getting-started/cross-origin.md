@@ -3,7 +3,7 @@
 ブラウザ内で **Z3** ソルバーを実行する場合、`SharedArrayBuffer` を有効化するために Cross-Origin Isolation 用の HTTP レスポンスヘッダーが必要になります。
 
 > [!TIP]
-> **HiGHS・GLPK・Node.js では設定不要です**: 標準搭載の **HiGHS** および **GLPK** プラグインは `SharedArrayBuffer` を使わないため、通常のブラウザ環境でそのまま動作します。また **Node.js** で Z3 を動かす場合も不要です。ブラウザ上で `@ohtaman/washi/solvers/z3` を使う場合のみ本ページを参照してください。
+> **HiGHS・Pumpkin・GLPK・Node.js では設定不要です**: 同梱の **HiGHS**・**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）および **GLPK** プラグインは `SharedArrayBuffer` を使わないため、通常のブラウザ環境でそのまま動作します（Pumpkin による CP 求解・命題論理・`unsatCore` 競合診断もヘッダー不要です）。また **Node.js** で Z3 を動かす場合も不要です。ブラウザ上で `@ohtaman/washi/solvers/z3` を使う場合のみ本ページを参照してください。
 
 ---
 

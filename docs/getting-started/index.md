@@ -1,6 +1,6 @@
 # Introduction & Installation
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. Write expressions naturally with tagged templates (`expr`) and solve mathematical optimization problems directly in **Node.js and the browser** using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**).
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. Write expressions naturally with tagged templates (`expr`) and solve mathematical optimization and constraint programming problems directly in **Node.js and the browser** using WebAssembly solvers (**HiGHS**, **Pumpkin**, **Z3**, and **GLPK**).
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -29,7 +29,7 @@ if (m.hasPrimalSolution) {
 
 ## 📦 Installation
 
-The default **HiGHS** solver (LP / MIP / Convex QP) is bundled and works out of the box:
+Both the default **HiGHS** solver (LP / MIP / Convex QP) and the **Pumpkin** CP/LCG solver (`@ohtaman/washi/solvers/pumpkin`) are bundled with zero external dependencies and work out of the box:
 
 ::: code-group
 
@@ -77,5 +77,5 @@ Three practical habits cover the essentials shown in the snippet above:
 
 - **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and Unsat Core diagnosis
 - **[Examples & API Finder](../examples/)**: 11 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
-- **[Solvers Overview](../solvers/)**: Compare built-in HiGHS with optional Z3 and GLPK adapters
+- **[Solvers Overview](../solvers/)**: Compare bundled HiGHS and Pumpkin with optional Z3 and GLPK adapters
 - **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, and static hosting

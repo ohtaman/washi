@@ -241,8 +241,8 @@ export class Constraint {
     this.hasExplicitName = hasExplicitName;
   }
 
-  // Logical operators (natively solved on Z3; automatically linearized to 0-1 MIP on HiGHS/GLPK;
-  // negating a Constraint in implies antecedents / not / xor requires integer-valued expressions on MIP)
+  // Logical operators (natively solved on Pumpkin and Z3; automatically linearized to 0-1 MIP on HiGHS/GLPK;
+  // negating a Constraint in implies antecedents / not / xor requires integer-valued expressions on MIP and Pumpkin)
   /** Logical conjunction (`this AND other`). */
   public and(other: LogicInput): BoolOp {
     return new BoolOp("and", [this, other]);

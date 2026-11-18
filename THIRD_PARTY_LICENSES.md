@@ -69,7 +69,7 @@ THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 - **Package**: [`glpk.js`](https://www.npmjs.com/package/glpk.js)
 - **License**: **GNU General Public License v3.0 (GPL-3.0)**
 - **Upstream Repository**: [jvail/glpk.js](https://github.com/jvail/glpk.js)
-- **Notice**: WaSHI isolates GLPK support into an optional subpath export (`@ohtaman/washi/solvers/glpk`). It is loaded dynamically only when explicitly opted in by the user. If your application requires a strictly permissive license (e.g., proprietary enterprise deployments), stick to the default **HiGHS** (MIT) or **Z3** (MIT) engines.
+- **Notice**: WaSHI isolates GLPK support into an optional subpath export (`@ohtaman/washi/solvers/glpk`). It is loaded dynamically only when explicitly opted in by the user. If your application requires a strictly permissive license (e.g., proprietary enterprise deployments), stick to the default **HiGHS** (MIT), bundled **Pumpkin** (MIT), or **Z3** (MIT) engines.
 
 ```text
 GNU GENERAL PUBLIC LICENSE
@@ -85,9 +85,9 @@ https://www.gnu.org/licenses/gpl-3.0.txt
 
 ---
 
-## 4. Pumpkin Constraint Programming Solver (Optional Solver Plugin)
+## 4. Pumpkin Constraint Programming Solver (Bundled Solver Plugin)
 
-- **Role**: Optional Lazy Clause Generation (LCG) Constraint Programming Solver (WebAssembly)
+- **Role**: Bundled Lazy Clause Generation (LCG) Constraint Programming Solver (WebAssembly)
 - **License**: **MIT License**
 - **Upstream Repository**: [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)
 - **Bundled Asset**: Directly compiled from upstream crates (`pumpkin-core`, `pumpkin-constraints`, `pumpkin-conflict-resolvers` `v0.5.0`) to WebAssembly and shipped with WaSHI (`@ohtaman/washi/solvers/pumpkin`); transitive Rust WASM dependencies are strictly permissive (`MIT`, `Apache-2.0`, `Unicode-3.0`).

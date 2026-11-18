@@ -13,6 +13,7 @@ Explore runnable optimization and logic formulations built with WaSHI. Every exa
 | **[Staff Shift Scheduling](./shift-scheduling.md)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 weekly roster planner (coverage, senior duty, max shifts, day-off requests) and diagnosing conflicting vacation requests with Z3 `unsatCore`. | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
 | **[E-Commerce Coupon Optimizer](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | Checkout optimizer using `m.indicator()` for minimum spend thresholds, exclusive vs. stackable rules, and smart filler add-on suggestions. | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
 | **[Portfolio Optimization](./portfolio-qp.md)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | Markowitz mean-variance risk minimization ($w^T \Sigma w$) using `QuadExpr` subject to return targets. | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[Project Scheduling (RCPSP)](./project-scheduling.md)** | CP / LCG + Unsat Core | Pumpkin | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `m.check()` | 6-task resource-constrained schedule (unary rig + 3-engineer crew limit) and zero-`COOP`/`COEP` `unsatCore` deadline conflict check. | [CP Guide](../guide/constraint-programming.md) |
 | **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
 | **[Conflict Diagnosis (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | Extracting a conflicting constraint subset (`unsatCore`) when staffing and budget rules contradict each other. | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[Vehicle Routing (CVRP)](./vehicle-routing.md)** | Combinatorial OR / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | Dynamic route column generation from customer dual shadow prices to minimize total fleet vehicles. | [Decomposition Guide](../guide/decomposition.md) |
@@ -36,6 +37,9 @@ Looking for a specific modeling method or solver capability? Jump straight to th
 | `m.check()` & `m.unsatCore` | Feasibility check & conflict diagnosis | [Conflict Diagnosis](./unsat-core.md), [Shift Scheduling](./shift-scheduling.md) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
 | `m.solveColumnGeneration()` | Dantzig-Wolfe Column Generation | [Vehicle Routing](./vehicle-routing.md) | [`13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) |
 | `m.solveBenders()` | Benders Decomposition & cut separation | [Traveling Salesperson](./traveling-salesperson.md) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
+| `distinct()` / `disjoint()` / `cumulative()` / `allowed()` | Backend-agnostic CP global constraints | [Project Scheduling](./project-scheduling.md), [CP Modeling Guide](../guide/constraint-programming.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `max()` / `min()` / `abs()` / `at()` | Piecewise-linear & element lookup primitives | [Project Scheduling](./project-scheduling.md), [Expressions Guide](../guide/expressions.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `solver: "pumpkin"` | Bundled CP/LCG scheduling & zero-`COOP`/`COEP` `unsatCore` | [Project Scheduling](./project-scheduling.md), [Pumpkin Solver Guide](../solvers/pumpkin.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
 | `solver: "glpk"` | Solving LP/MIP with GLPK plugin | [GLPK Solver Guide](../solvers/glpk.md) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## Running Examples Locally in Node.js
@@ -56,4 +60,5 @@ npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 npx tsx examples/node/13-vehicle-routing-column-generation.ts
 npx tsx examples/node/14-traveling-salesperson-benders.ts
+npx tsx examples/node/15-project-scheduling-cp.ts
 ```

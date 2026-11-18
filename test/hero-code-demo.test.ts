@@ -577,6 +577,68 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       resetSnippetRunnerStateForTests();
     }
 
+    // Pumpkin CP snippet runs with separate cold load vs warm cached timing and never warms HiGHS
+    resetSnippetRunnerStateForTests();
+    const highsWarmupForPumpkinSpy = vi.spyOn(workerClientMod, "warmupHighs");
+    try {
+      const pumpkinSnippet = `
+        import { Model, expr, disjoint, minimize } from "@ohtaman/washi";
+        import "@ohtaman/washi/solvers/pumpkin";
+        const m = new Model("CpSnippet", { solver: "pumpkin" });
+        const s = m.integer(2, { lb: 0, ub: 10, prefix: "s" });
+        m.constraint(disjoint([{ start: s[0], duration: 4 }, { start: s[1], duration: 3 }]), "single_rig");
+        m.constraint(expr\`\${s[0]} + 4 <= \${s[1]}\`, "order");
+        m.objective(minimize(expr\`\${s[1]} + 3\`));
+        const status = await m.solve();
+        console.log(status, m.objectiveValue);
+      `;
+      const coldPumpkin = await runWashiSnippet(pumpkinSnippet);
+      expect(coldPumpkin.errorMsg).toBeNull();
+      expect(coldPumpkin.logs).toEqual(["Optimal 7"]);
+      expect(coldPumpkin.wasCached).toBe(false);
+      expect(coldPumpkin.loadTimeMs).toBeGreaterThan(0);
+      expect(coldPumpkin.solveTimeMs).toBeGreaterThanOrEqual(0);
+      expect(highsWarmupForPumpkinSpy).not.toHaveBeenCalled();
+
+      const warmPumpkin = await runWashiSnippet(pumpkinSnippet);
+      expect(warmPumpkin.errorMsg).toBeNull();
+      expect(warmPumpkin.logs).toEqual(["Optimal 7"]);
+      expect(warmPumpkin.wasCached).toBe(true);
+      expect(warmPumpkin.loadTimeMs).toBe(0);
+      expect(warmPumpkin.solveTimeMs).toBeGreaterThanOrEqual(0);
+      expect(highsWarmupForPumpkinSpy).not.toHaveBeenCalled();
+
+      // resetPumpkinLoader() (or setPumpkinWasmUrl changes) must invalidate warmup state
+      const { resetPumpkinLoader, setPumpkinWasmUrl } = await import("../src/modeler/solvers/pumpkin/index.js");
+      resetPumpkinLoader();
+      const afterResetPumpkin = await runWashiSnippet(pumpkinSnippet);
+      expect(afterResetPumpkin.errorMsg).toBeNull();
+      expect(afterResetPumpkin.logs).toEqual(["Optimal 7"]);
+      expect(afterResetPumpkin.wasCached).toBe(false);
+      expect(afterResetPumpkin.loadTimeMs).toBeGreaterThan(0);
+
+      // timeLimit: 0 on cold Pumpkin solve must not break warmup
+      resetPumpkinLoader();
+      setPumpkinWasmUrl(null);
+      resetSnippetRunnerStateForTests();
+      const zeroLimitPumpkin = await runWashiSnippet(`
+        import { Model, expr, minimize } from "@ohtaman/washi";
+        import "@ohtaman/washi/solvers/pumpkin";
+        const m = new Model("ZeroLimitCp", { solver: "pumpkin" });
+        const x = m.integer("x", { lb: 0, ub: 5 });
+        m.objective(minimize(x));
+        const status = await m.solve({ timeLimit: 0 });
+        console.log(status);
+      `);
+      expect(zeroLimitPumpkin.errorMsg).toBeNull();
+      expect(["Optimal", "TimeLimit", "Feasible", "Unknown"]).toContain(zeroLimitPumpkin.logs[0]);
+      expect(zeroLimitPumpkin.wasCached).toBe(false);
+      expect(highsWarmupForPumpkinSpy).not.toHaveBeenCalled();
+    } finally {
+      highsWarmupForPumpkinSpy.mockRestore();
+      resetSnippetRunnerStateForTests();
+    }
+
     // Synchronous operation entry must capture startRevision/opId and clear stale state before async warmup awaits
     const inFlightRes = await runWashiSnippet(`
       const m = new Model("SyncEntryTest");
@@ -663,6 +725,57 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     } finally {
       vi.unstubAllGlobals();
       resetFreshRunner();
+      vi.resetModules();
+    }
+
+    // Aborting during cold Pumpkin worker warmup must terminate the stalled worker,
+    // resolve interrupted immediately, and leave isPumpkinWarmed() false
+    vi.resetModules();
+    const {
+      runWashiSnippet: runFreshPumpkinSnippet,
+      resetSnippetRunnerStateForTests: resetFreshPumpkinRunner,
+    } = await import("../docs/.vitepress/theme/utils/runSnippet.js");
+    const pumpkinModForAbort = await import("../src/modeler/solvers/pumpkin/index.js");
+    const pumpkinTerminateSpy = vi.fn();
+    let pumpkinWarmupsPosted = 0;
+    class StalledPumpkinWarmupWorker {
+      onmessage: ((event: unknown) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      onmessageerror: (() => void) | null = null;
+      terminate = pumpkinTerminateSpy;
+      postMessage(data: { type?: string }) {
+        if (data?.type === "check") {
+          pumpkinWarmupsPosted++;
+        }
+      }
+    }
+    vi.stubGlobal("window", {
+      origin: "https://washi.ohtaman.dev",
+      location: { origin: "https://washi.ohtaman.dev", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", StalledPumpkinWarmupWorker);
+    try {
+      const abortPumpkinRes = await runFreshPumpkinSnippet(`
+        import { Model, maximize } from "@ohtaman/washi";
+        import "@ohtaman/washi/solvers/pumpkin";
+        const m = new Model("AbortPumpkinWarmup", { solver: "pumpkin" });
+        const x = m.integer("x", { lb: 0, ub: 5 });
+        m.objective(maximize(x));
+        const ac = new AbortController();
+        const solvePromise = m.solve({ signal: ac.signal });
+        setTimeout(() => ac.abort(), 20);
+        const status = await solvePromise;
+        console.log("aborted_status:", status, m.terminationStatus);
+      `);
+      expect(abortPumpkinRes.errorMsg).toBeNull();
+      expect(pumpkinWarmupsPosted).toBe(1);
+      expect(pumpkinTerminateSpy).toHaveBeenCalledOnce();
+      expect(abortPumpkinRes.logs).toEqual(["aborted_status: Unknown Interrupted"]);
+      expect(pumpkinModForAbort.isPumpkinWarmed({ useWorker: true })).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+      pumpkinModForAbort.resetPumpkinLoader();
+      resetFreshPumpkinRunner();
       vi.resetModules();
     }
   });

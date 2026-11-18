@@ -56,7 +56,7 @@ describe("README.md Code Snippets & Links Validation", () => {
     for (const { file } of readmeSpecs) {
       const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
       const blocks = extractTsBlocks(content);
-      expect(blocks, `Expected 4 TypeScript snippets in ${file}`).toHaveLength(4);
+      expect(blocks, `Expected 5 TypeScript snippets in ${file}`).toHaveLength(5);
 
       const createdModels: Washi.Model[] = [];
       const logs: string[] = [];
@@ -82,6 +82,8 @@ describe("README.md Code Snippets & Links Validation", () => {
         let mod: Record<string, unknown>;
         if (specifier === "@ohtaman/washi") {
           mod = { ...Washi, Model: TrackedModel };
+        } else if (specifier === "@ohtaman/washi/solvers/pumpkin") {
+          mod = await import("../src/modeler/solvers/pumpkin.js");
         } else if (specifier === "@ohtaman/washi/solvers/z3") {
           mod = await import("../src/modeler/solvers/z3.js");
         } else if (specifier === "@ohtaman/washi/solvers/glpk") {
@@ -110,11 +112,11 @@ describe("README.md Code Snippets & Links Validation", () => {
         await runner(importNamed, silentConsole);
       }
 
-      expect(createdModels).toHaveLength(4);
-      expect(logs.length).toBeGreaterThanOrEqual(4);
+      expect(createdModels).toHaveLength(5);
+      expect(logs.length).toBeGreaterThanOrEqual(5);
 
       // 1. Quick Start: Woodworking MIP (30*x + 50*y, x + 2y <= 40, 2x + y <= 50) -> Optimal 1100, (20, 10)
-      const [mQuick, mTransport, mPortfolio, mStaffing] = createdModels;
+      const [mQuick, mTransport, mPortfolio, mWorkshop, mStaffing] = createdModels;
       expect(mQuick.status).toBe("Optimal");
       expect(mQuick.objectiveValue).toBe(1100);
       expect(mQuick.variables.map((v) => v.value)).toEqual([20, 10]);
@@ -132,7 +134,22 @@ describe("README.md Code Snippets & Links Validation", () => {
       expect(mPortfolio.objectiveValue).toBeCloseTo(0.0082, 6);
       expect(mPortfolio.validateSolution().valid).toBe(true);
 
-      // 4. StaffingRules: Infeasible conflict diagnosis -> Unsat, ["rush_required"]
+      // 4. WorkshopCP (Pumpkin): cut=0, weld=4, paint=7, makespan=9, 3 distinct benches
+      expect(mWorkshop.status).toBe("Optimal");
+      expect(mWorkshop.objectiveValue).toBe(9);
+      expect(mWorkshop.getVarByName("start_cut")?.value).toBe(0);
+      expect(mWorkshop.getVarByName("start_weld")?.value).toBe(4);
+      expect(mWorkshop.getVarByName("start_paint")?.value).toBe(7);
+      expect(
+        new Set([
+          mWorkshop.getVarByName("bench_cut")?.value,
+          mWorkshop.getVarByName("bench_weld")?.value,
+          mWorkshop.getVarByName("bench_paint")?.value,
+        ])
+      ).toEqual(new Set([1, 2, 3]));
+      expect(mWorkshop.validateSolution().valid).toBe(true);
+
+      // 5. StaffingRules: Infeasible conflict diagnosis -> Unsat, ["rush_required"]
       expect(mStaffing.status).toBe("Unsat");
       expect(mStaffing.conflicts).toEqual(["rush_required"]);
     }

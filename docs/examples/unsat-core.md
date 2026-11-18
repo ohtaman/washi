@@ -69,6 +69,7 @@ diagnoseConflicts();
 
 ## Practical Notes
 
-- **Z3 `unsatCore` vs. HiGHS Elastic Slack `conflicts`**:
-  - **Z3 (`m.check({ solver: "z3" })`)** performs logical assumption tracking and returns all four rules that jointly form the contradiction (`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`), while excluding the innocent `minimum_one_employee` rule.
+- **Choosing Between Pumpkin, Z3, and HiGHS for Conflict Diagnosis**:
+  - **Pumpkin (`m.check({ solver: "pumpkin" })`)** is bundled with `@ohtaman/washi/solvers/pumpkin` (zero external dependencies, no `COOP` / `COEP` headers) and extracts scale-invariant `unsatCore` subsets for discrete models where all variables are bounded `Integer`, `Binary`, or `BoolVar` (for example, when `budget` above is modeled with `m.integer("budget", ...)`).
+  - **Z3 (`m.check({ solver: "z3" })`)** supports `Continuous` variables (like `budget` above) and fractional arithmetic, returning all four rules that jointly form the contradiction (`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`), while excluding the innocent `minimum_one_employee` rule.
   - **HiGHS (`m.check({ solver: "highs" })`)** solves a single $L_1$ elastic slack minimization problem ($\min \sum s_i$). Because relaxing `rush_staffing_rule` (or `rush_required`) requires a slack of only `1`–`2` units whereas relaxing `strict_board_budget_cap` requires a slack of `14,000` dollars, unweighted $L_1$ minimization naturally highlights the smallest-magnitude repair (`rush_required`) needed to restore feasibility.

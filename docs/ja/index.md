@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: "TypeScript 数理最適化モデラー"
-  tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。WebAssembly（HiGHS・Z3・GLPK）を搭載し、Pythonサーバーやネイティブビルド不要でLP・混合整数計画法（MIP）・凸QP・SMTをブラウザやNode.jsで高速に求解します。"
+  tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。WebAssembly（HiGHS・Pumpkin・Z3・GLPK）を搭載し、Pythonサーバーやネイティブビルド不要でLP・混合整数計画法（MIP）・凸QP・制約プログラミング（CP）・SMTをブラウザやNode.jsで高速に求解します。"
   actions:
     - theme: brand
       text: はじめに
@@ -20,7 +20,7 @@ features:
     linkText: ランタイム環境設定
   - icon: ✍️
     title: 直感的な代数モデリング (expr)
-    details: 行列や LP 文字列を手組みせず、PuLP に近い数式表現で線形・整数・凸二次・論理モデルをそのまま記述できます。
+    details: 行列や LP 文字列を手組みせず、PuLP に近い数式表現で線形・整数・凸二次・制約プログラミング・論理モデルをそのまま記述できます。
     link: /ja/guide/expressions
     linkText: 数式の記述
   - icon: 🧩
@@ -30,12 +30,12 @@ features:
     linkText: 変数と上下限
   - icon: 🔍
     title: 「解なし」の原因を特定
-    details: 制約が衝突して解が見つからないとき、ただエラーで終わらず、どの条件同士が矛盾しているかを HiGHS や Z3 で特定できます。
+    details: 制約が衝突して解が見つからないとき、ただエラーで終わらず、どの条件同士が矛盾しているかを同梱の HiGHS や Pumpkin、または Z3 で特定できます。
     link: /ja/guide/unsat-core
     linkText: 競合制約診断
   - icon: ⚙️
     title: 切り替え可能なソルバー接続
-    details: モデルを書き直すことなく、標準搭載の HiGHS から Z3（SMT）・GLPK や独自ソルバーへ用途に応じて切り替えられます。
+    details: モデルを書き直すことなく、同梱の HiGHS（LP/MIP/QP）や Pumpkin（CP/LCG）、オプションの Z3・GLPK や独自ソルバーへ用途に応じて切り替えられます。
     link: /ja/solvers/
     linkText: ソルバー比較と接続
   - icon: 🔀
@@ -126,9 +126,9 @@ features:
 <div class="tip custom-block" style="padding-top: 8px;">
 
 - **はじめに**: [概要とインストール](/ja/getting-started/) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
-- **モデリングガイド**: [変数と上下限](/ja/guide/variables) · [数式の記述 (expr, dot, sum)](/ja/guide/expressions) · [目的関数](/ja/guide/objectives) · [制約条件](/ja/guide/constraints) · [競合制約診断 (Unsat Core)](/ja/guide/unsat-core) · [分解法 (列生成・Benders)](/ja/guide/decomposition) · [定式化パターン・Tips](/ja/guide/formulation-tips)
-- **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
-- **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)
+- **モデリングガイド**: [変数と上下限](/ja/guide/variables) · [数式の記述 (expr, dot, sum)](/ja/guide/expressions) · [目的関数](/ja/guide/objectives) · [制約条件](/ja/guide/constraints) · [競合制約診断 (Unsat Core)](/ja/guide/unsat-core) · [制約プログラミング (CP)](/ja/guide/constraint-programming) · [分解法 (列生成・Benders)](/ja/guide/decomposition) · [定式化パターン・Tips](/ja/guide/formulation-tips)
+- **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Pumpkin (CP/LCG)](/ja/solvers/pumpkin) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
+- **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [プロジェクトスケジューリング (CP)](/ja/examples/project-scheduling) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)
 - **インタラクティブ Playground・アプリ**: [ショーケース一覧](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

@@ -1,7 +1,7 @@
 {
   "name": "@ohtaman/washi",
   "version": "0.7.0",
-  "description": "WaSHI: TypeScript & JavaScript algebraic modeler for Linear & Mixed-Integer Programming (LP, MILP, QP, SMT) powered by WebAssembly (HiGHS, Z3, GLPK)",
+  "description": "WaSHI: TypeScript & JavaScript algebraic modeler for Mathematical Optimization & Constraint Programming (LP, MILP, QP, CP, SMT) powered by WebAssembly (HiGHS, Pumpkin, Z3, GLPK)",
   "type": "module",
   "main": "./dist/lib/washi.js",
   "module": "./dist/lib/washi.js",
@@ -110,6 +110,7 @@
     "lp",
     "mip",
     "qp",
+    "cp",
     "solver",
     "modeler",
     "scheduling",

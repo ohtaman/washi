@@ -8,7 +8,7 @@ Guidelines for coding agents and reviewers contributing to **WaSHI** (`@ohtaman/
 
 ## 1. Architectural & Repository Invariants
 
-- **Backend-Agnostic Modeler**: Keep core modeling primitives (variables, expressions, constraints, indicators, decomposition) independent of specific solver backends (`HiGHS`, `GLPK`, `Z3`) and symmetric across `solve()` and `check()`.
+- **Backend-Agnostic Modeler**: Keep core modeling primitives (variables, expressions, constraints, indicators, decomposition) independent of specific solver backends (`HiGHS`, `Pumpkin`, `GLPK`, `Z3`) and symmetric across `solve()` and `check()`.
 - **Zero Runtime Dependencies**: Keep `dependencies` empty in `package.json` (`glpk.js` and `z3-solver` remain optional `peerDependencies`). Do not add dependencies without prior discussion.
 - **ESM & Multi-Runtime**: Use explicit `.js` extensions in relative TypeScript imports within library/Node ESM code and preserve compatibility across Node ESM, browser/WASM bundles, and `.d.ts` declarations.
 - **Strict Type Safety**: Avoid `any` and `as unknown as ...` except at untyped external boundaries (WASM/FFI) with clear justification.
@@ -20,7 +20,7 @@ Guidelines for coding agents and reviewers contributing to **WaSHI** (`@ohtaman/
 
 Follow **Test-Driven Development (Red → Green → Refactor)** in the terminal for features, bug fixes, and runnable examples *(prose/config-only edits may verify via build and existing tests)*:
 
-1. **Red**: Inspect affected code and symmetric paths (`solve()` / `check()`, `HiGHS` / `GLPK` / `Z3`), add a behavioral/invariant test before changing production code, and run `npx vitest run <file>` to confirm it fails for the expected reason.
+1. **Red**: Inspect affected code and symmetric paths (`solve()` / `check()`, `HiGHS` / `Pumpkin` / `GLPK` / `Z3`), add a behavioral/invariant test before changing production code, and run `npx vitest run <file>` to confirm it fails for the expected reason.
 2. **Green & Refactor**: Implement the simplest root-cause fix, confirm tests pass, and remove duplication while staying Green.
 3. **Pre-Push Verification**:
    - `npm test` — Full Vitest suite

@@ -1,6 +1,6 @@
 # 数理优化建模模式与实战技巧
 
-前面的建模指南各章节介绍了 WaSHI 的 API 与核心功能（`Model`、`expr`、`m.constraint`、`m.solve` 等）。本章汇总了线性规划（LP）与混合整数规划（MIP）中常用的通用运筹建模模式与求解器调优技巧。
+前面的建模指南各章节介绍了 WaSHI 的 API 与核心功能（`Model`、`expr`、`m.constraint`、`m.solve` 等）。本章汇总了线性规划（LP）与混合整数规划（MIP）中常用的通用运筹建模模式与求解器调优技巧。*（有关配合 Pumpkin 使用 `disjoint`、`cumulative`、`distinct`、`allowed` 与 `at` 的约束规划建模方法，请参阅 [约束规划 (CP) 建模指南](./constraint-programming.md)。）*
 
 ---
 
@@ -97,7 +97,7 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 m.objective(minimize(maxHours));
 ```
 
-*（同理，若要**最大化最低水平** $\max \min_i u_i$，只需对所有 $i$ 施加 $u_i \ge z$ 并设置 `m.objective(maximize(z))`。）*
+*（同理，若要**最大化最低水平** $\max \min_i u_i$，只需对所有 $i$ 施加 $u_i \ge z$ 并设置 `m.objective(maximize(z))`。WaSHI 内置的 `max(...)` 和 `min(...)` 也会自动完成上述凸 LP 上境图变换，并在使用 Pumpkin 时直接映射为原生传播器——详见 [数学表达式（分段线性与元素查找）](./expressions.md)。）*
 
 ---
 

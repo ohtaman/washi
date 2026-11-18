@@ -37,7 +37,7 @@ WaSHI には2つの非同期実行メソッドがあります：
 | メソッド | 戻り値 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | すべての制約の下で目的関数を最適化します。変数の解、目的関数値、MIP ギャップ・双対境界、LP の双対変数/スラックを格納します。 |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | 目的関数なしで制約の充足可能性（SAT/UNSAT）を判定します。`{ status, values, conflicts?, unsatCore?, runTime? }`（`values: Record<string, number \| boolean>` に数値変数と論理変数の両方の解が格納されます）を返し、Z3 による競合診断（`unsatCore`）に使われます。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 目的関数なしで制約の充足可能性（SAT/UNSAT）を判定します。`{ status, values, conflicts?, unsatCore?, runTime? }`（`values: Record<string, number \| boolean>` に数値変数と論理変数の両方の解が格納されます）を返し、CP/SMT/SAT 検証および Pumpkin / Z3 による競合診断（`unsatCore`）に使われます。 |
 
 ```typescript
 const status = await m.solve({
@@ -51,14 +51,14 @@ const status = await m.solve({
 
 | オプション | 型 | デフォルト | 説明 |
 | :--- | :--- | :--- | :--- |
-| `solver` | `string` \| `Solver` | モデルのソルバー (`"highs"`) | 実行に使用する登録済みソルバー名（`"highs"`, `"z3"`, `"glpk"` またはカスタム名）または `Solver` インスタンス。 |
+| `solver` | `string` \| `Solver` | モデルのソルバー (`"highs"`) | 実行に使用する登録済みソルバー名（`"highs"`, `"pumpkin"`, `"z3"`, `"glpk"` またはカスタム名）または `Solver` インスタンス。 |
 | `timeLimit` | `number` | `undefined` | 最大実行時間（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相対 MIP ギャップ許容値（例: `0.01` = 1%）。 |
 | `absGap` | `number` | `undefined` | 絶対 MIP ギャップ許容値（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 求解前の前処理（Presolve）の制御モード。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | ソルバーの反復ログを出力します（HiGHS は `outputFlag`、GLPK は `verbose`）。 |
-| `useWorker` | `boolean` | `true` (ブラウザ) | ブラウザ環境で HiGHS を Web Worker 内で実行します。メインスレッド実行時は `false`。 |
-| `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` を読み込むカスタム URL。 |
+| `useWorker` | `boolean` | `true` (ブラウザ) | ブラウザ環境で **HiGHS** および **Pumpkin** を専用 Web Worker 内で実行します。メインスレッド実行時は `false`。 |
+| `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` や `pumpkin.wasm` を読み込むカスタム URL。 |
 | `signal` | `AbortSignal` | `undefined` | 協調的キャンセル用の `AbortSignal` (`AbortController.signal`)。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 求解中の進捗スナップショットを受け取るコールバック。 |
 

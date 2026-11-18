@@ -105,9 +105,12 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(locMatches).toContain("https://washi.ohtaman.dev/zh/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/getting-started/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/guide/variables");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/guide/constraint-programming");
     expect(locMatches).toContain("https://washi.ohtaman.dev/guide/decomposition");
     expect(locMatches).toContain("https://washi.ohtaman.dev/solvers/highs");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/solvers/pumpkin");
     expect(locMatches).toContain("https://washi.ohtaman.dev/examples/production");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/examples/project-scheduling");
 
     // Verify interactive Playground, Apps, and Games routes are included in sitemap.xml
     expect(locMatches).toContain("https://washi.ohtaman.dev/demo/");
@@ -298,7 +301,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const content = fs.readFileSync(vitepressConfigPath, "utf-8");
 
     expect(content).toContain('titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript"');
-    expect(content).toContain('description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT)."');
+    expect(content).toContain('description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, CP, SMT)."');
 
     // Open Graph meta tags
     expect(content).toMatch(/\["meta",\s*\{\s*property:\s*"og:type",\s*content:\s*"website"\s*\}\]/);
@@ -310,7 +313,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(content).toMatch(/\["meta",\s*\{\s*name:\s*"twitter:image",\s*content:\s*"https:\/\/washi\.ohtaman\.dev\/washi-logo\.png"\s*\}\]/);
 
     // Meta keywords
-    expect(content).toContain("typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly");
+    expect(content).toContain("typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, cp, lcg, smt, highs, pumpkin, z3, pulp, jump, webassembly");
   });
 
   it("emits spec-compliant llms.txt describedby and raw Markdown alternate links via transformHead and keeps Getting Started sidebars focused on human setup guides", async () => {
@@ -396,6 +399,31 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "/zh/getting-started/",
       "/zh/getting-started/runtimes",
       "/zh/getting-started/cross-origin",
+    ]);
+
+    expect(enSidebar?.[2]?.items?.map((item) => item.link)).toEqual([
+      "/solvers/",
+      "/solvers/highs",
+      "/solvers/pumpkin",
+      "/solvers/z3",
+      "/solvers/glpk",
+      "/solvers/custom-solver",
+    ]);
+    expect(jaSidebar?.[2]?.items?.map((item) => item.link)).toEqual([
+      "/ja/solvers/",
+      "/ja/solvers/highs",
+      "/ja/solvers/pumpkin",
+      "/ja/solvers/z3",
+      "/ja/solvers/glpk",
+      "/ja/solvers/custom-solver",
+    ]);
+    expect(zhSidebar?.[2]?.items?.map((item) => item.link)).toEqual([
+      "/zh/solvers/",
+      "/zh/solvers/highs",
+      "/zh/solvers/pumpkin",
+      "/zh/solvers/z3",
+      "/zh/solvers/glpk",
+      "/zh/solvers/custom-solver",
     ]);
   });
 
@@ -602,7 +630,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
   it("updates package.json description and target search keywords", () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
     expect(pkg.description).toBe(
-      "WaSHI: TypeScript & JavaScript algebraic modeler for Linear & Mixed-Integer Programming (LP, MILP, QP, SMT) powered by WebAssembly (HiGHS, Z3, GLPK)"
+      "WaSHI: TypeScript & JavaScript algebraic modeler for Mathematical Optimization & Constraint Programming (LP, MILP, QP, CP, SMT) powered by WebAssembly (HiGHS, Pumpkin, Z3, GLPK)"
     );
 
     const expectedKeywords = [
@@ -616,6 +644,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "lp",
       "mip",
       "qp",
+      "cp",
       "solver",
       "modeler",
       "scheduling",
@@ -624,6 +653,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "z3",
       "highs",
       "glpk",
+      "pumpkin",
+      "lcg",
       "pulp",
       "jump",
       "operations-research",
@@ -666,11 +697,15 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(mdContent).toContain(`(${prefix}/getting-started/runtimes)`);
       expect(mdContent).not.toContain("getting-started/ecosystem");
       expect(mdContent).not.toContain("getting-started/ai-agents");
+      expect(mdContent).toContain(`(${prefix}/guide/constraint-programming)`);
       expect(mdContent).toContain(`(${prefix}/guide/decomposition)`);
       expect(mdContent).toContain(`(${prefix}/solvers/)`);
+      expect(mdContent).toContain(`(${prefix}/solvers/highs)`);
+      expect(mdContent).toContain(`(${prefix}/solvers/pumpkin)`);
       expect(mdContent).toContain(`(${prefix}/examples/)`);
       expect(mdContent).toContain(`(${prefix}/examples/transportation)`);
       expect(mdContent).toContain(`(${prefix}/examples/ecommerce-coupons)`);
+      expect(mdContent).toContain(`(${prefix}/examples/project-scheduling)`);
       expect(mdContent).toContain(`(${prefix}/examples/unsat-core)`);
       expect(mdContent).toContain(`(${prefix}/examples/vehicle-routing)`);
       expect(mdContent).toContain(`(${prefix}/examples/traveling-salesperson)`);
@@ -761,7 +796,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     const enHtml = fs.readFileSync(path.resolve(siteDistPath, "index.html"), "utf-8");
     expect(enHtml).toContain("<title>WaSHI | WaSHI — Mathematical Optimization Modeler in TypeScript</title>");
-    expect(enHtml).toContain('name="description" content="WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT)."');
+    expect(enHtml).toContain('name="description" content="WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, CP, SMT)."');
     expect(enHtml).toContain('link rel="canonical" href="https://washi.ohtaman.dev/"');
     expect(enHtml).toContain('property="og:url" content="https://washi.ohtaman.dev/"');
     expect(enHtml).toContain('property="og:type" content="website"');
@@ -769,18 +804,18 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(enHtml).toContain('property="og:image" content="https://washi.ohtaman.dev/washi-logo.png"');
     expect(enHtml).toContain('name="twitter:card" content="summary"');
     expect(enHtml).toContain('name="twitter:image" content="https://washi.ohtaman.dev/washi-logo.png"');
-    expect(enHtml).toContain('name="keywords" content="typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly"');
+    expect(enHtml).toContain('name="keywords" content="typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, cp, lcg, smt, highs, pumpkin, z3, pulp, jump, webassembly"');
     expect(enHtml).not.toContain('"/washi/');
 
     const jaHtml = fs.readFileSync(path.resolve(siteDistPath, "ja/index.html"), "utf-8");
     expect(jaHtml).toContain("<title>WaSHI | WaSHI — TypeScript 数理最適化\u30e2\u30c7\u30e9\u30fc</title>");
-    expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向\u3051数理最適化\u3068制約\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u305f\u3081\u306e代数\u30e2\u30c7\u30e9\u30fc（LP, MIP, 凸QP, SMT）"');
+    expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向\u3051数理最適化\u3068制約\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u305f\u3081\u306e代数\u30e2\u30c7\u30e9\u30fc（LP, MIP, 凸QP, CP, SMT）"');
     expect(jaHtml).toContain('link rel="canonical" href="https://washi.ohtaman.dev/ja/"');
     expect(jaHtml).toContain('property="og:url" content="https://washi.ohtaman.dev/ja/"');
 
     const zhHtml = fs.readFileSync(path.resolve(siteDistPath, "zh/index.html"), "utf-8");
     expect(zhHtml).toContain("<title>WaSHI | WaSHI — TypeScript 数理优化建模器</title>");
-    expect(zhHtml).toContain('name="description" content="适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, SMT）"');
+    expect(zhHtml).toContain('name="description" content="适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, CP, SMT）"');
     expect(zhHtml).toContain('link rel="canonical" href="https://washi.ohtaman.dev/zh/"');
     expect(zhHtml).toContain('property="og:url" content="https://washi.ohtaman.dev/zh/"');
 

@@ -1,6 +1,6 @@
 # インストールと入門
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** のような代数モデリングを TypeScript / JavaScript で提供する数理最適化ライブラリです。タグ付きテンプレート（`expr`）で直感的に数式を記述でき、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によって **Node.js やブラウザ** でそのまま求解できます。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** のような代数モデリングを TypeScript / JavaScript で提供する数理最適化・制約プログラミングライブラリです。タグ付きテンプレート（`expr`）で直感的に数式を記述でき、WebAssembly ソルバー（**HiGHS**, **Pumpkin**, **Z3**, **GLPK**）によって **Node.js やブラウザ** でそのまま求解できます。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -29,7 +29,7 @@ if (m.hasPrimalSolution) {
 
 ## 📦 インストール
 
-標準の **HiGHS** ソルバー（LP / MIP / 凸QP）は本体に同梱されており、これだけで動作します：
+標準の **HiGHS** ソルバー（LP / MIP / 凸QP）と **Pumpkin** CP/LCG ソルバー（`@ohtaman/washi/solvers/pumpkin`）はいずれも外部依存ゼロで本体に同梱されており、これだけで動作します：
 
 ::: code-group
 
@@ -77,5 +77,5 @@ npx skills add ohtaman/washi
 
 - **[モデリングガイド](../guide/variables.md)**: 配列・辞書変数の作り方、総和 `sum()` や内積 `dot()`、論理制約や競合診断（Unsat Core）の書き方
 - **[具体例と API 早見表](../examples/)**: 生産計画・シフト作成・ポートフォリオ最適化・配送計画など、ブラウザ上でそのまま動かせる11の実践レシピ
-- **[ソルバーの比較と切り替え](../solvers/)**: 標準搭載の HiGHS と、オプションの Z3・GLPK の特性比較
+- **[ソルバーの比較と切り替え](../solvers/)**: 同梱の HiGHS・Pumpkin と、オプションの Z3・GLPK の特性比較
 - **[ランタイム環境設定](./runtimes.md)**: Node.js、Vite / Next.js 等のバンドラー、CDN、静的ホスティングでの設定方法

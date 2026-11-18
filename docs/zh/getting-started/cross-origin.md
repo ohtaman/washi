@@ -3,7 +3,7 @@
 在浏览器内运行 **Z3** 求解器时，需要配置跨源隔离（Cross-Origin Isolation）HTTP 响应头以启用 `SharedArrayBuffer`。
 
 > [!TIP]
-> **HiGHS、GLPK 与 Node.js 无需此配置**：内置默认的 **HiGHS** 与 **GLPK** 插件不使用 `SharedArrayBuffer`，在普通浏览器环境中即可直接运行；在 **Node.js** 中运行 Z3 也无需配置任何 HTTP 响应头。仅当在浏览器中使用 `@ohtaman/washi/solvers/z3` 时才需要参考本页。
+> **HiGHS、Pumpkin、GLPK 与 Node.js 无需此配置**：内置默认的 **HiGHS**、**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）以及 **GLPK** 插件均不使用 `SharedArrayBuffer`，在普通浏览器环境中即可直接运行（包括 Pumpkin 的 CP 求解、命题逻辑与 `unsatCore` 冲突诊断）；在 **Node.js** 中运行 Z3 也无需配置任何 HTTP 响应头。仅当在浏览器中使用 `@ohtaman/washi/solvers/z3` 时才需要参考本页。
 
 ---
 

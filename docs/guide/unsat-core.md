@@ -4,18 +4,18 @@ When building real-world optimization and configuration systems, two verificatio
 1. **Why is my model infeasible?** Which specific business rules contradict each other?
 2. **Does the solver's solution genuinely satisfy every constraint?** How do I verify tolerances, integrality, and formulations?
 
-WaSHI provides built-in tools for both: **conflict diagnosis** via built-in HiGHS elastic relaxation or Z3 Unsat Core (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
+WaSHI provides built-in tools for both: **conflict diagnosis** via built-in HiGHS elastic relaxation, bundled Pumpkin Unsat Core, or Z3 Unsat Core (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
 
 ---
 
 ## Conflict Diagnosis (`unsatCore` / `conflicts`)
 
 When an optimization run (`m.solve()`) returns **`"Infeasible"`**, the status alone tells you that no solution satisfies every constraint—not *which* rules conflict with each other.
-By calling **`await m.check({ solver: "z3" })`**, WaSHI uses Z3's `assertAndTrack` mechanism to compute an **Unsatisfiable Core (`unsatCore`)**—a conflicting subset of named constraints that cannot be satisfied simultaneously:
+By calling **`await m.check({ solver: "pumpkin" })`** (for bounded integer and boolean models without `COOP`/`COEP` headers or external peer dependencies) or **`await m.check({ solver: "z3" })`** (for models including `Continuous` variables or fractional arithmetic), WaSHI computes an **Unsatisfiable Core (`unsatCore`)**—a conflicting subset of named constraints that cannot be satisfied simultaneously:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
-// Register the Z3 solver plugin
+// Register the Z3 solver plugin (for Continuous / real-valued SMT models)
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model();
@@ -39,14 +39,15 @@ if (result.status === "Unsat") {
 Notice that `routine_operating_cost` is **not** in the core, because only `minimum_regulatory_reserve` ($x \ge 100$) and `budget_ceiling` ($x \le 50$) directly contradict each other.
 
 > [!IMPORTANT]
-> - **Use `m.check({ solver: "z3" })` for Unsat Core extraction**: `m.solve()` runs optimization (`Z3.Optimize`), whereas `m.check()` runs tracked satisfiability checking (`Z3.Solver.assertAndTrack`) and populates `result.conflicts` / `m.conflicts` (and alias `m.unsatCore`).
+> - **Use `m.check({ solver: "pumpkin" })` or `m.check({ solver: "z3" })` for Unsat Core extraction**: `m.solve()` runs optimization, whereas `m.check()` runs assumption-tracked satisfiability checking (Pumpkin assumption core or `Z3.Solver.assertAndTrack`) and populates `result.conflicts` / `m.conflicts` (and alias `m.unsatCore`).
 > - **Name your constraints**: Variable bounds (`lb`, `ub`) act as background domain declarations. To include a bound or business rule in the reported `unsatCore` list, register it as a named constraint via `m.constraint(expr`...`, "rule_name")`.
 
-### Workflow: Infeasibility Diagnosis with HiGHS or Z3
+### Workflow: Infeasibility Diagnosis with HiGHS, Pumpkin, or Z3
 
-Because WaSHI models are solver-independent, you can diagnose infeasibilities using either solver:
-1. **Built-in HiGHS & GLPK (default)**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to identify which constraints required relaxation (`diag.conflicts`), requiring no extra dependencies.
-2. **Z3 SMT Solver**: `await m.check({ solver: "z3" })` uses SMT tracking to extract an exact unsatisfiable core (`diag.unsatCore` / `diag.conflicts`).
+Because WaSHI models are solver-independent, you can choose from three diagnosis strategies:
+1. **Built-in HiGHS & GLPK (default)**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to identify which constraints required relaxation (`diag.conflicts`), requiring no extra imports.
+2. **Bundled Pumpkin CP/LCG Solver**: `await m.check({ solver: "pumpkin" })` (after `import "@ohtaman/washi/solvers/pumpkin"`) extracts a scale-invariant `unsatCore` / `conflicts` over bounded integer and boolean models with **zero external dependencies** and **zero browser `COOP` / `COEP` headers**.
+3. **Z3 SMT Solver**: `await m.check({ solver: "z3" })` uses SMT tracking to extract an exact unsatisfiable core (`diag.unsatCore` / `diag.conflicts`), including models with `Continuous` variables or fractional arithmetic.
 
 ```typescript
 const status = await m.solve(); // Fast MIP solve with default HiGHS
@@ -56,23 +57,30 @@ if (status === "Infeasible") {
   const diag = await m.check();
   console.error("Model is infeasible due to conflicting rules:", diag.conflicts);
 
-  // Option 2: Exact SMT unsat core diagnosis with Z3 (requires import "@ohtaman/washi/solvers/z3")
+  // Option 2: Bundled zero-COOP/COEP unsat core with Pumpkin (bounded int/bool models; requires import "@ohtaman/washi/solvers/pumpkin")
+  // const pumpkinDiag = await m.check({ solver: "pumpkin" });
+  // console.error("Pumpkin Unsat Core:", pumpkinDiag.unsatCore);
+
+  // Option 3: Exact SMT unsat core diagnosis with Z3 (supports Continuous/real vars; requires import "@ohtaman/washi/solvers/z3")
   // const z3Diag = await m.check({ solver: "z3" });
   // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 
-### Comparing Z3 `unsatCore` vs. HiGHS Elastic Slack `conflicts`
+### Comparing Pumpkin `unsatCore`, Z3 `unsatCore`, and HiGHS Elastic Slack `conflicts`
 
-| Property | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
-| :--- | :--- | :--- |
-| **Algorithm** | SMT assumption tracking (`assertAndTrack`) | Single-solve $L_1$ elastic slack relaxation ($\min \sum s_i$) |
-| **Populated Fields** | Both `result.unsatCore` and `result.conflicts` | `result.conflicts` (`unsatCore` is `undefined`) |
-| **Semantic Meaning** | A **contradictory subset** of rules that cannot all hold together | A **minimum-violation repair set** of constraints whose relaxation restores feasibility |
-| **Unit-Scaling Sensitivity** | **Scale-invariant** (pure logical/algebraic contradiction) | **Scale-sensitive** (minimizing unweighted $\sum s_i$ prefers relaxing a headcount constraint by `2` units over a budget constraint by `10,000` dollars) |
+| Property | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| :--- | :--- | :--- | :--- |
+| **Setup & Dependencies** | **Bundled** (`@ohtaman/washi/solvers/pumpkin`, zero peer deps) | Optional peer dependency (`z3-solver`) | **Built-in** (HiGHS) / optional `glpk.js` |
+| **Browser Headers** | **None** (`COOP` / `COEP` not required) | Requires `COOP` / `COEP` (`SharedArrayBuffer`) | **None** |
+| **Supported Variables** | Bounded `Integer`, `Binary`, `BoolVar` | `Continuous`, `Integer`, `Binary`, `BoolVar` | `Continuous`, `Integer`, `Binary`, `BoolVar` |
+| **Algorithm** | LCG conflict analysis under constraint assumptions | SMT assumption tracking (`assertAndTrack`) | Single-solve $L_1$ elastic slack relaxation ($\min \sum s_i$) |
+| **Populated Fields** | Both `result.unsatCore` and `result.conflicts` | Both `result.unsatCore` and `result.conflicts` | `result.conflicts` (`unsatCore` is `undefined`) |
+| **Semantic Meaning** | A **contradictory subset** of rules that cannot all hold together | A **contradictory subset** of rules that cannot all hold together | A **minimum-violation repair set** of constraints whose relaxation restores feasibility |
+| **Unit-Scaling Sensitivity** | **Scale-invariant** (pure logical/integer contradiction) | **Scale-invariant** (pure logical/algebraic contradiction) | **Scale-sensitive** (minimizing unweighted $\sum s_i$ prefers relaxing a headcount constraint by `2` units over a budget constraint by `10,000` dollars) |
 
 > [!TIP]
-> When diagnosing models that mix constraints of vastly different magnitudes (e.g., headcount $\le 8$ alongside budget $\le 50{,}000$), use **`m.check({ solver: "z3" })`** if you want the complete scale-invariant set of mutually contradictory rules, or normalize constraint scales when relying on unweighted $L_1$ slack relaxation.
+> When diagnosing models that mix constraints of vastly different magnitudes (e.g., headcount $\le 8$ alongside budget $\le 50{,}000$), use **`m.check({ solver: "pumpkin" })`** (for bounded integer/boolean models without `COOP`/`COEP`) or **`m.check({ solver: "z3" })`** (when `Continuous` variables or fractional thresholds are present) if you want a scale-invariant set of mutually contradictory rules, or normalize constraint scales when relying on unweighted $L_1$ slack relaxation.
 
 ---
 

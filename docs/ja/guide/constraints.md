@@ -36,6 +36,7 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`: 以下（上限）制約
 - `>=`: 以上（下限）制約
 - `==` または `=`: 等式制約
+- `<`, `>`, `!=`: 離散の狭義不等式・非等式制約（整数値の式のみ。[離散比較演算子](#discrete-comparisons) 参照）
 
 ### 配列による一括登録
 制約の配列を `m.constraint([...])` に渡すと、トランザクション的に一括登録できます：
@@ -56,7 +57,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### 名前を付けるメリット
 1. **LP 定式化の確認 (`m.toLpString()`)**: エクスポートされる CPLEX LP 文字列に制約名が出力されるため、生成された式の確認が容易になります。
-2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()`（標準 HiGHS の弾性緩和や Z3 の `unsatCore`）がどの名前付き制約同士が衝突しているかを返します。
+2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()`（標準 HiGHS の弾性緩和、同梱 Pumpkin の `unsatCore`、または Z3 の `unsatCore`）がどの名前付き制約同士が衝突しているかを返します。
 3. **名前による参照 (`m.getConstraintByName()`)**: 求解後に名前から制約オブジェクトを取得し、潜在価格（`dual`）や余剰（`slack`）を確認できます。
 
 ---
@@ -128,7 +129,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ## 命題論理・SMT 制約 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-命題論理変数（`m.bool()`）と線形比較制約（`Constraint`）を論理演算子で組み合わせることができます。論理制約は **Z3** ソルバー（`@ohtaman/washi/solvers/z3`）ではネイティブに処理され、**HiGHS** や **GLPK** では自動的に 0-1 MIP 制約へ線形化されます：
+命題論理変数（`m.bool()`）と線形比較制約（`Constraint`）を論理演算子で組み合わせることができます。論理制約は **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`、有界整数・真偽値モデル向け）および **Z3**（`@ohtaman/washi/solvers/z3`）ではネイティブに処理され、**HiGHS** や **GLPK** では自動的に 0-1 MIP 制約へ線形化されます：
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";
@@ -166,7 +167,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 
 ---
 
-## 離散比較演算子 (`!=`, `<`, `>`)
+## 離散比較演算子 (`!=`, `<`, `>`) {#discrete-comparisons}
 
 WaSHI では、`expr` テンプレート内（および `Var`, `LinExpr`, `QuadExpr` 上の `.ne()`, `.lt()`, `.gt()` メソッド）で離散比較演算子 `!=`, `<`, `>` を利用できます。これらは**整数値の式**（`Integer` / `Binary` 変数と整数係数・整数定数のみ）に限定されます：
 

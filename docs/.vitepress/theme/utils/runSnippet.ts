@@ -31,10 +31,12 @@ export interface SnippetStatusLabels {
 }
 
 type ModelerModule = typeof import("../../../../src/index.ts");
+type PumpkinModule = typeof import("../../../../src/modeler/solvers/pumpkin/index.ts");
 type Z3Module = typeof import("../../../../src/modeler/solvers/z3/index.ts");
 type GlpkModule = typeof import("../../../../src/modeler/solvers/glpk/index.ts");
 
 let cachedModeler: ModelerModule | null = null;
+let cachedPumpkinMod: PumpkinModule | null = null;
 let cachedZ3Mod: Z3Module | null = null;
 let cachedGlpkMod: GlpkModule | null = null;
 let z3AssetsConfigured = false;
@@ -44,6 +46,7 @@ let z3AssetsConfigured = false;
  */
 export function resetSnippetRunnerStateForTests(): void {
   cachedModeler = null;
+  cachedPumpkinMod = null;
   cachedZ3Mod = null;
   cachedGlpkMod = null;
   z3AssetsConfigured = false;
@@ -146,10 +149,12 @@ export async function runWashiSnippet(
     },
   };
 
+  const needsPumpkinPlugin = /\bpumpkin\b/i.test(rawCode);
   const needsZ3Plugin = rawCode.includes("z3");
   const needsGlpkPlugin = rawCode.includes("glpk");
   const mayNeedJsLoad =
     !cachedModeler ||
+    (needsPumpkinPlugin && !cachedPumpkinMod) ||
     (needsZ3Plugin && !cachedZ3Mod) ||
     (needsGlpkPlugin && !cachedGlpkMod);
 
@@ -181,6 +186,10 @@ export async function runWashiSnippet(
 
     // Register optional solver plugins synchronously without initializing WASM or asset configs;
     // actual WASM/worker loading happens only when an operation executes with that solver.
+    if (needsPumpkinPlugin && !cachedPumpkinMod) {
+      didLoad = true;
+      cachedPumpkinMod = await import("../../../../src/modeler/solvers/pumpkin/index.ts");
+    }
     if (needsZ3Plugin && !cachedZ3Mod) {
       didLoad = true;
       cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
@@ -252,6 +261,24 @@ export async function runWashiSnippet(
         enterLoadWindow();
         try {
           const { cached } = await warmupHighs(solveOptions);
+          coldLoadedOrFailed = !cached;
+        } catch (err) {
+          coldLoadedOrFailed = true;
+          throw err;
+        } finally {
+          exitLoadWindow(coldLoadedOrFailed);
+        }
+      } else if (solverName === "pumpkin") {
+        const pumpkinMod =
+          cachedPumpkinMod ??
+          (cachedPumpkinMod = await import("../../../../src/modeler/solvers/pumpkin/index.ts"));
+        if (pumpkinMod.isPumpkinWarmed(solveOptions)) {
+          return;
+        }
+        let coldLoadedOrFailed = false;
+        enterLoadWindow();
+        try {
+          const { cached } = await pumpkinMod.warmupPumpkin(solveOptions);
           coldLoadedOrFailed = !cached;
         } catch (err) {
           coldLoadedOrFailed = true;
@@ -366,6 +393,14 @@ export async function runWashiSnippet(
 
     const context: Record<string, unknown> = {
       ...Modeler,
+      ...(cachedPumpkinMod
+        ? {
+            PumpkinSolver: cachedPumpkinMod.PumpkinSolver,
+            setPumpkinWasmUrl: cachedPumpkinMod.setPumpkinWasmUrl,
+            getPumpkinWasmUrl: cachedPumpkinMod.getPumpkinWasmUrl,
+            resetPumpkinLoader: cachedPumpkinMod.resetPumpkinLoader,
+          }
+        : {}),
       Model: TrackedModel,
       console: customConsole,
     };

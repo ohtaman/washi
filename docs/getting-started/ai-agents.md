@@ -1,7 +1,7 @@
 # AI Coding Agent Quick-Reference Guide
 
 > **Scope Note**: This document is the **consumer modeling quick-reference** for AI coding agents and developers building optimization or satisfiability models with `@ohtaman/washi`.
-> - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `validateSolution()` verification, and Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
+> - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `validateSolution()` verification, and Pumpkin / Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
 >   ```bash
 >   # Install directly via the skills CLI (skills.sh / vercel-labs/skills)
 >   npx skills add ohtaman/washi
@@ -42,8 +42,8 @@ import {
   setHighsWasmUrl,
 } from "@ohtaman/washi";
 
-// Bundled optional CP/LCG solver plugin (zero external dependencies):
-import "@ohtaman/washi/solvers/pumpkin";
+// Bundled CP/LCG solver plugin (zero external dependencies; registers "pumpkin"):
+import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 // Optional solver plugins (require installing peer dependencies first):
 // npm install z3-solver
 import "@ohtaman/washi/solvers/z3";
@@ -69,7 +69,7 @@ import "@ohtaman/washi/solvers/glpk";
 1. **Bundled WASM by default (no implicit CDN fallback)**:
    - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
    - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
-   - In browser runtimes, to load `highs.wasm` or `pumpkin.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` (or `await m.solve({ wasmUrl: "https://.../highs.wasm" })` for HiGHS) or `setPumpkinWasmUrl("https://.../pumpkin.wasm")` from `@ohtaman/washi/solvers/pumpkin` (ignored in Node.js for HiGHS; for Pumpkin in Node.js, bundled local `pumpkin.wasm` is used by default).
+   - In browser runtimes, to load `highs.wasm` or `pumpkin.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` (or `await m.solve({ wasmUrl: "https://.../highs.wasm" })`) for HiGHS, or `setPumpkinWasmUrl("https://.../pumpkin.wasm")` (or `await m.solve({ solver: "pumpkin", wasmUrl: "https://.../pumpkin.wasm" })`) for Pumpkin (ignored in Node.js for HiGHS; for Pumpkin in Node.js, bundled local `pumpkin.wasm` is used by default unless overridden with a `file://` URL).
    - **Pumpkin runs without `COOP`/`COEP`**: Unlike Z3, Pumpkin (`@ohtaman/washi/solvers/pumpkin`) uses single-threaded WASM inside a regular Web Worker and does **not** require `SharedArrayBuffer` or Cross-Origin Isolation headers (`COOP`/`COEP`). It requires bounded finite integer/binary variables (`lb`, `ub` in `[-(2^30 - 1), 2^30 - 1]`) and integer linear coefficients/RHS, and supports `initialValue` warm starts across `solve()` and `check()` (no `Continuous`, `QuadExpr`, or `relax: true`).
 2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
    - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
@@ -79,8 +79,8 @@ import "@ohtaman/washi/solvers/glpk";
    - Importing `@ohtaman/washi` never auto-injects a Service Worker. When a secure context or cross-origin isolation is absent in a browser, Z3 rejects immediately with a descriptive error.
 3. **Web Workers & Cancellation (`AbortSignal`)**:
    - Pre-solve cancellation (`signal.aborted` before execution starts) is supported across all solvers.
-   - In browsers where `Worker` is available on a non-opaque effective origin (`window.origin !== "null"`), HiGHS runs in a dedicated Web Worker by default (`useWorker: true`). On opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), HiGHS defaults to main-thread execution (`useWorker: false`). Passing `{ signal }` to `m.solve({ signal })` preemptively terminates an in-flight Worker solve (or cancels queued Worker requests).
-   - On main-thread HiGHS (`useWorker: false` or in Node.js), cooperative mid-solve cancellation is supported when `abort()` is triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint; arbitrary asynchronous aborts from outside cannot preempt a blocked synchronous WASM thread until a callback checkpoint or completion. Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
+   - In browsers where `Worker` is available on a non-opaque effective origin (`window.origin !== "null"`), both **HiGHS** and **Pumpkin** run in dedicated Web Workers by default (`useWorker: true`). On opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), both default to main-thread execution (`useWorker: false`). Passing `{ signal }` to `m.solve({ signal })` or `m.check({ signal })` preemptively terminates an in-flight Worker run (or cancels queued Worker requests).
+   - On main-thread HiGHS (`useWorker: false` or in Node.js), cooperative mid-solve cancellation is supported when `abort()` is triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint; arbitrary asynchronous aborts from outside cannot preempt a blocked synchronous WASM thread until a callback checkpoint or completion. Main-thread / Node.js Pumpkin checks `should_abort` checkpoints across branching and termination hooks. Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
 
 ---
 
@@ -98,7 +98,7 @@ const x = m.continuous("x", { lb: 0, ub: 100 });
 const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
-const flag = m.bool("flag"); // Propositional boolean (auto 0-1 MIP on HiGHS/GLPK, native SMT on Z3)
+const flag = m.bool("flag"); // Propositional boolean (auto 0-1 MIP on HiGHS/GLPK, native LCG/SMT on Pumpkin/Z3)
 
 // Indexed variable containers:
 // - Numeric dimension -> Array
@@ -248,6 +248,57 @@ export async function runZ3Example() {
   return {
     status: unsatResult.status,
     conflicts: unsatResult.conflicts,
+  };
+}
+```
+
+### Example D: Pumpkin CP Disjunctive Scheduling & Zero-COOP/COEP Unsat Core
+
+```ts
+import { Model, expr, disjoint, distinct, implies, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+export async function runPumpkinExample() {
+  // Part 1: Bounded-integer CP scheduling with native global propagators
+  const cpModel = new Model("WorkshopSchedule", { solver: "pumpkin" });
+  const start = cpModel.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
+  const bench = cpModel.integer(["cut", "weld", "paint"] as const, { lb: 1, ub: 3, prefix: "bench" });
+
+  cpModel.constraint(
+    disjoint([
+      { start: start.cut, duration: 4 },
+      { start: start.weld, duration: 3 },
+      { start: start.paint, duration: 2 },
+    ]),
+    "single_line"
+  );
+  cpModel.constraint(expr`${start.cut} + 4 <= ${start.weld}`, "cut_before_weld");
+  cpModel.constraint(expr`${start.weld} + 3 <= ${start.paint}`, "weld_before_paint");
+  cpModel.constraint(distinct(bench), "unique_benches");
+  cpModel.objective(minimize(expr`${start.paint} + 2`));
+
+  const status = await cpModel.solve();
+  const report = cpModel.validateSolution();
+
+  // Part 2: Zero-COOP/COEP unsatCore diagnosis on bounded integers & booleans
+  const unsatModel = new Model("DiscreteConflict", { solver: "pumpkin" });
+  const vip = unsatModel.bool("vip");
+  const discount = unsatModel.integer("discount", { lb: 0, ub: 50 });
+
+  unsatModel.constraint(vip, "customer_is_vip");
+  unsatModel.constraint(implies(vip, expr`${discount} >= 20`), "vip_min_discount");
+  unsatModel.constraint(expr`${discount} <= 10`, "campaign_cap");
+
+  const unsatResult = await unsatModel.check();
+  return {
+    status,
+    makespan: cpModel.objectiveValue,
+    starts: { cut: start.cut.value, weld: start.weld.value, paint: start.paint.value },
+    benches: { cut: bench.cut.value, weld: bench.weld.value, paint: bench.paint.value },
+    valid: report.valid,
+    unsatStatus: unsatResult.status,
+    conflicts: unsatResult.conflicts,
+    unsatCore: unsatResult.unsatCore,
   };
 }
 ```

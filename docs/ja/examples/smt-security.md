@@ -82,3 +82,4 @@ verifySecurityRules();
 
 - **背理法による形式検証（反例探索）**: 単一の `check()` で `"Sat"` が返ることは「条件を満たす状態が少なくとも1つ存在する」ことを意味します。ある安全性要件 $P$（例：`sirenActive`）が**いかなる場合も必ず成立する（抜け道がない）**ことを形式的に証明するには、あえて否定 `not(P)` を追加して `m.check()` を実行し、`"Unsat"` になることを確認します。もし `"Sat"` が返れば、そのときの変数値が具体的なセキュリティ上の抜け道（反例）となります。
 - **片方向の含意（`implies`）と双方向同値の違い**: `` implies(expr`${luxLevel} <= 50`, isNight) `` は「照度 50 以下なら夜」しか規定しないため、昼間（`luxLevel > 50`）のときに `isNight` が `true` になっても論理的には違反になりません（オープンワールド仮定）。「照度 50 以下 $\iff$ 夜」とする場合は、逆方向の `` implies(expr`${luxLevel} >= 51`, not(isNight)) `` も併せて記述します。
+- **`COOP` / `COEP` ヘッダー不要での実行 (`solver: "pumpkin"`)**: このモデルの変数はすべて `BoolVar` と有界整数（`luxLevel` は `[0, 1000]`）であるため、同梱の `@ohtaman/washi/solvers/pumpkin` を使った `m.check({ solver: "pumpkin" })` でも同じ状態推論と反例 `unsatCore` 証明が `COOP` / `COEP` ヘッダーや `z3-solver` なしで動作します。

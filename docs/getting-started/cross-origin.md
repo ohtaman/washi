@@ -3,7 +3,7 @@
 When running the **Z3** solver inside a web browser, Cross-Origin Isolation HTTP headers are required so the browser enables `SharedArrayBuffer`.
 
 > [!TIP]
-> **Not needed for HiGHS, GLPK, or Node.js**: The built-in **HiGHS** solver and **GLPK** plugin run in standard browser contexts without Cross-Origin Isolation or `SharedArrayBuffer`. Running Z3 in **Node.js** also requires no HTTP headers. You only need this page when using `@ohtaman/washi/solvers/z3` in the browser.
+> **Not needed for HiGHS, Pumpkin, GLPK, or Node.js**: Bundled **HiGHS** and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`), as well as the **GLPK** plugin, run in standard browser contexts without Cross-Origin Isolation or `SharedArrayBuffer` (including Pumpkin CP solving, propositional logic, and `unsatCore` conflict diagnosis). Running Z3 in **Node.js** also requires no HTTP headers. You only need this page when using `@ohtaman/washi/solvers/z3` in the browser.
 
 ---
 

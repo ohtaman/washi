@@ -102,7 +102,7 @@ export type {
   ColumnDefinition,
 } from "./types.js";
 
-// Pluggable Solvers Architecture (HiGHS, GLPK, Remote, Mock, Custom)
+// Pluggable Solvers Architecture (HiGHS, Pumpkin, Z3, GLPK, Remote, Mock, Custom)
 export * from "./solvers/index.js";
 
 // WASM loader

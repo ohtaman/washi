@@ -189,6 +189,58 @@ export async function diagnoseAndVerifyWithZ3() {
 }
 ```
 
+### Recipe 4: Pumpkin CP Scheduling (`disjoint`, `distinct`) & Zero-COOP/COEP `unsatCore` Verification
+
+```ts
+import { Model, expr, disjoint, distinct, implies, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+export async function solveAndDiagnoseWithPumpkin() {
+  // Part A: Bounded-integer CP scheduling with native global propagators
+  const cpModel = new Model("WorkshopSchedule", { solver: "pumpkin" });
+  const start = cpModel.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
+  const bench = cpModel.integer(["cut", "weld", "paint"] as const, { lb: 1, ub: 3, prefix: "bench" });
+
+  cpModel.constraint(
+    disjoint([
+      { start: start.cut, duration: 4 },
+      { start: start.weld, duration: 3 },
+      { start: start.paint, duration: 2 },
+    ]),
+    "single_line"
+  );
+  cpModel.constraint(expr`${start.cut} + 4 <= ${start.weld}`, "cut_before_weld");
+  cpModel.constraint(expr`${start.weld} + 3 <= ${start.paint}`, "weld_before_paint");
+  cpModel.constraint(distinct(bench), "unique_benches");
+  cpModel.objective(minimize(expr`${start.paint} + 2`));
+
+  const status = await cpModel.solve();
+  const report = cpModel.validateSolution();
+
+  // Part B: Zero-COOP/COEP unsatCore diagnosis on bounded integers & booleans
+  const unsatModel = new Model("PolicyConflict", { solver: "pumpkin" });
+  const vip = unsatModel.bool("vip");
+  const discount = unsatModel.integer("discount", { lb: 0, ub: 50 });
+
+  unsatModel.constraint(vip, "customer_is_vip");
+  unsatModel.constraint(implies(vip, expr`${discount} >= 20`), "vip_min_discount");
+  unsatModel.constraint(expr`${discount} <= 10`, "campaign_cap");
+
+  const unsatRes = await unsatModel.check();
+
+  return {
+    status,
+    makespan: cpModel.objectiveValue,
+    starts: { cut: start.cut.value, weld: start.weld.value, paint: start.paint.value },
+    benches: { cut: bench.cut.value, weld: bench.weld.value, paint: bench.paint.value },
+    valid: report.valid,
+    unsatStatus: unsatRes.status,
+    conflicts: unsatRes.conflicts,
+    unsatCore: unsatRes.unsatCore,
+  };
+}
+```
+
 ---
 
 ## 6. Guardrails & Common Pitfalls

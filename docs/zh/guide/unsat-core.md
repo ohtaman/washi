@@ -4,18 +4,18 @@
 1. **为什么我的模型不可行（Infeasible）？** 究竟是哪几条业务规则之间发生了相互矛盾？
 2. **求解器返回的解真的满足每一条约束吗？** 如何独立校验数值容差、整数约束以及 LP 模型公式？
 
-WaSHI 内置了完整的诊断与验证工具链：基于内置 HiGHS 弹性松弛或 Z3 **不可满足核（Unsat Core）**的**冲突约束诊断**（`m.check()`）、**独立解验证**（`m.validateSolution()`）、**LP 格式公式导出**（`m.toLpString()`）以及**快速单元测试模拟求解器**（`MockSolver`）。
+WaSHI 内置了完整的诊断与验证工具链：基于内置 HiGHS 弹性松弛、内置 Pumpkin **不可满足核**或 Z3 **不可满足核（Unsat Core）**的**冲突约束诊断**（`m.check()`）、**独立解验证**（`m.validateSolution()`）、**LP 格式公式导出**（`m.toLpString()`）以及**快速单元测试模拟求解器**（`MockSolver`）。
 
 ---
 
 ## 冲突约束诊断 (`unsatCore` / `conflicts`)
 
 当常规优化调用（`m.solve()`）返回 **`"Infeasible"`** 时，仅凭该状态只能得知不存在满足全部约束的可行解，而无法直接看出具体是*哪些*规则发生了冲突。
-通过调用 **`await m.check({ solver: "z3" })`**，WaSHI 会利用 Z3 的 `assertAndTrack` 机制计算出**不可满足核（Unsatisfiable Core，`unsatCore`）**——即无法同时满足的命名约束冲突子集：
+通过调用 **`await m.check({ solver: "pumpkin" })`**（适用于无需 `COOP`/`COEP` 响应头与外部依赖的有界整数及布尔模型）或 **`await m.check({ solver: "z3" })`**（适用于包含 `Continuous` 连续变量或小数的模型），WaSHI 会计算出**不可满足核（Unsatisfiable Core，`unsatCore`）**——即无法同时满足的命名约束冲突子集：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
-// 注册 Z3 求解器插件
+// 注册 Z3 求解器插件（用于含 Continuous / 实数算术的 SMT 模型）
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model();
@@ -39,14 +39,15 @@ if (result.status === "Unsat") {
 可以看到，`routine_operating_cost`（$x \ge 10$）**不在**冲突核中，因为只有 `minimum_regulatory_reserve`（$x \ge 100$）与 `budget_ceiling`（$x \le 50$）直接相互矛盾。
 
 > [!IMPORTANT]
-> - **请使用 `m.check({ solver: "z3" })` 提取 Unsat Core**：`m.solve()` 执行的是目标函数优化（`Z3.Optimize`），而 `m.check()` 执行的是带跟踪的可满足性检查（`Z3.Solver.assertAndTrack`），并填充 `result.conflicts` / `m.conflicts`（以及别名 `m.unsatCore`）。
+> - **请使用 `m.check({ solver: "pumpkin" })` 或 `m.check({ solver: "z3" })` 提取 Unsat Core**：`m.solve()` 执行的是目标函数优化，而 `m.check()` 执行的是带假设跟踪的可满足性检查（Pumpkin 假设核心或 `Z3.Solver.assertAndTrack`），并填充 `result.conflicts` / `m.conflicts`（以及别名 `m.unsatCore`）。
 > - **请为约束命名**：变量自带的上下界（`lb`、`ub`）作为背景定义域声明处理。如果希望将某个边界或业务规则包含在返回的 `unsatCore` 列表中，请通过 `m.constraint(expr`...`, "rule_name")` 将其注册为命名约束。
 
-### 实战工作流：使用 HiGHS 或 Z3 进行不可行约束诊断
+### 实战工作流：使用 HiGHS、Pumpkin 或 Z3 进行不可行约束诊断
 
-由于 WaSHI 模型与具体求解器解耦，当模型不可行（`"Infeasible"`）时，您可选用两种方式排查原因：
-1. **内置 HiGHS / GLPK**：`await m.check()` 采用单次求解弹性松弛模型（$\min \sum s_i$）定位需要松弛的冲突约束（`diag.conflicts`），无需安装任何额外依赖。
-2. **Z3 SMT 求解器**：`await m.check({ solver: "z3" })` 借助 SMT 约束跟踪机制提取精确的不可满足核（`diag.unsatCore` / `diag.conflicts`）。
+由于 WaSHI 模型与具体求解器解耦，当模型不可行（`"Infeasible"`）时，您可选用三种诊断方式：
+1. **内置 HiGHS / GLPK（默认）**：`await m.check()` 采用单次求解弹性松弛模型（$\min \sum s_i$）定位需要松弛的冲突约束（`diag.conflicts`），无需额外导入。
+2. **内置 Pumpkin CP/LCG 求解器**：`await m.check({ solver: "pumpkin" })`（需 `import "@ohtaman/washi/solvers/pumpkin"`）无需外部依赖、也**无需浏览器 `COOP` / `COEP` 响应头**，即可为有界整数与布尔模型提取尺度无关的 `unsatCore` / `conflicts`。
+3. **Z3 SMT 求解器**：`await m.check({ solver: "z3" })` 借助 SMT 约束跟踪机制，在包含 `Continuous` 变量或小数算术时也能提取精确的不可满足核（`diag.unsatCore` / `diag.conflicts`）。
 
 ```typescript
 const status = await m.solve(); // 使用默认的 HiGHS 快速求解 MIP
@@ -56,23 +57,30 @@ if (status === "Infeasible") {
   const diag = await m.check();
   console.error("冲突的约束规则:", diag.conflicts);
 
-  // 方式 2: 使用 Z3 进行精确 SMT Unsat Core 诊断（需 import "@ohtaman/washi/solvers/z3"）
+  // 方式 2: 使用内置 Pumpkin 进行免 COOP/COEP 的 Unsat Core 诊断（有界整数/布尔模型，需 import "@ohtaman/washi/solvers/pumpkin"）
+  // const pumpkinDiag = await m.check({ solver: "pumpkin" });
+  // console.error("Pumpkin Unsat Core:", pumpkinDiag.unsatCore);
+
+  // 方式 3: 使用 Z3 进行精确 SMT Unsat Core 诊断（支持 Continuous 连续变量，需 import "@ohtaman/washi/solvers/z3"）
   // const z3Diag = await m.check({ solver: "z3" });
   // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 
-### Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的对比
+### Pumpkin `unsatCore`、Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的对比
 
-| 维度 | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
-| :--- | :--- | :--- |
-| **诊断算法** | SMT 假设跟踪（`assertAndTrack`） | 单次求解 $L_1$ 弹性松弛最小化（$\min \sum s_i$） |
-| **填充字段** | 同时填充 `result.unsatCore` 与 `result.conflicts` | 仅填充 `result.conflicts`（`unsatCore` 为 `undefined`） |
-| **语义含义** | 无法同时成立的**矛盾规则子集** | 松弛后能以最小总违反量恢复可行性的**最小修复约束集** |
-| **量纲尺度敏感性** | **尺度无关**（纯逻辑与代数矛盾分析） | **对量纲尺度敏感**（无权重最小化 $\sum s_i$ 时，松弛 `2` 名人手比松弛 `10,000` 元预算的总松弛量更小） |
+| 维度 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| :--- | :--- | :--- | :--- |
+| **安装与依赖** | **内置插件**（`@ohtaman/washi/solvers/pumpkin`，零外部依赖） | 可选 peer 依赖（`z3-solver`） | **内置默认**（HiGHS）/ 可选 `glpk.js` |
+| **浏览器响应头要求** | **无需配置**（免 `COOP` / `COEP`） | 需 `COOP` / `COEP`（`SharedArrayBuffer`） | **无需配置** |
+| **支持变量类型** | 有界 `Integer`、`Binary`、`BoolVar` | `Continuous`、`Integer`、`Binary`、`BoolVar` | `Continuous`、`Integer`、`Binary`、`BoolVar` |
+| **诊断算法** | 基于约束假设的 LCG 冲突分析 | SMT 假设跟踪（`assertAndTrack`） | 单次求解 $L_1$ 弹性松弛最小化（$\min \sum s_i$） |
+| **填充字段** | 同时填充 `result.unsatCore` 与 `result.conflicts` | 同时填充 `result.unsatCore` 与 `result.conflicts` | 仅填充 `result.conflicts`（`unsatCore` 为 `undefined`） |
+| **语义含义** | 无法同时成立的**矛盾规则子集** | 无法同时成立的**矛盾规则子集** | 松弛后能以最小总违反量恢复可行性的**最小修复约束集** |
+| **量纲尺度敏感性** | **尺度无关**（纯逻辑与整数矛盾分析） | **尺度无关**（纯逻辑与代数矛盾分析） | **对量纲尺度敏感**（无权重最小化 $\sum s_i$ 时，松弛 `2` 名人手比松弛 `10,000` 元预算的总松弛量更小） |
 
 > [!TIP]
-> 当模型同时包含量级差异巨大的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，若希望获得与量纲无关的完整矛盾规则集，请使用 **`m.check({ solver: "z3" })`**，或在构建约束时对不同量纲进行归一化。
+> 当模型同时包含量级差异巨大的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，若希望获得与量纲无关的矛盾规则子集：有界整数/布尔模型可使用免 `COOP`/`COEP` 的 **`m.check({ solver: "pumpkin" })`**，包含 `Continuous` 变量或小数阈值时请使用 **`m.check({ solver: "z3" })`**，或在构建约束时对不同量纲进行归一化。
 
 ---
 

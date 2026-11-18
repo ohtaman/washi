@@ -37,7 +37,7 @@ WaSHI 提供两个异步执行入口：
 | 方法 | 返回值 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | 在满足所有约束的前提下优化目标函数（`Minimize` 或 `Maximize`）。自动填充变量的原问题解、目标函数值、MIP 边界/间隙以及 LP 的对偶值（`dual`）与松弛量（`slack`）。 |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | 在无目标函数的情况下检查约束的可满足性（SAT/UNSAT）。返回 `{ status, values, conflicts?, unsatCore?, runTime? }`（其中 `values: Record<string, number \| boolean>` 包含数值变量与布尔变量的赋值），非常适用于 SMT/SAT 逻辑验证以及使用 Z3 提取不可行冲突核（`unsatCore`）。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 在无目标函数的情况下检查约束的可满足性（SAT/UNSAT）。返回 `{ status, values, conflicts?, unsatCore?, runTime? }`（其中 `values: Record<string, number \| boolean>` 包含数值变量与布尔变量的赋值），非常适用于 CP/SMT/SAT 逻辑验证以及使用 Pumpkin / Z3 提取不可行冲突核（`unsatCore`）。 |
 
 ```typescript
 const status = await m.solve({
@@ -51,14 +51,14 @@ const status = await m.solve({
 
 | 选项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `solver` | `string` \| `Solver` | 模型的求解器 (`"highs"`) | 本次运行使用的已注册求解器名称（例如 `"highs"`、`"z3"`、`"glpk"` 或自定义名称）或 `Solver` 实例。 |
+| `solver` | `string` \| `Solver` | 模型的求解器 (`"highs"`) | 本次运行使用的已注册求解器名称（例如 `"highs"`、`"pumpkin"`、`"z3"`、`"glpk"` 或自定义名称）或 `Solver` 实例。 |
 | `timeLimit` | `number` | `undefined` | 最大求解时间上限（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
 | `absGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
-| `useWorker` | `boolean` | `true` (浏览器) | 在浏览器中将 HiGHS 卸载到专用 Web Worker 中执行。设为 `false` 则在主线程执行。 |
-| `wasmUrl` | `string` | 自动解析 | 浏览器部署时用于加载 `highs.wasm` 的自定义 URL。 |
+| `useWorker` | `boolean` | `true` (浏览器) | 在浏览器中将 **HiGHS** 与 **Pumpkin** 卸载到专用 Web Worker 中执行。设为 `false` 则在主线程执行。 |
+| `wasmUrl` | `string` | 自动解析 | 浏览器部署时用于加载 `highs.wasm` 或 `pumpkin.wasm` 的自定义 URL。 |
 | `signal` | `AbortSignal` | `undefined` | 协作式取消信号（`AbortController.signal`）。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 接收实时求解进度快照的回调函数。 |
 

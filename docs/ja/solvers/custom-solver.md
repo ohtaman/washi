@@ -2,7 +2,7 @@
 
 このガイドでは、**WaSHI**（`@ohtaman/washi`）向けに独自のソルバープラグインを実装・テスト・配布する方法を説明します。
 
-WaSHI は疎結合なソルバープラグインアーキテクチャを採用しています。コアの `@ohtaman/washi` にはゼロコンフィグの HiGHS WASM エンジンと `MockSolver` のみが含まれており、独自の WebAssembly エンジン、ネイティブ C++ アドオン、Web Worker、あるいは社内クラウドの REST / RPC ソルバーバックエンドを統一された `Model` API 経由で統合できます。
+WaSHI は疎結合なソルバープラグインアーキテクチャを採用しています。コアの `@ohtaman/washi` にはゼロコンフィグの HiGHS WASM エンジンと `MockSolver` が含まれており、さらに `@ohtaman/washi/solvers/pumpkin` で CP/LCG WASM プラグインを同梱しています。これらに加え、独自の WebAssembly エンジン、ネイティブ C++ アドオン、Web Worker、あるいは社内クラウドの REST / RPC ソルバーバックエンドを統一された `Model` API 経由で統合できます。
 
 ---
 
@@ -13,6 +13,7 @@ graph TD
     A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
     B --> C[HiGHS WASM Engine Core]
     B --> D[Mock Solver Core]
+    B --> H[Pumpkin WASM Plugin @ohtaman/washi/solvers/pumpkin]
     B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
     B --> F[Z3 SMT Plugin @ohtaman/washi/solvers/z3]
     B --> G[Your Custom Solver Plugin]
@@ -119,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 カスタムソルバーは対応機能を `capabilities` で宣言します。`Model` は `solve()` または `check()` をディスパッチする前に以下の条件を検証します：
 - 目的関数に2次項（`QuadExpr`）が含まれる場合：`supportsQP === false` でないか
-- モデルに論理制約（`m.logicalConstraints`）が含まれ、ソルバーが SMT 非対応（`supportsSMT !== true`）の場合：`linearizeModelForMip` を通じて 0-1 MIP バイナリ変数と線形制約へ自動線形化されます。
+- モデルに論理制約（`m.logicalConstraints`）が含まれ、ソルバーがネイティブ論理制約（`supportsLogicalConstraints !== true`）と SMT（`supportsSMT !== true`）のどちらにも対応しない場合：`linearizeModelForMip` を通じて 0-1 MIP バイナリ変数と線形制約へ自動線形化されます。
 - いずれかの変数に初期値ヒント（`initialValue`）が設定されている場合：`supportsWarmStart !== true` でないか
 
 ```typescript
@@ -135,6 +136,9 @@ export interface SolverCapabilities {
 
   /** SMT / 命題論理制約のサポート */
   supportsSMT?: boolean;
+
+  /** SMT 連続理論を伴わない命題論理制約（BoolVar, and, or, not, implies, xor）のネイティブサポート */
+  supportsLogicalConstraints?: boolean;
 
   /** Unsat Core（矛盾する制約の部分集合）抽出のサポート */
   supportsUnsatCore?: boolean;
@@ -172,7 +176,7 @@ export interface SolverOptions {
 
 ### LP 文字列変換・シンボルマップのヘルパー関数
 
-`GLPKSolver` や `Z3Solver` のように構造化された JS/WASM データを直接処理するソルバーでは、`SolveModelData` / `CheckModelData` をそのまま利用します。
+`PumpkinSolver`・`GLPKSolver`・`Z3Solver` のように構造化された JS/WASM データを直接処理するソルバーでは、`SolveModelData` / `CheckModelData` をそのまま利用します。
 一方、CPLEX / HiGHS 形式の LP テキストや制限された識別子構文を必要とするバックエンド向けに、WaSHI は必要に応じて利用できるヘルパー関数をエクスポートしています：
 
 - `generateLpString(modelData): LpExportResult` — `modelData` を CPLEX LP 形式文字列（`lpString`）に変換し、衝突安全な識別子逆引きマップ（`nameToVar`, `nameToConstraint`）を返します。

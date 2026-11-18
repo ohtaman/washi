@@ -108,10 +108,11 @@ export interface SolveOptions {
   /**
    * AbortSignal to cancel a solve:
    * - Pre-solve cancellation (`signal.aborted` before execution starts) is supported by all solvers.
-   * - Preemptive mid-solve cancellation is supported in browser HiGHS via Web Worker termination
-   *   (and cancels queued Worker requests before they are dispatched).
-   * - Main-thread (Node.js) HiGHS supports cooperative mid-solve cancellation when `abort()` is
-   *   triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint.
+   * - Preemptive mid-solve cancellation is supported in browser HiGHS and Pumpkin via Web Worker
+   *   termination (and cancels queued Worker requests before they are dispatched).
+   * - Main-thread (Node.js) HiGHS and Pumpkin support cooperative mid-solve cancellation (`abort()`
+   *   triggered synchronously inside an `onProgress` callback for HiGHS; `should_abort` solver
+   *   interrupt checkpoints for Pumpkin).
    * - Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
    */
   signal?: AbortSignal;

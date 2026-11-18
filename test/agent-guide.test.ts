@@ -6,6 +6,7 @@ import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 import * as Washi from "../src/index.js";
 import "../src/modeler/solvers/glpk/index.js";
+import "../src/modeler/solvers/pumpkin/index.js";
 import { killZ3Threads } from "../src/modeler/solvers/z3/index.js";
 import {
   buildLlmsArtifacts,
@@ -87,7 +88,7 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     for (const relPath of guidePaths) {
       const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
       const blocks = extractTsBlocks(content);
-      expect(blocks.length, `Expected 7 TS blocks in ${relPath}`).toBe(7);
+      expect(blocks.length, `Expected 8 TS blocks in ${relPath}`).toBe(8);
 
       const importBlock = blocks[0];
       const namedImportsMatch = importBlock.match(/import\s*\{([\s\S]*?)\}\s*from\s*"@ohtaman\/washi"/);
@@ -281,7 +282,7 @@ return (async () => {
     expect(qpRes.objectiveValue).toBeCloseTo(8, 5);
   });
 
-  it("executes Example C (Z3 feasibility & unsat core) and negative examples from the guide", async () => {
+  it("executes Example C (Z3), Example D (Pumpkin CP & unsat core), and negative examples from the guide", async () => {
     try {
       const z3Js = stripTypeScriptTypes(codeBlocks[5])
         .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")
@@ -309,7 +310,38 @@ return (async () => {
       await killZ3Threads();
     }
 
-    const negJs = stripTypeScriptTypes(codeBlocks[6])
+    const pumpkinJs = stripTypeScriptTypes(codeBlocks[6])
+      .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")
+      .replace(/\bexport\s+async\s+function\b/, "async function");
+    const runPumpkin = new Function(
+      "Model",
+      "expr",
+      "disjoint",
+      "distinct",
+      "implies",
+      "minimize",
+      `${pumpkinJs}\nreturn runPumpkinExample();`
+    );
+    const pumpkinRes = await runPumpkin(
+      Washi.Model,
+      Washi.expr,
+      Washi.disjoint,
+      Washi.distinct,
+      Washi.implies,
+      Washi.minimize
+    );
+    expect(pumpkinRes.status).toBe("Optimal");
+    expect(pumpkinRes.makespan).toBe(9);
+    expect(pumpkinRes.starts).toEqual({ cut: 0, weld: 4, paint: 7 });
+    expect(new Set(Object.values(pumpkinRes.benches))).toEqual(new Set([1, 2, 3]));
+    expect(pumpkinRes.valid).toBe(true);
+    expect(pumpkinRes.unsatStatus).toBe("Unsat");
+    expect(pumpkinRes.conflicts).toEqual(
+      expect.arrayContaining(["customer_is_vip", "vip_min_discount", "campaign_cap"])
+    );
+    expect(pumpkinRes.unsatCore).toEqual(pumpkinRes.conflicts);
+
+    const negJs = stripTypeScriptTypes(codeBlocks[7])
       .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")
       .replace(/\bexport\s+function\b/, "function");
     const runNeg = new Function(
@@ -503,10 +535,12 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
     expect(llmsFullTxt).toContain("# Objectives & Solving (`m.solve` & `m.check`)");
     expect(llmsFullTxt).toContain("# Conflict Diagnosis (`unsatCore`) & Solution Validation");
+    expect(llmsFullTxt).toContain("# Constraint Programming (CP) Modeling");
     expect(llmsFullTxt).toContain("# Decomposition Methods (`solveColumnGeneration` & `solveBenders`)");
     expect(llmsFullTxt).toContain("# Formulation Patterns & Optimization Tips");
     expect(llmsFullTxt).toContain("# Solvers Overview");
     expect(llmsFullTxt).toContain("# HiGHS Solver Engine");
+    expect(llmsFullTxt).toContain("# Pumpkin Constraint Programming Solver");
     expect(llmsFullTxt).toContain("# Z3 SMT Solver Engine");
     expect(llmsFullTxt).toContain("# GLPK Solver Engine");
     expect(llmsFullTxt).toContain("# WaSHI Custom Solver Developer Guide");
@@ -518,6 +552,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Staff Shift Scheduling & Conflict Diagnosis (MIP + Z3)");
     expect(llmsFullTxt).toContain("# E-Commerce Cart & Coupon Optimizer (Indicator MIP)");
     expect(llmsFullTxt).toContain("# Portfolio Optimization (QP)");
+    expect(llmsFullTxt).toContain("# Resource-Constrained Project Scheduling (CP / Pumpkin)");
     expect(llmsFullTxt).toContain("# SMT Security Policies");
     expect(llmsFullTxt).toContain("# Conflict Diagnosis (Unsat Core)");
     expect(llmsFullTxt).toContain("async function runProductionOptimization()");
@@ -729,7 +764,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       )
     );
 
-    expect(skillCodeBlocks.length).toBe(3);
+    expect(skillCodeBlocks.length).toBe(4);
 
     const allImportedSymbols = new Set<string>();
     const extractBlockImports = (block: string): string[] => {
@@ -779,6 +814,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     const tmpTsconfigPath = path.resolve(process.cwd(), `test/${tmpBase}-tsconfig.json`);
     const combinedSource = [
       `import { ${Array.from(allImportedSymbols).join(", ")} } from "../src/index.js";`,
+      `import "../src/modeler/solvers/pumpkin/index.js";`,
       `import "../src/modeler/solvers/z3/index.js";`,
       ...skillCodeBlocks.map((b) => rewriteImports(b).replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")),
     ].join("\n\n");
@@ -867,6 +903,22 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     } finally {
       await killZ3Threads();
     }
+
+    // Recipe 4: Pumpkin CP scheduling & zero-COOP/COEP unsatCore diagnosis
+    const pumpkinRes = await runBlockFunction(
+      skillCodeBlocks[3],
+      "solveAndDiagnoseWithPumpkin()"
+    );
+    expect(pumpkinRes.status).toBe("Optimal");
+    expect(pumpkinRes.makespan).toBe(9);
+    expect(pumpkinRes.starts).toEqual({ cut: 0, weld: 4, paint: 7 });
+    expect(new Set(Object.values(pumpkinRes.benches))).toEqual(new Set([1, 2, 3]));
+    expect(pumpkinRes.valid).toBe(true);
+    expect(pumpkinRes.unsatStatus).toBe("Unsat");
+    expect(pumpkinRes.conflicts).toEqual(
+      expect.arrayContaining(["customer_is_vip", "vip_min_discount", "campaign_cap"])
+    );
+    expect(pumpkinRes.unsatCore).toEqual(pumpkinRes.conflicts);
   });
 
   it("ensures every m.<member> in positive SKILL.md sections exists on a Model instance", () => {

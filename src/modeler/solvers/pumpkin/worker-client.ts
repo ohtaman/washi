@@ -1,6 +1,9 @@
 import {
   getPumpkinWasmUrl,
+  isPumpkinRuntimeCached,
+  loadPumpkinRuntime,
   registerPumpkinWorkerResetHook,
+  shouldUseWorker,
 } from "./loader.js";
 import type { SolveProgressEvent } from "../../types.js";
 import { createPumpkinWorker } from "./worker-factory.js";
@@ -54,6 +57,7 @@ export interface PumpkinWorkerClient {
     params: { requestJson: string; wasmUrl?: string | null },
     options?: PumpkinWorkerSolveOptions
   ): Promise<PumpkinSolveResponsePayload>;
+  isWarmed(wasmUrl?: string | null): boolean;
   dispose(): void;
 }
 
@@ -156,9 +160,25 @@ export function createPumpkinWorkerClient(
   let nextRequestId = 1;
   let activeTask: QueuedTask | null = null;
   const queue: QueuedTask[] = [];
+  const warmedWasmKeys = new Set<string>();
   let disposed = false;
 
+  const toWasmCacheKey = (wasmUrl?: string | null): string =>
+    typeof wasmUrl === "string" && wasmUrl !== "" ? wasmUrl : "__bundled__";
+
+  const recordWarmedKey = (wasmUrl: string | null) => {
+    const key = toWasmCacheKey(wasmUrl);
+    warmedWasmKeys.delete(key);
+    warmedWasmKeys.add(key);
+    while (warmedWasmKeys.size > 4) {
+      const oldest = warmedWasmKeys.keys().next().value;
+      if (oldest === undefined) break;
+      warmedWasmKeys.delete(oldest);
+    }
+  };
+
   const terminateWorker = () => {
+    warmedWasmKeys.clear();
     if (worker) {
       worker.onmessage = null;
       worker.onerror = null;
@@ -292,6 +312,7 @@ export function createPumpkinWorkerClient(
             data.runTime,
             task.startTimeMs
           );
+          recordWarmedKey(task.wasmUrl);
           settleCheck(task, payload);
         } catch (parseErr) {
           if (worker === w && activeTask === task) {
@@ -315,6 +336,7 @@ export function createPumpkinWorkerClient(
             data.runTime,
             task.startTimeMs
           );
+          recordWarmedKey(task.wasmUrl);
           settleSolve(task, payload);
         } catch (parseErr) {
           if (worker === w && activeTask === task) {
@@ -464,6 +486,13 @@ export function createPumpkinWorkerClient(
         reject,
       }));
     },
+    isWarmed(wasmUrl) {
+      return (
+        !disposed &&
+        worker !== null &&
+        warmedWasmKeys.has(toWasmCacheKey(resolveWasmUrl(wasmUrl)))
+      );
+    },
     dispose() {
       disposed = true;
       terminateWorker();
@@ -502,4 +531,89 @@ export function disposeSharedPumpkinWorkerClient(): void {
     sharedWorkerClient.dispose();
     sharedWorkerClient = null;
   }
+}
+
+/**
+ * Returns `true` when the Pumpkin WASM runtime (or shared Web Worker) is already warmed for `options`.
+ */
+export function isPumpkinWarmed(
+  options: { useWorker?: boolean; wasmUrl?: string | null } = {}
+): boolean {
+  const useWorker = Boolean(options.useWorker ?? shouldUseWorker());
+  if (useWorker) {
+    return sharedWorkerClient !== null && sharedWorkerClient.isWarmed(options.wasmUrl);
+  }
+  return isPumpkinRuntimeCached(options.wasmUrl);
+}
+
+/**
+ * Pre-initialize the Pumpkin WebAssembly runtime (inside the shared Web Worker when used,
+ * or on the main thread otherwise) so subsequent solve/check calls avoid cold WASM latency.
+ */
+export async function warmupPumpkin(
+  options: { useWorker?: boolean; wasmUrl?: string | null; signal?: AbortSignal } = {}
+): Promise<{ cached: boolean }> {
+  const { signal } = options;
+  if (signal?.aborted) {
+    return { cached: false };
+  }
+  if (isPumpkinWarmed(options)) {
+    return { cached: true };
+  }
+
+  const useWorker = Boolean(options.useWorker ?? shouldUseWorker());
+  const effectiveUrl =
+    typeof options.wasmUrl === "string" && options.wasmUrl !== ""
+      ? options.wasmUrl
+      : getPumpkinWasmUrl();
+
+  if (useWorker) {
+    await getSharedPumpkinWorkerClient().check(
+      {
+        requestJson: JSON.stringify({
+          vars: [],
+          boolVars: [],
+          constraints: [],
+          logicalConstraints: [],
+          auxPropagators: [],
+          timeLimitMs: null,
+        }),
+        wasmUrl: effectiveUrl,
+      },
+      { signal }
+    );
+    return { cached: false };
+  }
+
+  if (!signal) {
+    await loadPumpkinRuntime(effectiveUrl);
+    return { cached: false };
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    loadPumpkinRuntime(effectiveUrl).then(
+      () => {
+        signal.removeEventListener("abort", onAbort);
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        if (!settled) {
+          settled = true;
+          reject(err);
+        }
+      }
+    );
+  });
+  return { cached: false };
 }
