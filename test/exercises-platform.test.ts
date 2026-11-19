@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { transpileExerciseTsToJs } from "../examples/web-demo/exercises/src/runner/ts-transpile.js";
+import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
 import {
   PROGRESS_STORAGE_KEY,
   createEmptyProgress,
@@ -1117,5 +1118,37 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       expect(resHtml).toContain("✓ ");
       expect(resHtml).toContain(UI_STRINGS[locale].results.nextProblemBtn("010"));
     }
+  });
+});
+
+describe("Exercises Platform — WaSHI Runner Snapshot Isolation", () => {
+  it("snapshots each returned case output independently across reusable objects and nested buffers", async () => {
+    const reusedCode = `
+const sharedArr = [0];
+const sharedObj = { value: 0, arr: sharedArr };
+export function solve(n: number) {
+  sharedObj.value = n;
+  sharedArr[0] = n * 10;
+  return sharedObj;
+}
+`;
+    const res1 = await runWashiExerciseCode(reusedCode, [1, 2]);
+    expect(res1.ok).toBe(true);
+    expect(res1.outputs).toEqual([
+      { value: 1, arr: [10] },
+      { value: 2, arr: [20] },
+    ]);
+
+    const nonCloneableCode = `
+const shared = { value: 0, extra: () => 1 };
+export function solve(n: number) {
+  shared.value = n;
+  return shared;
+}
+`;
+    const res2 = await runWashiExerciseCode(nonCloneableCode, [3, 4]);
+    expect(res2.ok).toBe(true);
+    expect((res2.outputs[0] as { value: number }).value).toBe(3);
+    expect((res2.outputs[1] as { value: number }).value).toBe(4);
   });
 });

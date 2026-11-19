@@ -60,6 +60,44 @@ export interface WashiExerciseRunResult {
   runTimeMs: number;
 }
 
+function cloneFallbackWithCycles(value: unknown, seen: WeakMap<object, unknown>): unknown {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  if (seen.has(value)) {
+    return seen.get(value);
+  }
+  if (Array.isArray(value)) {
+    const arrCopy: unknown[] = [];
+    seen.set(value, arrCopy);
+    for (let i = 0; i < value.length; i++) {
+      arrCopy.push(cloneFallbackWithCycles(value[i], seen));
+    }
+    return arrCopy;
+  }
+  if (ArrayBuffer.isView(value)) {
+    try {
+      return structuredClone(value);
+    } catch {
+      return value;
+    }
+  }
+  const objCopy: Record<string, unknown> = {};
+  seen.set(value, objCopy);
+  for (const [k, v] of Object.entries(value)) {
+    objCopy[k] = typeof v === "function" ? v : cloneFallbackWithCycles(v, seen);
+  }
+  return objCopy;
+}
+
+function snapshotCaseOutput(value: unknown): unknown {
+  try {
+    return structuredClone(value);
+  } catch {
+    return cloneFallbackWithCycles(value, new WeakMap<object, unknown>());
+  }
+}
+
 function formatLogArg(arg: unknown): string {
   if (typeof arg === "string") return arg;
   if (typeof arg === "object" && arg !== null) {
@@ -131,7 +169,7 @@ export async function runWashiExerciseCode(
       createdModels = [];
       const clonedInput = structuredClone(inputs[i]);
       const out = await solveFn(clonedInput);
-      outputs.push(out);
+      outputs.push(snapshotCaseOutput(out));
 
       const primary = createdModels[createdModels.length - 1];
       if (primary) {
