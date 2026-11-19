@@ -778,13 +778,16 @@ button {
   height: calc(100dvh - 57px);
   z-index: 30;
   transform: translateX(-100%);
-  transition: transform 180ms ease;
+  visibility: hidden;
+  transition: transform 180ms ease, visibility 0s linear 180ms;
   box-shadow: var(--shadow-md);
   display: block;
 }
 
 .book-shell.is-workspace.is-toc-open .book-sidebar {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 180ms ease, visibility 0s;
 }
 
 .ws-subbar {

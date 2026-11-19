@@ -241,7 +241,9 @@ function renderBookSidebarHtml(params: {
   return `
     ${mobileTocHtml}
     ${backdropHtml}
-    <aside class="book-sidebar" aria-label="${escapeHtml(strings.sidebarTocLabel)}">
+    <aside class="book-sidebar" aria-label="${escapeHtml(strings.sidebarTocLabel)}"${
+      isDrawer ? " inert" : ""
+    }>
       <div class="book-sidebar-head">
         <div class="book-sidebar-head-row">
           <a

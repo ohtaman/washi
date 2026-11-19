@@ -463,9 +463,23 @@ class ExercisesApp {
   private setTocDrawerOpen(open: boolean): void {
     const shell = this.root.querySelector<HTMLElement>(".book-shell.is-workspace");
     const toggleBtn = this.root.querySelector<HTMLButtonElement>("#toc-drawer-toggle");
+    const sidebar = shell?.querySelector<HTMLElement>(".book-sidebar");
     if (!shell) return;
+    if (
+      !open &&
+      sidebar &&
+      document.activeElement instanceof Node &&
+      sidebar.contains(document.activeElement)
+    ) {
+      toggleBtn?.focus();
+    }
     shell.classList.toggle("is-toc-open", open);
     toggleBtn?.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      sidebar?.removeAttribute("inert");
+    } else {
+      sidebar?.setAttribute("inert", "");
+    }
   }
 
   private handleKeyDown(e: KeyboardEvent): void {

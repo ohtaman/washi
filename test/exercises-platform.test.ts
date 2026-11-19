@@ -1111,7 +1111,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
 
       expect(wsHtml, `workspace (${locale})`).not.toMatch(GAMEY_UI_RE);
       expect(wsHtml).toContain('class="book-shell is-workspace"');
-      expect(wsHtml).toContain('class="book-sidebar"');
+      expect(wsHtml).toMatch(/<aside class="book-sidebar"[^>]*\sinert\b/);
       expect(wsHtml).toContain('class="ws-split"');
       expect(wsHtml).toContain('class="ws-pane-problem"');
       expect(wsHtml).toContain('class="ws-pane-editor"');

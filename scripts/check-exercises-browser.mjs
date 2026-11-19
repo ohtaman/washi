@@ -265,18 +265,54 @@ async function run() {
         `${id} editor fontWeight must stay 400 (got textarea=${wsCheck.textareaWeight}, span=${wsCheck.spanWeight})`
       );
 
-      // Verify collapsible TOC drawer open/Escape close on #001, and independent pane scroll on #005
+      // Verify collapsible TOC drawer inert state, keyboard focus order, open, and Escape close on #001
       if (id === "001") {
+        const closedDrawerCheck = await page.evaluate(() => {
+          const sidebar = document.querySelector(".book-sidebar");
+          return {
+            hasInert: sidebar?.hasAttribute("inert") ?? false,
+            visibility: sidebar ? getComputedStyle(sidebar).visibility : null,
+          };
+        });
+        assert(closedDrawerCheck.hasInert, "Expected closed workspace drawer to have inert attribute");
+        assert(
+          closedDrawerCheck.visibility === "hidden",
+          `Expected closed workspace drawer visibility:hidden, got ${closedDrawerCheck.visibility}`
+        );
+
+        await page.focus("#toc-drawer-toggle");
+        await page.keyboard.press("Tab");
+        const nextFocusedId = await page.evaluate(() => document.activeElement?.id ?? "");
+        assert(
+          nextFocusedId === "back-to-map-btn",
+          `Expected Tab from #toc-drawer-toggle to skip closed drawer and focus #back-to-map-btn, got '${nextFocusedId}'`
+        );
+
         await page.click("#toc-drawer-toggle");
         await page.waitForSelector(".book-shell.is-workspace.is-toc-open");
         await page.waitForFunction(
-          () => Math.round(document.querySelector(".book-sidebar")?.getBoundingClientRect().left ?? -1) === 0
+          () => {
+            const sb = document.querySelector(".book-sidebar");
+            return (
+              sb !== null &&
+              !sb.hasAttribute("inert") &&
+              getComputedStyle(sb).visibility === "visible" &&
+              Math.round(sb.getBoundingClientRect().left) === 0
+            );
+          }
         );
         await page.keyboard.press("Escape");
         const stillOpen = await page.locator(".book-shell.is-workspace.is-toc-open").count();
         assert(stillOpen === 0, "Expected Escape key to close TOC drawer");
         await page.waitForFunction(
-          () => Math.round(document.querySelector(".book-sidebar")?.getBoundingClientRect().right ?? 1) <= 0
+          () => {
+            const sb = document.querySelector(".book-sidebar");
+            return (
+              sb !== null &&
+              sb.hasAttribute("inert") &&
+              Math.round(sb.getBoundingClientRect().right) <= 0
+            );
+          }
         );
       }
       if (id === "005") {
