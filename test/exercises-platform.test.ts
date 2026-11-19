@@ -343,6 +343,66 @@ export default function solve(input: number): number {
     const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
     expect(solve(5)).toBe(7 + 3 + 100);
   });
+
+  it("preserves functions, methods, and calls named satisfies or as while stripping object assertions", () => {
+    const basic = transpileExerciseTsToJs(
+      "function satisfies (x: number) { return x + 1; }\nexport function solve(input: number) { return satisfies(input); }",
+    );
+    const basicSolve = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicSolve(10)).toBe(11);
+
+    const sample = `
+function as (x: number) {
+  return x + 2;
+}
+class Checker {
+  a() { return 1; }
+  satisfies (x: number): boolean {
+    return x > 0;
+  }
+  static satisfies (x: number): number {
+    return x * 2;
+  }
+}
+export function solve(input: number) {
+  let acc = 0;
+  function satisfies (v: number): number {
+    return v + 3;
+  }
+  if (input > 0) {
+    acc += 1;
+  } satisfies (input);
+  const obj = { a: input }
+  satisfies (acc);
+  const checker = new Checker();
+  const asserted = { x: obj.a } satisfies { x: number };
+  return asserted.x + as(1) + satisfies(2) + Checker.satisfies(3) + (checker.satisfies(1) ? acc : 0);
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(5)).toBe(5 + 3 + 5 + 6 + 1);
+  });
+
+  it("strips conditional type arguments and optional properties inside generic calls", () => {
+    const sample = `
+const identity = <T>(x: T): T => x;
+const pair = <A, B>(a: A, b: B): [A, B] => [a, b];
+const callWith = <F extends (x?: number) => number>(fn: F): number => fn(2);
+export function solve(input: number): number {
+  const exact = identity<number extends number ? number : never>(input);
+  const nested = identity<number extends string ? never : number extends number ? number : never>(1);
+  const [p0, p1] = pair<number extends number ? number : never, string extends string ? string : never>(2, "ok");
+  const opt = identity<{ a?: number }>({ a: 3 }).a ?? 0;
+  const cb = callWith<(x?: number) => number>((x = 1) => x + 4);
+  const val: number extends number ? number : never = p1.length;
+  return exact + nested + p0 + opt + cb + val;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(10)).toBe(10 + 1 + 2 + 3 + 6 + 2);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

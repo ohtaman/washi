@@ -386,9 +386,6 @@ function scanGenericArgListEnd(s: string, start: number, prevChar: string): numb
   const endAng = skipBalanced(s, start, "<", ">");
   if (s[endAng - 1] !== ">") return -1;
   const angInner = s.slice(start + 1, endAng - 1);
-  if (angInner.includes("?") && !/\bextends\b/.test(angInner)) {
-    return -1;
-  }
   if (!looksLikeGenericTypeArgList(angInner)) return -1;
   const after = skipWsHorizontal(s, endAng);
   const nextCh = s[after] ?? "";
@@ -599,6 +596,25 @@ function readTypeEnd(
     }
     break;
   }
+  const extStart = skipWsHorizontal(s, i);
+  if (s.startsWith("extends", extStart) && /\s/.test(s[extStart + 7] ?? "")) {
+    const checkEnd = readTypeEnd(s, extStart + 8, true, allowNewline);
+    if (checkEnd > extStart + 8) {
+      const qPos = skip(s, checkEnd);
+      if (s[qPos] === "?") {
+        const trueEnd = readTypeEnd(s, qPos + 1, true, allowNewline);
+        if (trueEnd > qPos + 1) {
+          const cPos = skip(s, trueEnd);
+          if (s[cPos] === ":") {
+            const falseEnd = readTypeEnd(s, cPos + 1, allowFunctionType, allowNewline);
+            if (falseEnd > cPos + 1) {
+              return falseEnd;
+            }
+          }
+        }
+      }
+    }
+  }
   return i;
 }
 
@@ -611,6 +627,8 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
   let brace = 0;
   let bracket = 0;
   let angle = 0;
+  let ternaryDepth = 0;
+  let argStart = 0;
 
   for (let i = 0; i < trimmed.length; i++) {
     const ch = trimmed[i];
@@ -627,6 +645,21 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
     else if (ch === "<") angle++;
     else if (ch === ">" && angle > 0) angle--;
     else if (paren === 0 && brace === 0 && bracket === 0 && angle === 0) {
+      if (ch === ",") {
+        if (ternaryDepth !== 0) return false;
+        argStart = i + 1;
+        continue;
+      }
+      if (ch === "?") {
+        if (!/\bextends\b/.test(trimmed.slice(argStart, i))) return false;
+        ternaryDepth++;
+        continue;
+      }
+      if (ch === ":") {
+        if (ternaryDepth === 0) return false;
+        ternaryDepth--;
+        continue;
+      }
       const two = trimmed.slice(i, i + 2);
       if (two === "||" || two === "&&" || two === "==" || two === "!=") {
         return false;
@@ -638,7 +671,6 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
         ch === "/" ||
         ch === "%" ||
         ch === "=" ||
-        ch === ":" ||
         ch === "!" ||
         ch === "~" ||
         ch === "^"
@@ -648,7 +680,7 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
     }
   }
 
-  return paren === 0 && brace === 0 && bracket === 0 && angle === 0;
+  return paren === 0 && brace === 0 && bracket === 0 && angle === 0 && ternaryDepth === 0;
 }
 
 function stripTopLevelDeclarations(s: string): string {
@@ -1260,6 +1292,100 @@ function stripParamList(parenText: string): string {
   return `(${out})`;
 }
 
+const NON_ASSERTION_OPERAND_WORDS = new Set([
+  "function",
+  "class",
+  "const",
+  "let",
+  "var",
+  "import",
+  "export",
+  "default",
+  "async",
+  "static",
+  "get",
+  "set",
+  "return",
+  "throw",
+  "case",
+  "delete",
+  "void",
+  "typeof",
+  "await",
+  "yield",
+  "in",
+  "instanceof",
+  "new",
+  "else",
+  "do",
+  "of",
+  "if",
+  "while",
+  "for",
+  "switch",
+  "catch",
+  "try",
+  "finally",
+  "break",
+  "continue",
+  "debugger",
+  "extends",
+]);
+
+const OBJECT_LITERAL_PREFIX_WORDS = new Set([
+  "return",
+  "throw",
+  "yield",
+  "await",
+  "case",
+  "default",
+  "typeof",
+  "void",
+  "delete",
+  "in",
+  "instanceof",
+  "new",
+  "of",
+  "as",
+  "satisfies",
+]);
+
+function isObjectLiteralBrace(text: string): boolean {
+  let depth = 0;
+  let openIdx = -1;
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] === "}") depth++;
+    else if (text[i] === "{") {
+      depth--;
+      if (depth === 0) {
+        openIdx = i;
+        break;
+      }
+    }
+  }
+  if (openIdx < 0) return false;
+  const before = text.slice(0, openIdx).trimEnd();
+  if (!before) return true;
+  if (before.endsWith("=>")) return false;
+  const ch = before[before.length - 1];
+  if ("=([,:?!~+-*/%&|^".includes(ch)) return true;
+  if (isIdentChar(ch)) {
+    return OBJECT_LITERAL_PREFIX_WORDS.has(readPrevWord(before));
+  }
+  return false;
+}
+
+function canPrecedeTypeAssertion(out: string): boolean {
+  const prevTrim = out.trimEnd();
+  if (!prevTrim) return false;
+  // TypeScript forbids a newline before `as` or `satisfies` assertions
+  if (out.slice(prevTrim.length).includes("\n")) return false;
+  const prevC = prevTrim[prevTrim.length - 1];
+  if (prevC === "}") return isObjectLiteralBrace(prevTrim);
+  if (isIdentChar(prevC)) return !NON_ASSERTION_OPERAND_WORDS.has(readPrevWord(prevTrim));
+  return prevC === ")" || prevC === "]" || prevC === "\uE001";
+}
+
 function stripGenericsAsAndNonNull(s: string): string {
   let out = "";
   let i = 0;
@@ -1283,30 +1409,20 @@ function stripGenericsAsAndNonNull(s: string): string {
         : s.startsWith("satisfies", i) && (s[i + 9] === " " || s[i + 9] === "\t")
           ? "satisfies"
           : null;
-    if (assertKw && (i === 0 || !isIdentChar(s[i - 1]))) {
+    if (assertKw && (i === 0 || !isIdentChar(s[i - 1])) && canPrecedeTypeAssertion(out)) {
       let j = i + assertKw.length;
       while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
       if (assertKw === "as" && s.startsWith("const", j) && !isIdentChar(s[j + 5] ?? "")) {
         i = j + 5;
         continue;
       }
-      const prevTrim = out.trimEnd();
-      const prevC = prevTrim[prevTrim.length - 1] ?? "";
-      if (
-        isIdentChar(prevC) ||
-        prevC === ")" ||
-        prevC === "]" ||
-        prevC === "}" ||
-        prevC === "\uE001"
-      ) {
-        const typeEnd = readTypeEnd(s, j);
-        if (typeEnd > j) {
-          if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
-            out = out.slice(0, -1);
-          }
-          i = typeEnd;
-          continue;
+      const typeEnd = readTypeEnd(s, j);
+      if (typeEnd > j && s[skipWsHorizontal(s, typeEnd)] !== "{") {
+        if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
+          out = out.slice(0, -1);
         }
+        i = typeEnd;
+        continue;
       }
     }
 
