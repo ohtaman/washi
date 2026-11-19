@@ -165,6 +165,93 @@ export function makeAdder(x: number): (y: number) => Promise<number> {
     ) => (y: number) => Promise<number>;
     expect(await makeAdder(10)(5)).toBe(10 + 5 + 1 + 1 + 2 + 3 + 7);
   });
+
+  it("strips typed callbacks and function expressions inside parameter and destructuring defaults", () => {
+    const basic = transpileExerciseTsToJs(
+      "export function solve(input: number, transform = (x: number): number => x + 1) { return transform(input); }",
+    );
+    const basicFn = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicFn(41)).toBe(42);
+
+    const sample = `
+export function solve(
+  input: number,
+  cb = (x: number, sub = (y: number): number => y * 2): number => sub(x),
+  fnExpr = function (x: number): number { return x + 3; },
+  { fn = (x: number): number => x + 1 }: { fn?: (x: number) => number } = {},
+): number {
+  return cb(input) + fnExpr(input) + fn(input);
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(5)).toBe(10 + 8 + 6);
+  });
+
+  it("strips type annotations across multi-declarator variable statements and nested initializers", () => {
+    const basic = transpileExerciseTsToJs(
+      "export function solve(input: number) { let a: number = 1, b: number = 2; return input + a + b; }",
+    );
+    const basicFn = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicFn(10)).toBe(13);
+
+    const sample = `
+function pairSum(x: number, y: number): number {
+  return x + y;
+}
+export function solve(input: number): number {
+  let a: number = pairSum(1, 2),
+    b: { k: number } = { k: 3 },
+    c: Map<string, number> = new Map<string, number>(),
+    d: number;
+  d = 4;
+  const f: (n: number) => number = (n: number) => {
+      let x: number = 1, y: number = 2;
+      return n + x + y;
+    },
+    g: number = 10;
+  return input + a + b.k + c.size + d + f(0) + g;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(5)).toBe(5 + 3 + 3 + 0 + 4 + 3 + 10);
+  });
+
+  it("strips uninitialized, ASI, function-typed, loop, and destructured variable annotations while preserving property names", () => {
+    const basic = transpileExerciseTsToJs(
+      "export function solve(input: number) { let result: number; result = input + 1; return result; }",
+    );
+    const basicFn = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicFn(7)).toBe(8);
+
+    const sample = `
+export function solve(input: number): number {
+  let asi: number
+  asi = input + 2
+  let fn: (x: number) => number;
+  fn = (x: number): number => x * 2;
+  let total: number = asi + fn(input);
+  for (let i: number = 0, limit: number = 3; i < limit; i++) {
+    total += i;
+  }
+  for (const v: number of [1, 2, 3]) {
+    total += v;
+  }
+  const { a, b }: { a: number; b: number } = { a: 4, b: 5 };
+  const [p, q]: [number, number] = [6, 7];
+  const cast = ((x: number) => x + 1) as (x: number) => number;
+  const obj = { let: 1, var: 2, const: 3 };
+  const arr = [1, 2] as const
+  const v = obj.let + obj.var + obj.const + arr[0];
+  return total + a + b + p + q + cast(0) + v;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // asi = input + 2, fn(input) = 2*input => 3*input + 2 + (0+1+2) + (1+2+3) + (4+5) + (6+7) + 1 + (1+2+3+1)
+    expect(solve(3)).toBe(11 + 3 + 6 + 9 + 13 + 1 + 7);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {
