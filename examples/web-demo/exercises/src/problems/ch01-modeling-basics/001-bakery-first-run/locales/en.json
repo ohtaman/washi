@@ -1,0 +1,23 @@
+{
+  "title": "#001. Bakery First Optimization",
+  "subtitle": "Run the model right away, read the SUBOPTIMAL judge feedback, and fix minimize to maximize.",
+  "tags": [
+    "LP",
+    "Getting Started",
+    "Objective Sense"
+  ],
+  "caseNames": [
+    "Morning bake batch",
+    "Weekend surge batch"
+  ],
+  "markdown": "# #001. Bakery First Optimization\n\n<!-- section:scenario -->\nWelcome to **#001**! Start by running the solver in your preferred runtime (**WaSHI** in TypeScript or **Python `highspy`**) and reading the judge feedback.\n\nA bakery makes **croissants** (`croissants >= 0`) and **loaves** (`loaves >= 0`) using flour and butter. Almost all of the starter code is already filled in **except one deliberate mistake**: it calls `minimize(...)` instead of maximizing profit.\n\n1. Click **Run & Judge** right away to see the amber **SUBOPTIMAL** feedback (making `0` of everything yields `0` profit!).\n2. Change that single word (`minimize` -> `maximize` in WaSHI, or `h.minimize(...)` -> `h.maximize(...)` in Python) and run again to earn **AC**.\n\n<!-- section:io -->\n- **Input**: `flourCap`, `butterCap`, unit profits (`croissantProfit`, `loafProfit`), and resource usage per unit (`croissantFlour`, `croissantButter`, `loafFlour`, `loafButter`).\n- **Output**: `{ croissants: number, loaves: number, totalProfit: number }`\n\n<!-- section:example -->\nWith `flourCap = 120`, `butterCap = 70`, croissants yielding `40` (using 2 flour, 1 butter) and loaves yielding `70` (using 3 flour, 2 butter), baking `croissants = 30`, `loaves = 20` uses all `120` flour and `70` butter for optimal profit **`2600`**.\n\n<!-- section:hint1 -->\nLook for `m.objective(minimize(...))` in **WaSHI (TypeScript)** or `h.minimize(...)` in **Python (highspy)**. Both libraries expose `maximize` as well.\n\n<!-- section:hint2 -->\nWhy did the broken code say **SUBOPTIMAL** instead of **VIOLATION**? Because producing `(0, 0)` violates no capacity limits — it is feasible, just far from the maximum profit! Distinguishing **feasible-but-suboptimal** from **infeasible/violated** is your most useful debugging signal in mathematical optimization.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & p_c c + p_l \\ell \\\\\n\\text{s.t.} \\quad & f_c c + f_l \\ell \\le F_{\\text{cap}} \\\\\n& b_c c + b_l \\ell \\le B_{\\text{cap}} \\\\\n& c, \\ell \\ge 0\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "Output must be an object { croissants, loaves, totalProfit }.",
+    "m1": "Production quantities cannot be negative (got croissants={p0}, loaves={p1}).",
+    "m2": "Flour used ({p0}) exceeds capacity ({p1}).",
+    "m3": "Butter used ({p0}) exceeds capacity ({p1}).",
+    "m4": "Reported totalProfit ({p0}) does not match profit from quantities ({p1}).",
+    "m5": "Feasible schedule, but total profit ({p0}) is below optimal ({p1}). Check your objective sense!",
+    "m6": "Optimal profit {p0} reached!"
+  }
+}

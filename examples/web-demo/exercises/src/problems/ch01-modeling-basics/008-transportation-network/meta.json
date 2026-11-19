@@ -1,0 +1,27 @@
+{
+  "id": "008",
+  "slug": "transportation-network",
+  "chapter": 1,
+  "order": 8,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 9,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

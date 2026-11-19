@@ -1,0 +1,27 @@
+{
+  "id": "010",
+  "slug": "production-line-activation",
+  "chapter": 1,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

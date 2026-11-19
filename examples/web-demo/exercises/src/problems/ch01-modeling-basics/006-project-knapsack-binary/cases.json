@@ -1,0 +1,20 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "budget": 15,
+      "costs": [4, 5, 7, 3, 6],
+      "values": [10, 12, 16, 8, 13]
+    },
+    "expectedOptimal": 36
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "budget": 20,
+      "costs": [4, 6, 7, 5, 8, 3],
+      "values": [9, 14, 17, 11, 19, 6]
+    },
+    "expectedOptimal": 47
+  }
+]

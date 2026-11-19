@@ -1,0 +1,30 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "milkCap": 90,
+      "sugarCap": 80,
+      "vanillaProfit": 500,
+      "chocoProfit": 300,
+      "vanillaMilk": 3,
+      "vanillaSugar": 1,
+      "chocoMilk": 1,
+      "chocoSugar": 2
+    },
+    "expectedOptimal": 19000
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "milkCap": 150,
+      "sugarCap": 120,
+      "vanillaProfit": 600,
+      "chocoProfit": 450,
+      "vanillaMilk": 2,
+      "vanillaSugar": 3,
+      "chocoMilk": 3,
+      "chocoSugar": 1
+    },
+    "expectedOptimal": 31500
+  }
+]

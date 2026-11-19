@@ -1,0 +1,159 @@
+{
+  "ui": {
+    "brandTitle": "Optimization 100",
+    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Workbook (WaSHI & highspy)",
+    "navDocs": "Docs",
+    "navShowcase": "Showcase",
+    "navPlayground": "Playground",
+    "backToMap": "← All Exercises",
+    "startFirstBtn": "Start #001 →",
+    "resumeBtn": "Continue (#{id}) →",
+    "progressLabel": "{solved} / {total} Solved",
+    "solvedBadge": "✓ Solved",
+    "unsolvedBadge": "Unsolved",
+    "sidebarTocLabel": "Workbook Contents",
+    "overviewLink": "Workbook Overview",
+    "mobileTocToggle": "Exercises & Progress",
+    "provenanceFootnote": "All Chapter 1 exercises are AI-Drafted and Solver-Verified across WaSHI & highspy test cases.",
+    "difficultyLabel": "Difficulty {level}/5",
+    "estimatedMinutesLabel": "~{mins} min",
+    "comingSoonBadge": "Coming Soon",
+    "chapterPrefix": "Chapter {n}",
+    "roleLabels": {
+      "tutorial": "Tutorial",
+      "intro": "Intro",
+      "core": "Core",
+      "applied": "Applied",
+      "capstone": "Synthesis"
+    },
+    "provenance": {
+      "aiDrafted": "AI-Drafted",
+      "solverVerified": "Solver-Verified (WaSHI × highspy)",
+      "reviewedBy": "Reviewed by {handles}",
+      "feedbackHint": "Cross-checked automatically by both solvers; human review pending."
+    },
+    "workspace": {
+      "jumpToEditorBtn": "Jump to Answer Editor ↓"
+    },
+    "tabs": {
+      "washi": "WaSHI (TypeScript)",
+      "highspy": "Python (highspy)",
+      "tablistLabel": "Solver runtime tabs",
+      "pythonLazyNote": "Pyodide v0.29 (highspy) loads in a background Web Worker on your first Python run."
+    },
+    "sections": {
+      "scenario": "Problem Scenario",
+      "io": "Input & Output Contract",
+      "example": "Worked Example",
+      "hintsTitle": "Hints & Reference Formulation",
+      "hint1": "Hint 1 — Decision Variables & Structure",
+      "hint2": "Hint 2 — Common Beginner Pitfall",
+      "formulation": "Mathematical Formulation & Notes (Open After Solving)"
+    },
+    "editor": {
+      "workbenchTitle": "Answer Workbench",
+      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or Python (highspy) to complete this exercise.",
+      "label": "Edit solve() below",
+      "runBtn": "Run & Judge",
+      "runningBtn": "Running…",
+      "loadingPyodide": "Loading Pyodide v0.29 WebAssembly…",
+      "loadingHighspy": "Loading highspy solver package…",
+      "runningPython": "Running Python solver…",
+      "resetBtn": "Reset",
+      "solutionBtn": "Load Reference Solution",
+      "confirmSolution": "Replace your current code in this tab with the reference solution?",
+      "shortcutHint": "Ctrl/Cmd + Enter to run"
+    },
+    "results": {
+      "title": "Judge Verdict",
+      "placeholder": "Complete solve() above and click Run & Judge to evaluate all test cases.",
+      "verdicts": {
+        "AC": "AC — Optimal",
+        "SUBOPTIMAL": "SUBOPTIMAL — Feasible, not optimal",
+        "VIOLATION": "VIOLATION — Rule check failed",
+        "INFEASIBLE": "INFEASIBLE — No solution found",
+        "RUNTIME_ERROR": "ERROR — Runtime failure"
+      },
+      "caseLabel": "Case {num}: {name}",
+      "objectiveDiff": "Your objective: {yours}  |  Optimal objective: {optimal}",
+      "metricsLineNoMs": "Vars: {vars} · Constraints: {constrs}",
+      "metricsLineWithMs": "Vars: {vars} · Constraints: {constrs} · Solve: {ms} ms",
+      "previewLabel": "Solution Summary",
+      "lpPreviewLabel": "Inspect Generated LP Format (toLpString)",
+      "consoleLabel": "Console Output",
+      "nextProblemBtn": "Next Exercise (#{nextId}) →"
+    },
+    "backup": {
+      "openBtn": "Backup",
+      "title": "Progress Backup (localStorage)",
+      "desc": "Your solved progress and code drafts are stored locally in this browser. Export JSON to move across devices or restore a saved backup.",
+      "exportBtn": "Download JSON",
+      "copyBtn": "Copy JSON",
+      "copied": "Copied!",
+      "importBtn": "Import JSON",
+      "importPlaceholder": "Paste exported JSON here...",
+      "importSuccess": "Progress restored successfully.",
+      "importError": "Import failed: {msg}",
+      "resetAllBtn": "Clear All Progress",
+      "resetAllConfirm": "Delete all saved progress and code drafts in this browser?",
+      "closeBtn": "Close"
+    },
+    "theme": {
+      "toggleLabel": "Toggle color theme",
+      "switchToDark": "Dark",
+      "switchToLight": "Light"
+    },
+    "localeNames": {
+      "en": "EN",
+      "ja": "日本語",
+      "zh": "中文"
+    }
+  },
+  "chapters": {
+    "1": {
+      "title": "Modeling Basics — Variables, Constraints & Objective",
+      "description": "Learn step by step how to turn plain problem descriptions into decision variables, linear inequalities, 0-1 binary choices, multi-period inventory flow, and mixed-integer linking constraints."
+    },
+    "2": {
+      "title": "Linearization Idioms, Convex QP & LP Duality",
+      "description": "Charnes-Cooper ratio linearization, minimax epigraphs, positive-part slacks, robust L1/Linf fitting, convex quadratic portfolios, shadow prices, and reduced-cost sensitivity."
+    },
+    "3": {
+      "title": "Mixed-Integer Programming (MIP) Formulation Idioms",
+      "description": "Fixed-charge lot sizing, indicator directions, chained logic, SOS2 piecewise approximation, McCormick envelopes, and pattern enumeration."
+    },
+    "4": {
+      "title": "Propositional Logic & SMT Modeling",
+      "description": "Uniqueness proofs via no-good cuts, logic refutation, policy verification, minimal Unsat Core extraction, MaxSAT repair, and SMT-LIRA."
+    },
+    "5": {
+      "title": "Constraint Programming (CP / LCG) & Global Constraints",
+      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and MIP vs CP vs SMT comparison."
+    },
+    "6": {
+      "title": "Networks, Total Unimodularity, Connectivity & Vehicle Routing",
+      "description": "Exploit total unimodularity, max-flow min-cut, flow-based connectivity without subtours, CVRP, VRPTW, and connected territory design."
+    },
+    "7": {
+      "title": "Production, Inventory, Supply Chain & Energy Systems",
+      "description": "Strong lot-sizing reformulations, multi-level BOM/MRP, backorders vs lost sales, facility location (CFLP), Unit Commitment, and battery arbitrage."
+    },
+    "8": {
+      "title": "Scheduling, Staff Rostering, Timetabling & Revenue Management",
+      "description": "Job-shop comparison (MIP vs CP), RCPSP, rolling night-rest rosters, university timetabling, OR scheduling, and seat allocation."
+    },
+    "9": {
+      "title": "Model Auditing, Multi-Objective Tradeoffs & Uncertainty",
+      "description": "Historical constraint auditing, infeasibility diagnosis, goal/lexicographic tradeoffs, Pareto curves, Hamming-distance rescheduling, CVaR, and robust optimization."
+    },
+    "10": {
+      "title": "Large-Scale Decomposition & Hybrid Solvers",
+      "description": "Lazy cuts, cutting-stock/VRP column generation, Dantzig-Wolfe, classical & logic-based Benders decomposition, Lagrangian relaxation, LNS, and S&OP synthesis."
+    }
+  },
+  "judgeHelpers": {
+    "expectFiniteNumber": "Field \"{field}\" must be a finite number (received {actual}).",
+    "expectArrayLength": "Field \"{field}\" must be an array of length {length}.",
+    "expectArrayElementFinite": "{field}[{index}] must be a finite number (received {actual})."
+  }
+}

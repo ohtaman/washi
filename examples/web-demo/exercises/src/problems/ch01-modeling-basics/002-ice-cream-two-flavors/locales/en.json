@@ -1,0 +1,23 @@
+{
+  "title": "#002. Two-Flavor Creamery (Adding a Constraint)",
+  "subtitle": "Add the missing sugar capacity constraint and see how LP beats greedy flavor prioritization.",
+  "tags": [
+    "LP",
+    "Two Variables",
+    "Constraints"
+  ],
+  "caseNames": [
+    "Classic vanilla & chocolate shop (LP: 19,000)",
+    "Weekend creamery batch (LP: 31,500)"
+  ],
+  "markdown": "# #002. Two-Flavor Creamery (Adding a Constraint)\n\n<!-- section:scenario -->\nAn ice cream shop makes **vanilla** (`vanilla >= 0` L) and **chocolate** (`chocolate >= 0` L) using **milk** and **sugar**.\n\nProducing 1 liter of vanilla takes `vanillaMilk` milk and `vanillaSugar` sugar for profit `vanillaProfit`. Producing 1 liter of chocolate takes `chocoMilk` milk and `chocoSugar` sugar for profit `chocoProfit`.\n\nIn the starter code, variables, the milk constraint, and the objective are already filled in — **only the sugar constraint is missing**!\n1. Run the starter right away to see the red **VIOLATION** message (`Sugar used exceeds capacity`).\n2. Add the missing sugar constraint (`vanillaSugar * vanilla + chocoSugar * chocolate <= sugarCap`) and run again for **AC**.\n\n<!-- section:io -->\n- **Input (`P002Input`)**: `milkCap`, `sugarCap`, `vanillaProfit`, `chocoProfit`, `vanillaMilk`, `vanillaSugar`, `chocoMilk`, `chocoSugar`\n- **Output (`P002Output`)**: `{ vanilla: number, chocolate: number, totalProfit: number }`\n\n<!-- section:example -->\nWhen `milkCap = 90`, `sugarCap = 80`, vanilla yields `500`/L (`3` milk, `1` sugar) and chocolate yields `300`/L (`1` milk, `2` sugar):\n\n- **Greedy by profit/liter** only makes `30` L of vanilla (hitting the milk cap) for `15,000`.\n- **LP optimal mix** makes `vanilla = 20`, `chocolate = 30`, using all `90` milk and `80` sugar for **`19,000`** profit!\n\n<!-- section:hint1 -->\nCopy the pattern of the `milk` constraint right above the `TODO` comment, changing `milk` to `sugar` and using `input.vanillaSugar`, `input.chocoSugar`, and `input.sugarCap`.\n\n<!-- section:hint2 -->\nNotice why `chocolate = 90` was picked before you added the sugar limit: `chocolate` returns `300 / 1 = 300` profit per unit of milk (vs `500 / 3 = 166.7` for vanilla), so without the sugar constraint the solver pours all milk into chocolate — exceeding sugar (`180 > 80`).\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & p_v v + p_c c \\\\\n\\text{s.t.} \\quad & m_v v + m_c c \\le M_{\\text{cap}} \\\\\n& s_v v + s_c c \\le S_{\\text{cap}} \\\\\n& v, c \\ge 0\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "Output must be an object { vanilla, chocolate, totalProfit }.",
+    "m1": "Production quantities cannot be negative (got vanilla={p0}, chocolate={p1}).",
+    "m2": "Milk used ({p0}) exceeds capacity ({p1}).",
+    "m3": "Sugar used ({p0}) exceeds capacity ({p1}). Did you add the sugar capacity constraint?",
+    "m4": "Reported totalProfit ({p0}) does not match computed profit ({p1}).",
+    "m5": "Feasible mix, but total profit ({p0}) is below optimal ({p1}).",
+    "m6": "Optimal two-flavor mix reached (profit = {p0})!"
+  }
+}

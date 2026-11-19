@@ -23,6 +23,9 @@ export function appendInteractiveRoutesToSitemap(
   if (existsSync(resolve(targetRoot, "demo", "index.html"))) {
     interactiveSubpaths.push("demo/");
   }
+  if (existsSync(resolve(targetRoot, "exercises", "index.html"))) {
+    interactiveSubpaths.push("exercises/");
+  }
 
   for (const section of ["apps", "games"]) {
     const sectionDir = resolve(targetRoot, section);
@@ -80,6 +83,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   mkdirSync(demoTarget, { recursive: true });
   if (existsSync(resolve(demoDist, "demo"))) {
     cpSync(resolve(demoDist, "demo"), demoTarget, { recursive: true });
+  }
+
+  // Copy exercises directory into site /exercises/
+  const exercisesTarget = resolve(siteDist, "exercises");
+  if (existsSync(resolve(demoDist, "exercises"))) {
+    mkdirSync(exercisesTarget, { recursive: true });
+    cpSync(resolve(demoDist, "exercises"), exercisesTarget, { recursive: true });
   }
 
   // Copy apps showcase directory into site /apps/

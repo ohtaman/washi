@@ -1,0 +1,159 @@
+{
+  "ui": {
+    "brandTitle": "数理优化百题训练",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习册 (WaSHI & highspy)",
+    "navDocs": "文档",
+    "navShowcase": "案例展示",
+    "navPlayground": "Playground",
+    "backToMap": "← 返回题目列表",
+    "startFirstBtn": "从 #001 开始 →",
+    "resumeBtn": "继续练习 (#{id}) →",
+    "progressLabel": "{solved} / {total} 已完成",
+    "solvedBadge": "✓ 已解决",
+    "unsolvedBadge": "未解决",
+    "sidebarTocLabel": "练习册目录",
+    "overviewLink": "练习册概览",
+    "mobileTocToggle": "展开习题目录与进度",
+    "provenanceFootnote": "第 1 章习题均为 AI-Drafted，并经 WaSHI 与 highspy 双求解器自动交叉验证（Solver-Verified）。",
+    "difficultyLabel": "难度 {level}/5",
+    "estimatedMinutesLabel": "约 {mins} 分钟",
+    "comingSoonBadge": "即将上线",
+    "chapterPrefix": "第 {n} 章",
+    "roleLabels": {
+      "tutorial": "入门",
+      "intro": "入门",
+      "core": "核心",
+      "applied": "进阶",
+      "capstone": "章末综合"
+    },
+    "provenance": {
+      "aiDrafted": "AI-Drafted",
+      "solverVerified": "Solver-Verified (双求解器交叉验证)",
+      "reviewedBy": "Reviewed by {handles}",
+      "feedbackHint": "已通过 WaSHI 与 highspy 自动交叉验算（待人工审阅）。"
+    },
+    "workspace": {
+      "jumpToEditorBtn": "跳转到答题区 ↓"
+    },
+    "tabs": {
+      "washi": "WaSHI (TypeScript)",
+      "highspy": "Python (highspy)",
+      "tablistLabel": "切换求解运行时",
+      "pythonLazyNote": "Pyodide v0.29 (highspy) 仅在首次运行 Python 代码时于后台 Worker 按需加载。"
+    },
+    "sections": {
+      "scenario": "问题背景",
+      "io": "输入输出规范",
+      "example": "示例说明",
+      "hintsTitle": "分步提示与数学建模解析",
+      "hint1": "提示 1：决策变量与约束结构",
+      "hint2": "提示 2：常见初学者陷阱",
+      "formulation": "标准数学模型与要点（建议解题后查看）"
+    },
+    "editor": {
+      "workbenchTitle": "答题区（编辑代码并运行判题）",
+      "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 Python (highspy) 任意一种运行时中通过即可完成本题。",
+      "label": "请完善下方的 solve() 函数",
+      "runBtn": "运行并判题",
+      "runningBtn": "运行中…",
+      "loadingPyodide": "正在加载 Pyodide v0.29 WebAssembly…",
+      "loadingHighspy": "正在加载 highspy 求解器包…",
+      "runningPython": "正在运行 Python 求解器…",
+      "resetBtn": "重置代码",
+      "solutionBtn": "载入参考解答",
+      "confirmSolution": "确定用参考解答替换当前标签页的代码吗？",
+      "shortcutHint": "按 Ctrl/Cmd + Enter 运行"
+    },
+    "results": {
+      "title": "判题结果",
+      "placeholder": "在上方答题区补全 solve() 后点击「运行并判题」，系统将自动校验所有测试用例。",
+      "verdicts": {
+        "AC": "AC — 最优解",
+        "SUBOPTIMAL": "SUBOPTIMAL — 可行但非最优",
+        "VIOLATION": "VIOLATION — 违反约束规则",
+        "INFEASIBLE": "INFEASIBLE — 无可行解",
+        "RUNTIME_ERROR": "ERROR — 运行时错误"
+      },
+      "caseLabel": "用例 {num}: {name}",
+      "objectiveDiff": "你的目标值: {yours}  |  最优目标值: {optimal}",
+      "metricsLineNoMs": "变量: {vars} · 约束: {constrs}",
+      "metricsLineWithMs": "变量: {vars} · 约束: {constrs} · 求解耗时: {ms} ms",
+      "previewLabel": "解摘要预览",
+      "lpPreviewLabel": "查看生成的 LP 模型 (toLpString)",
+      "consoleLabel": "控制台日志",
+      "nextProblemBtn": "下一题 (#{nextId}) →"
+    },
+    "backup": {
+      "openBtn": "备份进度",
+      "title": "进度备份（localStorage）",
+      "desc": "解题进度与各标签页代码草稿均保存在本地浏览器中。导出 JSON 即可跨设备迁移或恢复进度。",
+      "exportBtn": "下载 JSON",
+      "copyBtn": "复制 JSON",
+      "copied": "已复制",
+      "importBtn": "导入 JSON",
+      "importPlaceholder": "在此粘贴导出的 JSON...",
+      "importSuccess": "进度已成功恢复。",
+      "importError": "导入失败: {msg}",
+      "resetAllBtn": "清空全部进度",
+      "resetAllConfirm": "确定删除本地保存的所有解题进度与代码草稿吗？",
+      "closeBtn": "关闭"
+    },
+    "theme": {
+      "toggleLabel": "切换主题配色",
+      "switchToDark": "深色",
+      "switchToLight": "浅色"
+    },
+    "localeNames": {
+      "en": "EN",
+      "ja": "日本語",
+      "zh": "中文"
+    }
+  },
+  "chapters": {
+    "1": {
+      "title": "建模基础——决策变量、约束条件与目标函数",
+      "description": "从一行改错的即时运行开始，循序渐进掌握线性不等式、整数与 0-1 变量、二维分配矩阵、多周期库存平衡以及开关关联混合整数建模。"
+    },
+    "2": {
+      "title": "线性化技巧、凸QP 与对偶灵敏度分析",
+      "description": "掌握 Charnes-Cooper 分式线性化、极小化极大、松弛罚项、鲁棒 L1/Linf 拟合、凸二次规划组合与影子价格/检验数。"
+    },
+    "3": {
+      "title": "混合整数规划 (MIP) 建模惯用模式",
+      "description": "固定成本与半连续变量、指示变量逻辑链、SOS2 分段线性近似、McCormick 松弛与模式枚举。"
+    },
+    "4": {
+      "title": "命题逻辑与 SMT 建模",
+      "description": "唯一性证明、反证推理、策略验证、极小冲突核 (Unsat Core) 与 MaxSAT 修复。"
+    },
+    "5": {
+      "title": "约束规划 (CP / LCG) 与全局约束",
+      "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束与多范式对比。"
+    },
+    "6": {
+      "title": "网络流、全幺模性、连通性与车辆路径规划 (VRP)",
+      "description": "利用全幺模性加速求解、最大流最小割、基于流的图连通性、带时间窗车辆路径规划与区域划分。"
+    },
+    "7": {
+      "title": "生产计划、库存控制、供应链与能源调度",
+      "description": "强松弛批量计划、多层 BOM/MRP、选址分配、机组组合与储能套利调度。"
+    },
+    "8": {
+      "title": "车间调度、人员排班、课表编排与收益管理",
+      "description": "车间调度对比、RCPSP、轮班窗口约束、排课系统与舱位收益管理。"
+    },
+    "9": {
+      "title": "需求审计、多目标权衡与不确定性优化",
+      "description": "历史数据伪约束审计、模型诊断、目标/字典序/帕累托前沿、公平性度量、最小扰动重排、CVaR 与鲁棒优化。"
+    },
+    "10": {
+      "title": "大规模分解算法与混合求解器架构",
+      "description": "延迟割平面、列生成法、Dantzig-Wolfe 分解、经典与逻辑 Benders 分解、拉格朗日松弛及综合实战。"
+    }
+  },
+  "judgeHelpers": {
+    "expectFiniteNumber": "字段「{field}」必须是有限数值（实际为 {actual}）。",
+    "expectArrayLength": "字段「{field}」必须是长度为 {length} 的数组。",
+    "expectArrayElementFinite": "{field}[{index}] 必须是有限数值（实际为 {actual}）。"
+  }
+}

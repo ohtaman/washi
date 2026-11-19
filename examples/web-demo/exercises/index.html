@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <script>
+      try {
+        var t = localStorage.getItem("theme");
+        if (t === "light" || t === "dark") {
+          var el = document.querySelector('meta[name="color-scheme"]');
+          if (el) el.setAttribute("content", t);
+        }
+      } catch (e) {}
+    </script>
+    <title>Optimization 100 — Interactive Exercises | WaSHI</title>
+    <meta
+      name="description"
+      content="100 interactive mathematical optimization exercises (LP, MIP, QP, CP, SMT) running directly in your browser with WaSHI (TypeScript WebAssembly) and Python highspy (Pyodide)."
+    />
+    <link rel="canonical" href="https://washi.ohtaman.dev/exercises/" />
+    <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

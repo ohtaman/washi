@@ -59,6 +59,7 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(locs).toEqual([
       "https://washi.ohtaman.dev/",
       "https://washi.ohtaman.dev/demo/",
+      "https://washi.ohtaman.dev/exercises/",
       "https://washi.ohtaman.dev/apps/ai-shift/",
       "https://washi.ohtaman.dev/apps/ai-timetable-theory/",
       "https://washi.ohtaman.dev/apps/ai-timetable/",
@@ -112,8 +113,9 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(locMatches).toContain("https://washi.ohtaman.dev/examples/production");
     expect(locMatches).toContain("https://washi.ohtaman.dev/examples/project-scheduling");
 
-    // Verify interactive Playground, Apps, and Games routes are included in sitemap.xml
+    // Verify interactive Playground, Exercises, Apps, and Games routes are included in sitemap.xml
     expect(locMatches).toContain("https://washi.ohtaman.dev/demo/");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/exercises/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/apps/ai-shift/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/apps/ai-timetable/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/apps/ai-timetable-theory/");
@@ -710,6 +712,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(mdContent).toContain(`(${prefix}/examples/vehicle-routing)`);
       expect(mdContent).toContain(`(${prefix}/examples/traveling-salesperson)`);
       expect(mdContent).toContain('href="/demo/" target="_self"');
+      expect(mdContent).toContain('href="/exercises/" target="_self"');
       expect(mdContent).toContain('href="/apps/ai-shift/" target="_self"');
       expect(mdContent).toContain('href="/apps/ai-timetable/" target="_self"');
       expect(mdContent).toContain('href="/games/demon-castle-shift/" target="_self"');
@@ -720,6 +723,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     // Verify canonical links in standalone interactive HTML entrypoints
     for (const subpath of [
       "demo",
+      "exercises",
       "apps/ai-shift",
       "apps/ai-timetable",
       "apps/ai-timetable-theory",
@@ -854,6 +858,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(html).toContain('hreflang="zh-CN" href="https://washi.ohtaman.dev/zh/"');
       expect(html).toContain('hreflang="x-default" href="https://washi.ohtaman.dev/"');
       expect(html).toContain('href="/demo/" target="_self"');
+      expect(html).toContain('href="/exercises/" target="_self"');
       expect(html).toContain('href="/apps/ai-shift/" target="_self"');
       expect(html).toContain('href="/apps/ai-timetable/" target="_self"');
       expect(html).toContain('href="/games/demon-castle-shift/" target="_self"');
@@ -865,6 +870,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const entryHtmlList: string[] = [];
     for (const subpath of [
       "demo",
+      "exercises",
       "apps/ai-shift",
       "apps/ai-timetable",
       "apps/ai-timetable-theory",

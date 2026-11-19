@@ -1,0 +1,63 @@
+[
+  {
+    "input": {
+      "demands": [
+        80,
+        140,
+        120,
+        70
+      ],
+      "regCap": [
+        100,
+        100,
+        100,
+        100
+      ],
+      "otCap": [
+        40,
+        40,
+        40,
+        40
+      ],
+      "invCap": 60,
+      "initialInventory": 10,
+      "minFinalInventory": 10,
+      "regCost": 20,
+      "otCost": 32,
+      "holdCost": 3
+    },
+    "expectedOptimal": 8680
+  },
+  {
+    "input": {
+      "demands": [
+        50,
+        90,
+        130,
+        80,
+        60
+      ],
+      "regCap": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "otCap": [
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "invCap": 50,
+      "initialInventory": 20,
+      "minFinalInventory": 15,
+      "regCost": 15,
+      "otCost": 25,
+      "holdCost": 2
+    },
+    "expectedOptimal": 6385
+  }
+]

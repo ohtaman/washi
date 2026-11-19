@@ -1,0 +1,27 @@
+{
+  "id": "007",
+  "slug": "task-assignment",
+  "chapter": 1,
+  "order": 7,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 9,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}
