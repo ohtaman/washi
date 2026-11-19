@@ -184,7 +184,9 @@ export function stripTypeScriptToJs(rawCode: string): string {
 
   const needsAsiLeadingSemi = (start: number, end: number): boolean => {
     const nextTok = firstTokenAtOrAfter(end);
-    if (!nextTok || !ASI_HAZARD_NEXT_TOKENS.has(nextTok.type.label)) return false;
+    if (!nextTok || (!ASI_HAZARD_NEXT_TOKENS.has(nextTok.type.label) && nextTok.value !== "<")) {
+      return false;
+    }
 
     let prevTok: LexToken | null = null;
     for (let idx = tokens.length - 1; idx >= 0; idx--) {
@@ -195,7 +197,7 @@ export function stripTypeScriptToJs(rawCode: string): string {
       }
     }
     if (!prevTok) return false;
-    return prevTok.type.label !== ";" && prevTok.type.label !== "{" && prevTok.type.label !== "}";
+    return prevTok.type.label !== ";" && prevTok.type.label !== "{";
   };
 
   const blankStatement = (start: number, end: number): void => {
@@ -287,9 +289,12 @@ export function stripTypeScriptToJs(rawCode: string): string {
       case "TSTypeAnnotation":
       case "TSTypeParameterDeclaration":
       case "TSTypeParameterInstantiation":
+        blank(start, end);
+        return;
+
       case "TSIndexSignature":
       case "TSDeclareMethod":
-        blank(start, end);
+        blankStatement(start, end);
         return;
 
       case "TSEnumDeclaration":
@@ -326,7 +331,7 @@ export function stripTypeScriptToJs(rawCode: string): string {
           edits.push({ start, end: decl.start, text: `${prefix};(` });
           const nextTok = firstTokenAtOrAfter(decl.end);
           const needsEndSemi =
-            Boolean(nextTok && ASI_HAZARD_NEXT_TOKENS.has(nextTok.type.label)) &&
+            Boolean(nextTok && (ASI_HAZARD_NEXT_TOKENS.has(nextTok.type.label) || nextTok.value === "<")) &&
             decl.end === end;
           edits.push({ start: decl.end, end: decl.end, text: needsEndSemi ? ");" : ")" });
         }
@@ -403,7 +408,7 @@ export function stripTypeScriptToJs(rawCode: string): string {
       case "ClassPrivateProperty":
       case "ClassAccessorProperty": {
         if (node.declare || node.abstract) {
-          blank(start, end);
+          blankStatement(start, end);
           return;
         }
         const keyRange = getKeyOuterRange(node);
@@ -426,7 +431,7 @@ export function stripTypeScriptToJs(rawCode: string): string {
       case "ClassMethod":
       case "ClassPrivateMethod": {
         if (node.abstract) {
-          blank(start, end);
+          blankStatement(start, end);
           return;
         }
         const keyRange = getKeyOuterRange(node);

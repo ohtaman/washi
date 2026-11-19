@@ -782,6 +782,37 @@ export function solve(input: { default: number }) {
       /namespace/i,
     );
   });
+
+  it("preserves ASI after brace-ending initializers, consecutive erased declarations, and erased class members", () => {
+    const sample = `
+      export function solve(input: number): number {
+        let ran = 0;
+        const obj = {}
+        type T = number
+        (() => { ran += 1; })();
+        const fn = () => {}
+        interface A { a: number }
+        type B = string
+        [2, 3].forEach((n: number) => { ran += n; });
+        const obj2 = {}
+        type C = number
+        <U>(v: U) => v;
+        class Seq {
+          a = 1
+          declare b: number
+          [Symbol.iterator]() {
+            return [this.a, input][Symbol.iterator]();
+          }
+        }
+        const vals = [...new Seq()];
+        return obj && fn && obj2 ? ran + vals[0] + vals[1] : 0;
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // input=4: ran = 1 + 2 + 3 = 6, vals = [1, 4] => 6 + 1 + 4 = 11
+    expect(solve(4)).toBe(11);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

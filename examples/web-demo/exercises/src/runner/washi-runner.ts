@@ -143,8 +143,8 @@ export async function runWashiExerciseCode(
           }
         }
         metrics.push({
-          varCount: primary.variables.length + primary.boolVars.length,
-          constraintCount: primary.constraints.length + primary.logicalConstraints.length,
+          varCount: primary.variables.size,
+          constraintCount: primary.constraints.size,
           solveTimeMs: Number.isFinite(primary.runTime) ? primary.runTime * 1000 : null,
         });
       } else {
