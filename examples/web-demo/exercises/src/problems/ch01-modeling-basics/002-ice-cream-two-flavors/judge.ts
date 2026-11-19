@@ -6,6 +6,7 @@ import {
   formatTemplate,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -39,7 +40,7 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(JMSG[locale].m0);
+    return runtimeError(JMSG[locale].m0);
   }
 
   const vCheck = expectFiniteNumber(
@@ -47,21 +48,21 @@ export function judge(
     { en: "vanilla", ja: "vanilla", zh: "vanilla" },
     locale
   );
-  if (typeof vCheck === "string") return violation(vCheck);
+  if (typeof vCheck === "string") return runtimeError(vCheck);
 
   const cCheck = expectFiniteNumber(
     output.chocolate,
     { en: "chocolate", ja: "chocolate", zh: "chocolate" },
     locale
   );
-  if (typeof cCheck === "string") return violation(cCheck);
+  if (typeof cCheck === "string") return runtimeError(cCheck);
 
   const pCheck = expectFiniteNumber(
     output.totalProfit,
     { en: "totalProfit", ja: "totalProfit", zh: "totalProfit" },
     locale
   );
-  if (typeof pCheck === "string") return violation(pCheck);
+  if (typeof pCheck === "string") return runtimeError(pCheck);
 
   if (vCheck < -1e-6 || cCheck < -1e-6) {
     return violation(

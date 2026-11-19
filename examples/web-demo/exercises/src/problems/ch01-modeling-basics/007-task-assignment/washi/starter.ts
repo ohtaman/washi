@@ -4,7 +4,12 @@ export interface P007Input {
   costs: number[][];
 }
 
-export async function solve(input: P007Input) {
+export interface P007Output {
+  assignment: number[];
+  totalCost: number;
+}
+
+export async function solve(input: P007Input): Promise<P007Output> {
   const n = input.costs.length;
   const m = new Model("TaskAssignment");
 

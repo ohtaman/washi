@@ -6,7 +6,12 @@ export interface P006Input {
   values: number[];
 }
 
-export async function solve(input: P006Input) {
+export interface P006Output {
+  selected: number[];
+  totalValue: number;
+}
+
+export async function solve(input: P006Input): Promise<P006Output> {
   const n = input.costs.length;
   const m = new Model("ProjectSelection");
   const selected = m.binary(n, { prefix: "sel" });

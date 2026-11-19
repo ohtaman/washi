@@ -7,6 +7,7 @@ import {
   expectNumericArray,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -35,17 +36,17 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(
+    return runtimeError(
       JMSG[locale].m0
     );
   }
 
   const n = input.weights.length;
   const counts = expectNumericArray(output.counts, n, { en: "counts", ja: "counts", zh: "counts" }, locale);
-  if (typeof counts === "string") return violation(counts);
+  if (typeof counts === "string") return runtimeError(counts);
 
   const valCheck = expectFiniteNumber(output.totalValue, { en: "totalValue", ja: "totalValue", zh: "totalValue" }, locale);
-  if (typeof valCheck === "string") return violation(valCheck);
+  if (typeof valCheck === "string") return runtimeError(valCheck);
 
   let weightUsed = 0;
   let valueSum = 0;

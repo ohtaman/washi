@@ -7,10 +7,11 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <script>
       try {
-        var t = localStorage.getItem("theme");
-        if (t === "light" || t === "dark") {
-          var el = document.querySelector('meta[name="color-scheme"]');
-          if (el) el.setAttribute("content", t);
+        var p = new URLSearchParams(window.location.search).get("theme");
+        var t = p === "light" || p === "dark" ? p : localStorage.getItem("vitepress-theme-appearance");
+        var el = document.querySelector('meta[name="color-scheme"]');
+        if (el) {
+          el.setAttribute("content", t === "light" || t === "dark" ? t : "light dark");
         }
       } catch (e) {}
     </script>

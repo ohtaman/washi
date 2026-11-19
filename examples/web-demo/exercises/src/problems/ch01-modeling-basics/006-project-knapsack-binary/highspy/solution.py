@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"selected": list[int], "totalValue": float}."""
     budget = input_data["budget"]
     costs = input_data["costs"]
     values = input_data["values"]

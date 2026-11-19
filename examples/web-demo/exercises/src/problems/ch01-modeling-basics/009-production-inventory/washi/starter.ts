@@ -12,7 +12,14 @@ export interface P009Input {
   holdCost: number;
 }
 
-export async function solve(input: P009Input) {
+export interface P009Output {
+  regular: number[];
+  overtime: number[];
+  inventory: number[];
+  totalCost: number;
+}
+
+export async function solve(input: P009Input): Promise<P009Output> {
   const T = input.demands.length;
   const m = new Model("ProductionInventory");
 

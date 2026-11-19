@@ -24,7 +24,7 @@ export interface ProblemCase<TInput = Record<string, unknown>> {
 }
 
 export interface JudgeResult {
-  status: Exclude<VerdictStatus, "RUNTIME_ERROR">;
+  status: VerdictStatus;
   ok: boolean;
   message: string;
   yourObjective?: number;
@@ -67,7 +67,7 @@ export interface ChapterInfo {
 
 export interface ProblemDefinition<TInput = any, TOutput = any> {
   meta: ProblemMeta;
-  markdown: Record<Locale, string>;
+  loadMarkdown: (locale: Locale) => Promise<string>;
   cases: ProblemCase<TInput>[];
   washiStarter: string;
   washiSolution: string;

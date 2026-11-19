@@ -133,7 +133,6 @@ interface ProblemLocaleBundle {
   subtitle: string;
   tags: string[];
   caseNames: string[];
-  markdown: string;
 }
 
 type RawProblemMeta = Omit<ProblemMeta, "title" | "subtitle" | "tags">;
@@ -143,10 +142,28 @@ interface RawProblemCase<TInput> {
   expectedOptimal: number;
 }
 
+function createCachedMarkdownLoader(
+  loaders: Record<Locale, () => Promise<string>>
+): (locale: Locale) => Promise<string> {
+  const cache = new Map<Locale, Promise<string>>();
+  return (locale: Locale) => {
+    let pending = cache.get(locale);
+    if (!pending) {
+      pending = loaders[locale]().catch((err) => {
+        cache.delete(locale);
+        throw err;
+      });
+      cache.set(locale, pending);
+    }
+    return pending;
+  };
+}
+
 function hydrateProblem<TInput, TOutput>(params: {
   rawMeta: unknown;
   rawCases: ReadonlyArray<RawProblemCase<TInput>>;
   locales: Record<Locale, ProblemLocaleBundle>;
+  markdownLoaders: Record<Locale, () => Promise<string>>;
   washiStarter: string;
   washiSolution: string;
   highspyStarter: string;
@@ -186,11 +203,7 @@ function hydrateProblem<TInput, TOutput>(params: {
 
   return {
     meta,
-    markdown: {
-      en: locales.en.markdown,
-      ja: locales.ja.markdown,
-      zh: locales.zh.markdown,
-    },
+    loadMarkdown: createCachedMarkdownLoader(params.markdownLoaders),
     cases,
     washiStarter: params.washiStarter,
     washiSolution: params.washiSolution,
@@ -205,6 +218,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p001Meta,
     rawCases: p001Cases,
     locales: { en: p001En, ja: p001Ja, zh: p001Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p001WashiStarter,
     washiSolution: p001WashiSolution,
     highspyStarter: p001HighspyStarter,
@@ -215,6 +233,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p002Meta,
     rawCases: p002Cases,
     locales: { en: p002En, ja: p002Ja, zh: p002Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p002WashiStarter,
     washiSolution: p002WashiSolution,
     highspyStarter: p002HighspyStarter,
@@ -225,6 +248,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p003Meta,
     rawCases: p003Cases,
     locales: { en: p003En, ja: p003Ja, zh: p003Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/003-carry-on-integers/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/003-carry-on-integers/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/003-carry-on-integers/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p003WashiStarter,
     washiSolution: p003WashiSolution,
     highspyStarter: p003HighspyStarter,
@@ -235,6 +263,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p004Meta,
     rawCases: p004Cases,
     locales: { en: p004En, ja: p004Ja, zh: p004Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/004-general-product-mix/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/004-general-product-mix/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/004-general-product-mix/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p004WashiStarter,
     washiSolution: p004WashiSolution,
     highspyStarter: p004HighspyStarter,
@@ -245,6 +278,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p005Meta,
     rawCases: p005Cases,
     locales: { en: p005En, ja: p005Ja, zh: p005Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/005-blending-nutrition/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/005-blending-nutrition/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/005-blending-nutrition/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p005WashiStarter,
     washiSolution: p005WashiSolution,
     highspyStarter: p005HighspyStarter,
@@ -255,6 +293,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p006Meta,
     rawCases: p006Cases,
     locales: { en: p006En, ja: p006Ja, zh: p006Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p006WashiStarter,
     washiSolution: p006WashiSolution,
     highspyStarter: p006HighspyStarter,
@@ -265,6 +308,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p007Meta,
     rawCases: p007Cases,
     locales: { en: p007En, ja: p007Ja, zh: p007Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/007-task-assignment/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/007-task-assignment/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/007-task-assignment/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p007WashiStarter,
     washiSolution: p007WashiSolution,
     highspyStarter: p007HighspyStarter,
@@ -275,6 +323,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p008Meta,
     rawCases: p008Cases,
     locales: { en: p008En, ja: p008Ja, zh: p008Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/008-transportation-network/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/008-transportation-network/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/008-transportation-network/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p008WashiStarter,
     washiSolution: p008WashiSolution,
     highspyStarter: p008HighspyStarter,
@@ -285,6 +338,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p009Meta,
     rawCases: p009Cases,
     locales: { en: p009En, ja: p009Ja, zh: p009Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/009-production-inventory/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/009-production-inventory/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/009-production-inventory/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p009WashiStarter,
     washiSolution: p009WashiSolution,
     highspyStarter: p009HighspyStarter,
@@ -295,6 +353,11 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawMeta: p010Meta,
     rawCases: p010Cases,
     locales: { en: p010En, ja: p010Ja, zh: p010Zh },
+    markdownLoaders: {
+      en: () => import("./ch01-modeling-basics/010-production-line-activation/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/010-production-line-activation/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/010-production-line-activation/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p010WashiStarter,
     washiSolution: p010WashiSolution,
     highspyStarter: p010HighspyStarter,

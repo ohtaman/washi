@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "totalCost": float}."""
     demands = input_data["demands"]
     reg_cap = input_data["regCap"]
     ot_cap = input_data["otCap"]

@@ -10,7 +10,6 @@
     "双口味冰淇淋店（LP 最优 19,000）",
     "周末特供组合（LP 最优 31,500）"
   ],
-  "markdown": "# #002. 双口味冰淇淋工坊（添加约束）\n\n<!-- section:scenario -->\n冰淇淋工坊在 **牛奶**（上限 `milkCap`）和 **糖**（上限 `sugarCap`）的限制下生产 **香草** (`vanilla >= 0` 升) 和 **巧克力** (`chocolate >= 0` 升)。\n\n初始代码已经声明好变量、牛奶上限和利润最大化目标，唯独**遗漏了糖的库存上限约束**：\n1. 先直接运行，你会看到红色的 **VIOLATION** 违反提示（糖用量超出库存上限）；\n2. 在 `TODO` 处仿照牛奶约束补上糖上限约束（`vanillaSugar * vanilla + chocoSugar * chocolate <= sugarCap`），重新运行即可获得 **AC**。\n\n<!-- section:io -->\n- **输入 (`P002Input`)**：`milkCap`, `sugarCap`, `vanillaProfit`, `chocoProfit`, `vanillaMilk`, `vanillaSugar`, `chocoMilk`, `chocoSugar`\n- **输出 (`P002Output`)**：`{ vanilla: number, chocolate: number, totalProfit: number }`\n\n<!-- section:example -->\n当 `milkCap = 90`、`sugarCap = 80`，香草利润 `500`/升（耗牛奶 3、糖 1），巧克力利润 `300`/升（耗牛奶 1、糖 2）时：\n\n- **只生产高单价的香草** 最多做出 `30` 升（利润 `15,000`），浪费了大量糖；\n- **线性规划最优解** 取 `vanilla = 20, chocolate = 30`，刚好用完两种原料，得到最大总利润 **`19,000`**。\n\n<!-- section:hint1 -->\n复制上方牛奶约束的写法，将系数和上限替换为 `input.vanillaSugar`、`input.chocoSugar` 与 `input.sugarCap` 即可。\n\n<!-- section:hint2 -->\n为什么缺了糖约束时初始代码会给出 90 升巧克力？因为每单位牛奶下巧克力能赚 `300/1 = 300`，高于香草的 `500/3 = 166.7`，于是求解器全产巧克力导致糖用量 `180 > 80`。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & p_v v + p_c c \\\\\n\\text{s.t.} \\quad & m_v v + m_c c \\le M_{\\text{cap}} \\\\\n& s_v v + s_c c \\le S_{\\text{cap}} \\\\\n& v, c \\ge 0\n\\end{aligned}\n$$\n",
   "judge": {
     "m0": "返回值必须是包含 { vanilla, chocolate, totalProfit } 的对象。",
     "m1": "产量不能为负数（当前: vanilla={p0}, chocolate={p1}）。",

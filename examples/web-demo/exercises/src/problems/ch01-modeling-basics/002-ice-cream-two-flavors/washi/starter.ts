@@ -11,7 +11,13 @@ export interface P002Input {
   chocoSugar: number;
 }
 
-export async function solve(input: P002Input) {
+export interface P002Output {
+  vanilla: number;
+  chocolate: number;
+  totalProfit: number;
+}
+
+export async function solve(input: P002Input): Promise<P002Output> {
   const m = new Model("TwoFlavorCreamery");
   const vanilla = m.continuous("vanilla", { lb: 0 });
   const chocolate = m.continuous("chocolate", { lb: 0 });

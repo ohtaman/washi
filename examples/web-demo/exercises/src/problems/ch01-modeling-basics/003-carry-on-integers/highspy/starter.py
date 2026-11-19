@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"counts": list[int], "totalValue": int}."""
     h = highspy.Highs()
     h.silent()
 

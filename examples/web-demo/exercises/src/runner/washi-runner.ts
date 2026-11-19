@@ -48,6 +48,7 @@ export interface ExerciseCaseMetrics {
   varCount: number;
   constraintCount: number;
   solveTimeMs: number | null;
+  solverStatus?: string | null;
 }
 
 export interface WashiExerciseRunResult {
@@ -233,9 +234,10 @@ export async function runWashiExerciseCode(
           varCount: primary.variables.size,
           constraintCount: primary.constraints.size,
           solveTimeMs: Number.isFinite(primary.runTime) ? primary.runTime * 1000 : null,
+          solverStatus: primary.status ?? null,
         });
       } else {
-        metrics.push({ varCount: 0, constraintCount: 0, solveTimeMs: null });
+        metrics.push({ varCount: 0, constraintCount: 0, solveTimeMs: null, solverStatus: null });
       }
     }
 

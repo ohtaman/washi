@@ -29,8 +29,11 @@ function isAllowedLocalizedFile(filePath: string): boolean {
     return true;
   }
 
-  // Pure JSON translation catalogs
-  if (filePath.includes("/locales/") && filePath.endsWith(".json")) {
+  // Pure JSON translation catalogs and localized exercise Markdown files
+  if (
+    filePath.includes("/locales/") &&
+    (filePath.endsWith(".json") || filePath.endsWith("/ja.md") || filePath.endsWith("/zh.md"))
+  ) {
     return true;
   }
 

@@ -6,7 +6,12 @@ export interface P004Input {
   capacities: number[];
 }
 
-export async function solve(input: P004Input) {
+export interface P004Output {
+  quantities: number[];
+  totalProfit: number;
+}
+
+export async function solve(input: P004Input): Promise<P004Output> {
   const nProducts = input.margins.length;
   const m = new Model("IceCreamMix");
   const quantities = m.continuous(nProducts, { lb: 0, prefix: "q" });

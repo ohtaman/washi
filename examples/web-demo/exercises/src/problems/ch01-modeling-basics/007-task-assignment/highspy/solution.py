@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"assignment": list[int], "totalCost": float}."""
     costs = input_data["costs"]
     n = len(costs)
 
