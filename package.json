@@ -157,6 +157,7 @@
     }
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.9",
     "@types/node": "^26.6.3",
     "async-mutex": "^0.3.2",
     "glpk.js": "^5.0.0",

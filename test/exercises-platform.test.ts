@@ -149,7 +149,7 @@ export function solve(
   it("distinguishes parenthesized arrow return types from function types", async () => {
     const sample = `
 const make = (): (() => number) => () => 1;
-const f = (x: number): (number) => x + 1;
+const f = (x: number): (number & {}) => x + 1;
 const u = (x: number): ((y: number) => number) | null =>
   x > 0 ? (y: number): number => x + y : null;
 const arr = (x: number): (() => number)[] => [() => x];
@@ -737,6 +737,50 @@ export function solve(input: { default: number }) {
     const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
     // input=4: 9 + 3 + 4 + 8 + 2 + 11 = 37
     expect(solve(4)).toBe(37);
+  });
+
+  it("handles Round-11 multiline object methods, control-flow keyword methods, multiline variable annotations, multiline arrow return types, angle-bracket assertions, ASI after erased interfaces, and default exports", () => {
+    const sample = `
+      export default abstract class {};
+      namespace TypeOnly {
+        export type Num = number;
+      }
+      export function solve(input: TypeOnly.Num): TypeOnly.Num {
+        const obj = {
+          method(x: number)
+          { return x; },
+          if(x: number) { return x * 2; },
+        };
+        let x
+        : number
+        = input;
+        const addOne = (n: number):
+          number => n + 1;
+        const castVal = <Array<number>>(([1, 2] as unknown));
+        let asiSum = 0;
+        const before = 10
+        interface EraseMe { a: number }
+        [3, 4].forEach((v: number) => {
+          asiSum += v;
+        });
+        const extra: TypeOnly.Num = 5;
+        return obj.method(input) + obj.if(input) + x + addOne(input) + castVal[0] + castVal[1] + before + asiSum + extra;
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // input=2: 2 + 4 + 2 + 3 + 1 + 2 + 10 + 7 + 5 = 36
+    expect(solve(2)).toBe(36);
+  });
+
+  it("reports clear unsupported errors for non-erasable TypeScript enum, parameter properties, and runtime namespaces", () => {
+    expect(() => transpileExerciseTsToJs("enum Color { Red, Blue }")).toThrow(/enum/i);
+    expect(() => transpileExerciseTsToJs("class C { constructor(public x: number) {} }")).toThrow(
+      /parameter propert/i,
+    );
+    expect(() => transpileExerciseTsToJs("namespace Ns { export const x = 1; }")).toThrow(
+      /namespace/i,
+    );
   });
 });
 
