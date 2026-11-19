@@ -570,6 +570,21 @@ function readSingleTypeAtomEnd(
       }
       break;
     }
+    if (lastIdent === "asserts" && i - firstStart === 7) {
+      const targetStart = skipWsHorizontal(s, i);
+      if (targetStart > i && isIdentStart(s[targetStart] ?? "")) {
+        let j = targetStart;
+        while (j < s.length && isIdentChar(s[j])) j++;
+        const afterTarget = skipWsHorizontal(s, j);
+        if (s.startsWith("is", afterTarget) && /\s/.test(s[afterTarget + 2] ?? "")) {
+          const predEnd = readTypeEnd(s, afterTarget + 3, allowFunctionType, allowNewline);
+          if (predEnd > afterTarget + 3) {
+            return predEnd;
+          }
+        }
+        return j;
+      }
+    }
     const afterIdent = skipWsHorizontal(s, i);
     if (s.startsWith("is", afterIdent) && /\s/.test(s[afterIdent + 2] ?? "")) {
       const predEnd = readTypeEnd(s, afterIdent + 3, allowFunctionType, allowNewline);
@@ -713,6 +728,123 @@ function isStatementBoundary(out: string, s: string, i: number): boolean {
   return last === ";" || last === "{" || last === "}";
 }
 
+function consumeDeclTrailer(s: string, pos: number): number {
+  let j = pos;
+  while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
+  if (s[j] === "\n") j++;
+  return j;
+}
+
+function skipAmbientDeclarationEnd(s: string, declareStart: number): number {
+  if (!s.startsWith("declare", declareStart)) return -1;
+  const sep = s[declareStart + 7];
+  if (sep !== " " && sep !== "\t") return -1;
+
+  const kwStart = skipWsHorizontal(s, declareStart + 7);
+  const kw = readWordAt(s, kwStart);
+  if (!kw) return -1;
+  const afterKw = skipWsHorizontal(s, kwStart + kw.length);
+  const secondKw = readWordAt(s, afterKw);
+
+  // `declare [abstract] class ... { ... }`
+  if (kw === "class" || (kw === "abstract" && secondKw === "class" && afterKw > kwStart + kw.length)) {
+    let j = kw === "class" ? kwStart + 5 : afterKw + 5;
+    while (j < s.length) {
+      const ch = s[j];
+      if (ch === "<") j = skipBalanced(s, j, "<", ">");
+      else if (ch === "(") j = skipBalanced(s, j, "(", ")");
+      else if (ch === "[") j = skipBalanced(s, j, "[", "]");
+      else if (ch === "{") {
+        return consumeDeclTrailer(s, skipBalanced(s, j, "{", "}"));
+      } else if (ch === ";" || ch === "}") {
+        return -1;
+      } else {
+        j++;
+      }
+    }
+    return -1;
+  }
+
+  // `declare [const] enum ... { ... }`
+  if (kw === "enum" || (kw === "const" && secondKw === "enum" && afterKw > kwStart + kw.length)) {
+    let j = kw === "enum" ? kwStart + 4 : afterKw + 4;
+    while (j < s.length && s[j] !== "{" && s[j] !== ";" && s[j] !== "}") j++;
+    if (s[j] !== "{") return -1;
+    return consumeDeclTrailer(s, skipBalanced(s, j, "{", "}"));
+  }
+
+  // `declare global { ... }`, `declare namespace ... { ... }`, `declare module "x" { ... } | "x";`
+  if (kw === "global" || kw === "namespace" || kw === "module") {
+    let j = kwStart + kw.length;
+    while (j < s.length) {
+      const ch = s[j];
+      if (ch === "<") j = skipBalanced(s, j, "<", ">");
+      else if (ch === "(") j = skipBalanced(s, j, "(", ")");
+      else if (ch === "[") j = skipBalanced(s, j, "[", "]");
+      else if (ch === "{") {
+        return consumeDeclTrailer(s, skipBalanced(s, j, "{", "}"));
+      } else if (ch === ";" || ch === "\n") {
+        return consumeDeclTrailer(s, j);
+      } else if (ch === "}") {
+        return -1;
+      } else {
+        j++;
+      }
+    }
+    return consumeDeclTrailer(s, j);
+  }
+
+  // `declare [async] function ...(...): ReturnType;`
+  if (kw === "function" || (kw === "async" && secondKw === "function" && afterKw > kwStart + kw.length)) {
+    let j = kw === "function" ? kwStart + 8 : afterKw + 8;
+    while (j < s.length && s[j] !== "(") {
+      const ch = s[j];
+      if (ch === "<") j = skipBalanced(s, j, "<", ">");
+      else if (ch === ";" || ch === "{" || ch === "}") return -1;
+      else j++;
+    }
+    if (s[j] !== "(") return -1;
+    j = skipBalanced(s, j, "(", ")");
+    const afterParen = skipWsHorizontal(s, j);
+    if (s[afterParen] === ":") {
+      const typeEnd = readTypeEnd(s, afterParen + 1, true, false);
+      if (typeEnd > afterParen + 1) j = typeEnd;
+    }
+    return consumeDeclTrailer(s, j);
+  }
+
+  // `declare const/let/var a: T, b: U;`
+  if (kw === "const" || kw === "let" || kw === "var") {
+    let j = skipWs(s, kwStart + kw.length);
+    while (j < s.length) {
+      if (s[j] === "{" || s[j] === "[") {
+        j = skipBalanced(s, j, s[j], s[j] === "{" ? "}" : "]");
+      } else if (isIdentStart(s[j] ?? "")) {
+        while (j < s.length && isIdentChar(s[j])) j++;
+      } else {
+        return -1;
+      }
+      j = skipWsHorizontal(s, j);
+      if (s[j] === "?" || s[j] === "!") {
+        j = skipWsHorizontal(s, j + 1);
+      }
+      if (s[j] === ":") {
+        const typeEnd = readTypeEnd(s, j + 1, true, false);
+        if (typeEnd > j + 1) j = typeEnd;
+      }
+      j = skipWsHorizontal(s, j);
+      if (s[j] === ",") {
+        j = skipWs(s, j + 1);
+        continue;
+      }
+      break;
+    }
+    return consumeDeclTrailer(s, j);
+  }
+
+  return -1;
+}
+
 function stripTopLevelDeclarations(s: string): string {
   let out = "";
   let i = 0;
@@ -788,15 +920,32 @@ function stripTopLevelDeclarations(s: string): string {
         }
       }
 
-      // `export interface / export type / interface / type` at module or inline statement boundary
+      // `[export] interface / type / declare` at module or inline statement boundary
       let declStart = wsEnd;
       if (s.startsWith("export", declStart) && (s[declStart + 6] === " " || s[declStart + 6] === "\t")) {
         const afterExport = skipWsHorizontal(s, declStart + 6);
         if (
           (s.startsWith("interface", afterExport) && (s[afterExport + 9] === " " || s[afterExport + 9] === "\t")) ||
-          (s.startsWith("type", afterExport) && (s[afterExport + 4] === " " || s[afterExport + 4] === "\t"))
+          (s.startsWith("type", afterExport) && (s[afterExport + 4] === " " || s[afterExport + 4] === "\t")) ||
+          (s.startsWith("declare", afterExport) && (s[afterExport + 7] === " " || s[afterExport + 7] === "\t"))
         ) {
           declStart = afterExport;
+        }
+      }
+
+      if (s.startsWith("declare", declStart) && (s[declStart + 7] === " " || s[declStart + 7] === "\t")) {
+        const afterDeclare = skipWsHorizontal(s, declStart + 7);
+        if (
+          (s.startsWith("interface", afterDeclare) && (s[afterDeclare + 9] === " " || s[afterDeclare + 9] === "\t")) ||
+          (s.startsWith("type", afterDeclare) && (s[afterDeclare + 4] === " " || s[afterDeclare + 4] === "\t"))
+        ) {
+          declStart = afterDeclare;
+        } else {
+          const ambEnd = skipAmbientDeclarationEnd(s, declStart);
+          if (ambEnd > declStart) {
+            i = ambEnd;
+            continue;
+          }
         }
       }
 
@@ -1175,7 +1324,7 @@ const TS_MEMBER_MODIFIERS = new Set([
   "declare",
 ]);
 
-const JS_MEMBER_MODIFIERS = new Set(["static", "async", "get", "set", "accessor"]);
+const JS_MEMBER_MODIFIERS = new Set(["static", "async", "get", "set"]);
 
 function scanClassFieldInitializerEnd(s: string, start: number): number {
   let i = start;
@@ -1242,9 +1391,9 @@ function stripClassBody(body: string): string {
         break;
       }
       const modEnd = i + modWord.length;
-      const afterMod = skipWs(body, modEnd);
+      const afterMod = modWord === "async" ? skipWsHorizontal(body, modEnd) : skipWs(body, modEnd);
       const nextCh = body[afterMod] ?? "";
-      if (!nextCh || ":=;()<>?!}".includes(nextCh)) {
+      if (!nextCh || ":=;()<>?!}\n".includes(nextCh)) {
         break;
       }
       if (modWord === "declare" || modWord === "abstract") {
@@ -1264,8 +1413,12 @@ function stripClassBody(body: string): string {
       while (i < body.length && /\s/.test(body[i])) out += body[i++];
     }
 
+    let isComputedKey = false;
+    let computedInner = "";
     if (body[i] === "[") {
       const endBracket = skipBalanced(body, i, "[", "]");
+      isComputedKey = true;
+      computedInner = body.slice(i + 1, endBracket - 1);
       out += stripClassDeclarations(body.slice(i, endBracket));
       i = endBracket;
     } else if (body[i] === "#") {
@@ -1283,60 +1436,83 @@ function stripClassBody(body: string): string {
       }
     }
 
-    let pos = skipWsHorizontal(body, i);
-    if (body[pos] === "?" || body[pos] === "!") {
-      pos = skipWsHorizontal(body, pos + 1);
+    let pos = skipWs(body, i);
+    if (isComputedKey && /^\s*[A-Za-z_$][\w$]*\s*:/.test(computedInner) && body[pos] === ":") {
+      const idxTypeEnd = readTypeEnd(body, pos + 1, true, true);
+      const semiPos = skipWsHorizontal(body, idxTypeEnd);
+      out = out.slice(0, memberStartOutLen);
+      i = body[semiPos] === ";" ? semiPos + 1 : idxTypeEnd;
+      continue;
     }
 
+    let endOfFieldHeader = i;
+    if (body[pos] === "?" || body[pos] === "!") {
+      endOfFieldHeader = pos + 1;
+      pos = skipWs(body, pos + 1);
+    }
+
+    let methodParenPos = -1;
     if (body[pos] === "<") {
       const endAng = skipBalanced(body, pos, "<", ">");
-      const afterAng = skipWsHorizontal(body, endAng);
-      if (body[endAng - 1] === ">" && body[afterAng] === "(") {
-        pos = afterAng;
+      if (body[endAng - 1] === ">") {
+        const afterAng = skipWs(body, endAng);
+        if (body[afterAng] === "(") {
+          methodParenPos = afterAng;
+        }
       }
+    } else if (body[pos] === "(") {
+      methodParenPos = pos;
     }
 
-    if (body[pos] === "(") {
-      const closeParen = skipBalanced(body, pos, "(", ")");
+    if (methodParenPos >= 0) {
+      const closeParen = skipBalanced(body, methodParenPos, "(", ")");
       if (body[closeParen - 1] !== ")") {
         out += body.slice(i);
         break;
       }
-      const paramsText = body.slice(pos, closeParen);
-      let afterParen = skipWsHorizontal(body, closeParen);
+      const strippedParams = stripParamList(
+        stripVariableTypeAnnotations(stripClassDeclarations(body.slice(methodParenPos, closeParen))),
+      );
+      let typeEnd = closeParen;
+      let afterParen = skipWs(body, closeParen);
       if (body[afterParen] === ":") {
-        afterParen = skipWsHorizontal(body, readTypeEnd(body, afterParen + 1));
+        typeEnd = readTypeEnd(body, afterParen + 1, true, true);
+        afterParen = skipWs(body, typeEnd);
       }
-      const bodyStart = skipWs(body, afterParen);
-      if (!isAmbient && body[bodyStart] === "{") {
-        const closeBrace = skipBalanced(body, bodyStart, "{", "}");
-        out += `${paramsText} {${stripClassDeclarations(body.slice(bodyStart + 1, closeBrace - 1))}}`;
+      if (!isAmbient && body[afterParen] === "{") {
+        const closeBrace = skipBalanced(body, afterParen, "{", "}");
+        out += `${strippedParams} {${stripClassDeclarations(body.slice(afterParen + 1, closeBrace - 1))}}`;
         i = closeBrace;
         continue;
       }
       out = out.slice(0, memberStartOutLen);
-      i = body[afterParen] === ";" ? afterParen + 1 : afterParen;
+      const semiPos = skipWsHorizontal(body, typeEnd);
+      i = body[semiPos] === ";" ? semiPos + 1 : typeEnd;
       continue;
     }
 
     if (body[pos] === ":") {
-      pos = skipWsHorizontal(body, readTypeEnd(body, pos + 1));
+      endOfFieldHeader = readTypeEnd(body, pos + 1, true, true);
+      pos = skipWs(body, endOfFieldHeader);
     }
-    i = pos;
 
     if (isAmbient) {
-      if (body[i] === ";") i++;
+      const semiPos = skipWsHorizontal(body, endOfFieldHeader);
+      i = body[semiPos] === ";" ? semiPos + 1 : endOfFieldHeader;
       out = out.slice(0, memberStartOutLen);
       continue;
     }
 
-    if (body[i] === "=") {
+    if (body[pos] === "=") {
       out += " =";
-      i++;
-      const initEnd = scanClassFieldInitializerEnd(body, i);
-      out += stripClassDeclarations(body.slice(i, initEnd));
+      const initStart = pos + 1;
+      const initEnd = scanClassFieldInitializerEnd(body, initStart);
+      out += stripClassDeclarations(body.slice(initStart, initEnd));
       i = initEnd;
+      continue;
     }
+
+    i = endOfFieldHeader;
   }
 
   return out;
@@ -1440,6 +1616,28 @@ function stripClassDeclarations(s: string): string {
 
   while (i < s.length) {
     if (
+      s.startsWith("abstract", i) &&
+      (i === 0 || !isIdentChar(s[i - 1])) &&
+      !isIdentChar(s[i + 8] ?? "")
+    ) {
+      const trimmed = out.trimEnd();
+      if (!trimmed.endsWith(".") && !trimmed.endsWith("#")) {
+        const afterAbstract = skipWsHorizontal(s, i + 8);
+        if (
+          afterAbstract > i + 8 &&
+          s.startsWith("class", afterAbstract) &&
+          !isIdentChar(s[afterAbstract + 5] ?? "")
+        ) {
+          const parsed = parseAndStripClass(s, afterAbstract);
+          if (parsed) {
+            out += parsed.text;
+            i = parsed.nextIndex;
+            continue;
+          }
+        }
+      }
+    }
+    if (
       s.startsWith("class", i) &&
       (i === 0 || !isIdentChar(s[i - 1])) &&
       !isIdentChar(s[i + 5] ?? "")
@@ -1462,7 +1660,7 @@ function stripClassDeclarations(s: string): string {
 
 function stripExportKeywords(s: string): string {
   return s.replace(
-    /(^|[;\n{}])([ \t]*)export\s+(?:default\s+)?(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm,
+    /(^|[;\n{}])([ \t]*)export\s+(?:default\s+)?(?=(?:async[ \t]+)?function\b|const\b|let\b|var\b|(?:abstract[ \t]+)?class\b)/gm,
     "$1$2",
   );
 }
@@ -1628,6 +1826,30 @@ function scanGenericArrowPrefixEnd(s: string, ltStart: number): number {
   return matchArrowHeader(s, parenIdx) ? endAngle : -1;
 }
 
+const CONTROL_FLOW_NON_METHOD_KEYWORDS = new Set([
+  "if",
+  "else",
+  "for",
+  "while",
+  "switch",
+  "catch",
+  "with",
+  "case",
+  "do",
+  "function",
+]);
+
+function isMethodNameBoundary(beforeName: string): boolean {
+  if (!beforeName) return true;
+  const lastCh = beforeName[beforeName.length - 1];
+  if ("{,;}\n*".includes(lastCh)) return true;
+  const kw = readPrevWord(beforeName);
+  return (
+    (kw === "static" || kw === "async" || kw === "get" || kw === "set") &&
+    !isPropertyAccessWord(beforeName, kw)
+  );
+}
+
 function isMethodHeaderPrefix(out: string): boolean {
   const trimmed = out.trimEnd();
   if (!trimmed) return false;
@@ -1643,20 +1865,27 @@ function isMethodHeaderPrefix(out: string): boolean {
       k--;
     }
     if (k < 0) return false;
-    const beforeBracket = trimmed.slice(0, k).trimEnd();
-    if (!beforeBracket) return true;
-    const lastCh = beforeBracket[beforeBracket.length - 1];
-    if ("{,;}\n*".includes(lastCh)) return true;
-    const kw = readPrevWord(beforeBracket);
-    return (
-      (kw === "static" || kw === "async" || kw === "get" || kw === "set") &&
-      !isPropertyAccessWord(beforeBracket, kw)
-    );
+    return isMethodNameBoundary(trimmed.slice(0, k).trimEnd());
+  }
+  if (trimmed.endsWith("\uE001")) {
+    const openIdx = trimmed.lastIndexOf("\uE000");
+    if (openIdx < 0) return false;
+    return isMethodNameBoundary(trimmed.slice(0, openIdx).trimEnd());
   }
   const prevWord = readPrevWord(trimmed);
-  if (!prevWord || NON_METHOD_KEYWORDS.has(prevWord)) return false;
+  if (!prevWord || CONTROL_FLOW_NON_METHOD_KEYWORDS.has(prevWord)) return false;
   const beforeWord = trimmed.slice(0, trimmed.length - prevWord.length).trimEnd();
-  return !beforeWord.endsWith(".");
+  if (beforeWord.endsWith(".")) return false;
+  if (NON_METHOD_KEYWORDS.has(prevWord)) {
+    const lastCh = beforeWord[beforeWord.length - 1] ?? "";
+    if (lastCh === "{" || lastCh === ",") return true;
+    const modKw = readPrevWord(beforeWord);
+    return (
+      (modKw === "static" || modKw === "async" || modKw === "get" || modKw === "set") &&
+      !isPropertyAccessWord(beforeWord, modKw)
+    );
+  }
+  return true;
 }
 
 function matchMethodHeader(
@@ -1670,8 +1899,9 @@ function matchMethodHeader(
   if (s[after] === "{") {
     return { closeIdx, bodyStart: after };
   }
-  if (s[after] === ":") {
-    const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1));
+  const afterWs = skipWs(s, closeIdx);
+  if (s[afterWs] === ":") {
+    const afterColon = skipWs(s, readTypeEnd(s, afterWs + 1, true, true));
     if (s[afterColon] === "{") {
       return { closeIdx, bodyStart: afterColon };
     }
@@ -1685,9 +1915,11 @@ function stripParameterAndReturnTypes(s: string): string {
   let i = 0;
 
   while (i < s.length) {
-    const fnMatch = /^(?:async\s+)?function\b(?:\s*\*)?/.exec(s.slice(i));
+    const fnMatch = /^(?:async[ \t]+)?function\b(?:\s*\*)?/.exec(s.slice(i));
     const prevCh = i > 0 ? s[i - 1] : " ";
-    if (fnMatch && !isIdentChar(prevCh)) {
+    const trimmedOut = out.trimEnd();
+    if (fnMatch && !isIdentChar(prevCh) && !trimmedOut.endsWith(".") && !trimmedOut.endsWith("#")) {
+      const fnStartOutLen = out.length;
       out += fnMatch[0];
       i += fnMatch[0].length;
       while (i < s.length && /\s/.test(s[i])) {
@@ -1713,10 +1945,17 @@ function stripParameterAndReturnTypes(s: string): string {
           out += s[i++];
         }
         if (s[i] === ":") {
-          const afterType = readTypeEnd(s, i + 1);
+          const afterType = readTypeEnd(s, i + 1, true, true);
           if (afterType > i + 1) {
             i = afterType;
           }
+        }
+        const afterSig = skipWs(s, i);
+        if (s[afterSig] !== "{") {
+          out = out.slice(0, fnStartOutLen);
+          const semiPos = skipWsHorizontal(s, i);
+          i = s[semiPos] === ";" ? semiPos + 1 : i;
+          continue;
         }
         continue;
       }

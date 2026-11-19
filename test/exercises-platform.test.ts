@@ -618,6 +618,126 @@ export function solve(input: { default: number }) {
     // input=4: readVal=15, onlyThis=7, pickA=2, maybeFn=4, box.getTotal()=5, arr[0].x=4, holder.val=3 => 40
     expect(solve(4)).toBe(40);
   });
+
+  it("preserves multiline class/object methods, multiline fields, keyword/string method names, index signatures, and async field ASI", () => {
+    const sample = `
+      class Plain {
+        method
+        (x) { return x + 1; }
+      }
+      class Fancy {
+        [key: string]: unknown;
+        x
+        : number
+        = 10;
+        y!
+        z: number = 2;
+        async
+        syncMethod(): number { return 3; }
+        method
+        <T extends { v: number }>
+        (item: T)
+        : number
+        { return item.v + this.x + this.z; }
+        delete(id: number): number { return id * 2; }
+        "foo"(n: number): number { return n + 1; }
+      }
+      export function solve(input: number): number {
+        const plain = new Plain();
+        const fancy = new Fancy();
+        const syncVal = fancy.syncMethod();
+        const obj = {
+          method
+          (x: number)
+          : number
+          { return x + 1; },
+          delete(x: number): number { return x * 3; },
+          "foo"(x: number): number { return x + 2; },
+        };
+        return (
+          plain.method(input) +
+          (typeof syncVal === "number" ? syncVal : 0) +
+          fancy.method<{ v: number }>({ v: 1 }) +
+          fancy.delete(input) +
+          fancy["foo"](5) +
+          obj.method(6) +
+          obj.delete(3) +
+          obj["foo"](4)
+        );
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // input=4: 5 + 3 + 13 + 8 + 6 + 7 + 9 + 6 = 57
+    expect(solve(4)).toBe(57);
+  });
+
+  it("strips declaration-level abstract/declare modifiers, function overloads, and asserts return predicates while preserving ASI identifiers", () => {
+    const sample = `
+      abstract class Base {
+        abstract compute(x: number): number;
+        run(x: number): number { return this.compute(x) + 1; }
+      }
+      class Impl extends Base {
+        override compute(x: number): number { return x * 2; }
+      }
+      export abstract class ExpAbs { val(): number { return 3; } }
+      export default abstract class DefAbs { val(): number { return 4; } }
+      declare class Amb { a: number; };
+      export declare class ExpAmb { b: string; }
+      declare abstract class AmbAbs { abstract f(): void; }
+      declare function extFn(x: number): number;
+      declare const EXT_CONST: number, EXT_OTHER: string;
+      declare type AmbType = number;
+      declare interface AmbIface { k: string; }
+      declare module "ext-mod" { export const x: number; }
+      declare module "*.css";
+      declare global { interface Window { __x?: number; } }
+      declare namespace AmbNs { export const y: number; }
+      declare enum AmbEnum { A = 1, B = 2 }
+
+      export function dbl(x: number): number;
+      export function dbl(x: string): string;
+      export function dbl(x: number | string): number | string {
+        return typeof x === "number" ? x * 2 : x + x;
+      }
+
+      function assertPos(x: unknown): asserts x is number {
+        if (typeof x !== "number" || x <= 0) throw new Error("bad");
+      }
+      function assertTruthy(x: unknown): asserts x {
+        if (!x) throw new Error("falsy");
+      }
+
+      function checkAsi(): number {
+        const abstract = 5;
+        const declare = 6;
+        abstract
+        class Local {}
+        declare
+        function localFn(): number { return abstract + declare; }
+        return new Local() ? localFn() : 0;
+      }
+
+      export function solve(input: number): number {
+        assertPos(input);
+        const doubledStr = dbl("a");
+        assertTruthy(doubledStr);
+        return (
+          new Impl().run(input) +
+          new ExpAbs().val() +
+          new DefAbs().val() +
+          dbl(input) +
+          doubledStr.length +
+          checkAsi()
+        );
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // input=4: 9 + 3 + 4 + 8 + 2 + 11 = 37
+    expect(solve(4)).toBe(37);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {
