@@ -21,7 +21,7 @@ function escapeHtml(raw: string): string {
 
 function isSafeLinkUrl(url: string): boolean {
   const trimmed = url.trim();
-  if (/^(?:https?:\/\/|\/|\.\/|\.\.\/|#)/i.test(trimmed)) {
+  if (/^(?:https?:\/\/|\/|\.\/|\.\.\/|#|\?)/i.test(trimmed)) {
     return !/[\s<>"'`]/.test(trimmed);
   }
   return false;
@@ -152,11 +152,12 @@ export function renderSafeMarkdown(md: string): string {
       continue;
     }
 
-    // Headings # .. ####
-    const headingMatch = /^(#{1,4})\s+(.+)$/.exec(trimmed);
+    // Headings # .. #### (optional explicit anchor syntax: ## Heading {#slug})
+    const headingMatch = /^(#{1,4})\s+(.+?)(?:\s+\{#([a-zA-Z0-9_-]+)\})?\s*$/.exec(trimmed);
     if (headingMatch) {
       const level = headingMatch[1].length;
-      blocks.push(`<h${level}>${renderInlineSegments(headingMatch[2])}</h${level}>`);
+      const idAttr = headingMatch[3] ? ` id="${escapeHtml(headingMatch[3])}"` : "";
+      blocks.push(`<h${level}${idAttr}>${renderInlineSegments(headingMatch[2])}</h${level}>`);
       i++;
       continue;
     }

@@ -1,0 +1,17 @@
+{
+  "title": "#000. Practice: Sum Two Numbers",
+  "subtitle": "Learn how to implement solve() and return JSON output for the judge.",
+  "tags": [
+    "Practice",
+    "I/O Check"
+  ],
+  "caseNames": [
+    "Small pair",
+    "Two-digit pair"
+  ],
+  "judge": {
+    "m0": "Return value must be an object { sum }.",
+    "m1": "Expected sum = {p1}, got {p0}.",
+    "m2": "Accepted! sum = {p0}."
+  }
+}

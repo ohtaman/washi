@@ -12,22 +12,17 @@ export interface P004Output {
 }
 
 export async function solve(input: P004Input): Promise<P004Output> {
-  const nProducts = input.margins.length;
-  const m = new Model("IceCreamMix");
-  const quantities = m.continuous(nProducts, { lb: 0, prefix: "q" });
+  const m = new Model("ProductMix");
+  const quantities = m.continuous(input.margins.length, { lb: 0, prefix: "q" });
 
-  for (let k = 0; k < input.capacities.length; k++) {
-    m.constraint(
-      expr`dot(${input.usages[k]}, ${quantities}) <= ${input.capacities[k]}`,
-      `resource_${k}`
-    );
-  }
+  m.constraint(
+    input.capacities.map(
+      (cap, k) => expr`dot(${input.usages[k]}, ${quantities}) <= ${cap}`
+    )
+  );
 
   m.objective(maximize(expr`dot(${input.margins}, ${quantities})`));
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
     quantities: quantities.map((v) => v.value!),

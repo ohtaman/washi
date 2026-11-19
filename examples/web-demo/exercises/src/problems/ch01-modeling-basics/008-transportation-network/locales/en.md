@@ -48,20 +48,3 @@ Determine non-negative continuous shipping quantities along every lane to **mini
 ```
 
 Warehouse 1 ships all 80 units cheaply to stores 1 and 2, while Warehouse 0 covers store 0 plus the remaining 10 units for store 1 (keeping 10 surplus units), minimizing freight cost to **420**.
-
-<!-- section:hint1 -->
-The 2D continuous matrix `shipments[i][j] >= 0` is ready in the starter code:
-- **Supply limits** (for every warehouse $i$): `sum(shipments[i]) <= supplies[i]`
-- **Demand satisfaction** (for every store $j$): `sum(shipments.map((row) => row[j])) >= demands[j]`
-
-<!-- section:hint2 -->
-Minimize `sum_{i, j} unitCosts[i][j] * shipments[i][j]`! Notice that when all `supplies` and `demands` are integers, standard transportation LP solutions automatically land on integer vertices without needing integer variables.
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min_{x \ge 0} \quad & \sum_{i=0}^{S-1} \sum_{j=0}^{D-1} c_{i,j} x_{i,j} \\
-\text{s.t.} \quad & \sum_{j=0}^{D-1} x_{i,j} \le S_i && \forall i \in \{0, \dots, S-1\} \\
-& \sum_{i=0}^{S-1} x_{i,j} \ge D_j && \forall j \in \{0, \dots, D-1\}
-\end{aligned}
-$$

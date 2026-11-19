@@ -42,21 +42,3 @@
 ```
 
 上から順に最安のタスクを選ぶ貪欲法では $2 + 3 + 5 = 10$ になりますが、全体で最適に割り当てると `[1, 0, 2]` の順で合計コスト **9**（$2 + 6 + 1$）になります。
-
-<!-- section:hint1 -->
-2次元 0-1 変数行列 `x[i][j]` は初期コードで宣言済みです：
-- **行和の制約**（各作業者 $i$ はちょうど 1 タスク）：`sum(x[i]) == 1`
-- **列和の制約**（各タスク $j$ はちょうど 1 人）：`sum(x.map((row) => row[j])) == 1`
-
-<!-- section:hint2 -->
-解いた後に `assignment[i]` を取り出すには、行 `i` の中で `Math.round(x[i][j].value!) === 1`（Python なら `round(h.val(x[i][j])) == 1`）となる列インデックス `j` を求めます。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min \quad & \sum_{i=0}^{n-1} \sum_{j=0}^{n-1} c_{i,j} x_{i,j} \\
-\text{s.t.} \quad & \sum_{j=0}^{n-1} x_{i,j} = 1 && \forall i \in \{0, \dots, n-1\} \\
-& \sum_{i=0}^{n-1} x_{i,j} = 1 && \forall j \in \{0, \dots, n-1\} \\
-& x_{i,j} \in \{0, 1\} && \forall i, j
-\end{aligned}
-$$

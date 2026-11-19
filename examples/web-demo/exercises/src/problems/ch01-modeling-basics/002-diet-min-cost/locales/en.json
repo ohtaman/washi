@@ -1,0 +1,22 @@
+{
+  "title": "#002. Min-Cost Diet Blend (>= & Minimization)",
+  "subtitle": "Meet daily protein and fiber minimums at minimum cost.",
+  "tags": [
+    "LP",
+    "Minimization",
+    ">= Constraints"
+  ],
+  "caseNames": [
+    "Standard day",
+    "High-protein day"
+  ],
+  "judge": {
+    "m0": "Return value must be an object { oats, beans, totalCost }.",
+    "m1": "Quantities must be non-negative (got oats={p0}, beans={p1}).",
+    "m2": "Protein supplied ({p0}) is below minimum ({p1}).",
+    "m3": "Fiber supplied ({p0}) is below minimum ({p1}).",
+    "m4": "Returned totalCost ({p0}) does not match 30*oats + 50*beans ({p1}).",
+    "m5": "Feasible solution, but cost ({p0}) exceeds minimum ({p1}).",
+    "m6": "Minimum cost {p0} achieved."
+  }
+}

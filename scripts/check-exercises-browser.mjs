@@ -156,7 +156,7 @@ async function run() {
       `Expected crisp white Plan C canvas rgb(255, 255, 255), got ${indexLayout.bodyBg}`
     );
     assert(indexLayout.tocListCount >= 1, "Expected .toc-list on Exercise Index");
-    assert(indexLayout.tocRowCount === 10, `Expected 10 Chapter 1 .toc-row items, got ${indexLayout.tocRowCount}`);
+    assert(indexLayout.tocRowCount === 11, `Expected 11 .toc-row items (#000 + 10 Chapter 1), got ${indexLayout.tocRowCount}`);
     assert(indexLayout.problemGridCount === 0, "Expected zero .problem-grid card layouts");
     assert(indexLayout.tutorialStripCount === 0, "Expected zero .tutorial-strip callouts");
     assert(indexLayout.pillCount === 0, "Expected zero button-like capsule pills on Exercise Index");
@@ -204,8 +204,24 @@ async function run() {
     await page.click('.lang-switch-group [data-lang-btn="en"]');
     await page.waitForSelector(".ex-hero-title");
 
-    // 3. Page-by-page verification of all 10 problems (#001-#010) across WaSHI AND real Pyodide highspy
-    const ids = ["001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
+    // 2b. Verify built-in Guide & Glossary view (?view=guide) renders and switches locale cleanly
+    await page.click("#hero-guide-link");
+    await page.waitForSelector("#guide-content h1");
+    const guideTextEn = await page.locator("#guide-content").innerText();
+    assert(
+      guideTextEn.includes("Decision Variable") && guideTextEn.includes("SUBOPTIMAL"),
+      "Expected Guide & Glossary English content"
+    );
+    await page.click('.lang-switch-group [data-lang-btn="ja"]');
+    await page.waitForFunction(() =>
+      document.querySelector("#guide-content")?.textContent?.includes("決定変数")
+    );
+    await page.click('.lang-switch-group [data-lang-btn="en"]');
+    await page.click("#guide-back-to-map-btn");
+    await page.waitForSelector("#hero-primary-cta");
+
+    // 3. Page-by-page verification of #000 + all 10 Chapter 1 problems (#001-#010) across WaSHI AND real Pyodide highspy
+    const ids = ["000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
 
     for (const id of ids) {
       await page.goto(`${baseUrl}/exercises/?id=${id}&lang=en`, { waitUntil: "networkidle" });
@@ -339,19 +355,27 @@ async function run() {
         );
       }
 
-      // Non-exclusive hint accordions: opening all 3 leaves all 3 open simultaneously
-      const summaries = page.locator("details.hint-accordion summary");
-      const summaryCount = await summaries.count();
-      assert(summaryCount >= 3, `${id} expected 3 hint accordions, got ${summaryCount}`);
-      for (let i = 0; i < 3; i++) {
-        await summaries.nth(i).click();
-      }
-      const openStates = await page
-        .locator("details.hint-accordion")
-        .evaluateAll((els) => els.slice(0, 3).map((el) => el.hasAttribute("open")));
-      assert(openStates.every(Boolean), `${id} hints were mutually exclusive instead of independent`);
+      // Verify Statement tabs (Problem | Editorial) across all #000-#010 cleanly
+      assert(
+        (await page.locator("#stmt-panel-problem details.hint-accordion").count()) === 0,
+        `${id} expected clean Problem tab without hint accordions`
+      );
+      await page.click("#stmt-tab-editorial");
+      await page.waitForFunction(
+        () =>
+          document.querySelector("#editorial-content h2") !== null &&
+          !document.querySelector("#stmt-panel-editorial")?.hasAttribute("hidden")
+      );
+      assert(
+        (await page.locator("#stmt-panel-editorial .editorial-notice").count()) === 1,
+        `Expected unsolved notice inside Editorial tab before solving #${id}`
+      );
+      await page.click("#stmt-tab-problem");
+      await page.waitForFunction(
+        () => !document.querySelector("#stmt-panel-problem")?.hasAttribute("hidden")
+      );
 
-      // Verify honest ERROR / INFEASIBLE vs VIOLATION on #001
+      // Verify honest ERROR / INFEASIBLE / SUBOPTIMAL vs VIOLATION on #001
       if (id === "001") {
         const origStarter = await page.locator("#editor-washi").inputValue();
         // Missing await m.solve() -> RUNTIME_ERROR (is-error), not VIOLATION
@@ -368,13 +392,26 @@ async function run() {
         await page.click('button[data-action="run"][data-runtime="washi"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-error", { timeout: 20_000 });
 
-        // Contradictory constraint -> INFEASIBLE (is-infeasible), not VIOLATION
+        // Minimization instead of maximization -> SUBOPTIMAL
         await page
           .locator("#editor-washi")
           .fill(
             origStarter
-              .replace("minimize(", "maximize(")
-              .replace("await m.solve();", "m.constraint(expr`${c} >= 999`); await m.solve();")
+              .replace("import { Model, expr, maximize }", "import { Model, expr, minimize, maximize }")
+              .replace("maximize(", "minimize(")
+              .replace(
+                "// TODO: Add butter constraint: c + 2 * l <= input.butterCap",
+                "m.constraint(expr`${c} + 2 * ${l} <= ${input.butterCap}`, \"butter\");"
+              )
+          );
+        await page.click('button[data-action="run"][data-runtime="washi"]');
+        await page.waitForSelector("#judge-results .verdict-pill.is-suboptimal", { timeout: 20_000 });
+
+        // Contradictory constraint -> INFEASIBLE (is-infeasible), not VIOLATION
+        await page
+          .locator("#editor-washi")
+          .fill(
+            origStarter.replace("await m.solve();", "m.constraint(expr`${c} >= 999`); await m.solve();")
           );
         await page.click('button[data-action="run"][data-runtime="washi"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-infeasible", { timeout: 20_000 });
@@ -383,11 +420,10 @@ async function run() {
         await page.click('button[data-action="reset"][data-runtime="washi"]');
       }
 
-      // Verify #001-#003 starters reproduce SUBOPTIMAL (#001) and VIOLATION (#002, #003) honestly
-      if (id === "001" || id === "002" || id === "003") {
+      // Verify #000-#003 starters reproduce VIOLATION honestly
+      if (id === "000" || id === "001" || id === "002" || id === "003") {
         await page.click('button[data-action="run"][data-runtime="washi"]');
-        const expectedClass = id === "001" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
-        await page.waitForSelector(`#judge-results ${expectedClass}`, { timeout: 20_000 });
+        await page.waitForSelector("#judge-results .verdict-pill.is-violation", { timeout: 20_000 });
       }
 
       // Reveal & run WaSHI solution
@@ -397,10 +433,19 @@ async function run() {
       await page.click('button[data-action="run"][data-runtime="washi"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 30_000 });
 
-      // Single-runtime completion check: solving in WaSHI alone marks the exercise solved + updates 1/100 on #001
+      // Single-runtime completion check: #000 keeps 0 / 100; solving #001 updates to 1 / 100; editorial notice clears immediately
       const solveBadgeCount = await page.locator("#ws-solve-status .status-badge.is-solved").count();
       assert(solveBadgeCount === 1, `${id}: expected unified .status-badge.is-solved right after WaSHI AC`);
-      if (id === "001") {
+      assert(
+        (await page.locator("#stmt-panel-editorial .editorial-notice").count()) === 0,
+        `${id}: expected .editorial-notice to disappear immediately after AC`
+      );
+      if (id === "000") {
+        const sideProg = await page.locator("#sidebar-progress-text").textContent();
+        assert(sideProg?.includes("0 / 100"), `Expected #000 tutorial to keep 0 / 100 main progress, got ${sideProg}`);
+        const resText000 = await page.locator("#judge-results").innerText();
+        assert(!resText000.includes("Vars: 0"), `#000 non-solver results should omit 'Vars: 0', got ${resText000}`);
+      } else if (id === "001") {
         const sideProg = await page.locator("#sidebar-progress-text").textContent();
         assert(sideProg?.includes("1 / 100"), `Expected sidebar progress 1 / 100 after #001 WaSHI AC, got ${sideProg}`);
       }
@@ -427,11 +472,10 @@ async function run() {
         `${id}: inactive tabpanel must carry hidden attribute`
       );
 
-      // Verify #001-#003 starters in real Pyodide highspy too
-      if (id === "001" || id === "002" || id === "003") {
+      // Verify #000-#003 starters in real Pyodide highspy too
+      if (id === "000" || id === "001" || id === "002" || id === "003") {
         await page.click('button[data-action="run"][data-runtime="highspy"]');
-        const expectedClass = id === "001" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
-        await page.waitForSelector(`#judge-results ${expectedClass}`, { timeout: 120_000 });
+        await page.waitForSelector("#judge-results .verdict-pill.is-violation", { timeout: 120_000 });
       }
 
       // Reveal & Run real Python highspy solution in Pyodide Web Worker
@@ -447,7 +491,7 @@ async function run() {
       console.log(`  [PASS] Problem ${id}: WaSHI AC + Pyodide highspy AC verified.`);
     }
 
-    // 4. Verify 10 / 100 progress persistence across reload without Backup UI
+    // 4. Verify 10 / 100 progress persistence across reload without Backup UI + clearing solved status
     await page.goto(`${baseUrl}/exercises/?lang=en`, { waitUntil: "networkidle" });
     await page.waitForSelector("#main-progress-text");
     assert(
@@ -461,6 +505,54 @@ async function run() {
     );
     assert((await page.locator("#backup-open-btn").count()) === 0, "Backup button must remain absent");
     assert((await page.locator("#backup-dialog").count()) === 0, "Backup dialog must remain absent");
+
+    // Verify clearing single problem (#001) solved status in workspace
+    await page.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
+    await page.waitForSelector("#clear-problem-solved-btn");
+    await page.click("#clear-problem-solved-btn");
+    await page.waitForFunction(
+      () => document.querySelector("#ws-solve-status .status-badge.is-solved") === null
+    );
+    assert(
+      (await page.locator("#stmt-panel-editorial .editorial-notice").count()) === 1,
+      "Expected .editorial-notice to reappear after clearing #001 solved status"
+    );
+    assert(
+      (await page.locator("#tab-washi .runtime-tab-check").innerText()).trim() === "",
+      "Expected WaSHI tab checkmark cleared after #clear-problem-solved-btn"
+    );
+    assert(
+      (await page.locator("#sidebar-progress-text").textContent())?.includes("9 / 100"),
+      "Expected 9 / 100 after clearing #001 solved status"
+    );
+
+    // Verify clearing all remaining solved records via two-click #clear-all-solved-btn on Overview
+    await page.goto(`${baseUrl}/exercises/?lang=en`, { waitUntil: "networkidle" });
+    await page.waitForSelector("#clear-all-solved-btn");
+    await page.click("#clear-all-solved-btn");
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector("#clear-all-solved-btn")
+          ?.classList.contains("ex-btn-warning") ?? false
+    );
+    assert(
+      (await page.locator("#main-progress-text").textContent())?.includes("9 / 100"),
+      "Single click must only arm #clear-all-solved-btn without wiping progress"
+    );
+    await page.click("#clear-all-solved-btn");
+    await page.waitForFunction(
+      () => document.querySelector("#clear-all-solved-btn") === null
+    );
+    assert(
+      (await page.locator("#main-progress-text").textContent())?.includes("0 / 100"),
+      "Expected 0 / 100 after confirming #clear-all-solved-btn"
+    );
+    await page.reload({ waitUntil: "networkidle" });
+    assert(
+      (await page.locator("#main-progress-text").textContent())?.includes("0 / 100"),
+      "Expected 0 / 100 to persist after reload"
+    );
 
     // 4b. Verify leaving a workspace while a Python run is in flight never leaks results into another problem
     {
@@ -593,8 +685,8 @@ async function run() {
       const assetFiles = fs.readdirSync(path.resolve(siteDist, "assets"));
       const lazyMdChunks = assetFiles.filter((f) => /^(en|ja|zh)-.*\.js$/.test(f));
       assert(
-        lazyMdChunks.length === 30,
-        `Expected 30 emitted lazy Markdown JS chunks (10 problems x 3 locales) in dist/site/assets, got ${lazyMdChunks.length}`
+        lazyMdChunks.length === 69,
+        `Expected 69 emitted lazy Markdown JS chunks ((11 statements + 11 editorials + 1 guide) x 3 locales) in dist/site/assets, got ${lazyMdChunks.length}`
       );
 
       const p005Base = fs.readFileSync(

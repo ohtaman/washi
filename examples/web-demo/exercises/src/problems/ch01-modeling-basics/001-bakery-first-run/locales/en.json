@@ -1,22 +1,22 @@
 {
-  "title": "#001. Bakery First Optimization",
-  "subtitle": "Run the model right away, read the SUBOPTIMAL judge feedback, and fix minimize to maximize.",
+  "title": "#001. Bakery Production LP",
+  "subtitle": "Maximize profit with two continuous decision variables and two <= resource limits.",
   "tags": [
     "LP",
-    "Getting Started",
-    "Objective Sense"
+    "Maximization",
+    "<= Constraints"
   ],
   "caseNames": [
-    "Morning bake batch",
-    "Weekend surge batch"
+    "Morning batch",
+    "Weekend batch"
   ],
   "judge": {
-    "m0": "Output must be an object { croissants, loaves, totalProfit }.",
-    "m1": "Production quantities cannot be negative (got croissants={p0}, loaves={p1}).",
-    "m2": "Flour used ({p0}) exceeds capacity ({p1}).",
-    "m3": "Butter used ({p0}) exceeds capacity ({p1}).",
-    "m4": "Reported totalProfit ({p0}) does not match profit from quantities ({p1}).",
-    "m5": "Feasible schedule, but total profit ({p0}) is below optimal ({p1}). Check your objective sense!",
-    "m6": "Optimal profit {p0} reached!"
+    "m0": "Return value must be an object { croissants, loaves, totalProfit }.",
+    "m1": "Quantities must be non-negative (got croissants={p0}, loaves={p1}).",
+    "m2": "Flour used ({p0}) exceeds limit ({p1}).",
+    "m3": "Butter used ({p0}) exceeds limit ({p1}).",
+    "m4": "Returned totalProfit ({p0}) does not match 40*croissants + 70*loaves ({p1}).",
+    "m5": "Feasible solution, but profit ({p0}) is below optimal ({p1}).",
+    "m6": "Optimal profit {p0} achieved."
   }
 }

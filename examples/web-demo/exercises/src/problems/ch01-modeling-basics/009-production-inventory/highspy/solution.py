@@ -36,10 +36,6 @@ def solve(input_data: dict) -> dict:
         reg_cost * h.qsum(regular) + ot_cost * h.qsum(overtime) + hold_cost * h.qsum(inventory)
     )
 
-    status = h.modelStatusToString(h.getModelStatus())
-    if status != "Optimal":
-        raise RuntimeError(f"Expected Optimal, got {status}")
-
     return {
         "regular": [float(h.val(v)) for v in regular],
         "overtime": [float(h.val(v)) for v in overtime],

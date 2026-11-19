@@ -58,23 +58,3 @@ In every period, regular and overtime production cannot exceed their respective 
 ```
 
 Using spare regular capacity in Period 0 stores 30 units at 3/unit holding cost instead of paying a 12/unit overtime premium in Period 1, achieving minimum cost **8,680**.
-
-<!-- section:hint1 -->
-The `regular`, `overtime`, and `inventory` decision arrays (with period capacities and final safety-stock lower bound) are ready in the starter code. Write the **inventory flow-conservation equation** connecting period $t-1$ to period $t$:
-$$\text{prevInventory} + \text{regular}[t] + \text{overtime}[t] - \text{inventory}[t] == \text{demands}[t]$$
-where `prevInventory = initialInventory` when $t = 0$ and `inventory[t - 1]` for $t \ge 1$.
-
-<!-- section:hint2 -->
-Minimize `regCost * sum(regular) + otCost * sum(overtime) + holdCost * sum(inventory)`, solve, and return `{ regular, overtime, inventory, totalCost }`.
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min_{r, o, I \ge 0} \quad & \sum_{t=0}^{T-1} \left( c_r r_t + c_o o_t + c_h I_t \right) \\
-\text{s.t.} \quad & I_t = I_{t-1} + r_t + o_t - d_t && \forall t \;\; (I_{-1} = I_{\text{init}}) \\
-& 0 \le r_t \le R_t, \; 0 \le o_t \le O_t, \; 0 \le I_t \le I_{\max} && \forall t \\
-& I_{T-1} \ge I_{\min,\text{end}}
-\end{aligned}
-$$
-
-Inventory balance equations (`stock_next = stock_prev + inflow - outflow`) form a network-flow backbone appearing in supply chains, energy storage, and cash management.

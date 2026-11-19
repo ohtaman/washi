@@ -44,19 +44,3 @@
 ```
 
 装入 2 件物品 0 与 1 件物品 1 时，总重量恰好为 $2 \times 3 + 1 \times 4 = 10$，取得整数规划最大总价值 **135**。
-
-<!-- section:hint1 -->
-- **WaSHI**：使用 `m.integer(...)` 声明整数变量，并使用 `` m.constraint(expr`dot(${input.weights}, ${counts}) <= ${input.maxWeight}`) `` 添加重量上限。
-- **highspy**：使用 `h.addIntegral(lb=0, ub=cap, name=f"item_{i}")` 声明整数变量，并添加 `h.addConstr(h.qsum(...) <= input_data["maxWeight"])`。
-
-<!-- section:hint2 -->
-即使声明为整数变量，求解器内部的浮点精度也可能返回类似 `1.999999999` 的值，构造返回值时用 `Math.round(...)` / `round(...)` 取整是良好习惯。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} v_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} w_i x_i \le W_{\max} \\
-& x_i \in \{0, 1, \dots, u_i\} \quad \forall i
-\end{aligned}
-$$

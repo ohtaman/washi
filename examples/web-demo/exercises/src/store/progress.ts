@@ -157,6 +157,24 @@ export function recordSolvedProblem(
   };
 }
 
+export function clearSolvedProblem(state: ProgressState, problemId: string): ProgressState {
+  if (!(problemId in state.solved)) return state;
+  const nextSolved = { ...state.solved };
+  delete nextSolved[problemId];
+  return {
+    ...state,
+    solved: nextSolved,
+  };
+}
+
+export function clearAllSolved(state: ProgressState): ProgressState {
+  if (Object.keys(state.solved).length === 0) return state;
+  return {
+    ...state,
+    solved: {},
+  };
+}
+
 export function saveDraft(
   state: ProgressState,
   problemId: string,

@@ -21,12 +21,9 @@ export async function solve(input: P010Input): Promise<P010Output> {
   const open = m.binary(n, { prefix: "open" });
   const quantities = m.continuous(n, { lb: 0, prefix: "qty" });
 
-  for (let i = 0; i < n; i++) {
-    m.constraint(
-      expr`${quantities[i]} - ${input.capacities[i]} * ${open[i]} <= 0`,
-      `cap_link_${i}`
-    );
-  }
+  m.constraint(
+    quantities.map((qty, i) => expr`${qty} <= ${input.capacities[i]} * ${open[i]}`)
+  );
   m.constraint(
     expr`dot(${input.materialUsages}, ${quantities}) <= ${input.materialCap}`,
     "material"
@@ -37,14 +34,10 @@ export async function solve(input: P010Input): Promise<P010Output> {
       expr`dot(${input.margins}, ${quantities}) - dot(${input.fixedCosts}, ${open})`
     )
   );
-
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
-    open: open.map((v) => Math.round(v.value!)),
+    open: open.map((v) => Math.round(v.value!) || 0),
     quantities: quantities.map((v) => v.value!),
     netProfit: m.objectiveValue!,
   };

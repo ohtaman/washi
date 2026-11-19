@@ -58,23 +58,3 @@
 ```
 
 期 0 の余裕ある通常生産枠で 30 単位を先行生産し、保管費 3/単位で期 1 へ繰り越すことで、残業の割増単価（+12/単位）を最小限に抑えて総コスト **8,680** を達成しています。
-
-<!-- section:hint1 -->
-変数配列 `regular`, `overtime`, `inventory`（上下界・最終期の安全在庫下界つき）は初期コードに用意済みです。各時刻 $t$ を繋ぐ **在庫フロー保存則** を追加してください：
-$$\text{prevInventory} + \text{regular}[t] + \text{overtime}[t] - \text{inventory}[t] == \text{demands}[t]$$
-ただし $t = 0$ のとき `prevInventory = initialInventory`、$t \ge 1$ のときは `inventory[t - 1]` です。
-
-<!-- section:hint2 -->
-目的関数 `regCost * sum(regular) + otCost * sum(overtime) + holdCost * sum(inventory)` を最小化して解き、`{ regular, overtime, inventory, totalCost }` を返してください。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min_{r, o, I \ge 0} \quad & \sum_{t=0}^{T-1} \left( c_r r_t + c_o o_t + c_h I_t \right) \\
-\text{s.t.} \quad & I_t = I_{t-1} + r_t + o_t - d_t && \forall t \;\; (I_{-1} = I_{\text{init}}) \\
-& 0 \le r_t \le R_t, \; 0 \le o_t \le O_t, \; 0 \le I_t \le I_{\max} && \forall t \\
-& I_{T-1} \ge I_{\min,\text{end}}
-\end{aligned}
-$$
-
-「次期状態 ＝ 前期状態 ＋ 流入 − 流出」というネットワークフロー構造は、生産計画だけでなく蓄電池運用やキャッシュフロー管理まで共通して登場します。

@@ -20,10 +20,6 @@ def solve(input_data: dict) -> dict:
 
     h.maximize(h.qsum(margins[j] * quantities[j] for j in range(n_products)))
 
-    status = h.modelStatusToString(h.getModelStatus())
-    if status != "Optimal":
-        raise RuntimeError(f"Expected Optimal, got {status}")
-
     return {
         "quantities": [float(h.val(v)) for v in quantities],
         "totalProfit": float(h.getObjectiveValue()),

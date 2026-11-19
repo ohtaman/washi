@@ -12,8 +12,15 @@ export interface ExercisesUiStrings {
   progressLabel: (solved: number, total: number) => string;
   solvedBadge: string;
   unsolvedBadge: string;
+  clearSolvedBtn: string;
+  confirmClearSolved: string;
+  clearThisSolvedBtn: string;
+  clearThisSolvedLabel: string;
   sidebarTocLabel: string;
   overviewLink: string;
+  guideLink: string;
+  guideTitle: string;
+  tutorialGroupTitle: string;
   mobileTocToggle: string;
   provenanceFootnote: string;
   difficultyLabel: (level: number) => string;
@@ -29,6 +36,9 @@ export interface ExercisesUiStrings {
     jumpToEditorBtn: string;
     tocDrawerBtn: string;
     tocDrawerClose: string;
+    statementTablistLabel: string;
+    problemTab: string;
+    editorialTab: string;
   };
   tabs: {
     washi: string;
@@ -44,6 +54,7 @@ export interface ExercisesUiStrings {
     hint1: string;
     hint2: string;
     formulation: string;
+    editorialNotice: string;
   };
   editor: {
     workbenchTitle: string;

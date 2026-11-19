@@ -1,0 +1,21 @@
+{
+  "id": "000",
+  "slug": "welcome-sum",
+  "chapter": 0,
+  "order": 0,
+  "role": "tutorial",
+  "scaffold": "fill-in",
+  "difficulty": 1,
+  "estimatedMinutes": 1,
+  "paradigms": [],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

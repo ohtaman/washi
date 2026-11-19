@@ -42,18 +42,3 @@
 ```
 
 コスパ順に選ぶと予算が 3 余って合計価値 30 止まりになりますが、案件 1・2・3 を採択すると予算 $5 + 7 + 3 = 15$ をちょうど使い切り、最大価値 **36** を達成します。
-
-<!-- section:hint1 -->
-0-1 変数配列 `selected`（`m.binary(...)` / `h.addBinary(...)`）は宣言済みです。予算制約 `dot(input.costs, selected) <= input.budget` を追加し、`dot(input.values, selected)` を最大化してください。
-
-<!-- section:hint2 -->
-結果を返す際には `Math.round(v.value!)`（Python は `round(h.val(v))`）で整数丸めすると、微小誤差（`0.999999999` や `-0`）を防げます。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} v_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} c_i x_i \le B \\
-& x_i \in \{0, 1\} && \forall i \in \{0, \dots, n-1\}
-\end{aligned}
-$$

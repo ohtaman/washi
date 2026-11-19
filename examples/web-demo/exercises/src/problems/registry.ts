@@ -8,6 +8,18 @@ import type {
 } from "../types.js";
 export { CHAPTERS } from "./chapters.js";
 
+// #000
+import p000Meta from "./ch00-tutorial/000-welcome-sum/meta.json";
+import p000Cases from "./ch00-tutorial/000-welcome-sum/cases.json";
+import p000En from "./ch00-tutorial/000-welcome-sum/locales/en.json";
+import p000Ja from "./ch00-tutorial/000-welcome-sum/locales/ja.json";
+import p000Zh from "./ch00-tutorial/000-welcome-sum/locales/zh.json";
+import p000WashiStarter from "./ch00-tutorial/000-welcome-sum/washi/starter.ts?raw";
+import p000WashiSolution from "./ch00-tutorial/000-welcome-sum/washi/solution.ts?raw";
+import p000HighspyStarter from "./ch00-tutorial/000-welcome-sum/highspy/starter.py?raw";
+import p000HighspySolution from "./ch00-tutorial/000-welcome-sum/highspy/solution.py?raw";
+import { judge as p000Judge } from "./ch00-tutorial/000-welcome-sum/judge.js";
+
 // #001
 import p001Meta from "./ch01-modeling-basics/001-bakery-first-run/meta.json";
 import p001Cases from "./ch01-modeling-basics/001-bakery-first-run/cases.json";
@@ -21,16 +33,16 @@ import p001HighspySolution from "./ch01-modeling-basics/001-bakery-first-run/hig
 import { judge as p001Judge } from "./ch01-modeling-basics/001-bakery-first-run/judge.js";
 
 // #002
-import p002Meta from "./ch01-modeling-basics/002-ice-cream-two-flavors/meta.json";
-import p002Cases from "./ch01-modeling-basics/002-ice-cream-two-flavors/cases.json";
-import p002En from "./ch01-modeling-basics/002-ice-cream-two-flavors/locales/en.json";
-import p002Ja from "./ch01-modeling-basics/002-ice-cream-two-flavors/locales/ja.json";
-import p002Zh from "./ch01-modeling-basics/002-ice-cream-two-flavors/locales/zh.json";
-import p002WashiStarter from "./ch01-modeling-basics/002-ice-cream-two-flavors/washi/starter.ts?raw";
-import p002WashiSolution from "./ch01-modeling-basics/002-ice-cream-two-flavors/washi/solution.ts?raw";
-import p002HighspyStarter from "./ch01-modeling-basics/002-ice-cream-two-flavors/highspy/starter.py?raw";
-import p002HighspySolution from "./ch01-modeling-basics/002-ice-cream-two-flavors/highspy/solution.py?raw";
-import { judge as p002Judge } from "./ch01-modeling-basics/002-ice-cream-two-flavors/judge.js";
+import p002Meta from "./ch01-modeling-basics/002-diet-min-cost/meta.json";
+import p002Cases from "./ch01-modeling-basics/002-diet-min-cost/cases.json";
+import p002En from "./ch01-modeling-basics/002-diet-min-cost/locales/en.json";
+import p002Ja from "./ch01-modeling-basics/002-diet-min-cost/locales/ja.json";
+import p002Zh from "./ch01-modeling-basics/002-diet-min-cost/locales/zh.json";
+import p002WashiStarter from "./ch01-modeling-basics/002-diet-min-cost/washi/starter.ts?raw";
+import p002WashiSolution from "./ch01-modeling-basics/002-diet-min-cost/washi/solution.ts?raw";
+import p002HighspyStarter from "./ch01-modeling-basics/002-diet-min-cost/highspy/starter.py?raw";
+import p002HighspySolution from "./ch01-modeling-basics/002-diet-min-cost/highspy/solution.py?raw";
+import { judge as p002Judge } from "./ch01-modeling-basics/002-diet-min-cost/judge.js";
 
 // #003
 import p003Meta from "./ch01-modeling-basics/003-carry-on-integers/meta.json";
@@ -164,6 +176,7 @@ function hydrateProblem<TInput, TOutput>(params: {
   rawCases: ReadonlyArray<RawProblemCase<TInput>>;
   locales: Record<Locale, ProblemLocaleBundle>;
   markdownLoaders: Record<Locale, () => Promise<string>>;
+  editorialLoaders?: Record<Locale, () => Promise<string>>;
   washiStarter: string;
   washiSolution: string;
   highspyStarter: string;
@@ -204,6 +217,9 @@ function hydrateProblem<TInput, TOutput>(params: {
   return {
     meta,
     loadMarkdown: createCachedMarkdownLoader(params.markdownLoaders),
+    ...(params.editorialLoaders
+      ? { loadEditorial: createCachedMarkdownLoader(params.editorialLoaders) }
+      : {}),
     cases,
     washiStarter: params.washiStarter,
     washiSolution: params.washiSolution,
@@ -215,6 +231,26 @@ function hydrateProblem<TInput, TOutput>(params: {
 
 export const PROBLEMS: ProblemDefinition[] = [
   hydrateProblem({
+    rawMeta: p000Meta,
+    rawCases: p000Cases,
+    locales: { en: p000En, ja: p000Ja, zh: p000Zh },
+    markdownLoaders: {
+      en: () => import("./ch00-tutorial/000-welcome-sum/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch00-tutorial/000-welcome-sum/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch00-tutorial/000-welcome-sum/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch00-tutorial/000-welcome-sum/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch00-tutorial/000-welcome-sum/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch00-tutorial/000-welcome-sum/editorial/locales/zh.md?raw").then((m) => m.default),
+    },
+    washiStarter: p000WashiStarter,
+    washiSolution: p000WashiSolution,
+    highspyStarter: p000HighspyStarter,
+    highspySolution: p000HighspySolution,
+    judge: p000Judge,
+  }),
+  hydrateProblem({
     rawMeta: p001Meta,
     rawCases: p001Cases,
     locales: { en: p001En, ja: p001Ja, zh: p001Zh },
@@ -222,6 +258,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       en: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/en.md?raw").then((m) => m.default),
       ja: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/001-bakery-first-run/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/001-bakery-first-run/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/001-bakery-first-run/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/001-bakery-first-run/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p001WashiStarter,
     washiSolution: p001WashiSolution,
@@ -234,9 +275,14 @@ export const PROBLEMS: ProblemDefinition[] = [
     rawCases: p002Cases,
     locales: { en: p002En, ja: p002Ja, zh: p002Zh },
     markdownLoaders: {
-      en: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./ch01-modeling-basics/002-ice-cream-two-flavors/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./ch01-modeling-basics/002-diet-min-cost/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/002-diet-min-cost/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/002-diet-min-cost/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/002-diet-min-cost/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/002-diet-min-cost/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/002-diet-min-cost/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p002WashiStarter,
     washiSolution: p002WashiSolution,
@@ -253,6 +299,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       ja: () => import("./ch01-modeling-basics/003-carry-on-integers/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/003-carry-on-integers/locales/zh.md?raw").then((m) => m.default),
     },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/003-carry-on-integers/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/003-carry-on-integers/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/003-carry-on-integers/editorial/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p003WashiStarter,
     washiSolution: p003WashiSolution,
     highspyStarter: p003HighspyStarter,
@@ -267,6 +318,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       en: () => import("./ch01-modeling-basics/004-general-product-mix/locales/en.md?raw").then((m) => m.default),
       ja: () => import("./ch01-modeling-basics/004-general-product-mix/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/004-general-product-mix/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/004-general-product-mix/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/004-general-product-mix/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/004-general-product-mix/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p004WashiStarter,
     washiSolution: p004WashiSolution,
@@ -283,6 +339,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       ja: () => import("./ch01-modeling-basics/005-blending-nutrition/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/005-blending-nutrition/locales/zh.md?raw").then((m) => m.default),
     },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/005-blending-nutrition/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/005-blending-nutrition/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/005-blending-nutrition/editorial/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p005WashiStarter,
     washiSolution: p005WashiSolution,
     highspyStarter: p005HighspyStarter,
@@ -297,6 +358,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       en: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/en.md?raw").then((m) => m.default),
       ja: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/006-project-knapsack-binary/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/006-project-knapsack-binary/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/006-project-knapsack-binary/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/006-project-knapsack-binary/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p006WashiStarter,
     washiSolution: p006WashiSolution,
@@ -313,6 +379,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       ja: () => import("./ch01-modeling-basics/007-task-assignment/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/007-task-assignment/locales/zh.md?raw").then((m) => m.default),
     },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/007-task-assignment/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/007-task-assignment/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/007-task-assignment/editorial/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p007WashiStarter,
     washiSolution: p007WashiSolution,
     highspyStarter: p007HighspyStarter,
@@ -327,6 +398,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       en: () => import("./ch01-modeling-basics/008-transportation-network/locales/en.md?raw").then((m) => m.default),
       ja: () => import("./ch01-modeling-basics/008-transportation-network/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/008-transportation-network/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/008-transportation-network/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/008-transportation-network/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/008-transportation-network/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p008WashiStarter,
     washiSolution: p008WashiSolution,
@@ -343,6 +419,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       ja: () => import("./ch01-modeling-basics/009-production-inventory/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/009-production-inventory/locales/zh.md?raw").then((m) => m.default),
     },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/009-production-inventory/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/009-production-inventory/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/009-production-inventory/editorial/locales/zh.md?raw").then((m) => m.default),
+    },
     washiStarter: p009WashiStarter,
     washiSolution: p009WashiSolution,
     highspyStarter: p009HighspyStarter,
@@ -357,6 +438,11 @@ export const PROBLEMS: ProblemDefinition[] = [
       en: () => import("./ch01-modeling-basics/010-production-line-activation/locales/en.md?raw").then((m) => m.default),
       ja: () => import("./ch01-modeling-basics/010-production-line-activation/locales/ja.md?raw").then((m) => m.default),
       zh: () => import("./ch01-modeling-basics/010-production-line-activation/locales/zh.md?raw").then((m) => m.default),
+    },
+    editorialLoaders: {
+      en: () => import("./ch01-modeling-basics/010-production-line-activation/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./ch01-modeling-basics/010-production-line-activation/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./ch01-modeling-basics/010-production-line-activation/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p010WashiStarter,
     washiSolution: p010WashiSolution,

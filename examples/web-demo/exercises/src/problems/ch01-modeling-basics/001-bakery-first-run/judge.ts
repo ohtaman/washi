@@ -1,9 +1,9 @@
 import type { JudgeResult, Locale } from "../../../types.js";
 import {
   accepted,
-  formatTemplate,
   approxEqual,
   expectFiniteNumber,
+  formatTemplate,
   isRecord,
   roundNice,
   runtimeError,
@@ -19,12 +19,6 @@ const JMSG = { en: enLoc.judge, ja: jaLoc.judge, zh: zhLoc.judge };
 export interface P001Input {
   flourCap: number;
   butterCap: number;
-  croissantProfit: number;
-  loafProfit: number;
-  croissantFlour: number;
-  croissantButter: number;
-  loafFlour: number;
-  loafButter: number;
 }
 
 export interface P001Output {
@@ -40,16 +34,28 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return runtimeError(
-      JMSG[locale].m0
-    );
+    return runtimeError(JMSG[locale].m0);
   }
 
-  const cCheck = expectFiniteNumber(output.croissants, { en: "croissants", ja: "croissants", zh: "croissants" }, locale);
+  const cCheck = expectFiniteNumber(
+    output.croissants,
+    { en: "croissants", ja: "croissants", zh: "croissants" },
+    locale
+  );
   if (typeof cCheck === "string") return runtimeError(cCheck);
-  const lCheck = expectFiniteNumber(output.loaves, { en: "loaves", ja: "loaves", zh: "loaves" }, locale);
+
+  const lCheck = expectFiniteNumber(
+    output.loaves,
+    { en: "loaves", ja: "loaves", zh: "loaves" },
+    locale
+  );
   if (typeof lCheck === "string") return runtimeError(lCheck);
-  const pCheck = expectFiniteNumber(output.totalProfit, { en: "totalProfit", ja: "totalProfit", zh: "totalProfit" }, locale);
+
+  const pCheck = expectFiniteNumber(
+    output.totalProfit,
+    { en: "totalProfit", ja: "totalProfit", zh: "totalProfit" },
+    locale
+  );
   if (typeof pCheck === "string") return runtimeError(pCheck);
 
   if (cCheck < -1e-6 || lCheck < -1e-6) {
@@ -58,21 +64,21 @@ export function judge(
     );
   }
 
-  const flourUsed = input.croissantFlour * cCheck + input.loafFlour * lCheck;
+  const flourUsed = 2 * cCheck + 3 * lCheck;
   if (flourUsed > input.flourCap + 1e-4) {
     return violation(
       formatTemplate(JMSG[locale].m2, { p0: roundNice(flourUsed), p1: input.flourCap })
     );
   }
 
-  const butterUsed = input.croissantButter * cCheck + input.loafButter * lCheck;
+  const butterUsed = 1 * cCheck + 2 * lCheck;
   if (butterUsed > input.butterCap + 1e-4) {
     return violation(
       formatTemplate(JMSG[locale].m3, { p0: roundNice(butterUsed), p1: input.butterCap })
     );
   }
 
-  const recomputed = input.croissantProfit * cCheck + input.loafProfit * lCheck;
+  const recomputed = 40 * cCheck + 70 * lCheck;
   if (!approxEqual(pCheck, recomputed, 1e-2)) {
     return violation(
       formatTemplate(JMSG[locale].m4, { p0: roundNice(pCheck), p1: roundNice(recomputed) })

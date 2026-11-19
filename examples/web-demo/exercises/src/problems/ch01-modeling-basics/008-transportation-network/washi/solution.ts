@@ -12,21 +12,20 @@ export interface P008Output {
 }
 
 export async function solve(input: P008Input): Promise<P008Output> {
-  const nS = input.supplies.length;
-  const nD = input.demands.length;
   const m = new Model("Transportation");
 
-  const shipments = Array.from({ length: nS }, (_, i) =>
-    Array.from({ length: nD }, (_, j) => m.continuous(`ship_${i}_${j}`, { lb: 0 }))
+  const shipments = input.supplies.map((_, i) =>
+    input.demands.map((_, j) => m.continuous(`ship_${i}_${j}`, { lb: 0 }))
   );
 
-  for (let i = 0; i < nS; i++) {
-    m.constraint(expr`${sum(shipments[i])} <= ${input.supplies[i]}`, `supply_${i}`);
-  }
-  for (let j = 0; j < nD; j++) {
-    const col = shipments.map((row) => row[j]);
-    m.constraint(expr`${sum(col)} >= ${input.demands[j]}`, `demand_${j}`);
-  }
+  m.constraint(
+    shipments.map((row, i) => expr`${sum(row)} <= ${input.supplies[i]}`)
+  );
+  m.constraint(
+    input.demands.map(
+      (demand, j) => expr`${sum(shipments.map((row) => row[j]))} >= ${demand}`
+    )
+  );
 
   const totalExpr = sum(
     shipments.flatMap((row, i) =>
@@ -34,11 +33,7 @@ export async function solve(input: P008Input): Promise<P008Output> {
     )
   );
   m.objective(minimize(totalExpr));
-
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
     shipments: shipments.map((row) => row.map((v) => v.value!)),

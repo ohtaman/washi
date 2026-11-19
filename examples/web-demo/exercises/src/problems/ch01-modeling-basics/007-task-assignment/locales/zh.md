@@ -42,21 +42,3 @@
 ```
 
 逐行贪心选取最小成本会得到 $2 + 3 + 5 = 10$；全局最优匹配 `[1, 0, 2]` 的总成本为 $2 + 6 + 1 =$ **9**。
-
-<!-- section:hint1 -->
-初始代码中已声明二维 0-1 变量矩阵 `x[i][j]`：
-- **行约束**（每位员工恰好做 1 件事）：`sum(x[i]) == 1`
-- **列约束**（每项任务恰好由 1 人做）：`sum(x.map((row) => row[j])) == 1`
-
-<!-- section:hint2 -->
-求解后遍历每一行 `i`，找出满足 `Math.round(x[i][j].value!) === 1`（Python 中 `round(h.val(x[i][j])) == 1`）的列下标 `j` 即可还原 `assignment[i]`。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min \quad & \sum_{i=0}^{n-1} \sum_{j=0}^{n-1} c_{i,j} x_{i,j} \\
-\text{s.t.} \quad & \sum_{j=0}^{n-1} x_{i,j} = 1 && \forall i \in \{0, \dots, n-1\} \\
-& \sum_{i=0}^{n-1} x_{i,j} = 1 && \forall j \in \{0, \dots, n-1\} \\
-& x_{i,j} \in \{0, 1\} && \forall i, j
-\end{aligned}
-$$
