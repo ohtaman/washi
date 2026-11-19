@@ -5,6 +5,7 @@ A concise reference for reading problem statements, building optimization models
 ## 1. How Judging Works (`solve(input)`) {#solve-contract}
 
 - Every exercise asks you to implement a single function: `solve(input)` in **WaSHI (TypeScript)** or `solve(input_data)` in **Python (highspy)**.
+- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **Python (highspy)** runs the official HiGHS Python bindings inside Pyodide so Python users can practice in the browser and compare idioms side by side.
 - Pressing **Run & Judge** calls your function once per test case with a JSON input object and checks the object (or Python `dict`) you return.
 - Solving an exercise in **either** runtime marks it solved (`✓`). Console logs are shown for debugging, while grading always inspects the return value.
 

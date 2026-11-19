@@ -3,6 +3,8 @@ import type { Locale, ProblemRole, VerdictStatus } from "../types.js";
 export interface ExercisesUiStrings {
   brandTitle: string;
   brandSubtitle: string;
+  heroStanceTitle: string;
+  heroStanceBody: string;
   navDocs: string;
   navShowcase: string;
   navPlayground: string;

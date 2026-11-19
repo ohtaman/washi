@@ -2,6 +2,8 @@
   "ui": {
     "brandTitle": "数理优化百题训练",
     "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习册 (WaSHI & highspy)",
+    "heroStanceTitle": "关于运行环境：WaSHI (TypeScript) 与 Python (highspy)",
+    "heroStanceBody": "WaSHI 本身是面向 TypeScript / JavaScript 的优化建模库，并非 Python 包。为了让熟悉 Python 的读者也能零配置直接在浏览器里动手求解并对照写法，本练习册同时集成了基于 Pyodide 的官方 highspy Python 运行时作为并行练习环境；任意一种语言通过（AC）均可记录完成状态。",
     "navDocs": "文档",
     "navShowcase": "案例展示",
     "navPlayground": "Playground",

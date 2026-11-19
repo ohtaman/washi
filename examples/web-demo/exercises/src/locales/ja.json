@@ -2,6 +2,8 @@
   "ui": {
     "brandTitle": "数理最適化100本ノック",
     "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習問題集 (WaSHI & highspy)",
+    "heroStanceTitle": "対応言語と Python (highspy) の位置づけ",
+    "heroStanceBody": "WaSHI 自体は TypeScript / JavaScript 向けの最適化モデラーであり、Python ライブラリではありません。この問題集では、普段 Python に親しんでいる方も環境構築なしにブラウザですぐ解けるよう、HiGHS 公式の Python パッケージ（highspy / Pyodide）も比較・学習用ランタイムとして併設しています。WaSHI・Python のどちらで AC しても解答済みになります。",
     "navDocs": "ドキュメント",
     "navShowcase": "ショーケース",
     "navPlayground": "Playground",

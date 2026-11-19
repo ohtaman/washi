@@ -2,6 +2,8 @@
   "ui": {
     "brandTitle": "Optimization 100",
     "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Workbook (WaSHI & highspy)",
+    "heroStanceTitle": "About Runtimes: WaSHI (TypeScript) & Python (highspy)",
+    "heroStanceBody": "WaSHI is a TypeScript / JavaScript optimization modeler (not a Python library). We also include the official highspy Python package via Pyodide in your browser so Python practitioners can jump straight in with zero setup, compare idioms side by side, and complete exercises in either language.",
     "navDocs": "Docs",
     "navShowcase": "Showcase",
     "navPlayground": "Playground",

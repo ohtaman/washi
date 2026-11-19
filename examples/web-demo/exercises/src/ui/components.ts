@@ -411,6 +411,10 @@ export function renderExerciseIndexHtml(params: {
         <section class="ex-hero">
           <h1 class="ex-hero-title">${escapeHtml(strings.brandTitle)}</h1>
           <p class="ex-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
+          <div class="ex-hero-stance" id="hero-runtime-stance">
+            <p class="ex-hero-stance-title">${escapeHtml(strings.heroStanceTitle)}</p>
+            <p class="ex-hero-stance-body">${escapeHtml(strings.heroStanceBody)}</p>
+          </div>
           <div class="ex-hero-actions">
             <a
               href="?id=${encodeURIComponent(nextId)}&lang=${locale}"
