@@ -381,7 +381,6 @@ button {
 .ex-hero {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--accent);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   box-shadow: var(--shadow-sm);
@@ -553,7 +552,7 @@ button {
 }
 
 .toc-row.is-capstone {
-  border-left: 3px solid var(--capstone);
+  background: color-mix(in srgb, var(--capstone-soft) 35%, var(--surface));
 }
 
 .toc-row.is-solved {
@@ -942,7 +941,7 @@ details.hint-accordion[open] summary::after {
 /* Answer Workbench & Overlay Code Editor (Modern Web Guidance) */
 .answer-workbench {
   background: var(--surface);
-  border: 2px solid color-mix(in srgb, var(--accent) 26%, var(--border-strong));
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -952,7 +951,6 @@ details.hint-accordion[open] summary::after {
 
 .answer-workbench-head {
   padding: 0.95rem 1.25rem;
-  border-left: 4px solid var(--accent);
   border-bottom: 1px solid var(--border);
   background: var(--accent-soft);
 }
