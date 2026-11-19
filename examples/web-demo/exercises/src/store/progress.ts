@@ -232,6 +232,10 @@ export function countChapterSolved(
   return count;
 }
 
+export function isProblemSolved(state: ProgressState, problemId: string): boolean {
+  return (state.solved[problemId]?.runtimes.length ?? 0) > 0;
+}
+
 export function getSolvedRuntimeCount(state: ProgressState, problemId: string): 0 | 1 | 2 {
   const count = state.solved[problemId]?.runtimes.length ?? 0;
   if (count >= 2) return 2;

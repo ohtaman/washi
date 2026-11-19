@@ -1,19 +1,20 @@
 {
   "ui": {
     "brandTitle": "Optimization 100",
-    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Exercises (WaSHI & highspy)",
+    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Workbook (WaSHI & highspy)",
     "navDocs": "Docs",
     "navShowcase": "Showcase",
     "navPlayground": "Playground",
     "backToMap": "← All Exercises",
     "startFirstBtn": "Start #001 →",
     "resumeBtn": "Continue (#{id}) →",
-    "tutorialBannerTitle": "New to WaSHI or highspy? Try the optional 3-minute Tutorial (T1–T2)",
-    "tutorialBannerDesc": "Learn how the interactive judge works and how to declare variables & constraints. Skippable anytime — excluded from the 0/100 progress count.",
-    "tutorialDismissBtn": "Skip tutorial",
-    "tutorialRestoreBtn": "Show tutorial (T1–T2)",
     "progressLabel": "{solved} / {total} Solved",
-    "runtimeProgressLabel": "WaSHI & highspy: {solved} / {total}",
+    "solvedBadge": "✓ Solved",
+    "unsolvedBadge": "Unsolved",
+    "sidebarTocLabel": "Workbook Contents",
+    "overviewLink": "Workbook Overview",
+    "mobileTocToggle": "Exercises & Progress",
+    "provenanceFootnote": "All Chapter 1 exercises are AI-Drafted and Solver-Verified across WaSHI & highspy test cases.",
     "difficultyLabel": "Difficulty {level}/5",
     "estimatedMinutesLabel": "~{mins} min",
     "comingSoonBadge": "Coming Soon",
@@ -31,6 +32,9 @@
       "reviewedBy": "Reviewed by {handles}",
       "feedbackHint": "Cross-checked automatically by both solvers; human review pending."
     },
+    "workspace": {
+      "jumpToEditorBtn": "Jump to Answer Editor ↓"
+    },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
       "highspy": "Python (highspy)",
@@ -47,7 +51,9 @@
       "formulation": "Mathematical Formulation & Notes (Open After Solving)"
     },
     "editor": {
-      "label": "Your solve() implementation",
+      "workbenchTitle": "Answer Workbench",
+      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or Python (highspy) to complete this exercise.",
+      "label": "Edit solve() below",
       "runBtn": "Run & Judge",
       "runningBtn": "Running…",
       "loadingPyodide": "Loading Pyodide v0.29 WebAssembly…",
@@ -60,7 +66,7 @@
     },
     "results": {
       "title": "Judge Verdict",
-      "placeholder": "Edit solve() above and click Run & Judge to evaluate all test cases.",
+      "placeholder": "Complete solve() above and click Run & Judge to evaluate all test cases.",
       "verdicts": {
         "AC": "AC — Optimal",
         "SUBOPTIMAL": "SUBOPTIMAL — Feasible, not optimal",
@@ -105,44 +111,44 @@
   },
   "chapters": {
     "1": {
-      "title": "Continuous Optimization, Blending, Piecewise LP, QP & Duality",
-      "description": "Turn business rules into linear programs, handle ratios and minimax balance cleanly, exploit objective direction, build convex QP portfolios, and interpret dual shadow prices."
+      "title": "Modeling Basics — Variables, Constraints & Objective",
+      "description": "Learn step by step how to turn plain problem descriptions into decision variables, linear inequalities, 0-1 binary choices, multi-period inventory flow, and mixed-integer linking constraints."
     },
     "2": {
+      "title": "Linearization Idioms, Convex QP & LP Duality",
+      "description": "Charnes-Cooper ratio linearization, minimax epigraphs, positive-part slacks, robust L1/Linf fitting, convex quadratic portfolios, shadow prices, and reduced-cost sensitivity."
+    },
+    "3": {
       "title": "Mixed-Integer Programming (MIP) Formulation Idioms",
       "description": "Fixed-charge lot sizing, indicator directions, chained logic, SOS2 piecewise approximation, McCormick envelopes, and pattern enumeration."
     },
-    "3": {
-      "title": "Propositional Logic & SMT Modeling",
-      "description": "Uniqueness proofs via no-good cuts, Minesweeper refutation, policy verification, minimal Unsat Core extraction, MaxSAT repair, and SMT-LIRA."
-    },
     "4": {
-      "title": "Constraint Programming (CP / LCG) & Global Constraints",
-      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and MIP vs CP vs SMT paradigm comparison."
+      "title": "Propositional Logic & SMT Modeling",
+      "description": "Uniqueness proofs via no-good cuts, logic refutation, policy verification, minimal Unsat Core extraction, MaxSAT repair, and SMT-LIRA."
     },
     "5": {
+      "title": "Constraint Programming (CP / LCG) & Global Constraints",
+      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and MIP vs CP vs SMT comparison."
+    },
+    "6": {
       "title": "Networks, Total Unimodularity, Connectivity & Vehicle Routing",
       "description": "Exploit total unimodularity, max-flow min-cut, flow-based connectivity without subtours, CVRP, VRPTW, and connected territory design."
     },
-    "6": {
+    "7": {
       "title": "Production, Inventory, Supply Chain & Energy Systems",
       "description": "Strong lot-sizing reformulations, multi-level BOM/MRP, backorders vs lost sales, facility location (CFLP), Unit Commitment, and battery arbitrage."
     },
-    "7": {
+    "8": {
       "title": "Scheduling, Staff Rostering, Timetabling & Revenue Management",
       "description": "Job-shop comparison (MIP vs CP), RCPSP, rolling night-rest rosters, university timetabling, OR scheduling, and seat allocation."
     },
-    "8": {
-      "title": "Requirements Auditing, Model Debugging & Acceleration",
-      "description": "Expose fake hard constraints with historical data, diagnose Infeasible/Unbounded/Unrealistic models, loophole testing, Unsat Core vs elastic slacks, and warm starts."
-    },
     "9": {
-      "title": "Multi-Objective Tradeoffs, Fairness, Rescheduling & Uncertainty",
-      "description": "Goal programming, lexicographic optimization, Pareto frontiers, fairness metrics, Hamming-distance rescheduling, 2-stage stochastic LP, CVaR, and robust optimization."
+      "title": "Model Auditing, Multi-Objective Tradeoffs & Uncertainty",
+      "description": "Historical constraint auditing, infeasibility diagnosis, goal/lexicographic tradeoffs, Pareto curves, Hamming-distance rescheduling, CVaR, and robust optimization."
     },
     "10": {
       "title": "Large-Scale Decomposition & Hybrid Solvers",
-      "description": "Lazy cuts, cutting-stock/VRP column generation, Dantzig-Wolfe, classical & logic-based Benders decomposition, Lagrangian relaxation, LNS, and integrated S&OP Capstone."
+      "description": "Lazy cuts, cutting-stock/VRP column generation, Dantzig-Wolfe, classical & logic-based Benders decomposition, Lagrangian relaxation, LNS, and S&OP synthesis."
     }
   },
   "judgeHelpers": {

@@ -37,8 +37,9 @@ function renderInlineSegments(rawLine: string): string {
 
   let s = rawLine;
 
-  // 1. Extract inline code `...` first so `$` or `*` inside backticks remain literal
-  s = s.replace(/`([^`\n]+)`/g, (_, code) => hold(`<code>${escapeHtml(code)}</code>`));
+  // 1. Extract inline code spans first so `$` or `*` (and inner backticks) stay literal
+  s = s.replace(/``([^\n]+?)``/g, (_, code: string) => hold(`<code>${escapeHtml(code.trim())}</code>`));
+  s = s.replace(/`([^`\n]+)`/g, (_, code: string) => hold(`<code>${escapeHtml(code)}</code>`));
 
   // 2. Extract inline KaTeX math $...$ while preserving literal currency tokens like $100 / $200
   s = s.replace(

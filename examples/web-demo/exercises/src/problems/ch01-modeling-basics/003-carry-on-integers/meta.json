@@ -1,0 +1,27 @@
+{
+  "id": "003",
+  "slug": "carry-on-integers",
+  "chapter": 1,
+  "order": 3,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 1,
+  "estimatedMinutes": 4,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

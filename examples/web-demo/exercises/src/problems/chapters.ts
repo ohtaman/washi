@@ -9,14 +9,14 @@ const CHAPTER_SPEC: ReadonlyArray<{
   available: boolean;
   paradigms: ParadigmId[];
 }> = [
-  { chapter: 1, idRange: "001–010", available: true, paradigms: ["LP", "QP", "MIP"] },
-  { chapter: 2, idRange: "011–020", available: false, paradigms: ["MIP"] },
-  { chapter: 3, idRange: "021–030", available: false, paradigms: ["SMT"] },
-  { chapter: 4, idRange: "031–040", available: false, paradigms: ["CP", "MIP", "SMT"] },
-  { chapter: 5, idRange: "041–050", available: false, paradigms: ["LP", "MIP", "CP"] },
+  { chapter: 1, idRange: "001–010", available: true, paradigms: ["LP", "MIP"] },
+  { chapter: 2, idRange: "011–020", available: false, paradigms: ["LP", "QP"] },
+  { chapter: 3, idRange: "021–030", available: false, paradigms: ["MIP"] },
+  { chapter: 4, idRange: "031–040", available: false, paradigms: ["SMT"] },
+  { chapter: 5, idRange: "041–050", available: false, paradigms: ["CP", "MIP", "SMT"] },
   { chapter: 6, idRange: "051–060", available: false, paradigms: ["LP", "MIP"] },
-  { chapter: 7, idRange: "061–070", available: false, paradigms: ["MIP", "CP", "SMT"] },
-  { chapter: 8, idRange: "071–080", available: false, paradigms: ["LP", "MIP", "CP", "SMT"] },
+  { chapter: 7, idRange: "061–070", available: false, paradigms: ["LP", "MIP"] },
+  { chapter: 8, idRange: "071–080", available: false, paradigms: ["MIP", "CP", "SMT"] },
   { chapter: 9, idRange: "081–090", available: false, paradigms: ["LP", "QP", "MIP"] },
   { chapter: 10, idRange: "091–100", available: false, paradigms: ["LP", "MIP", "CP", "SMT"] },
 ];

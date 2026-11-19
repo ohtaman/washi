@@ -1,0 +1,25 @@
+{
+  "title": "#009. 多期間生産・在庫計画（フロー保存則）",
+  "subtitle": "残業コストと在庫保管コストを比較し、期間を跨ぐ在庫バランス方程式を立てる。",
+  "tags": [
+    "LP",
+    "多期間計画",
+    "在庫バランス"
+  ],
+  "caseNames": [
+    "4四半期の需要ピーク（事前在庫積み増し＋最小残業）",
+    "5期間・期末安全在庫15以上の生産平滑化"
+  ],
+  "markdown": "# #009. 多期間生産・在庫計画（フロー保存則）\n\n<!-- section:scenario -->\n工場の $T$ 期間（$t = 0, \\dots, T-1$）にわたる通常生産 `regular[t] <= regCap[t]`、残業生産 `overtime[t] <= otCap[t]`、および期末在庫 `inventory[t] <= invCap` を計画します（期首在庫は `initialInventory`）。\n\n各期で「前期在庫 ＋ 通常生産 ＋ 残業生産 − 需要 `demands[t]` ＝ 期末在庫」の収支が成り立ち、最終期 $T-1$ には少なくとも安全在庫 **`inventory[T-1] >= minFinalInventory`** を残さなければなりません。総コストを最小化してください。\n\n<!-- section:io -->\n- **入力 (`P009Input`)**:\n  - `demands: number[]`, `regCap: number[]`, `otCap: number[]` — 各期の需要、通常生産上限、残業生産上限\n  - `invCap: number` — 倉庫の最大保管容量\n  - `initialInventory: number`, `minFinalInventory: number` — 期首在庫と最終期末最低在庫\n  - `regCost: number`, `otCost: number`, `holdCost: number` — 通常生産・残業生産・1期在庫保管の単価\n- **出力 (`P009Output`)**:\n  - `regular: number[]`, `overtime: number[]`, `inventory: number[]` — 長さ $T$ の非負計画配列\n  - `totalCost: number` — 最小化された総生産＋保管コスト\n\n<!-- section:example -->\nケース 1（`demands = [80, 140, 120, 70]`, `regCap = [100]*4`, `regCost = 20`, `otCost = 32`, `holdCost = 3`）：\n\n- 期 0 は需要 `80` に対して通常枠が `100` あるため、先にフル稼働して在庫を `30` 積んでおけば（保管費 `+3`/単位）、期 1 の高額な残業プレミアム（`+12`/単位）を大きく減らせます。\n- 最適解では `inventory = [30, 0, 0, 10]`・`overtime = [0, 10, 20, 0]` となり、最小総コスト **`8,680`** を達成します。\n\n<!-- section:hint1 -->\n変数配列 `regular`, `overtime`, `inventory`（上下界・最終期の安全在庫下界つき）は初期コードに用意済みです。各時刻 $t$ を繋ぐ **在庫フロー保存則** を追加してください：\n$$\\text{prevInventory} + \\text{regular}[t] + \\text{overtime}[t] - \\text{inventory}[t] == \\text{demands}[t]$$\nただし $t = 0$ のとき `prevInventory = initialInventory`、$t \\ge 1$ のときは `inventory[t - 1]` です。\n\n<!-- section:hint2 -->\n目的関数 `regCost * sum(regular) + otCost * sum(overtime) + holdCost * sum(inventory)` を最小化して解き、`{ regular, overtime, inventory, totalCost }` を返してください。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\min_{r, o, I \\ge 0} \\quad & \\sum_{t=0}^{T-1} \\left( c_r r_t + c_o o_t + c_h I_t \\right) \\\\\n\\text{s.t.} \\quad & I_t = I_{t-1} + r_t + o_t - d_t && \\forall t \\;\\; (I_{-1} = I_{\\text{init}}) \\\\\n& 0 \\le r_t \\le R_t, \\; 0 \\le o_t \\le O_t, \\; 0 \\le I_t \\le I_{\\max} && \\forall t \\\\\n& I_{T-1} \\ge I_{\\min,\\text{end}}\n\\end{aligned}\n$$\n\n「次期状態 ＝ 前期状態 ＋ 流入 − 流出」というネットワークフロー構造は、生産計画だけでなく蓄電池運用やキャッシュフロー管理まで共通して登場します。\n",
+  "judge": {
+    "m0": "返り値は { regular, overtime, inventory, totalCost } のオブジェクトである必要があります。",
+    "m1": "期 {p0} の通常生産量 ({p1}) が範囲 [0, {p2}] の外です。",
+    "m2": "期 {p0} の残業生産量 ({p1}) が範囲 [0, {p2}] の外です。",
+    "m3": "期 {p0} の期末在庫 ({p1}) が倉庫容量 [0, {p2}] の外です。",
+    "m4": "期 {p0} の在庫バランス式が一致しません（期待値: {p1}, 実際: {p2}）。",
+    "m5": "最終期の在庫 ({p0}) が期末必要安全在庫 ({p1}) 未満です。",
+    "m6": "返された totalCost ({p0}) が生産費＋保管費合計 ({p1}) と一致しません。",
+    "m7": "在庫・需要制約を満たしていますが、コスト ({p0}) が最小値 ({p1}) より高いです。",
+    "m8": "正解！ 残業と先行生産のバランスをとった最小コスト計画 ({p0}) です。"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "title": "#010. Production Line Setup & Mixed Production",
+  "subtitle": "Chapter 1 synthesis: couple binary line-activation decisions with continuous production outputs via capacity-linking constraints.",
+  "tags": [
+    "MIP",
+    "Binary + Continuous",
+    "Capacity Linking",
+    "Capstone"
+  ],
+  "caseNames": [
+    "3-line plant setup optimization (net profit 1,525)",
+    "4-line factory expansion (net profit 2,110)"
+  ],
+  "markdown": "# #010. Production Line Setup & Mixed Production\n\n<!-- section:scenario -->\nA factory operates $n$ candidate production lines $i \\in \\{0, \\dots, n-1\\}$. Opening line $i$ (`open[i]` $\\in \\{0, 1\\}$) incurs a fixed setup cost `fixedCosts[i]` and unlocks capacity up to `capacities[i]` units of continuous output (`quantities[i] >= 0`). If line $i$ remains closed (`open[i] = 0`), its output **must be `0`**.\n\nEach unit produced on line $i$ earns contribution margin `margins[i]` and consumes `materialUsages[i]` units of shared raw material (available supply `materialCap`). Choose which lines to open and how much to produce on each open line to **maximize net profit**.\n\n<!-- section:io -->\n- **Input (`P010Input`)**: `margins: number[]`, `fixedCosts: number[]`, `capacities: number[]`, `materialUsages: number[]`, `materialCap: number`\n- **Output (`P010Output`)**: `{ open: number[], quantities: number[], netProfit: number }`\n\n<!-- section:example -->\nIn Case 1 (`margins = [50, 40, 35]`, `fixedCosts = [600, 300, 250]`, `capacities = [30, 40, 25]`, `materialUsages = [2, 1.5, 1]`, `materialCap = 70`):\n\n- Line 0 has a high unit margin (`50`), yet earns only `25` per unit of scarce material (`50 / 2`) while carrying a steep `600` fixed setup cost.\n- Leaving Line 0 **closed** (`open = [0, 1, 1]`) and producing `quantities = [0, 30, 25]` maximizes net profit at `(40*30 - 300) + (35*25 - 250) =` **`1,525`**!\n\n<!-- section:hint1 -->\nBoth binary `open[i]` and continuous `quantities[i] >= 0` are declared in the starter code. Link them for every line $i$ with the linear inequality:\n$$\\text{quantities}[i] \\le \\text{capacities}[i] \\cdot \\text{open}[i]$$\nWhen `open[i] = 0`, this forces `quantities[i] <= 0` -> `quantities[i] = 0`.\n\n<!-- section:hint2 -->\nAlso enforce the shared material budget `dot(input.materialUsages, quantities) <= input.materialCap`, and maximize net profit `dot(input.margins, quantities) - dot(input.fixedCosts, open)`.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{i=0}^{n-1} m_i q_i - \\sum_{i=0}^{n-1} F_i y_i \\\\\n\\text{s.t.} \\quad & 0 \\le q_i \\le C_i y_i && \\forall i \\in \\{0, \\dots, n-1\\} \\\\\n& \\sum_{i=0}^{n-1} a_i q_i \\le M_{\\text{cap}} \\\\\n& y_i \\in \\{0, 1\\} && \\forall i\n\\end{aligned}\n$$\n\nThis classic **binary-continuous capacity linking** pattern bridges Chapter 1's pure LP and pure binary models — and prepares you directly for fixed-charge networks and Big-M reformulations in Chapter 2!\n",
+  "judge": {
+    "m0": "Output must be an object { open, quantities, netProfit }.",
+    "m1": "open[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m3": "Line {p0} produced {p1} units exceeding allowed capacity {p2} for open[{p0}] = {p3}. Check your linking constraints!",
+    "m4": "Total material usage ({p0}) exceeds supply ({p1}).",
+    "m5": "Reported netProfit ({p0}) does not match computed margin minus fixed costs ({p1}).",
+    "m6": "Valid production schedule, but netProfit ({p0}) is below optimal ({p1}).",
+    "m7": "Optimal line activation and production mix found (netProfit = {p0})!"
+  }
+}

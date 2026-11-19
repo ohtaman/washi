@@ -4,8 +4,7 @@ import {
   countChapterSolved,
   countMainSolved,
   getNextRecommendedProblemId,
-  getSolvedRuntimeCount,
-  totalRuntimePasses,
+  isProblemSolved,
 } from "../store/progress.js";
 import type {
   ChapterInfo,
@@ -16,6 +15,7 @@ import type {
   RuntimeId,
   VerdictStatus,
 } from "../types.js";
+import { highlightCode, renderLineNumbers } from "./code-editor.js";
 import { parseProblemMarkdown, renderSafeMarkdown } from "./markdown.js";
 
 export function escapeHtml(raw: string): string {
@@ -39,30 +39,17 @@ function getShowcaseUrl(locale: Locale): string {
   return "/showcase/";
 }
 
-export function renderRuntimeChipsHtml(
-  solvedRuntimes: ReadonlyArray<RuntimeId>,
-  mode: "compact" | "full"
+function stripProblemIdPrefix(title: string): string {
+  return title.replace(/^#\d{3}\.\s*/, "");
+}
+
+export function renderSolvedStatusBadgeHtml(
+  solved: boolean,
+  strings: ExercisesUiStrings
 ): string {
-  const specs: ReadonlyArray<{ id: RuntimeId; short: string; full: string }> = [
-    { id: "washi", short: "TS", full: "WaSHI" },
-    { id: "highspy", short: "Py", full: "highspy" },
-  ];
-  const chips = specs
-    .map((spec) => {
-      const passed = solvedRuntimes.includes(spec.id);
-      const label =
-        mode === "compact"
-          ? passed
-            ? `✓ ${spec.short}`
-            : spec.short
-          : passed
-            ? `${spec.full} ✓`
-            : spec.full;
-      const titleAttr = mode === "compact" ? ` title="${spec.full}"` : "";
-      return `<span class="runtime-chip${passed ? " is-pass" : ""}"${titleAttr}>${label}</span>`;
-    })
-    .join("");
-  return `<span class="runtime-chip-group"${mode === "compact" ? ' aria-label="WaSHI / highspy"' : ""}>${chips}</span>`;
+  return `<span class="status-badge${solved ? " is-solved" : ""}">${escapeHtml(
+    solved ? strings.solvedBadge : strings.unsolvedBadge
+  )}</span>`;
 }
 
 export function renderProvenanceBadges(
@@ -128,60 +115,169 @@ export function renderHeaderHtml(
   `;
 }
 
-function renderProblemCardHtml(
-  prob: ProblemDefinition,
+function renderSidebarProblemItemHtml(
+  p: ProblemDefinition,
   locale: Locale,
-  strings: ExercisesUiStrings,
   progress: ProgressState,
-  compact: boolean = false
+  activeProblemId: string | null
 ): string {
-  const { meta } = prob;
-  const solvedCount = getSolvedRuntimeCount(progress, meta.id);
-  const solvedEntry = progress.solved[meta.id];
-  const isCapstone = meta.role === "capstone";
-  const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
-  const solvedRuntimes = solvedEntry?.runtimes ?? [];
-
-  const cardClasses = [
-    "problem-card",
-    compact ? "is-compact" : "",
-    isCapstone ? "is-capstone" : "",
-    solvedCount > 0 ? "is-solved" : "",
+  const solved = isProblemSolved(progress, p.meta.id);
+  const active = activeProblemId === p.meta.id;
+  const classes = [
+    "book-sidebar-link",
+    active ? "is-active" : "",
+    solved ? "is-solved" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return `
-    <article class="${cardClasses}" data-problem-id="${escapeHtml(meta.id)}">
-      <div>
-        <div class="problem-card-top">
-          <div class="problem-badges">
-            <span class="role-pill role-${escapeHtml(meta.role)}">${escapeHtml(roleLabel)}</span>
-            ${meta.paradigms
-              .map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`)
-              .join("")}
+    <li>
+      <a
+        href="?id=${encodeURIComponent(p.meta.id)}&lang=${locale}"
+        class="${classes}"
+        data-sidebar-id="${escapeHtml(p.meta.id)}"
+        data-nav-id="${escapeHtml(p.meta.id)}"
+      >
+        <span class="book-sidebar-num">${solved ? "✓" : escapeHtml(p.meta.id)}</span>
+        <span class="book-sidebar-name">${escapeHtml(stripProblemIdPrefix(p.meta.title[locale]))}</span>
+      </a>
+    </li>
+  `;
+}
+
+function renderBookSidebarHtml(params: {
+  locale: Locale;
+  strings: ExercisesUiStrings;
+  chapters: ChapterInfo[];
+  problems: ProblemDefinition[];
+  progress: ProgressState;
+  activeProblemId: string | null;
+}): string {
+  const { locale, strings, chapters, problems, progress, activeProblemId } = params;
+  const summaries = problems.map((p) => p.meta);
+  const mainSolved = countMainSolved(progress, summaries);
+  const availableChapters = chapters.filter((ch) => ch.available);
+  const upcomingChapters = chapters.filter((ch) => !ch.available);
+
+  const chapterBlocksHtml = availableChapters
+    .map((ch) => {
+      const chProblems = problems.filter((p) => p.meta.chapter === ch.chapter);
+      return `
+        <div class="book-sidebar-group">
+          <div class="book-sidebar-chapter-title">
+            ${escapeHtml(strings.chapterPrefix(ch.chapter))}: ${escapeHtml(ch.title[locale])}
           </div>
-          ${renderRuntimeChipsHtml(solvedRuntimes, "compact")}
+          <ol class="book-sidebar-items">
+            ${chProblems
+              .map((p) => renderSidebarProblemItemHtml(p, locale, progress, activeProblemId))
+              .join("")}
+          </ol>
         </div>
-        <h3 class="problem-card-title">
-          <a href="?id=${encodeURIComponent(meta.id)}&lang=${locale}" data-nav-id="${escapeHtml(meta.id)}">
-            ${escapeHtml(meta.title[locale])}
-          </a>
-        </h3>
-        <p class="problem-card-sub">${escapeHtml(meta.subtitle[locale])}</p>
+      `;
+    })
+    .join("");
+
+  const upcomingHtml =
+    upcomingChapters.length > 0
+      ? `
+      <div class="book-sidebar-group book-sidebar-upcoming-group">
+        ${upcomingChapters
+          .map(
+            (ch) => `
+          <div class="book-sidebar-upcoming">
+            <span>${escapeHtml(strings.chapterPrefix(ch.chapter))} (${escapeHtml(ch.idRange)})</span>
+          </div>
+        `
+          )
+          .join("")}
       </div>
-      <div class="problem-card-foot">
-        ${
-          compact
-            ? ""
-            : `<div class="problem-badges">${renderProvenanceBadges(meta, strings)}</div>`
-        }
-        <div class="problem-meta-line">
-          <span>${escapeHtml(strings.difficultyLabel(meta.difficulty))} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
-          <span>${solvedRuntimes.length > 0 ? solvedRuntimes.join(" + ") : "—"}</span>
+    `
+      : "";
+
+  const mobileLinksHtml = problems
+    .map((p) => renderSidebarProblemItemHtml(p, locale, progress, activeProblemId))
+    .join("");
+
+  return `
+    <details class="mobile-toc">
+      <summary class="mobile-toc-summary">
+        <span>${escapeHtml(strings.mobileTocToggle)}</span>
+        <span class="mobile-toc-count">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
+      </summary>
+      <div class="mobile-toc-body">
+        <a
+          href="?lang=${locale}"
+          class="book-sidebar-overview${activeProblemId === null ? " is-active" : ""}"
+          data-action="home"
+        >${escapeHtml(strings.overviewLink)}</a>
+        <ol class="book-sidebar-items">
+          ${mobileLinksHtml}
+        </ol>
+      </div>
+    </details>
+
+    <aside class="book-sidebar" aria-label="${escapeHtml(strings.sidebarTocLabel)}">
+      <div class="book-sidebar-head">
+        <a
+          href="?lang=${locale}"
+          class="book-sidebar-overview${activeProblemId === null ? " is-active" : ""}"
+          data-action="home"
+        >${escapeHtml(strings.overviewLink)}</a>
+        <div class="book-sidebar-progress" id="sidebar-progress-text">
+          ${escapeHtml(strings.progressLabel(mainSolved, 100))}
         </div>
       </div>
-    </article>
+      <nav class="book-sidebar-nav" aria-label="${escapeHtml(strings.sidebarTocLabel)}">
+        ${chapterBlocksHtml}
+        ${upcomingHtml}
+      </nav>
+    </aside>
+  `;
+}
+
+function renderTocRowHtml(
+  prob: ProblemDefinition,
+  locale: Locale,
+  strings: ExercisesUiStrings,
+  progress: ProgressState
+): string {
+  const { meta } = prob;
+  const solved = isProblemSolved(progress, meta.id);
+  const isCapstone = meta.role === "capstone";
+  const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
+
+  const rowClasses = [
+    "toc-row",
+    isCapstone ? "is-capstone" : "",
+    solved ? "is-solved" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <li class="${rowClasses}" data-problem-id="${escapeHtml(meta.id)}">
+      <div class="toc-row-main">
+        <div class="toc-row-heading">
+          <span class="toc-num">#${escapeHtml(meta.id)}</span>
+          <a
+            href="?id=${encodeURIComponent(meta.id)}&lang=${locale}"
+            class="toc-title-link"
+            data-nav-id="${escapeHtml(meta.id)}"
+          >${escapeHtml(stripProblemIdPrefix(meta.title[locale]))}</a>
+        </div>
+        <p class="toc-row-sub">${escapeHtml(meta.subtitle[locale])}</p>
+      </div>
+      <div class="toc-row-meta">
+        <span class="role-pill role-${escapeHtml(meta.role)}">${escapeHtml(roleLabel)}</span>
+        <span class="toc-meta-tags">
+          ${meta.paradigms.map((p) => escapeHtml(p)).join(" · ")} · ${escapeHtml(
+            strings.difficultyLabel(meta.difficulty)
+          )} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}
+        </span>
+        ${renderSolvedStatusBadgeHtml(solved, strings)}
+      </div>
+    </li>
   `;
 }
 
@@ -195,120 +291,105 @@ export function renderExerciseIndexHtml(params: {
   const { locale, strings, chapters, problems, progress } = params;
   const summaries = problems.map((p) => p.meta);
   const mainSolved = countMainSolved(progress, summaries);
-  const runtimePasses = totalRuntimePasses(progress, summaries);
   const nextId = getNextRecommendedProblemId(progress, summaries);
   const ctaLabel =
     mainSolved === 0 ? strings.startFirstBtn : strings.resumeBtn(nextId);
 
-  const tutorialProblems = problems.filter((p) => p.meta.chapter === 0);
   const ch1Problems = problems.filter((p) => p.meta.chapter === 1);
   const ch1Info = chapters.find((c) => c.chapter === 1);
   const upcomingChapters = chapters.filter((c) => !c.available);
   const pct = Math.min(100, Math.round((mainSolved / 100) * 100));
 
-  const tutorialHtml = progress.tutorialDismissed
-    ? `
-      <div class="tutorial-restore-bar">
-        <button type="button" id="restore-tutorial-btn" class="ex-btn-ghost">
-          ${escapeHtml(strings.tutorialRestoreBtn)}
-        </button>
-      </div>
-    `
-    : `
-      <section class="tutorial-strip" aria-labelledby="tutorial-strip-title">
-        <div class="tutorial-strip-head">
-          <div>
-            <h2 id="tutorial-strip-title" class="tutorial-strip-title">${escapeHtml(strings.tutorialBannerTitle)}</h2>
-            <p class="tutorial-strip-desc">${escapeHtml(strings.tutorialBannerDesc)}</p>
-          </div>
-          <button type="button" id="dismiss-tutorial-btn" class="ex-btn-ghost">
-            ${escapeHtml(strings.tutorialDismissBtn)}
-          </button>
-        </div>
-        <div class="tutorial-cards">
-          ${tutorialProblems.map((p) => renderProblemCardHtml(p, locale, strings, progress, true)).join("")}
-        </div>
-      </section>
-    `;
-
   return `
-    <main class="ex-container">
-      <section class="ex-hero">
-        <div>
-          <h1 class="ex-hero-title">${escapeHtml(strings.brandTitle)}</h1>
-          <p class="ex-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
-          <div class="ex-hero-actions">
-            <a
-              href="?id=${encodeURIComponent(nextId)}&lang=${locale}"
-              class="ex-btn-primary"
-              data-nav-id="${escapeHtml(nextId)}"
-              id="hero-primary-cta"
-            >${escapeHtml(ctaLabel)}</a>
-          </div>
-        </div>
-        <div class="ex-stats-box">
-          <div class="ex-stats-row">
-            <span class="ex-stat-main" id="main-progress-text">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
-            <span class="ex-stat-secondary" id="runtime-progress-text">${escapeHtml(strings.runtimeProgressLabel(runtimePasses, 200))}</span>
-          </div>
-          <div class="progress-track" aria-hidden="true">
-            <div class="progress-fill" style="width: ${pct}%"></div>
-          </div>
-        </div>
-      </section>
-
-      ${tutorialHtml}
-
-      ${
-        ch1Info
-          ? `
-        <section class="chapter-section" aria-labelledby="ch1-heading">
-          <div class="chapter-head">
-            <div class="chapter-title-wrap">
-              <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(1))} (${escapeHtml(ch1Info.idRange)})</span>
-              <h2 id="ch1-heading" class="chapter-title">${escapeHtml(ch1Info.title[locale])}</h2>
+    <div class="book-shell">
+      ${renderBookSidebarHtml({
+        locale,
+        strings,
+        chapters,
+        problems,
+        progress,
+        activeProblemId: null,
+      })}
+      <main class="book-main">
+        <section class="ex-hero">
+          <div>
+            <h1 class="ex-hero-title">${escapeHtml(strings.brandTitle)}</h1>
+            <p class="ex-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
+            <div class="ex-hero-actions">
+              <a
+                href="?id=${encodeURIComponent(nextId)}&lang=${locale}"
+                class="ex-btn-primary"
+                data-nav-id="${escapeHtml(nextId)}"
+                id="hero-primary-cta"
+              >${escapeHtml(ctaLabel)}</a>
             </div>
-            <span class="paradigm-pill">
-              ${countChapterSolved(progress, summaries, 1)} / ${ch1Problems.length}
-            </span>
           </div>
-          <p class="chapter-desc">${escapeHtml(ch1Info.description[locale])}</p>
-          <div class="problem-grid">
-            ${ch1Problems.map((p) => renderProblemCardHtml(p, locale, strings, progress)).join("")}
+          <div class="ex-stats-box">
+            <div class="ex-stats-row">
+              <span class="ex-stat-main" id="main-progress-text">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <div class="progress-fill" style="width: ${pct}%"></div>
+            </div>
           </div>
         </section>
-      `
-          : ""
-      }
 
-      <section class="chapter-section" aria-label="Upcoming chapters">
-        <div class="roadmap-grid">
-          ${upcomingChapters
-            .map(
-              (ch) => `
-            <article class="roadmap-card">
-              <div class="roadmap-card-head">
-                <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(ch.chapter))} (${escapeHtml(ch.idRange)})</span>
-                <span class="coming-soon-pill">${escapeHtml(strings.comingSoonBadge)}</span>
+        ${
+          ch1Info
+            ? `
+          <section class="chapter-section" aria-labelledby="ch1-heading">
+            <div class="chapter-head">
+              <div class="chapter-title-wrap">
+                <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(1))} (${escapeHtml(ch1Info.idRange)})</span>
+                <h2 id="ch1-heading" class="chapter-title">${escapeHtml(ch1Info.title[locale])}</h2>
               </div>
-              <h3 class="problem-card-title">${escapeHtml(ch.title[locale])}</h3>
-              <p class="problem-card-sub">${escapeHtml(ch.description[locale])}</p>
-              <div class="problem-badges" style="margin-top: 0.65rem">
-                ${ch.paradigms.map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`).join("")}
-              </div>
-            </article>
-          `
-            )
-            .join("")}
-        </div>
-      </section>
-    </main>
+              <span class="paradigm-pill">
+                ${countChapterSolved(progress, summaries, 1)} / ${ch1Problems.length}
+              </span>
+            </div>
+            <p class="chapter-desc">${escapeHtml(ch1Info.description[locale])}</p>
+            <ol class="toc-list">
+              ${ch1Problems.map((p) => renderTocRowHtml(p, locale, strings, progress)).join("")}
+            </ol>
+            <p class="provenance-footnote">${escapeHtml(strings.provenanceFootnote)}</p>
+          </section>
+        `
+            : ""
+        }
+
+        <section class="chapter-section chapter-syllabus" aria-label="Upcoming chapters">
+          <ol class="toc-list toc-list-upcoming">
+            ${upcomingChapters
+              .map(
+                (ch) => `
+              <li class="toc-row toc-row-upcoming">
+                <div class="toc-row-main">
+                  <div class="toc-row-heading">
+                    <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(ch.chapter))} (${escapeHtml(ch.idRange)})</span>
+                    <span class="toc-upcoming-title">${escapeHtml(ch.title[locale])}</span>
+                  </div>
+                  <p class="toc-row-sub">${escapeHtml(ch.description[locale])}</p>
+                </div>
+                <div class="toc-row-meta">
+                  <span class="toc-meta-tags">${ch.paradigms.map((p) => escapeHtml(p)).join(" · ")}</span>
+                  <span class="coming-soon-pill">${escapeHtml(strings.comingSoonBadge)}</span>
+                </div>
+              </li>
+            `
+              )
+              .join("")}
+          </ol>
+        </section>
+      </main>
+    </div>
   `;
 }
 
 export function renderWorkspaceHtml(params: {
   locale: Locale;
   strings: ExercisesUiStrings;
+  chapters: ChapterInfo[];
+  problems: ProblemDefinition[];
   problem: ProblemDefinition;
   prevProblem: ProblemDefinition | null;
   nextProblem: ProblemDefinition | null;
@@ -320,6 +401,8 @@ export function renderWorkspaceHtml(params: {
   const {
     locale,
     strings,
+    chapters,
+    problems,
     problem,
     prevProblem,
     nextProblem,
@@ -331,6 +414,7 @@ export function renderWorkspaceHtml(params: {
   const { meta } = problem;
   const sections = parseProblemMarkdown(problem.markdown[locale]);
   const solvedRuntimes = progress.solved[meta.id]?.runtimes ?? [];
+  const solvedAny = isProblemSolved(progress, meta.id);
   const washiSolved = solvedRuntimes.includes("washi");
   const highspySolved = solvedRuntimes.includes("highspy");
   const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
@@ -338,186 +422,230 @@ export function renderWorkspaceHtml(params: {
     `[Exercises #${meta.id}] Feedback`
   )}`;
 
-  const renderToolbarAndEditor = (runtime: RuntimeId, code: string) => `
-    <div class="tab-panel-inner">
-      ${
-        runtime === "highspy"
-          ? `<p class="python-lazy-note">${escapeHtml(strings.tabs.pythonLazyNote)}</p>`
-          : ""
-      }
-      <div class="editor-header-row">
-        <label for="editor-${runtime}">${escapeHtml(strings.editor.label)}</label>
-        <span>${escapeHtml(strings.editor.shortcutHint)}</span>
-      </div>
-      <textarea
-        id="editor-${runtime}"
-        class="code-editor"
-        data-runtime="${runtime}"
-        spellcheck="false"
-        autocomplete="off"
-        autocapitalize="off"
-      >${escapeHtml(code)}</textarea>
-      <div class="editor-toolbar">
-        <div class="editor-toolbar-left">
-          <button
-            type="button"
-            class="ex-btn-primary"
-            data-action="run"
-            data-runtime="${runtime}"
-          >${escapeHtml(strings.editor.runBtn)}</button>
-          <button
-            type="button"
-            class="ex-btn-ghost"
-            data-action="reset"
-            data-runtime="${runtime}"
-          >${escapeHtml(strings.editor.resetBtn)}</button>
+  const renderToolbarAndEditor = (runtime: RuntimeId, code: string) => {
+    const lang = runtime === "washi" ? "ts" : "py";
+    return `
+      <div class="tab-panel-inner">
+        ${
+          runtime === "highspy"
+            ? `<p class="python-lazy-note">${escapeHtml(strings.tabs.pythonLazyNote)}</p>`
+            : ""
+        }
+        <div class="editor-header-row">
+          <label for="editor-${runtime}">${escapeHtml(strings.editor.label)}</label>
+          <span>${escapeHtml(strings.editor.shortcutHint)}</span>
         </div>
-        <div class="editor-toolbar-right">
-          <button
-            type="button"
-            class="ex-btn-ghost"
-            data-action="solution"
-            data-runtime="${runtime}"
-          >${escapeHtml(strings.editor.solutionBtn)}</button>
+        <div class="code-editor-wrap" data-runtime="${runtime}">
+          <pre
+            class="editor-gutter"
+            id="gutter-${runtime}"
+            aria-hidden="true"
+          >${renderLineNumbers(code)}</pre>
+          <div class="editor-stage">
+            <pre
+              class="editor-highlight"
+              id="highlight-${runtime}"
+              aria-hidden="true"
+            ><code>${highlightCode(code, lang)}</code></pre>
+            <textarea
+              id="editor-${runtime}"
+              class="code-editor"
+              data-runtime="${runtime}"
+              wrap="off"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+            >${escapeHtml(code)}</textarea>
+          </div>
+        </div>
+        <div class="editor-toolbar">
+          <div class="editor-toolbar-left">
+            <button
+              type="button"
+              class="ex-btn-primary"
+              data-action="run"
+              data-runtime="${runtime}"
+            >${escapeHtml(strings.editor.runBtn)}</button>
+            <button
+              type="button"
+              class="ex-btn-ghost"
+              data-action="reset"
+              data-runtime="${runtime}"
+            >${escapeHtml(strings.editor.resetBtn)}</button>
+          </div>
+          <div class="editor-toolbar-right">
+            <button
+              type="button"
+              class="ex-btn-ghost"
+              data-action="solution"
+              data-runtime="${runtime}"
+            >${escapeHtml(strings.editor.solutionBtn)}</button>
+          </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
+  };
 
   return `
-    <main class="ex-container">
-      <div class="ws-subbar">
-        <div class="ws-nav-group">
-          <a href="?lang=${locale}" class="ex-btn-ghost" data-action="home" id="back-to-map-btn">
-            ${escapeHtml(strings.backToMap)}
-          </a>
-          ${
-            prevProblem
-              ? `<a href="?id=${encodeURIComponent(prevProblem.meta.id)}&lang=${locale}" class="ex-btn-ghost" data-nav-id="${escapeHtml(prevProblem.meta.id)}">← ${escapeHtml(prevProblem.meta.id)}</a>`
-              : ""
-          }
-          ${
-            nextProblem
-              ? `<a href="?id=${encodeURIComponent(nextProblem.meta.id)}&lang=${locale}" class="ex-btn-ghost" data-nav-id="${escapeHtml(nextProblem.meta.id)}">${escapeHtml(nextProblem.meta.id)} →</a>`
-              : ""
-          }
-        </div>
-        <div class="ws-nav-group" id="ws-runtime-status">
-          ${renderRuntimeChipsHtml(solvedRuntimes, "full")}
-        </div>
-      </div>
-
-      <div class="ws-layout">
-        <section class="ws-panel" aria-labelledby="ws-problem-title">
-          <div class="problem-badges">
-            <span class="role-pill role-${escapeHtml(meta.role)}">${escapeHtml(roleLabel)}</span>
-            ${meta.paradigms
-              .map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`)
-              .join("")}
-            <span class="paradigm-pill">${escapeHtml(strings.difficultyLabel(meta.difficulty))} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
+    <div class="book-shell">
+      ${renderBookSidebarHtml({
+        locale,
+        strings,
+        chapters,
+        problems,
+        progress,
+        activeProblemId: meta.id,
+      })}
+      <main class="book-main">
+        <div class="ws-subbar">
+          <div class="ws-nav-group">
+            <a href="?lang=${locale}" class="ex-btn-ghost" data-action="home" id="back-to-map-btn">
+              ${escapeHtml(strings.backToMap)}
+            </a>
+            ${
+              prevProblem
+                ? `<a href="?id=${encodeURIComponent(prevProblem.meta.id)}&lang=${locale}" class="ex-btn-ghost" data-nav-id="${escapeHtml(prevProblem.meta.id)}">← ${escapeHtml(prevProblem.meta.id)}</a>`
+                : ""
+            }
+            ${
+              nextProblem
+                ? `<a href="?id=${encodeURIComponent(nextProblem.meta.id)}&lang=${locale}" class="ex-btn-ghost" data-nav-id="${escapeHtml(nextProblem.meta.id)}">${escapeHtml(nextProblem.meta.id)} →</a>`
+                : ""
+            }
           </div>
-
-          <h1 id="ws-problem-title" class="ws-title">${escapeHtml(meta.title[locale])}</h1>
-          <p class="ws-subtitle">${escapeHtml(meta.subtitle[locale])}</p>
-
-          <div class="ws-provenance-row">
-            ${renderProvenanceBadges(meta, strings)}
-            <a
-              href="${issueHref}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="ws-feedback-link"
-            >${escapeHtml(strings.provenance.feedbackHint)} ↗</a>
-          </div>
-
-          <div class="md-section">
-            <h2 class="md-section-label">${escapeHtml(strings.sections.scenario)}</h2>
-            <div class="md-body">${renderSafeMarkdown(sections.scenario)}</div>
-          </div>
-
-          <div class="md-section">
-            <h2 class="md-section-label">${escapeHtml(strings.sections.io)}</h2>
-            <div class="md-body">${renderSafeMarkdown(sections.ioSpec)}</div>
-          </div>
-
-          <div class="md-section">
-            <h2 class="md-section-label">${escapeHtml(strings.sections.example)}</h2>
-            <div class="md-body">${renderSafeMarkdown(sections.example)}</div>
-          </div>
-
-          <div class="hints-group">
-            <h2 class="hints-heading">${escapeHtml(strings.sections.hintsTitle)}</h2>
-            <details class="hint-accordion">
-              <summary>${escapeHtml(strings.sections.hint1)}</summary>
-              <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint1)}</div>
-            </details>
-            <details class="hint-accordion">
-              <summary>${escapeHtml(strings.sections.hint2)}</summary>
-              <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint2)}</div>
-            </details>
-            <details class="hint-accordion">
-              <summary>${escapeHtml(strings.sections.formulation)}</summary>
-              <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.formulation)}</div>
-            </details>
-          </div>
-        </section>
-
-        <section class="ws-ide-panel" aria-label="${escapeHtml(strings.tabs.tablistLabel)}">
-          <div
-            role="tablist"
-            class="runtime-tablist"
-            focusgroup="tablist nomemory"
-            aria-label="${escapeHtml(strings.tabs.tablistLabel)}"
-          >
-            <button
-              type="button"
-              role="tab"
-              id="tab-washi"
-              class="runtime-tab"
-              data-runtime="washi"
-              aria-selected="${activeRuntime === "washi" ? "true" : "false"}"
-              tabindex="${activeRuntime === "washi" ? "0" : "-1"}"
-            >
-              <span>${escapeHtml(strings.tabs.washi)}</span>
-              <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
+          <div class="ws-nav-group">
+            <button type="button" id="jump-to-editor-btn" class="ex-btn-ghost">
+              ${escapeHtml(strings.workspace.jumpToEditorBtn)}
             </button>
-            <button
-              type="button"
-              role="tab"
-              id="tab-highspy"
-              class="runtime-tab"
-              data-runtime="highspy"
-              aria-selected="${activeRuntime === "highspy" ? "true" : "false"}"
-              tabindex="${activeRuntime === "highspy" ? "0" : "-1"}"
-            >
-              <span>${escapeHtml(strings.tabs.highspy)}</span>
-              <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
-            </button>
-          </div>
-
-          <div
-            role="tabpanel"
-            id="panel-washi"
-            aria-labelledby="tab-washi"
-            ${activeRuntime !== "washi" ? "hidden" : ""}
-          >${renderToolbarAndEditor("washi", washiCode)}</div>
-
-          <div
-            role="tabpanel"
-            id="panel-highspy"
-            aria-labelledby="tab-highspy"
-            ${activeRuntime !== "highspy" ? "hidden" : ""}
-          >${renderToolbarAndEditor("highspy", highspyCode)}</div>
-
-          <section id="judge-results" class="results-section" aria-live="polite">
-            <div class="results-head">
-              <h2 class="results-title">${escapeHtml(strings.results.title)}</h2>
+            <div id="ws-solve-status">
+              ${renderSolvedStatusBadgeHtml(solvedAny, strings)}
             </div>
-            <p class="results-placeholder">${escapeHtml(strings.results.placeholder)}</p>
+          </div>
+        </div>
+
+        <div class="ws-stack">
+          <article class="ws-problem-sheet" aria-labelledby="ws-problem-title">
+            <div class="problem-badges">
+              <span class="role-pill role-${escapeHtml(meta.role)}">${escapeHtml(roleLabel)}</span>
+              ${meta.paradigms
+                .map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`)
+                .join("")}
+              <span class="paradigm-pill">${escapeHtml(strings.difficultyLabel(meta.difficulty))} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
+            </div>
+
+            <h1 id="ws-problem-title" class="ws-title">${escapeHtml(meta.title[locale])}</h1>
+            <p class="ws-subtitle">${escapeHtml(meta.subtitle[locale])}</p>
+
+            <div class="ws-provenance-row">
+              ${renderProvenanceBadges(meta, strings)}
+              <a
+                href="${issueHref}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="ws-feedback-link"
+              >${escapeHtml(strings.provenance.feedbackHint)} ↗</a>
+            </div>
+
+            <div class="md-section">
+              <h2 class="md-section-label">${escapeHtml(strings.sections.scenario)}</h2>
+              <div class="md-body">${renderSafeMarkdown(sections.scenario)}</div>
+            </div>
+
+            <div class="md-section">
+              <h2 class="md-section-label">${escapeHtml(strings.sections.io)}</h2>
+              <div class="md-body">${renderSafeMarkdown(sections.ioSpec)}</div>
+            </div>
+
+            <div class="md-section">
+              <h2 class="md-section-label">${escapeHtml(strings.sections.example)}</h2>
+              <div class="md-body">${renderSafeMarkdown(sections.example)}</div>
+            </div>
+
+            <div class="hints-group">
+              <h2 class="hints-heading">${escapeHtml(strings.sections.hintsTitle)}</h2>
+              <details class="hint-accordion">
+                <summary>${escapeHtml(strings.sections.hint1)}</summary>
+                <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint1)}</div>
+              </details>
+              <details class="hint-accordion">
+                <summary>${escapeHtml(strings.sections.hint2)}</summary>
+                <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint2)}</div>
+              </details>
+              <details class="hint-accordion">
+                <summary>${escapeHtml(strings.sections.formulation)}</summary>
+                <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.formulation)}</div>
+              </details>
+            </div>
+          </article>
+
+          <section
+            id="answer-workbench"
+            class="answer-workbench"
+            aria-label="${escapeHtml(strings.editor.workbenchTitle)}"
+          >
+            <div class="answer-workbench-head">
+              <div>
+                <h2 class="answer-workbench-title">${escapeHtml(strings.editor.workbenchTitle)}</h2>
+                <p class="answer-workbench-hint">${escapeHtml(strings.editor.eitherRuntimeHint)}</p>
+              </div>
+            </div>
+
+            <div
+              role="tablist"
+              class="runtime-tablist"
+              focusgroup="tablist nomemory"
+              aria-label="${escapeHtml(strings.tabs.tablistLabel)}"
+            >
+              <button
+                type="button"
+                role="tab"
+                id="tab-washi"
+                class="runtime-tab"
+                data-runtime="washi"
+                aria-selected="${activeRuntime === "washi" ? "true" : "false"}"
+                tabindex="${activeRuntime === "washi" ? "0" : "-1"}"
+              >
+                <span>${escapeHtml(strings.tabs.washi)}</span>
+                <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="tab-highspy"
+                class="runtime-tab"
+                data-runtime="highspy"
+                aria-selected="${activeRuntime === "highspy" ? "true" : "false"}"
+                tabindex="${activeRuntime === "highspy" ? "0" : "-1"}"
+              >
+                <span>${escapeHtml(strings.tabs.highspy)}</span>
+                <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
+              </button>
+            </div>
+
+            <div
+              role="tabpanel"
+              id="panel-washi"
+              aria-labelledby="tab-washi"
+              ${activeRuntime !== "washi" ? "hidden" : ""}
+            >${renderToolbarAndEditor("washi", washiCode)}</div>
+
+            <div
+              role="tabpanel"
+              id="panel-highspy"
+              aria-labelledby="tab-highspy"
+              ${activeRuntime !== "highspy" ? "hidden" : ""}
+            >${renderToolbarAndEditor("highspy", highspyCode)}</div>
+
+            <section id="judge-results" class="results-section" aria-live="polite">
+              <div class="results-head">
+                <h2 class="results-title">${escapeHtml(strings.results.title)}</h2>
+              </div>
+              <p class="results-placeholder">${escapeHtml(strings.results.placeholder)}</p>
+            </section>
           </section>
-        </section>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   `;
 }
 
@@ -670,7 +798,7 @@ export function renderBackupDialogHtml(strings: ExercisesUiStrings): string {
             ${escapeHtml(strings.backup.closeBtn)}
           </button>
         </div>
-        <p class="tutorial-strip-desc">${escapeHtml(strings.backup.desc)}</p>
+        <p class="backup-desc">${escapeHtml(strings.backup.desc)}</p>
 
         <div>
           <label for="backup-export-text" class="editor-header-row">${escapeHtml(strings.backup.exportBtn)}</label>

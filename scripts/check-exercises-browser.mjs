@@ -134,25 +134,29 @@ async function run() {
     await Promise.all([page.waitForURL(/\/exercises\//), showcaseCardLink.click()]);
     await page.waitForSelector("#main-progress-text");
 
-    // 2. Exercise Index checks (0/100, Provenance badges, Tutorial Skip & Restore, Theme Toggle)
-    const bodyText = await page.locator("body").innerText();
-    assert(bodyText.includes("0 / 100"), `Expected 0 / 100 progress initially, got: ${bodyText}`);
-    assert(bodyText.includes("AI-Drafted"), "Expected AI-Drafted badge on Exercise Index");
-    assert(bodyText.includes("Solver-Verified"), "Expected Solver-Verified badge on Exercise Index");
-    assert(!/Reviewed by/.test(bodyText), "Reviewed by must NOT appear when empty");
+    // 2. Book TOC & Index layout checks (0/100, no 3-column card grid, no tutorials, no /200, provenance footnote)
+    const indexLayout = await page.evaluate(() => ({
+      sidebarCount: document.querySelectorAll(".book-sidebar").length,
+      tocListCount: document.querySelectorAll(".toc-list").length,
+      tocRowCount: document.querySelectorAll(".toc-list .toc-row[data-problem-id]").length,
+      problemGridCount: document.querySelectorAll(".problem-grid").length,
+      tutorialStripCount: document.querySelectorAll(".tutorial-strip").length,
+      text: document.body.innerText,
+    }));
+    assert(indexLayout.sidebarCount === 1, "Expected .book-sidebar on Exercise Index");
+    assert(indexLayout.tocListCount >= 1, "Expected .toc-list on Exercise Index");
+    assert(indexLayout.tocRowCount === 10, `Expected 10 Chapter 1 .toc-row items, got ${indexLayout.tocRowCount}`);
+    assert(indexLayout.problemGridCount === 0, "Expected zero .problem-grid card layouts");
+    assert(indexLayout.tutorialStripCount === 0, "Expected zero .tutorial-strip callouts");
+    assert(indexLayout.text.includes("0 / 100"), `Expected 0 / 100 progress initially, got: ${indexLayout.text}`);
+    assert(!/\/\s*200/.test(indexLayout.text), "Unexpected /200 denominator on Exercise Index");
+    assert(indexLayout.text.includes("AI-Drafted"), "Expected AI-Drafted footnote on Exercise Index");
+    assert(indexLayout.text.includes("Solver-Verified"), "Expected Solver-Verified footnote on Exercise Index");
+    assert(!/Reviewed by/.test(indexLayout.text), "Reviewed by must NOT appear when empty");
     assert(
-      !GAMEY_TEXT_RE.test(bodyText),
-      `Unexpected gamey/star copy on Exercise Index: ${bodyText}`
+      !GAMEY_TEXT_RE.test(indexLayout.text),
+      `Unexpected gamey/star copy on Exercise Index: ${indexLayout.text}`
     );
-
-    // Tutorial skip & persist across reload
-    await page.click("#dismiss-tutorial-btn");
-    await page.waitForSelector("#restore-tutorial-btn");
-    await page.reload({ waitUntil: "networkidle" });
-    await page.waitForSelector("#restore-tutorial-btn");
-    assert((await page.locator(".tutorial-strip").count()) === 0, "Tutorial should remain dismissed after reload");
-    await page.click("#restore-tutorial-btn");
-    await page.waitForSelector(".tutorial-strip");
 
     // Dark-mode toggle (modern-web-guidance: meta[name="color-scheme"] + localStorage 'theme')
     const initialMetaScheme = await page.locator('meta[name="color-scheme"]').getAttribute("content");
@@ -164,16 +168,45 @@ async function run() {
     );
     await page.click("#theme-toggle-btn");
 
-    // 3. Page-by-page verification of all 12 problems across WaSHI AND real Pyodide highspy
-    const ids = ["T1", "T2", "001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
+    // 3. Page-by-page verification of all 10 problems (#001-#010) across WaSHI AND real Pyodide highspy
+    const ids = ["001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
 
     for (const id of ids) {
       await page.goto(`${baseUrl}/exercises/?id=${id}&lang=en`, { waitUntil: "networkidle" });
       await page.waitForSelector("#ws-problem-title");
 
-      const wsText = await page.locator(".ws-panel").innerText();
-      assert(!/Reviewed by/.test(wsText), `${id} leaked Reviewed by badge`);
-      assert(!/\$0\s*\\le/.test(wsText), `${id} leaked raw unrendered LaTeX ($0 \\le)`);
+      const wsCheck = await page.evaluate(() => {
+        const sheet = document.querySelector(".ws-problem-sheet");
+        const jumpBtn = document.querySelector("#jump-to-editor-btn");
+        const workbench = document.querySelector("#answer-workbench");
+        const gutter = document.querySelector("#gutter-washi");
+        const highlight = document.querySelector("#highlight-washi");
+        const textarea = document.querySelector("#editor-washi");
+        const span = document.querySelector("#highlight-washi span");
+        return {
+          wsText: sheet ? sheet.innerText : "",
+          hasJumpBtn: Boolean(jumpBtn),
+          hasWorkbench: Boolean(workbench),
+          hasGutter: Boolean(gutter),
+          hasHighlight: Boolean(highlight),
+          textMatch:
+            highlight && textarea instanceof HTMLTextAreaElement
+              ? highlight.textContent === textarea.value
+              : false,
+          textareaWeight: textarea ? getComputedStyle(textarea).fontWeight : "",
+          spanWeight: span ? getComputedStyle(span).fontWeight : "400",
+        };
+      });
+      assert(!/Reviewed by/.test(wsCheck.wsText), `${id} leaked Reviewed by badge`);
+      assert(!/\$0\s*\\le/.test(wsCheck.wsText), `${id} leaked raw unrendered LaTeX ($0 \\le)`);
+      assert(wsCheck.hasJumpBtn, `${id} missing #jump-to-editor-btn`);
+      assert(wsCheck.hasWorkbench, `${id} missing #answer-workbench`);
+      assert(wsCheck.hasGutter && wsCheck.hasHighlight, `${id} missing gutter/overlay highlighter`);
+      assert(wsCheck.textMatch, `${id} overlay <pre>.textContent did not match textarea.value`);
+      assert(
+        wsCheck.textareaWeight === "400" && wsCheck.spanWeight === "400",
+        `${id} editor fontWeight must stay 400 (got textarea=${wsCheck.textareaWeight}, span=${wsCheck.spanWeight})`
+      );
 
       // Non-exclusive hint accordions: opening all 3 leaves all 3 open simultaneously
       const summaries = page.locator("details.hint-accordion summary");
@@ -187,21 +220,38 @@ async function run() {
         .evaluateAll((els) => els.slice(0, 3).map((el) => el.hasAttribute("open")));
       assert(openStates.every(Boolean), `${id} hints were mutually exclusive instead of independent`);
 
-      // On T1 and T2 verify starters produce SUBOPTIMAL and VIOLATION honestly
-      if (id === "T1" || id === "T2") {
+      // Verify #001-#003 starters reproduce SUBOPTIMAL (#001) and VIOLATION (#002, #003) honestly
+      if (id === "001" || id === "002" || id === "003") {
         await page.click('button[data-action="run"][data-runtime="washi"]');
-        const expectedClass = id === "T1" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
+        const expectedClass = id === "001" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
         await page.waitForSelector(`#judge-results ${expectedClass}`, { timeout: 20_000 });
       }
 
-      // Reveal & Run WaSHI solution
+      // Jump to workbench via button & reveal/run WaSHI solution
+      await page.click("#jump-to-editor-btn");
       const washiSolBtn = page.locator('button[data-action="solution"][data-runtime="washi"]');
       await washiSolBtn.click();
       await washiSolBtn.click();
       await page.click('button[data-action="run"][data-runtime="washi"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 30_000 });
 
-      // Keyboard navigation + ARIA attributes check for Tabs (first on T1, click on others)
+      // Single-runtime completion check: solving in WaSHI alone marks the exercise solved + updates 1/100 on #001
+      const solveBadgeCount = await page.locator("#ws-solve-status .status-badge.is-solved").count();
+      assert(solveBadgeCount === 1, `${id}: expected unified .status-badge.is-solved right after WaSHI AC`);
+      if (id === "001") {
+        const sideProg = await page.locator("#sidebar-progress-text").textContent();
+        assert(sideProg?.includes("1 / 100"), `Expected sidebar progress 1 / 100 after #001 WaSHI AC, got ${sideProg}`);
+      }
+
+      // Verify overlay stays aligned right after loading full solution
+      const solMatch = await page.evaluate(() => {
+        const pre = document.querySelector("#highlight-washi");
+        const ta = document.querySelector("#editor-washi");
+        return pre && ta instanceof HTMLTextAreaElement ? pre.textContent === ta.value : false;
+      });
+      assert(solMatch, `${id} WaSHI solution overlay text mismatch`);
+
+      // Keyboard navigation + ARIA attributes check for Tabs
       const hasAriaControls = await page.locator("#tab-washi").getAttribute("aria-controls");
       assert(hasAriaControls === null, "Tab buttons must NOT use aria-controls per modern-web-guidance");
       await page.locator("#tab-washi").focus();
@@ -215,10 +265,10 @@ async function run() {
         `${id}: inactive tabpanel must carry hidden attribute`
       );
 
-      // Verify tutorial starters in real Pyodide highspy too
-      if (id === "T1" || id === "T2") {
+      // Verify #001-#003 starters in real Pyodide highspy too
+      if (id === "001" || id === "002" || id === "003") {
         await page.click('button[data-action="run"][data-runtime="highspy"]');
-        const expectedClass = id === "T1" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
+        const expectedClass = id === "001" ? ".verdict-pill.is-suboptimal" : ".verdict-pill.is-violation";
         await page.waitForSelector(`#judge-results ${expectedClass}`, { timeout: 120_000 });
       }
 
@@ -229,18 +279,8 @@ async function run() {
       await page.click('button[data-action="run"][data-runtime="highspy"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
 
-      const runtimeStatusText = await page.locator("#ws-runtime-status").innerText();
-      assert(
-        runtimeStatusText.includes("WaSHI ✓") && runtimeStatusText.includes("highspy ✓"),
-        `${id} missing dual runtime pass badges: ${runtimeStatusText}`
-      );
-
-      // Confirm tutorial (T1, T2) stays excluded from /100 main score
-      if (id === "T2") {
-        await page.goto(`${baseUrl}/exercises/?lang=en`, { waitUntil: "networkidle" });
-        const midProgress = await page.locator("#main-progress-text").textContent();
-        assert(midProgress?.includes("0 / 100"), `Tutorials leaked into main score: ${midProgress}`);
-      }
+      const pyCheckText = await page.locator("#tab-highspy .runtime-tab-check").innerText();
+      assert(pyCheckText.includes("✓"), `${id}: expected highspy tab checkmark after Python AC`);
 
       console.log(`  [PASS] Problem ${id}: WaSHI AC + Pyodide highspy AC verified.`);
     }
@@ -251,10 +291,6 @@ async function run() {
     assert(
       (await page.locator("#main-progress-text").textContent())?.includes("10 / 100"),
       "Expected 10 / 100 after solving #001-#010"
-    );
-    assert(
-      (await page.locator("#runtime-progress-text").textContent())?.includes("20 / 200"),
-      "Expected 20 / 200 runtime passes after dual-runtime completion on #001-#010"
     );
     await page.reload({ waitUntil: "networkidle" });
     assert(
@@ -283,31 +319,30 @@ async function run() {
       "Import JSON failed to restore 10 / 100"
     );
 
-    // 4b. Verify leaving a workspace while a Python run is in flight never leaks results/stars into another problem
+    // 4b. Verify leaving a workspace while a Python run is in flight never leaks results into another problem
     {
       const raceCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const racePage = await raceCtx.newPage();
-      await racePage.goto(`${baseUrl}/exercises/?id=T1&lang=en`, { waitUntil: "networkidle" });
+      await racePage.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
       await racePage.click("#tab-highspy");
       const solBtn = racePage.locator('button[data-action="solution"][data-runtime="highspy"]');
       await solBtn.click();
       await solBtn.click();
       await racePage.click('button[data-action="run"][data-runtime="highspy"]');
       await racePage.click("#back-to-map-btn");
-      await racePage.waitForSelector('a[data-nav-id="002"]');
-      await racePage.click('a[data-nav-id="002"]');
+      await racePage.waitForSelector('.toc-list a[data-nav-id="002"]');
+      await racePage.click('.toc-list a[data-nav-id="002"]');
       await racePage.waitForSelector("#ws-problem-title");
-      // Wait long enough for Pyodide T1 background run to settle in the same SPA session
       await racePage.waitForTimeout(4500);
       const p002Placeholder = await racePage.locator("#judge-results").innerText();
-      const p002Status = await racePage.locator("#ws-runtime-status").innerText();
+      const p002Status = await racePage.locator("#ws-solve-status .status-badge.is-solved").count();
       assert(
         !p002Placeholder.includes("2600") && !p002Placeholder.includes("AC —"),
-        `Stale T1 result leaked into #002 workspace: ${p002Placeholder}`
+        `Stale #001 result leaked into #002 workspace: ${p002Placeholder}`
       );
       assert(
-        !p002Status.includes("highspy ✓"),
-        `Stale T1 runtime badge leaked into #002 workspace: ${p002Status}`
+        p002Status === 0,
+        `Stale #001 solved status leaked into #002 workspace`
       );
       await raceCtx.close();
     }
@@ -391,7 +426,7 @@ async function run() {
     assert(pageErrors.length === 0, `Uncaught page errors observed: ${pageErrors.join(" | ")}`);
     assert(httpErrors.length === 0, `HTTP >=400 responses observed: ${httpErrors.join(" | ")}`);
 
-    console.log("✅ All Exercises browser checks passed cleanly (all 12 problems × WaSHI + Pyodide highspy, 3 locales, mobile audit)!");
+    console.log("All Exercises browser checks passed cleanly (all 10 problems x WaSHI + Pyodide highspy, 3 locales, mobile audit)!");
   } finally {
     await browser.close();
     server.close();

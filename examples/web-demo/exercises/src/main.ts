@@ -7,10 +7,11 @@ import { runHighspyExerciseCode, type PyodideRunPhase } from "./runner/pyodide-r
 import { runWashiExerciseCode } from "./runner/washi-runner.js";
 import {
   clearDraft,
+  countMainSolved,
   createEmptyProgress,
-  dismissTutorial,
   exportProgressJson,
   importProgressJson,
+  isProblemSolved,
   loadProgress,
   recordSolvedProblem,
   saveDraft,
@@ -18,13 +19,14 @@ import {
   type ProgressState,
 } from "./store/progress.js";
 import type { JudgeResult, Locale, ProblemDefinition, RuntimeId, VerdictStatus } from "./types.js";
+import { highlightCode, renderLineNumbers } from "./ui/code-editor.js";
 import {
   escapeHtml,
   renderBackupDialogHtml,
   renderExerciseIndexHtml,
   renderHeaderHtml,
   renderResultsHtml,
-  renderRuntimeChipsHtml,
+  renderSolvedStatusBadgeHtml,
   renderWorkspaceHtml,
   type RenderedRunReport,
 } from "./ui/components.js";
@@ -164,6 +166,20 @@ class ExercisesApp {
     this.root.addEventListener("change", (e) => this.handleChange(e));
     this.root.addEventListener("input", (e) => this.handleInput(e));
     this.root.addEventListener("keydown", (e) => this.handleKeyDown(e));
+    // Scroll events do not bubble, so capture scroll events from any textarea.code-editor
+    this.root.addEventListener(
+      "scroll",
+      (e) => {
+        const target = e.target;
+        if (target instanceof HTMLTextAreaElement && target.classList.contains("code-editor")) {
+          const runtime = target.dataset.runtime as RuntimeId | undefined;
+          if (runtime) {
+            this.syncEditorScroll(runtime);
+          }
+        }
+      },
+      true
+    );
   }
 
   private clearArmingState(): void {
@@ -240,6 +256,36 @@ class ExercisesApp {
     return runtime === "washi" ? prob.washiStarter : prob.highspyStarter;
   }
 
+  private syncEditorOverlay(runtime: RuntimeId): void {
+    const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
+    const highlightPre = this.root.querySelector<HTMLPreElement>(`#highlight-${runtime}`);
+    const gutterPre = this.root.querySelector<HTMLPreElement>(`#gutter-${runtime}`);
+    if (!editor || !highlightPre || !gutterPre) return;
+
+    const code = editor.value;
+    const lang = runtime === "washi" ? "ts" : "py";
+    const codeEl = highlightPre.querySelector("code");
+    if (codeEl) {
+      codeEl.innerHTML = highlightCode(code, lang);
+    }
+    gutterPre.textContent = renderLineNumbers(code);
+    this.syncEditorScroll(runtime);
+  }
+
+  private syncEditorScroll(runtime: RuntimeId): void {
+    const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
+    const highlightPre = this.root.querySelector<HTMLPreElement>(`#highlight-${runtime}`);
+    const gutterPre = this.root.querySelector<HTMLPreElement>(`#gutter-${runtime}`);
+    if (!editor) return;
+    if (highlightPre) {
+      highlightPre.scrollTop = editor.scrollTop;
+      highlightPre.scrollLeft = editor.scrollLeft;
+    }
+    if (gutterPre) {
+      gutterPre.scrollTop = editor.scrollTop;
+    }
+  }
+
   private switchRuntimeTab(next: RuntimeId, focusTab: boolean = false): void {
     if (this.activeRuntime === next) return;
     this.activeRuntime = next;
@@ -265,9 +311,9 @@ class ExercisesApp {
         washiPanel.setAttribute("hidden", "");
         if (focusTab) highspyTab.focus();
       }
+      this.syncEditorScroll(next);
     }
 
-    // Restore unmodified Solution button label on tab change
     const solBtns = this.root.querySelectorAll<HTMLButtonElement>('button[data-action="solution"]');
     solBtns.forEach((b) => {
       b.textContent = this.strings.editor.solutionBtn;
@@ -315,17 +361,11 @@ class ExercisesApp {
       return;
     }
 
-    if (target.closest("#dismiss-tutorial-btn")) {
-      this.progress = dismissTutorial(this.progress, true);
-      saveProgress(this.progress);
-      this.render();
-      return;
-    }
-
-    if (target.closest("#restore-tutorial-btn")) {
-      this.progress = dismissTutorial(this.progress, false);
-      saveProgress(this.progress);
-      this.render();
+    if (target.closest("#jump-to-editor-btn")) {
+      const workbench = this.root.querySelector<HTMLElement>("#answer-workbench");
+      const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${this.activeRuntime}`);
+      workbench?.scrollIntoView({ behavior: "smooth", block: "start" });
+      editor?.focus({ preventScroll: true });
       return;
     }
 
@@ -436,6 +476,7 @@ class ExercisesApp {
       const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
       if (editor) {
         editor.value = runtime === "washi" ? prob.washiStarter : prob.highspyStarter;
+        this.syncEditorOverlay(runtime);
       }
     } else if (action === "solution") {
       if (this.armedSolutionRuntime !== runtime) {
@@ -456,6 +497,7 @@ class ExercisesApp {
       const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
       if (editor) {
         editor.value = solCode;
+        this.syncEditorOverlay(runtime);
       }
       this.clearArmingState();
       actionBtn.textContent = this.strings.editor.solutionBtn;
@@ -478,6 +520,7 @@ class ExercisesApp {
     }
     if (!this.problemId) return;
     const runtime = target.dataset.runtime as RuntimeId;
+    this.syncEditorOverlay(runtime);
     this.progress = saveDraft(this.progress, this.problemId, runtime, target.value);
     saveProgress(this.progress);
   }
@@ -486,7 +529,6 @@ class ExercisesApp {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    // Roving / keyboard tablist fallback alongside focusgroup
     const tabBtn = target.closest<HTMLButtonElement>('[role="tab"]');
     if (tabBtn) {
       if (
@@ -527,8 +569,9 @@ class ExercisesApp {
         const val = target.value;
         target.value = val.slice(0, start) + "  " + val.slice(end);
         target.selectionStart = target.selectionEnd = start + 2;
+        const runtime = target.dataset.runtime as RuntimeId;
+        this.syncEditorOverlay(runtime);
         if (this.problemId) {
-          const runtime = target.dataset.runtime as RuntimeId;
           this.progress = saveDraft(this.progress, this.problemId, runtime, target.value);
           saveProgress(this.progress);
         }
@@ -746,15 +789,37 @@ class ExercisesApp {
     const solvedRuntimes = this.progress.solved[problemId]?.runtimes ?? [];
     const washiSolved = solvedRuntimes.includes("washi");
     const highspySolved = solvedRuntimes.includes("highspy");
+    const solvedAny = isProblemSolved(this.progress, problemId);
 
-    const statusContainer = this.root.querySelector("#ws-runtime-status");
+    const statusContainer = this.root.querySelector("#ws-solve-status");
     if (statusContainer) {
-      statusContainer.innerHTML = renderRuntimeChipsHtml(solvedRuntimes, "full");
+      statusContainer.innerHTML = renderSolvedStatusBadgeHtml(solvedAny, this.strings);
     }
     const washiCheck = this.root.querySelector("#tab-washi .runtime-tab-check");
     if (washiCheck) washiCheck.textContent = washiSolved ? "✓" : "";
     const highspyCheck = this.root.querySelector("#tab-highspy .runtime-tab-check");
     if (highspyCheck) highspyCheck.textContent = highspySolved ? "✓" : "";
+
+    // Also update sidebar solved marker and progress label
+    const sidebarLinks = this.root.querySelectorAll<HTMLElement>(
+      `[data-sidebar-id="${problemId}"]`
+    );
+    sidebarLinks.forEach((link) => {
+      if (solvedAny) {
+        link.classList.add("is-solved");
+        const num = link.querySelector(".book-sidebar-num");
+        if (num) num.textContent = "✓";
+      }
+    });
+    const mainSolved = countMainSolved(
+      this.progress,
+      PROBLEMS.map((p) => p.meta)
+    );
+    const label = this.strings.progressLabel(mainSolved, 100);
+    const sideProg = this.root.querySelector("#sidebar-progress-text");
+    if (sideProg) sideProg.textContent = label;
+    const mobProg = this.root.querySelector(".mobile-toc-count");
+    if (mobProg) mobProg.textContent = label;
   }
 
   private render(): void {
@@ -778,6 +843,8 @@ class ExercisesApp {
       bodyHtml = renderWorkspaceHtml({
         locale: this.locale,
         strings: this.strings,
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
         problem: prob,
         prevProblem: prevProb,
         nextProblem: nextProb,

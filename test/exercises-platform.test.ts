@@ -7,13 +7,17 @@ import {
   saveProgress,
   recordSolvedProblem,
   saveDraft,
+  isProblemSolved,
   countMainSolved,
   getSolvedRuntimeCount,
-  totalRuntimePasses,
   getNextRecommendedProblemId,
   exportProgressJson,
   importProgressJson,
 } from "../examples/web-demo/exercises/src/store/progress.js";
+import {
+  highlightCode,
+  renderLineNumbers,
+} from "../examples/web-demo/exercises/src/ui/code-editor.js";
 import {
   renderSafeMarkdown,
   parseProblemMarkdown,
@@ -832,30 +836,28 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     { id: "003", chapter: 1 },
   ];
 
-  it("excludes tutorial problems (T1, T2) from main problem count and tracks single vs dual runtime passes", () => {
+  it("marks a problem solved when passed in EITHER runtime and tracks /100 progress without /200 denominators", () => {
     let state = createEmptyProgress();
     expect(countMainSolved(state, sampleProblems)).toBe(0);
-    expect(getSolvedRuntimeCount(state, "T1")).toBe(0);
-    expect(totalRuntimePasses(state, sampleProblems)).toBe(0);
-    expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("001");
-
-    state = recordSolvedProblem(state, "T1", "washi", 12, "2026-11-19T00:00:00Z");
-    state = recordSolvedProblem(state, "T2", "highspy", 45, "2026-11-19T00:01:00Z");
-    expect(countMainSolved(state, sampleProblems)).toBe(0);
-    expect(getSolvedRuntimeCount(state, "T1")).toBe(1);
-    expect(totalRuntimePasses(state, sampleProblems)).toBe(0);
+    expect(isProblemSolved(state, "001")).toBe(false);
+    expect(getSolvedRuntimeCount(state, "001")).toBe(0);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("001");
 
     state = recordSolvedProblem(state, "001", "washi", 15, "2026-11-19T00:02:00Z");
+    expect(isProblemSolved(state, "001")).toBe(true);
     expect(countMainSolved(state, sampleProblems)).toBe(1);
     expect(getSolvedRuntimeCount(state, "001")).toBe(1);
-    expect(totalRuntimePasses(state, sampleProblems)).toBe(1);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("002");
 
-    state = recordSolvedProblem(state, "001", "highspy", 10, "2026-11-19T00:03:00Z");
-    expect(countMainSolved(state, sampleProblems)).toBe(1);
+    // Solving the second problem only in highspy also increments main count
+    state = recordSolvedProblem(state, "002", "highspy", 45, "2026-11-19T00:03:00Z");
+    expect(isProblemSolved(state, "002")).toBe(true);
+    expect(countMainSolved(state, sampleProblems)).toBe(2);
+
+    // Passing #001 in both runtimes preserves bestMs and keeps problem count at 2 (never double-counted)
+    state = recordSolvedProblem(state, "001", "highspy", 10, "2026-11-19T00:04:00Z");
+    expect(countMainSolved(state, sampleProblems)).toBe(2);
     expect(getSolvedRuntimeCount(state, "001")).toBe(2);
-    expect(totalRuntimePasses(state, sampleProblems)).toBe(2);
     expect(state.solved["001"].bestMs).toBe(10);
   });
 
@@ -941,6 +943,9 @@ $$
     expect(mathAndCurrency).toContain("katex");
     expect(mathAndCurrency).toContain("$100");
     expect(mathAndCurrency).toContain("$200");
+
+    const nestedCode = renderSafeMarkdown("Use `` expr`dot(${w}, ${x}) <= ${B}` `` here.");
+    expect(nestedCode).toContain("<code>expr`dot(${w}, ${x}) &lt;= ${B}`</code>");
   });
 
   it("parses localized problem markdown sections cleanly", () => {
@@ -975,7 +980,7 @@ Formulation body.
   });
 });
 
-describe("Exercises Platform — Educational UI Rendering", () => {
+describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () => {
   const GAMEY_UI_RE =
     /\bBoss\b|\u30dc\u30b9|\bQuest\b|\u30af\u30a8\u30b9\u30c8|\u{1f451}|\u2605|\u2606|\u9053\u5834|\u9053\u573a|\u901a\u5173|\u5173\u5361/ui;
   const CAPSTONE_LABELS = {
@@ -984,10 +989,54 @@ describe("Exercises Platform — Educational UI Rendering", () => {
     zh: "\u7ae0\u672b\u7efc\u5408",
   } as const;
 
-  it("renders the exercise index without contrived gamey copy or star markers across en/ja/zh", () => {
+  function decodeHtmlEntities(html: string): string {
+    return html
+      .replace(/<[^>]+>/g, "")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, "&");
+  }
+
+  it("highlights TypeScript & Python code while preserving character-for-character alignment and XSS escaping", () => {
+    const tsSample = [
+      '// <script>alert("xss")</script> comment with return & 42',
+      'const m = new Model("IceCream");',
+      'const cap = 120.5;',
+      'm.constraint(expr`${cap} >= 0`);',
+    ].join("\n");
+
+    const tsHtml = highlightCode(tsSample, "ts");
+    expect(tsHtml).not.toContain("<script>");
+    expect(tsHtml).toContain('class="tok-comment"');
+    expect(tsHtml).toContain('class="tok-keyword"');
+    expect(tsHtml).toContain('class="tok-string"');
+    expect(tsHtml).toContain('class="tok-number"');
+    expect(tsHtml).toContain('class="tok-lib"');
+    expect(decodeHtmlEntities(tsHtml)).toBe(tsSample);
+
+    const pySample = [
+      '# <b>comment</b> return highspy',
+      'def solve(input_data: dict) -> dict:',
+      '    h = highspy.Highs()',
+      '    msg = "const async 123"',
+      '    return {"val": 3.14}',
+    ].join("\n");
+
+    const pyHtml = highlightCode(pySample, "py");
+    expect(pyHtml).not.toContain("<b>comment</b>");
+    expect(pyHtml).toContain('class="tok-comment"');
+    expect(pyHtml).toContain('class="tok-keyword"');
+    expect(pyHtml).toContain('class="tok-lib"');
+    expect(decodeHtmlEntities(pyHtml)).toBe(pySample);
+
+    expect(renderLineNumbers("a\nb\nc")).toBe("1\n2\n3");
+  });
+
+  it("renders the book sidebar + hairline TOC index without cards, tutorials, or /200 denominators across en/ja/zh", () => {
     let state = createEmptyProgress();
     state = recordSolvedProblem(state, "001", "washi", 12, "2026-11-19T00:00:00Z");
-    state = recordSolvedProblem(state, "002", "washi", 15, "2026-11-19T00:01:00Z");
     state = recordSolvedProblem(state, "002", "highspy", 40, "2026-11-19T00:02:00Z");
 
     for (const locale of ["en", "ja", "zh"] as const) {
@@ -1000,21 +1049,24 @@ describe("Exercises Platform — Educational UI Rendering", () => {
       });
 
       expect(html, `index (${locale})`).not.toMatch(GAMEY_UI_RE);
+      expect(html).toContain('class="book-sidebar"');
+      expect(html).toContain('class="toc-list"');
+      expect(html).toContain('class="toc-row"');
+      expect(html).not.toContain('class="problem-grid"');
+      expect(html).not.toContain('class="tutorial-strip"');
+      expect(html).not.toMatch(/\/\s*200/);
       expect(html).toContain(CAPSTONE_LABELS[locale]);
       expect(html).toContain("is-capstone");
 
-      // Check runtime completion chips for #003 (unsolved), #001 (washi only), #002 (both)
-      expect(html).toMatch(/data-problem-id="003"[\s\S]*?>TS<\/span>[\s\S]*?>Py<\/span>/);
-      expect(html).toMatch(
-        /data-problem-id="001"[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ TS<\/span>[\s\S]*?class="runtime-chip"[^>]*>Py<\/span>/
-      );
-      expect(html).toMatch(
-        /data-problem-id="002"[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ TS<\/span>[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ Py<\/span>/
-      );
+      // Solved in EITHER runtime shows unified solved badge cleanly; unsolved shows unsolved badge
+      expect(html).toMatch(/data-problem-id="001"[\s\S]*?class="status-badge is-solved"/);
+      expect(html).toMatch(/data-problem-id="002"[\s\S]*?class="status-badge is-solved"/);
+      expect(html).toMatch(/data-problem-id="003"[\s\S]*?class="status-badge"/);
+      expect(html).not.toMatch(/data-problem-id="003"[\s\S]*?class="status-badge is-solved"/);
     }
   });
 
-  it("renders workspace runtime checks, difficulty labels, and AC results without stars or Quest labels", () => {
+  it("renders stacked workspace with unmistakable Answer Workbench, overlay editor, and single solved indicator", () => {
     const p010 = PROBLEMS.find((p) => p.meta.id === "010")!;
     let state = createEmptyProgress();
     state = recordSolvedProblem(state, "010", "washi", 18, "2026-11-19T00:00:00Z");
@@ -1023,6 +1075,8 @@ describe("Exercises Platform — Educational UI Rendering", () => {
       const wsHtml = renderWorkspaceHtml({
         locale,
         strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
         problem: p010,
         prevProblem: PROBLEMS.find((p) => p.meta.id === "009") ?? null,
         nextProblem: null,
@@ -1033,9 +1087,15 @@ describe("Exercises Platform — Educational UI Rendering", () => {
       });
 
       expect(wsHtml, `workspace (${locale})`).not.toMatch(GAMEY_UI_RE);
-      expect(wsHtml).toContain("4/5");
-      expect(wsHtml).toContain("WaSHI ✓");
-      expect(wsHtml).not.toContain("highspy ✓");
+      expect(wsHtml).toContain('class="book-sidebar"');
+      expect(wsHtml).toContain('id="jump-to-editor-btn"');
+      expect(wsHtml).toContain('id="answer-workbench"');
+      expect(wsHtml).toContain('class="answer-workbench-head"');
+      expect(wsHtml).toContain('class="editor-gutter"');
+      expect(wsHtml).toContain('class="editor-highlight"');
+      expect(wsHtml).toContain('id="editor-washi"');
+      expect(wsHtml).toContain(`${p010.meta.difficulty}/5`);
+      expect(wsHtml).toContain(UI_STRINGS[locale].solvedBadge);
 
       const resHtml = renderResultsHtml(locale, UI_STRINGS[locale], {
         overallStatus: "AC",

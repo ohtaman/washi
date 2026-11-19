@@ -1,0 +1,24 @@
+{
+  "title": "#008. Bipartite Transportation Planning",
+  "subtitle": "Route shipments from warehouses to stores respecting supply caps and meeting every store demand.",
+  "tags": [
+    "LP",
+    "Transportation",
+    "Supply & Demand"
+  ],
+  "caseNames": [
+    "2 warehouses to 3 stores (optimal 420)",
+    "3 warehouses to 4 regional stores (optimal 1,230)"
+  ],
+  "markdown": "# #008. Bipartite Transportation Planning\n\n<!-- section:scenario -->\nA distribution network connects $S$ warehouses ($i = 0, \\dots, S-1$) with available stock `supplies[i]` to $D$ retail stores ($j = 0, \\dots, D-1$) requiring at least `demands[j]` units.\n\nShipping 1 unit from warehouse $i$ to store $j$ costs `unitCosts[i][j]`. Choose continuous non-negative shipping flows `shipments[i][j] >= 0` to **minimize total freight cost** without exceeding any warehouse supply while satisfying every store demand.\n\n<!-- section:io -->\n- **Input (`P008Input`)**:\n  - `supplies: number[]` — available capacity at each warehouse $i$\n  - `demands: number[]` — required demand at each store $j$\n  - `unitCosts: number[][]` — shipping cost per unit from $i$ to $j$\n- **Output (`P008Output`)**:\n  - `shipments: number[][]` — $S \\times D$ matrix of non-negative shipments\n  - `totalCost: number` — minimized total freight cost\n\n<!-- section:example -->\nIn Case 1 (`supplies = [60, 80]`, `demands = [40, 50, 40]`, `unitCosts = [[4, 6, 8], [5, 3, 2]]`):\n\n- Warehouse 1 (`80` units) is cheapest for Stores 2 and 1, so it sends `40` to Store 2 (`cost 80`) and `40` to Store 1 (`cost 120`).\n- Warehouse 0 supplies all `40` to Store 0 (`cost 160`) plus the remaining `10` for Store 1 (`cost 60`), reaching minimum cost **`420`** (leaving `10` surplus stock in Warehouse 0).\n\n<!-- section:hint1 -->\nThe 2D continuous matrix `shipments[i][j] >= 0` is ready in the starter code:\n- **Supply limits** (for every warehouse $i$): `sum(shipments[i]) <= supplies[i]`\n- **Demand satisfaction** (for every store $j$): `sum(shipments.map((row) => row[j])) >= demands[j]`\n\n<!-- section:hint2 -->\nMinimize `sum_{i, j} unitCosts[i][j] * shipments[i][j]`! Notice that when all `supplies` and `demands` are integers, standard transportation LP solutions automatically land on integer vertices without needing integer variables.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\min_{x \\ge 0} \\quad & \\sum_{i=0}^{S-1} \\sum_{j=0}^{D-1} c_{i,j} x_{i,j} \\\\\n\\text{s.t.} \\quad & \\sum_{j=0}^{D-1} x_{i,j} \\le S_i && \\forall i \\in \\{0, \\dots, S-1\\} \\\\\n& \\sum_{i=0}^{S-1} x_{i,j} \\ge D_j && \\forall j \\in \\{0, \\dots, D-1\\}\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "Output must be an object { shipments, totalCost }.",
+    "m1": "shipments must be an array with {p0} warehouse rows.",
+    "m2": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m3": "Warehouse {p0} outbound shipment ({p1}) exceeds supply ({p2}).",
+    "m4": "Store {p0} inbound shipment ({p1}) is below demand ({p2}).",
+    "m5": "Reported totalCost ({p0}) does not match computed freight cost ({p1}).",
+    "m6": "Valid shipping plan, but freight cost ({p0}) exceeds minimum ({p1}).",
+    "m7": "Optimal transportation plan found (totalCost = {p0})!"
+  }
+}

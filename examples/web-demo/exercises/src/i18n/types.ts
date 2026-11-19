@@ -9,12 +9,13 @@ export interface ExercisesUiStrings {
   backToMap: string;
   startFirstBtn: string;
   resumeBtn: (id: string) => string;
-  tutorialBannerTitle: string;
-  tutorialBannerDesc: string;
-  tutorialDismissBtn: string;
-  tutorialRestoreBtn: string;
   progressLabel: (solved: number, total: number) => string;
-  runtimeProgressLabel: (solved: number, total: number) => string;
+  solvedBadge: string;
+  unsolvedBadge: string;
+  sidebarTocLabel: string;
+  overviewLink: string;
+  mobileTocToggle: string;
+  provenanceFootnote: string;
   difficultyLabel: (level: number) => string;
   estimatedMinutesLabel: (mins: number) => string;
   comingSoonBadge: string;
@@ -25,6 +26,9 @@ export interface ExercisesUiStrings {
     solverVerified: string;
     reviewedBy: (handles: string[]) => string;
     feedbackHint: string;
+  };
+  workspace: {
+    jumpToEditorBtn: string;
   };
   tabs: {
     washi: string;
@@ -42,6 +46,8 @@ export interface ExercisesUiStrings {
     formulation: string;
   };
   editor: {
+    workbenchTitle: string;
+    eitherRuntimeHint: string;
     label: string;
     runBtn: string;
     runningBtn: string;

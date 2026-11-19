@@ -10,8 +10,6 @@ const GAMEY_COPY_RE =
   /\bBoss\b|\u30dc\u30b9|\u{1f451}|\u30af\u30a8\u30b9\u30c8|\u6483\u7834|\u901a\u5173|\u5173\u5361|\u9053\u5834|\u9053\u573a|\u6311\u6226/ui;
 
 const EXPECTED_IDS = [
-  "T1",
-  "T2",
   "001",
   "002",
   "003",
@@ -88,8 +86,8 @@ print(json.dumps(results))
   return JSON.parse(proc.stdout);
 }
 
-describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () => {
-  it("registers all 10 chapters in the roadmap and all 12 Phase 1 problems with complete metadata", () => {
+describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
+  it("registers all 10 chapters in the roadmap and all 10 Chapter 1 problems with complete metadata", () => {
     expect(CHAPTERS.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     for (const ch of CHAPTERS) {
       expect(ch.title.en.trim().length).toBeGreaterThan(0);
@@ -103,9 +101,16 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
     expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
 
     for (const prob of PROBLEMS) {
-      expect(["tutorial", "intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
+      expect(prob.meta.chapter).toBe(1);
+      expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
       expect(prob.washiStarter).not.toContain("ReducedCostBoss");
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
+      expect(prob.washiStarter).toContain("import ");
+      expect(prob.washiStarter).toContain("new Model(");
+      expect(prob.washiStarter).toContain("solve(");
+      expect(prob.highspyStarter).toContain("import highspy");
+      expect(prob.highspyStarter).toContain("highspy.Highs()");
+      expect(prob.highspyStarter).toContain("def solve(");
       expect(prob.meta.runtimes).toEqual(["washi", "highspy"]);
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
@@ -175,34 +180,26 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
       expect(badVerdict.ok, `${prob.meta.id} accepted empty output`).toBe(false);
       expect(badVerdict.status).toBe("VIOLATION");
 
-      // #010 must enforce dual feasibility A^T y >= c across all base + candidate columns
+      // #010 (Production line activation) must reject exceeding capacity when line is closed
       if (prob.meta.id === "010") {
-        const invalidDualOutput = {
-          baseQuantities: [40, 20],
-          candidateQuantities: [0, 0],
-          optimalProfit: 2800,
-          shadowPrices: [28, 0, 0],
-          candidateReducedCosts: [-36, -11],
-          minMarginIncreaseNeeded: [36, 11],
+        const closedLineLeak = {
+          open: [0, 0, 0],
+          quantities: [10, 10, 10],
+          netProfit: 1050,
         };
-        const dualVerdict = prob.judge(
-          prob.cases[0].input,
-          invalidDualOutput,
-          prob.cases[0].expectedOptimal,
-          "en"
-        );
-        expect(dualVerdict.ok).toBe(false);
-        expect(dualVerdict.status).toBe("VIOLATION");
+        const v10 = prob.judge(prob.cases[0].input, closedLineLeak, prob.cases[0].expectedOptimal, "en");
+        expect(v10.ok).toBe(false);
+        expect(v10.status).toBe("VIOLATION");
       }
 
-      // Starter verification: T1 must intentionally return SUBOPTIMAL, T2 VIOLATION, main problems non-AC error
+      // Starter verification: #001 -> SUBOPTIMAL, #002 & #003 -> VIOLATION, #004-#010 -> unimplemented / non-AC
       const starterRun = await runWashiExerciseCode(prob.washiStarter, [structuredClone(prob.cases[0].input)]);
-      if (prob.meta.id === "T1") {
+      if (prob.meta.id === "001") {
         expect(starterRun.ok).toBe(true);
         const v = prob.judge(prob.cases[0].input, starterRun.outputs[0], prob.cases[0].expectedOptimal, "en");
         expect(v.status).toBe("SUBOPTIMAL");
         expect(v.ok).toBe(false);
-      } else if (prob.meta.id === "T2") {
+      } else if (prob.meta.id === "002" || prob.meta.id === "003") {
         expect(starterRun.ok).toBe(true);
         const v = prob.judge(prob.cases[0].input, starterRun.outputs[0], prob.cases[0].expectedOptimal, "en");
         expect(v.status).toBe("VIOLATION");
@@ -239,27 +236,34 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
       }
     }
 
-    // Verify tutorial highspy starters reproduce the exact intentional SUBOPTIMAL (T1) and VIOLATION (T2) states
+    // Verify #001-#003 highspy starters reproduce intentional SUBOPTIMAL (#001) and VIOLATION (#002, #003) states
     const starterBatch = runHighspyBatch(
-      PROBLEMS.slice(0, 2).map((p) => ({
+      PROBLEMS.slice(0, 3).map((p) => ({
         id: p.meta.id,
         code: p.highspyStarter,
         inputs: [p.cases[0].input],
       }))
     );
-    const t1StarterV = PROBLEMS[0].judge(
+    const p1StarterV = PROBLEMS[0].judge(
       PROBLEMS[0].cases[0].input,
-      starterBatch["T1"].outputs![0],
+      starterBatch["001"].outputs![0],
       PROBLEMS[0].cases[0].expectedOptimal,
       "en"
     );
-    expect(t1StarterV.status).toBe("SUBOPTIMAL");
-    const t2StarterV = PROBLEMS[1].judge(
+    expect(p1StarterV.status).toBe("SUBOPTIMAL");
+    const p2StarterV = PROBLEMS[1].judge(
       PROBLEMS[1].cases[0].input,
-      starterBatch["T2"].outputs![0],
+      starterBatch["002"].outputs![0],
       PROBLEMS[1].cases[0].expectedOptimal,
       "en"
     );
-    expect(t2StarterV.status).toBe("VIOLATION");
+    expect(p2StarterV.status).toBe("VIOLATION");
+    const p3StarterV = PROBLEMS[2].judge(
+      PROBLEMS[2].cases[0].input,
+      starterBatch["003"].outputs![0],
+      PROBLEMS[2].cases[0].expectedOptimal,
+      "en"
+    );
+    expect(p3StarterV.status).toBe("VIOLATION");
   }, 60_000);
 });

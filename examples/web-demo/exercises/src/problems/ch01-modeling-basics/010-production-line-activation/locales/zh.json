@@ -1,0 +1,25 @@
+{
+  "title": "#010. 产线启停与混合生产计划",
+  "subtitle": "第一章综合题：用“产能关联约束”将 0-1 产线开机决策与连续产量决策融合为混合整数规划（MIP）。",
+  "tags": [
+    "MIP",
+    "混合整数规划",
+    "固定成本与关联约束",
+    "第一章综合"
+  ],
+  "caseNames": [
+    "3 条产线启停与产量配置（净利润 1,525）",
+    "4 条产线工厂扩产排程（净利润 2,110）"
+  ],
+  "markdown": "# #010. 产线启停与混合生产计划\n\n<!-- section:scenario -->\n某工厂共有 $n$ 条候选产线 $i \\in \\{0, \\dots, n-1\\}$。开启产线 $i$（`open[i] = 1`）需要支付固定开机成本 `fixedCosts[i]`，并获得最高 `capacities[i]` 的连续产能（`quantities[i] >= 0`）；若产线保持关闭（`open[i] = 0`），其产量必须为 `0`。\n\n在产线 $i$ 上每生产 1 单位产品可赚取边际利润 `margins[i]`，并消耗 `materialUsages[i]` 单位共享原材料（总供应量 `materialCap`）。请统筹决定产线启停与产量，**最大化扣除固定开机成本后的净利润**。\n\n<!-- section:io -->\n- **输入 (`P010Input`)**：`margins: number[]`, `fixedCosts: number[]`, `capacities: number[]`, `materialUsages: number[]`, `materialCap: number`\n- **输出 (`P010Output`)**：`{ open: number[], quantities: number[], netProfit: number }`\n\n<!-- section:example -->\n观察算例 1（`margins = [50, 40, 35]`，`fixedCosts = [600, 300, 250]`，`capacities = [30, 40, 25]`，`materialUsages = [2, 1.5, 1]`，`materialCap = 70`）：\n\n- 产线 0 虽然单位毛利高达 `50`，但单位材料产出比仅 `25`，且固定开机费高达 `600`。\n- 保持产线 0 **关闭**（`open = [0, 1, 1]`），并在产线 1、2 分别生产 `quantities = [0, 30, 25]`，可取得最大净利润 `(40*30 - 300) + (35*25 - 250) =` **`1,525`**！\n\n<!-- section:hint1 -->\n初始代码中已声明二进制数组 `open` 与连续数组 `quantities`。请对每条产线 $i$ 添加线性产能关联约束：\n$$\\text{quantities}[i] \\le \\text{capacities}[i] \\cdot \\text{open}[i]$$\n当 `open[i] = 0` 时右端变为 `0`，从而强制关闭产线零产出。\n\n<!-- section:hint2 -->\n别忘了添加共享原材料总约束 `dot(input.materialUsages, quantities) <= input.materialCap`，并最大化净利润 `dot(input.margins, quantities) - dot(input.fixedCosts, open)`。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{i=0}^{n-1} m_i q_i - \\sum_{i=0}^{n-1} F_i y_i \\\\\n\\text{s.t.} \\quad & 0 \\le q_i \\le C_i y_i && \\forall i \\in \\{0, \\dots, n-1\\} \\\\\n& \\sum_{i=0}^{n-1} a_i q_i \\le M_{\\text{cap}} \\\\\n& y_i \\in \\{0, 1\\} && \\forall i\n\\end{aligned}\n$$\n\n这种“连续流量 $\\le$ 产能 $\\times$ 0-1开关”的混合建模模式，把第一章学到的连续 LP 与 0-1 决策结合到了一起，也为第 2 章的 Big-M 与固定费用网络选址打下基础。\n",
+  "judge": {
+    "m0": "返回值必须是包含 { open, quantities, netProfit } 的对象。",
+    "m1": "open[{p0}] 必须是二进制 0 或 1（实际为 {p1}）。",
+    "m2": "quantities[{p0}] 不能为负数（实际为 {p1}）。",
+    "m3": "产线 {p0} 的产量 ({p1}) 超过开关状态 open[{p0}]={p3} 对应的上限 ({p2})，请检查开关与产能的关联约束。",
+    "m4": "原材料总消耗 ({p0}) 超过可用上限 ({p1})。",
+    "m5": "返回的 netProfit ({p0}) 与实际净收益 ({p1}) 不一致。",
+    "m6": "满足全部产线与原料限制，但净利润 ({p0}) 低于最优值 ({p1})。",
+    "m7": "正确！已找到最优产线启停与产量组合（净利润 = {p0}）。"
+  }
+}

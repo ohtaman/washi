@@ -1,0 +1,27 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "supplies": [60, 80],
+      "demands": [40, 50, 40],
+      "unitCosts": [
+        [4, 6, 8],
+        [5, 3, 2]
+      ]
+    },
+    "expectedOptimal": 420
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "supplies": [50, 70, 60],
+      "demands": [30, 45, 35, 50],
+      "unitCosts": [
+        [8, 6, 10, 9],
+        [9, 12, 13, 7],
+        [14, 9, 16, 5]
+      ]
+    },
+    "expectedOptimal": 1230
+  }
+]

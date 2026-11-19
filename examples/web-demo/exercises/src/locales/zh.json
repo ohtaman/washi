@@ -1,25 +1,26 @@
 {
   "ui": {
     "brandTitle": "数理优化百题训练",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 浏览器交互式习题集 (WaSHI & highspy)",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习册 (WaSHI & highspy)",
     "navDocs": "文档",
     "navShowcase": "案例展示",
     "navPlayground": "Playground",
     "backToMap": "← 返回题目列表",
     "startFirstBtn": "从 #001 开始 →",
     "resumeBtn": "继续练习 (#{id}) →",
-    "tutorialBannerTitle": "初次使用？可以先体验 3 分钟引导教程（T1–T2 · 可跳过）",
-    "tutorialBannerDesc": "通过 2 道微型练习熟悉自动判题反馈与变量/约束 API。教程不计入 0/100 完成统计，有经验者可直接跳过。",
-    "tutorialDismissBtn": "跳过教程",
-    "tutorialRestoreBtn": "显示教程 (T1–T2)",
     "progressLabel": "{solved} / {total} 已完成",
-    "runtimeProgressLabel": "双运行时通过: {solved} / {total}",
+    "solvedBadge": "✓ 已解决",
+    "unsolvedBadge": "未解决",
+    "sidebarTocLabel": "练习册目录",
+    "overviewLink": "练习册概览",
+    "mobileTocToggle": "展开习题目录与进度",
+    "provenanceFootnote": "第 1 章习题均为 AI-Drafted，并经 WaSHI 与 highspy 双求解器自动交叉验证（Solver-Verified）。",
     "difficultyLabel": "难度 {level}/5",
     "estimatedMinutesLabel": "约 {mins} 分钟",
     "comingSoonBadge": "即将上线",
     "chapterPrefix": "第 {n} 章",
     "roleLabels": {
-      "tutorial": "引导教程",
+      "tutorial": "入门",
       "intro": "入门",
       "core": "核心",
       "applied": "进阶",
@@ -30,6 +31,9 @@
       "solverVerified": "Solver-Verified (双求解器交叉验证)",
       "reviewedBy": "Reviewed by {handles}",
       "feedbackHint": "已通过 WaSHI 与 highspy 自动交叉验算（待人工审阅）。"
+    },
+    "workspace": {
+      "jumpToEditorBtn": "跳转到答题区 ↓"
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
@@ -43,11 +47,13 @@
       "example": "示例说明",
       "hintsTitle": "分步提示与数学建模解析",
       "hint1": "提示 1：决策变量与约束结构",
-      "hint2": "提示 2：初学者常见陷阱",
+      "hint2": "提示 2：常见初学者陷阱",
       "formulation": "标准数学模型与要点（建议解题后查看）"
     },
     "editor": {
-      "label": "编写 solve() 实现",
+      "workbenchTitle": "答题区（编辑代码并运行判题）",
+      "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 Python (highspy) 任意一种运行时中通过即可完成本题。",
+      "label": "请完善下方的 solve() 函数",
       "runBtn": "运行并判题",
       "runningBtn": "运行中…",
       "loadingPyodide": "正在加载 Pyodide v0.29 WebAssembly…",
@@ -60,7 +66,7 @@
     },
     "results": {
       "title": "判题结果",
-      "placeholder": "在上方编辑 solve() 后点击「运行并判题」，系统将自动校验所有测试用例。",
+      "placeholder": "在上方答题区补全 solve() 后点击「运行并判题」，系统将自动校验所有测试用例。",
       "verdicts": {
         "AC": "AC — 最优解",
         "SUBOPTIMAL": "SUBOPTIMAL — 可行但非最优",
@@ -105,44 +111,44 @@
   },
   "chapters": {
     "1": {
-      "title": "连续优化 (LP / 凸QP) 与对偶灵敏度分析",
-      "description": "掌握文字到线性规划的建模翻译，学习比率、极小化极大、目标压力、凸二次规划与对偶影子价格及检验数。"
+      "title": "建模基础——决策变量、约束条件与目标函数",
+      "description": "从一行改错的即时运行开始，循序渐进掌握线性不等式、整数与 0-1 变量、二维分配矩阵、多周期库存平衡以及开关关联混合整数建模。"
     },
     "2": {
+      "title": "线性化技巧、凸QP 与对偶灵敏度分析",
+      "description": "掌握 Charnes-Cooper 分式线性化、极小化极大、松弛罚项、鲁棒 L1/Linf 拟合、凸二次规划组合与影子价格/检验数。"
+    },
+    "3": {
       "title": "混合整数规划 (MIP) 建模惯用模式",
       "description": "固定成本与半连续变量、指示变量逻辑链、SOS2 分段线性近似、McCormick 松弛与模式枚举。"
     },
-    "3": {
+    "4": {
       "title": "命题逻辑与 SMT 建模",
       "description": "唯一性证明、反证推理、策略验证、极小冲突核 (Unsat Core) 与 MaxSAT 修复。"
     },
-    "4": {
+    "5": {
       "title": "约束规划 (CP / LCG) 与全局约束",
       "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束与多范式对比。"
     },
-    "5": {
+    "6": {
       "title": "网络流、全幺模性、连通性与车辆路径规划 (VRP)",
       "description": "利用全幺模性加速求解、最大流最小割、基于流的图连通性、带时间窗车辆路径规划与区域划分。"
     },
-    "6": {
+    "7": {
       "title": "生产计划、库存控制、供应链与能源调度",
       "description": "强松弛批量计划、多层 BOM/MRP、选址分配、机组组合与储能套利调度。"
     },
-    "7": {
+    "8": {
       "title": "车间调度、人员排班、课表编排与收益管理",
       "description": "车间调度对比、RCPSP、轮班窗口约束、排课系统与舱位收益管理。"
     },
-    "8": {
-      "title": "需求审计、模型调试与求解加速实战",
-      "description": "用历史数据识别伪硬约束、三类病态诊断、反向漏洞测试、冲突诊断与热启动调优。"
-    },
     "9": {
-      "title": "多目标权衡、公平性、重调度与不确定性优化",
-      "description": "目标规划、字典序优化、帕累托前沿、公平性度量、最小扰动重排、CVaR 与鲁棒优化。"
+      "title": "需求审计、多目标权衡与不确定性优化",
+      "description": "历史数据伪约束审计、模型诊断、目标/字典序/帕累托前沿、公平性度量、最小扰动重排、CVaR 与鲁棒优化。"
     },
     "10": {
       "title": "大规模分解算法与混合求解器架构",
-      "description": "延迟割平面、列生成法、Dantzig-Wolfe 分解、经典与逻辑 Benders 分解、拉格朗日松弛及综合毕业实战。"
+      "description": "延迟割平面、列生成法、Dantzig-Wolfe 分解、经典与逻辑 Benders 分解、拉格朗日松弛及综合实战。"
     }
   },
   "judgeHelpers": {

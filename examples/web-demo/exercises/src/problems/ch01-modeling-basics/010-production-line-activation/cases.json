@@ -1,0 +1,24 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "margins": [50, 40, 35],
+      "fixedCosts": [600, 300, 250],
+      "capacities": [30, 40, 25],
+      "materialUsages": [2, 1.5, 1],
+      "materialCap": 70
+    },
+    "expectedOptimal": 1525
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "margins": [60, 48, 42, 55],
+      "fixedCosts": [900, 450, 320, 750],
+      "capacities": [35, 30, 40, 25],
+      "materialUsages": [3, 2, 1.5, 2.5],
+      "materialCap": 110
+    },
+    "expectedOptimal": 2110
+  }
+]

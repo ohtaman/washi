@@ -1,0 +1,25 @@
+{
+  "id": "001",
+  "slug": "bakery-first-run",
+  "chapter": 1,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fix-one-line",
+  "difficulty": 1,
+  "estimatedMinutes": 2,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

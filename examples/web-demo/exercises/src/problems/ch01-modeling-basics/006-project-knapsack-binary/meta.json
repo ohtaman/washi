@@ -1,0 +1,27 @@
+{
+  "id": "006",
+  "slug": "project-knapsack-binary",
+  "chapter": 1,
+  "order": 6,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 1,
+  "estimatedMinutes": 8,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

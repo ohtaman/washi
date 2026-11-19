@@ -1,0 +1,22 @@
+{
+  "title": "#006. 0-1 项目立项选择（二进制变量）",
+  "subtitle": "使用 0-1 二进制决策变量建模“立项或不立项”的预算背包选优问题。",
+  "tags": [
+    "MIP",
+    "0-1变量",
+    "背包问题"
+  ],
+  "caseNames": [
+    "研发立项路线图（5 个项目，预算 15）",
+    "年度资本投资组合（6 个项目，预算 20）"
+  ],
+  "markdown": "# #006. 0-1 项目立项选择（二进制变量）\n\n<!-- section:scenario -->\n研发团队面临 $n$ 个候选项目 $i \\in \\{0, \\dots, n-1\\}$。每个项目要么全部立项（`1`），要么放弃（`0`），即 `selected[i] in {0, 1}`。立项 $i$ 会占用研发经费 `costs[i]`，并产生战略收益 `values[i]`。\n\n请在不超过总预算 `budget` 的前提下，**最大化总收益**。\n\n<!-- section:io -->\n- **输入 (`P006Input`)**：`budget: number`, `costs: number[]`, `values: number[]`\n- **输出 (`P006Output`)**：`{ selected: number[], totalValue: number }`（每个 `selected[i]` 必须为 `0` 或 `1`）\n\n<!-- section:example -->\n当 `budget = 15`，`costs = [4, 5, 7, 3, 6]`，`values = [10, 12, 16, 8, 13]` 时：\n\n- 按性价比贪心依次选 `#3 -> #0 -> #1` 只花掉 `12`（收益 `30`），剩余 `3` 预算无法容纳其余任何项目；\n- 选择 **`selected = [0, 1, 1, 1, 0]`** 恰好花满 `5 + 7 + 3 = 15`，获得最大总收益 **`36`**！\n\n<!-- section:hint1 -->\n初始代码中已声明二进制变量数组 `selected`（WaSHI 为 `m.binary(...)`，Python 为 `h.addBinary(...)`）。只需添加预算约束 `dot(costs, selected) <= budget` 并最大化 `dot(values, selected)`。\n\n<!-- section:hint2 -->\n构造返回值数组时请用 `Math.round(v.value!)`（Python 中用 `round(h.val(v))`），避免 `0.999999999` 或 `-0` 等浮点精度尾巴。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{i=0}^{n-1} v_i x_i \\\\\n\\text{s.t.} \\quad & \\sum_{i=0}^{n-1} c_i x_i \\le B \\\\\n& x_i \\in \\{0, 1\\} && \\forall i \\in \\{0, \\dots, n-1\\}\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "返回值必须是包含 { selected, totalValue } 的对象。",
+    "m1": "selected[{p0}] 必须是二进制 0 或 1（实际为 {p1}）。",
+    "m2": "立项总花费 ({p0}) 超过预算上限 ({p1})。",
+    "m3": "返回的 totalValue ({p0}) 与选中项目收益之和 ({p1}) 不一致。",
+    "m4": "满足预算约束，但总收益 ({p0}) 低于最优值 ({p1})。",
+    "m5": "正确！已找到最优 0-1 立项组合（总收益 = {p0}）。"
+  }
+}
