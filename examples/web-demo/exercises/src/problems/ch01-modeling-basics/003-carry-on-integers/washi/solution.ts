@@ -7,7 +7,12 @@ export interface P003Input {
   maxCounts: number[];
 }
 
-export async function solve(input: P003Input) {
+export interface P003Output {
+  counts: number[];
+  totalValue: number;
+}
+
+export async function solve(input: P003Input): Promise<P003Output> {
   const m = new Model("CarryOnBag");
 
   const counts = input.maxCounts.map((cap, i) =>

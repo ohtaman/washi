@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"croissants": float, "loaves": float, "totalProfit": float}."""
     h = highspy.Highs()
     h.silent()
 

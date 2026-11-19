@@ -53,7 +53,7 @@
     "editor": {
       "workbenchTitle": "解答欄（コードを書いて実行）",
       "eitherRuntimeHint": "WaSHI (TypeScript) と Python (highspy) のどちらか一方を AC にするとこの問題は完了になります。",
-      "label": "solve() 関数を完成させてください",
+      "label": "solve(input) を実装して結果を返す",
       "runBtn": "実行して採点",
       "runningBtn": "実行中…",
       "loadingPyodide": "Pyodide v0.29 WebAssembly 読込中…",
@@ -66,7 +66,7 @@
     },
     "results": {
       "title": "採点結果",
-      "placeholder": "上の解答欄で solve() を完成させて「実行して採点」を押すと、すべてのテストケースを自動検証します。",
+      "placeholder": "「実行して採点」を押すと、全テストケースの入力で solve(input) が呼び出され返り値が自動検証されます。",
       "verdicts": {
         "AC": "AC — 最適解",
         "SUBOPTIMAL": "SUBOPTIMAL — 実行可能ですが最適ではありません",

@@ -109,10 +109,16 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
       expect(prob.washiStarter).toContain("import ");
       expect(prob.washiStarter).toContain("new Model(");
-      expect(prob.washiStarter).toContain("solve(");
+      expect(prob.washiStarter).toContain(`interface P${prob.meta.id}Input`);
+      expect(prob.washiStarter).toContain(`interface P${prob.meta.id}Output`);
+      expect(prob.washiStarter).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
+      expect(prob.washiSolution).toContain(`interface P${prob.meta.id}Output`);
+      expect(prob.washiSolution).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
       expect(prob.highspyStarter).toContain("import highspy");
       expect(prob.highspyStarter).toContain("highspy.Highs()");
-      expect(prob.highspyStarter).toContain("def solve(");
+      expect(prob.highspyStarter).toContain("def solve(input_data: dict) -> dict:");
+      expect(prob.highspyStarter).toContain('"""Return {');
+      expect(prob.highspySolution).toContain('"""Return {');
       expect(prob.meta.runtimes).toEqual(["washi", "highspy"]);
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);

@@ -6,7 +6,12 @@ export interface P008Input {
   unitCosts: number[][];
 }
 
-export async function solve(input: P008Input) {
+export interface P008Output {
+  shipments: number[][];
+  totalCost: number;
+}
+
+export async function solve(input: P008Input): Promise<P008Output> {
   const nS = input.supplies.length;
   const nD = input.demands.length;
   const m = new Model("Transportation");

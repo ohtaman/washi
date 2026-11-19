@@ -53,7 +53,7 @@
     "editor": {
       "workbenchTitle": "Answer Workbench",
       "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or Python (highspy) to complete this exercise.",
-      "label": "Edit solve() below",
+      "label": "Implement solve(input) and return the output",
       "runBtn": "Run & Judge",
       "runningBtn": "Running…",
       "loadingPyodide": "Loading Pyodide v0.29 WebAssembly…",
@@ -66,7 +66,7 @@
     },
     "results": {
       "title": "Judge Verdict",
-      "placeholder": "Complete solve() above and click Run & Judge to evaluate all test cases.",
+      "placeholder": "Click Run & Judge to call your solve(input) on every test case and check its return value.",
       "verdicts": {
         "AC": "AC — Optimal",
         "SUBOPTIMAL": "SUBOPTIMAL — Feasible, not optimal",

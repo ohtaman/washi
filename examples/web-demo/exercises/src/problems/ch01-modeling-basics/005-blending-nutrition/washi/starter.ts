@@ -9,7 +9,12 @@ export interface P005Input {
   maxRatios: number[];
 }
 
-export async function solve(input: P005Input) {
+export interface P005Output {
+  amounts: number[];
+  totalCost: number;
+}
+
+export async function solve(input: P005Input): Promise<P005Output> {
   const nRaw = input.costs.length;
   const nElem = input.minRatios.length;
   const m = new Model("AlloyBlending");

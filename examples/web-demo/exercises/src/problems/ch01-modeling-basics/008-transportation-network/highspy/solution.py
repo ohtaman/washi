@@ -2,6 +2,7 @@ import highspy
 
 
 def solve(input_data: dict) -> dict:
+    """Return {"shipments": list[list[float]], "totalCost": float}."""
     supplies = input_data["supplies"]
     demands = input_data["demands"]
     unit_costs = input_data["unitCosts"]

@@ -8,7 +8,13 @@ export interface P010Input {
   materialCap: number;
 }
 
-export async function solve(input: P010Input) {
+export interface P010Output {
+  open: number[];
+  quantities: number[];
+  netProfit: number;
+}
+
+export async function solve(input: P010Input): Promise<P010Output> {
   const n = input.margins.length;
   const m = new Model("LineActivation");
 

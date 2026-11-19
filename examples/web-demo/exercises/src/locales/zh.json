@@ -53,7 +53,7 @@
     "editor": {
       "workbenchTitle": "答题区（编辑代码并运行判题）",
       "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 Python (highspy) 任意一种运行时中通过即可完成本题。",
-      "label": "请完善下方的 solve() 函数",
+      "label": "实现 solve(input) 并返回结果对象",
       "runBtn": "运行并判题",
       "runningBtn": "运行中…",
       "loadingPyodide": "正在加载 Pyodide v0.29 WebAssembly…",
@@ -66,7 +66,7 @@
     },
     "results": {
       "title": "判题结果",
-      "placeholder": "在上方答题区补全 solve() 后点击「运行并判题」，系统将自动校验所有测试用例。",
+      "placeholder": "点击「运行并判题」后，系统会对所有测试用例调用 solve(input) 并校验返回值。",
       "verdicts": {
         "AC": "AC — 最优解",
         "SUBOPTIMAL": "SUBOPTIMAL — 可行但非最优",
