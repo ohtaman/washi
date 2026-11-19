@@ -455,6 +455,67 @@ async function run() {
       await raceCtx.close();
     }
 
+    // 4b2. Verify stale #001 workspace is inert and ignores edits while delayed #002 Markdown loads
+    {
+      const delayCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const delayPage = await delayCtx.newPage();
+      delayPage.on("pageerror", (e) => pageErrors.push(`delay-nav: ${e.message}`));
+      await delayPage.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
+      await delayPage.waitForSelector("#editor-washi");
+
+      let releaseRoute;
+      let notifyIntercepted;
+      const chunkIntercepted = new Promise((resolve) => {
+        notifyIntercepted = resolve;
+      });
+      await delayPage.route(/\/assets\/en-.*\.js$/, async (route) => {
+        const url = route.request().url();
+        if (delayPage.url().includes("id=002")) {
+          notifyIntercepted?.(url);
+          await new Promise((done) => {
+            releaseRoute = done;
+          });
+        }
+        await route.continue();
+      });
+
+      await delayPage.click('.ws-subbar a[data-nav-id="002"]');
+      await chunkIntercepted;
+
+      const midFlight = await delayPage.evaluate(() => {
+        const split = document.querySelector(".ws-split");
+        const editor = document.querySelector("#editor-washi");
+        const wasInert = split?.hasAttribute("inert") ?? false;
+        const wasReadOnly = editor instanceof HTMLTextAreaElement ? editor.readOnly : false;
+        if (editor instanceof HTMLTextAreaElement) {
+          editor.value = "// STALE #001 EDIT DURING #002 LOAD";
+          editor.dispatchEvent(new Event("input", { bubbles: true }));
+          editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+        }
+        const progressRaw = window.localStorage.getItem("washi_exercises_progress_v1");
+        return { wasInert, wasReadOnly, progressRaw };
+      });
+      assert(midFlight.wasInert, "Expected stale .ws-split to have inert attribute while loading #002");
+      assert(midFlight.wasReadOnly, "Expected stale #editor-washi to be readOnly while loading #002");
+      assert(
+        !midFlight.progressRaw?.includes("STALE #001 EDIT"),
+        `Stale edit while loading #002 leaked into localStorage drafts: ${midFlight.progressRaw}`
+      );
+
+      releaseRoute?.();
+      await delayPage.waitForFunction(
+        () =>
+          document.querySelector("#ws-problem-title")?.textContent?.includes("002") &&
+          !document.querySelector(".ws-split")?.hasAttribute("inert")
+      );
+      const loaded002Code = await delayPage.locator("#editor-washi").inputValue();
+      assert(
+        !loaded002Code.includes("STALE #001 EDIT") && loaded002Code.includes("P002Input"),
+        `Expected fresh #002 starter after delayed load, got: ${loaded002Code.slice(0, 120)}`
+      );
+      await delayCtx.close();
+    }
+
     // 4c. Explicit light-mode aesthetic & de-gamification check
     {
       const lightCtx = await browser.newContext({

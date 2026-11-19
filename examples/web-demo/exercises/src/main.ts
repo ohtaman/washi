@@ -105,6 +105,7 @@ class ExercisesApp {
   private locale: Locale;
   private progress: ProgressState;
   private problemId: string | null;
+  private renderedProblemId: string | null = null;
   private activeRuntime: RuntimeId = "washi";
   private viewGeneration = 0;
   private renderSeq = 0;
@@ -330,6 +331,16 @@ class ExercisesApp {
     });
   }
 
+  private getInteractiveProblem(): ProblemDefinition | null {
+    if (!this.renderedProblemId || this.renderedProblemId !== this.problemId) {
+      return null;
+    }
+    if (this.root.querySelector(".ws-split[inert]")) {
+      return null;
+    }
+    return getProblemById(this.renderedProblemId) ?? null;
+  }
+
   private async handleClick(e: MouseEvent): Promise<void> {
     const target = e.target as HTMLElement | null;
     if (!target) return;
@@ -392,8 +403,8 @@ class ExercisesApp {
     }
 
     const actionBtn = target.closest<HTMLButtonElement>("button[data-action][data-runtime]");
-    if (!actionBtn || !this.problemId) return;
-    const prob = getProblemById(this.problemId);
+    if (!actionBtn) return;
+    const prob = this.getInteractiveProblem();
     if (!prob) return;
 
     const action = actionBtn.dataset.action;
@@ -441,10 +452,11 @@ class ExercisesApp {
     if (!(target instanceof HTMLTextAreaElement) || !target.classList.contains("code-editor")) {
       return;
     }
-    if (!this.problemId) return;
+    const prob = this.getInteractiveProblem();
+    if (!prob) return;
     const runtime = target.dataset.runtime as RuntimeId;
     this.syncEditorOverlay(runtime);
-    this.progress = saveDraft(this.progress, this.problemId, runtime, target.value);
+    this.progress = saveDraft(this.progress, prob.meta.id, runtime, target.value);
     saveProgress(this.progress);
   }
 
@@ -492,13 +504,13 @@ class ExercisesApp {
     }
 
     if (target instanceof HTMLTextAreaElement && target.classList.contains("code-editor")) {
+      const prob = this.getInteractiveProblem();
+      if (!prob) return;
+
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         const runtime = target.dataset.runtime as RuntimeId;
-        const prob = this.problemId ? getProblemById(this.problemId) : undefined;
-        if (prob) {
-          void this.runProblem(prob, runtime);
-        }
+        void this.runProblem(prob, runtime);
         return;
       }
 
@@ -511,10 +523,8 @@ class ExercisesApp {
         target.selectionStart = target.selectionEnd = start + 2;
         const runtime = target.dataset.runtime as RuntimeId;
         this.syncEditorOverlay(runtime);
-        if (this.problemId) {
-          this.progress = saveDraft(this.progress, this.problemId, runtime, target.value);
-          saveProgress(this.progress);
-        }
+        this.progress = saveDraft(this.progress, prob.meta.id, runtime, target.value);
+        saveProgress(this.progress);
       }
     }
   }
@@ -792,15 +802,28 @@ class ExercisesApp {
     const headerHtml = renderHeaderHtml(locale, strings, themeLabel, themeIcon);
     let bodyHtml = "";
 
+    let nextRenderedProblemId: string | null = null;
+
     if (problemId) {
       const idx = PROBLEMS.findIndex((p) => p.meta.id === problemId);
       const prob = idx >= 0 ? PROBLEMS[idx] : PROBLEMS[0];
+      nextRenderedProblemId = prob.meta.id;
       const prevProb = idx > 0 ? PROBLEMS[idx - 1] : null;
       const nextProb = idx >= 0 && idx + 1 < PROBLEMS.length ? PROBLEMS[idx + 1] : null;
       const cacheKey = `${prob.meta.id}:${locale}`;
       let problemMarkdown = this.markdownCache.get(cacheKey);
 
       if (problemMarkdown === undefined) {
+        // Disable stale workspace controls while loading the next statement so edits/actions
+        // cannot be applied to the newly selected route before its DOM renders.
+        const staleSplit = this.root.querySelector<HTMLElement>(".ws-split");
+        if (staleSplit) {
+          staleSplit.setAttribute("inert", "");
+          staleSplit.setAttribute("aria-busy", "true");
+        }
+        this.root.querySelectorAll<HTMLTextAreaElement>("textarea.code-editor").forEach((ta) => {
+          ta.readOnly = true;
+        });
         try {
           problemMarkdown = await prob.loadMarkdown(locale);
           if (seq !== this.renderSeq) return;
@@ -842,6 +865,7 @@ class ExercisesApp {
 
     if (seq !== this.renderSeq) return;
     this.root.innerHTML = `${headerHtml}${bodyHtml}`;
+    this.renderedProblemId = nextRenderedProblemId;
 
     if (problemId && this.lastReport) {
       const resultsEl = this.root.querySelector<HTMLElement>("#judge-results");

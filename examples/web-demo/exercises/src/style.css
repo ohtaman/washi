@@ -841,6 +841,12 @@ button {
   overflow: hidden;
 }
 
+.ws-split[inert] {
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
 .ws-pane-problem {
   min-width: 0;
   min-height: 0;
