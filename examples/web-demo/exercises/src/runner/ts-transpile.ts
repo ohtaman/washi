@@ -68,6 +68,7 @@ function splitProtectedRegions(src: string): CodeChunk[] {
   let i = 0;
   let codeStart = 0;
   let regexAllowed = true;
+  let prevWasDot = false;
 
   const pushCode = (end: number) => {
     if (end > codeStart) {
@@ -111,6 +112,7 @@ function splitProtectedRegions(src: string): CodeChunk[] {
         i = regexEnd;
         codeStart = i;
         regexAllowed = false;
+        prevWasDot = false;
         continue;
       }
     }
@@ -135,6 +137,7 @@ function splitProtectedRegions(src: string): CodeChunk[] {
       chunks.push({ kind: "verbatim", text: src.slice(start, i) });
       codeStart = i;
       regexAllowed = false;
+      prevWasDot = false;
       continue;
     }
 
@@ -221,39 +224,49 @@ function splitProtectedRegions(src: string): CodeChunk[] {
       }
       codeStart = i;
       regexAllowed = false;
+      prevWasDot = false;
       continue;
     }
 
-    // Track token state for regex vs division disambiguation
+    // Track token state for regex vs division disambiguation (treat `.keyword` as property access, not prefix keyword)
     if (isIdentStart(ch)) {
       const start = i;
       while (i < src.length && isIdentChar(src[i])) i++;
       const word = src.slice(start, i);
-      regexAllowed = REGEX_PREFIX_KEYWORDS.has(word);
+      regexAllowed = !prevWasDot && REGEX_PREFIX_KEYWORDS.has(word);
+      prevWasDot = false;
       continue;
     }
 
     if (/[0-9]/.test(ch)) {
       while (i < src.length && /[0-9._a-fA-FxXoObBn]/.test(src[i])) i++;
       regexAllowed = false;
+      prevWasDot = false;
       continue;
     }
 
     if (ch === "+" && next === "+") {
       i += 2;
       regexAllowed = false;
+      prevWasDot = false;
       continue;
     }
     if (ch === "-" && next === "-") {
       i += 2;
       regexAllowed = false;
+      prevWasDot = false;
       continue;
     }
 
-    if (ch === ")" || ch === "]") {
+    if (ch === "." && src[i - 1] !== "." && next !== ".") {
+      prevWasDot = true;
+      regexAllowed = true;
+    } else if (ch === ")" || ch === "]") {
       regexAllowed = false;
+      prevWasDot = false;
     } else if (!/\s/.test(ch)) {
       regexAllowed = true;
+      prevWasDot = false;
     }
 
     i++;
@@ -377,6 +390,14 @@ function readPrevWord(text: string): string {
   let start = end;
   while (start > 0 && isIdentChar(trimmed[start - 1])) start--;
   return trimmed.slice(start, end);
+}
+
+function isPropertyAccessWord(text: string, word: string): boolean {
+  if (!word) return false;
+  const trimmed = text.trimEnd();
+  if (!trimmed.endsWith(word)) return false;
+  const beforeWord = trimmed.slice(0, trimmed.length - word.length).trimEnd();
+  return beforeWord.endsWith(".") && !beforeWord.endsWith("..");
 }
 
 function scanGenericArgListEnd(s: string, start: number, prevChar: string): number {
@@ -855,8 +876,13 @@ function continuesExpressionAcrossNewline(s: string, nlIdx: number, exprStart: n
     if ("=?.:+-*/%&|^!~<>".includes(prevCh)) return true;
   }
 
-  const prevWord = readPrevWord(s.slice(exprStart, back + 1));
-  if (prevWord && TRAILING_CONTINUATION_WORDS.has(prevWord)) {
+  const beforeNl = s.slice(exprStart, back + 1);
+  const prevWord = readPrevWord(beforeNl);
+  if (
+    prevWord &&
+    TRAILING_CONTINUATION_WORDS.has(prevWord) &&
+    !isPropertyAccessWord(beforeNl, prevWord)
+  ) {
     return true;
   }
 
@@ -950,11 +976,15 @@ function stripVariableTypeAnnotations(s: string): string {
     const declMatch = /^(?:const|let|var)\b/.exec(s.slice(i));
     const prevCh = i > 0 ? s[i - 1] : " ";
     const prevTrim = out.trimEnd();
+    const isAsConstFollow =
+      readPrevWord(prevTrim) === "as" &&
+      !isPropertyAccessWord(prevTrim, "as") &&
+      !out.slice(prevTrim.length).includes("\n");
     if (
       declMatch &&
       !isIdentChar(prevCh) &&
       !prevTrim.endsWith(".") &&
-      readPrevWord(out) !== "as"
+      !isAsConstFollow
     ) {
       const afterKw = skipWs(s, i + declMatch[0].length);
       if (afterKw > i + declMatch[0].length && isBindingStart(s[afterKw] ?? "")) {
@@ -1066,7 +1096,8 @@ function isGenericArrowPrefixContext(out: string): boolean {
   const trimmed = out.trimEnd();
   if (!trimmed) return true;
   if ("=(,:?[{;>".includes(trimmed[trimmed.length - 1])) return true;
-  const prevWord = readPrevWord(out);
+  const prevWord = readPrevWord(trimmed);
+  if (!prevWord || isPropertyAccessWord(trimmed, prevWord)) return false;
   return prevWord === "async" || REGEX_PREFIX_KEYWORDS.has(prevWord);
 }
 
@@ -1185,8 +1216,13 @@ function stripParameterAndReturnTypes(s: string): string {
 
     // Arrow functions `(a: T, b: U): R =>` (preserve `expr as/satisfies (x: T) => U` for Pass 6)
     if (s[i] === "(") {
-      const prevWord = readPrevWord(out);
-      if (prevWord !== "as" && prevWord !== "satisfies") {
+      const prevTrim = out.trimEnd();
+      const prevWord = readPrevWord(prevTrim);
+      const isAssertCast =
+        (prevWord === "as" || prevWord === "satisfies") &&
+        !isPropertyAccessWord(prevTrim, prevWord) &&
+        !out.slice(prevTrim.length).includes("\n");
+      if (!isAssertCast) {
         const arrow = matchArrowHeader(s, i);
         if (arrow) {
           out += stripParamList(s.slice(i, arrow.closeIdx));
@@ -1301,10 +1337,6 @@ const NON_ASSERTION_OPERAND_WORDS = new Set([
   "import",
   "export",
   "default",
-  "async",
-  "static",
-  "get",
-  "set",
   "return",
   "throw",
   "case",
@@ -1318,7 +1350,6 @@ const NON_ASSERTION_OPERAND_WORDS = new Set([
   "new",
   "else",
   "do",
-  "of",
   "if",
   "while",
   "for",
@@ -1382,7 +1413,20 @@ function canPrecedeTypeAssertion(out: string): boolean {
   if (out.slice(prevTrim.length).includes("\n")) return false;
   const prevC = prevTrim[prevTrim.length - 1];
   if (prevC === "}") return isObjectLiteralBrace(prevTrim);
-  if (isIdentChar(prevC)) return !NON_ASSERTION_OPERAND_WORDS.has(readPrevWord(prevTrim));
+  if (isIdentChar(prevC)) {
+    const word = readPrevWord(prevTrim);
+    if (isPropertyAccessWord(prevTrim, word)) return true;
+    if (word === "of") {
+      const beforeOf = prevTrim.slice(0, prevTrim.length - 2).trimEnd();
+      const beforeLast = beforeOf[beforeOf.length - 1] ?? "";
+      if (beforeLast === "}" || beforeLast === "]") return false;
+      if (isIdentChar(beforeLast) && !OBJECT_LITERAL_PREFIX_WORDS.has(readPrevWord(beforeOf))) {
+        return false;
+      }
+      return true;
+    }
+    return !NON_ASSERTION_OPERAND_WORDS.has(word);
+  }
   return prevC === ")" || prevC === "]" || prevC === "\uE001";
 }
 
@@ -1429,10 +1473,10 @@ function stripGenericsAsAndNonNull(s: string): string {
     // 3. Non-null assertions `expr!` without touching `!=`, `!==`, or prefix `!` after keywords (`return!flag`)
     if (s[i] === "!" && s[i + 1] !== "=") {
       const prevC = out[out.length - 1] ?? "";
-      if (
-        (isIdentChar(prevC) || prevC === ")" || prevC === "]") &&
-        !REGEX_PREFIX_KEYWORDS.has(readPrevWord(out))
-      ) {
+      const prevWord = readPrevWord(out);
+      const isKeywordPrefix =
+        REGEX_PREFIX_KEYWORDS.has(prevWord) && !isPropertyAccessWord(out.trimEnd(), prevWord);
+      if ((isIdentChar(prevC) || prevC === ")" || prevC === "]") && !isKeywordPrefix) {
         i++;
         continue;
       }

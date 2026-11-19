@@ -403,6 +403,50 @@ export function solve(input: number): number {
     const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
     expect(solve(10)).toBe(10 + 1 + 2 + 3 + 6 + 2);
   });
+
+  it("distinguishes contextual identifiers and property accesses from keyword tokens before assertions", () => {
+    const basic = transpileExerciseTsToJs(
+      "export function solve(input: number) { const get = input; return get as number; }",
+    );
+    const basicFn = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicFn(7)).toBe(7);
+
+    const sample = `
+function satisfies (arr: number[]) {
+  return arr.map((v: number) => v + 1);
+}
+export function solve(input: { default: number; in: number; as: number }) {
+  const get = input.default;
+  const set = input.default + 1;
+  const async = input.default + 2;
+  const of = input.default + 3;
+  const sum = (get as number) + (set satisfies number) + (async as number) + (of as number);
+  const a = input.default as number;
+  const b = input.default!;
+  const c = input.default / (2 as number) + input.in / 2;
+  const x = input.as
+  const y: number = 1;
+  const p = input.in
+  const q: number = 2;
+  let total = sum + a + b + c + x + y + p + q;
+  for (const item of satisfies ([1, 2])) {
+    total += item;
+  }
+  return total;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (inp: {
+      default: number;
+      in: number;
+      as: number;
+    }) => number;
+    // input = { default: 4, in: 6, as: 10 }:
+    // get=4, set=5, async=6, of=7 => sum = 22
+    // a=4, b=4, c=4/2 + 6/2 = 5, x=10, y=1, p=6, q=2 => 54
+    // for item of [2, 3] => +5 => 59
+    expect(solve({ default: 4, in: 6, as: 10 })).toBe(59);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {
