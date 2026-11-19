@@ -7,6 +7,7 @@ export interface PyodideExerciseRunResult {
   logs: string[];
   outputs: unknown[];
   metrics: ExerciseCaseMetrics[];
+  failedSolverStatus?: string;
   error?: string;
   wasCached: boolean;
   loadTimeMs: number;
@@ -56,6 +57,9 @@ class LazyPyodideClient {
             logs: Array.isArray(data.logs) ? (data.logs as string[]) : [],
             outputs: Array.isArray(data.outputs) ? data.outputs : [],
             metrics: Array.isArray(data.metrics) ? (data.metrics as ExerciseCaseMetrics[]) : [],
+            ...(typeof data.failedSolverStatus === "string"
+              ? { failedSolverStatus: data.failedSolverStatus }
+              : {}),
             ...(typeof data.error === "string" ? { error: data.error } : {}),
             wasCached: Boolean(data.wasCached),
             loadTimeMs: typeof data.loadTimeMs === "number" ? data.loadTimeMs : 0,

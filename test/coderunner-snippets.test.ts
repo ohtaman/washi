@@ -727,8 +727,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         actionsBlockMatch![1].matchAll(/^\s*link:\s*(.+)$/gm),
         (m) => m[1].trim()
       );
-      expect(actionTexts).toEqual([loc.gettingStartedText, loc.showcaseText]);
-      expect(actionLinks).toEqual([loc.gettingStartedLink, loc.showcaseLink]);
+      expect(actionTexts).toEqual([loc.gettingStartedText, loc.exercisesText, loc.showcaseText]);
+      expect(actionLinks).toEqual([loc.gettingStartedLink, loc.exercisesLink, loc.showcaseLink]);
 
       const showcasePath = path.resolve(process.cwd(), loc.showcaseFile);
       expect(fs.existsSync(showcasePath), `Missing ${loc.showcaseFile}`).toBe(true);

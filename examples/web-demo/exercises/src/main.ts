@@ -832,6 +832,7 @@ class ExercisesApp {
           {
             error: runRes.error,
             metrics: runRes.metrics,
+            failedSolverStatus: runRes.failedSolverStatus,
           }
         );
       }
@@ -861,6 +862,7 @@ class ExercisesApp {
     originGeneration: number,
     extra: {
       error?: string;
+      failedSolverStatus?: string;
       lpPreview?: string | null;
       metrics?: Array<{
         varCount: number;
@@ -879,11 +881,20 @@ class ExercisesApp {
 
     if (!ok) {
       const errText = extra.error || "Unknown execution error";
-      const looksInfeasible = /\b(?:Infeasible|INFEASIBLE|Unsat|UNSAT)\b/i.test(errText);
+      const mapped = extra.failedSolverStatus
+        ? applySolverStatusToVerdict(
+            { status: "RUNTIME_ERROR", ok: false, message: errText },
+            extra.failedSolverStatus,
+            this.strings.results.solverStatus
+          )
+        : null;
+      const looksInfeasible =
+        mapped?.status === "INFEASIBLE" ||
+        /\b(?:Infeasible|INFEASIBLE|Unsat|UNSAT)\b/i.test(errText);
       report = {
         overallStatus: looksInfeasible ? "INFEASIBLE" : "RUNTIME_ERROR",
         cases: [],
-        error: errText,
+        error: mapped ? mapped.message : errText,
         logs,
         lpPreview: extra.lpPreview ?? null,
         runTimeMs,

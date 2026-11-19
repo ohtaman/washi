@@ -9,6 +9,9 @@ hero:
       text: Getting Started
       link: /getting-started/
     - theme: alt
+      text: 100 Exercises
+      link: /exercises/
+    - theme: alt
       text: Showcase
       link: /showcase/
 

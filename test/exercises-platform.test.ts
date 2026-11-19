@@ -913,6 +913,43 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     expect(() => importProgressJson('{"version": 1, "solved": {"bad": {"runtimes": ["invalid"]}}}')).toThrow();
   });
 
+  it("migrates v1 progress to v2 by resetting incompatible #001/#002 entries while preserving #003+ progress", () => {
+    const map = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        map.set(k, v);
+      },
+    };
+    const v1Raw = JSON.stringify({
+      version: 1,
+      solved: {
+        "001": { runtimes: ["washi"], bestMs: 12, solvedAt: "2026-11-18T00:00:00Z" },
+        "002": { runtimes: ["highspy"], solvedAt: "2026-11-18T00:00:00Z" },
+        "003": { runtimes: ["washi"], bestMs: 18, solvedAt: "2026-11-18T00:00:00Z" },
+      },
+      drafts: {
+        "001": { washi: "// legacy 8-field bakery code" },
+        "002": { washi: "// legacy ice-cream code", highspy: "# legacy ice-cream python" },
+        "003": { washi: "// valid #003 code" },
+      },
+    });
+    map.set(PROGRESS_STORAGE_KEY, v1Raw);
+
+    const migrated = loadProgress(storage);
+    expect(migrated.version).toBe(2);
+    expect(migrated.solved["001"]).toBeUndefined();
+    expect(migrated.solved["002"]).toBeUndefined();
+    expect(migrated.solved["003"]?.runtimes).toEqual(["washi"]);
+    expect(migrated.drafts["001"]).toBeUndefined();
+    expect(migrated.drafts["002"]).toBeUndefined();
+    expect(migrated.drafts["003"]?.washi).toBe("// valid #003 code");
+
+    const persisted = JSON.parse(map.get(PROGRESS_STORAGE_KEY)!);
+    expect(persisted.version).toBe(2);
+    expect(persisted.drafts["002"]).toBeUndefined();
+  });
+
   it("handles SecurityError thrown by window.localStorage property getter without crashing", () => {
     const prevWindow = (globalThis as { window?: unknown }).window;
     const lockedWindow = {};

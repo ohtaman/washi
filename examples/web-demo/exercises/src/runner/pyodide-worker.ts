@@ -117,6 +117,7 @@ def __washi_run_batch(code_str, inputs_json):
     stdout_buf = io.StringIO()
     ns = {}
     try:
+        _washi_tracked_models.clear()
         with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stdout_buf):
             exec(compile(code_str, "solution.py", "exec"), ns)
             fn = ns.get("solve")
@@ -149,12 +150,7 @@ def __washi_run_batch(code_str, inputs_json):
                         "solveTimeMs": None,
                         "solverStatus": None,
                     }
-                try:
-                    outputs.append(__washi_to_jsonable(raw_out))
-                except ValueError as val_exc:
-                    if st_norm in ("Infeasible", "InfeasibleOrUnbounded", "Unbounded"):
-                        raise RuntimeError(f"Solver finished with status {st_norm}: {val_exc}") from val_exc
-                    raise
+                outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(metric)
         return json.dumps({
             "ok": True,
@@ -163,12 +159,22 @@ def __washi_run_batch(code_str, inputs_json):
             "logs": stdout_buf.getvalue().splitlines(),
         })
     except Exception as exc:
+        failed_status = None
+        if _washi_tracked_models:
+            try:
+                primary = _washi_tracked_models[-1]
+                st_norm = _washi_normalize_status(primary, primary.getModelStatus())
+                if st_norm in ("Infeasible", "InfeasibleOrUnbounded", "Unbounded"):
+                    failed_status = st_norm
+            except Exception:
+                failed_status = None
         return json.dumps({
             "ok": False,
             "outputs": [],
             "metrics": [],
             "logs": stdout_buf.getvalue().splitlines(),
             "error": str(exc) + "\\n" + traceback.format_exc(),
+            **({"failedSolverStatus": failed_status} if failed_status else {}),
         })
 `);
       initialized = true;
@@ -207,6 +213,7 @@ self.onmessage = async (event: MessageEvent<{ requestId: number; code: string; i
       ok: boolean;
       outputs: unknown[];
       metrics?: unknown[];
+      failedSolverStatus?: string;
       logs: string[];
       error?: string;
     };

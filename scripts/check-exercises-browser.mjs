@@ -491,11 +491,13 @@ async function run() {
       const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
       await pySolBtn.click();
       await pySolBtn.click();
-      if (id === "010") {
+      if (id === "007" || id === "010") {
         const pySol = await page.locator("#editor-highspy").inputValue();
-        await page
-          .locator("#editor-highspy")
-          .fill(pySol.replace("h.maximize(", "h.addConstr(quantities[0] >= 9999)\n    h.maximize("));
+        const poisoned =
+          id === "007"
+            ? pySol.replace("h.minimize(", "h.addConstr(x[0][0] == 1)\n    h.addConstr(x[0][0] == 0)\n    h.minimize(")
+            : pySol.replace("h.maximize(", "h.addConstr(quantities[0] >= 9999)\n    h.maximize(");
+        await page.locator("#editor-highspy").fill(poisoned);
         await page.click('button[data-action="run"][data-runtime="highspy"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-infeasible", { timeout: 120_000 });
         await page.locator("#editor-highspy").fill(pySol);
