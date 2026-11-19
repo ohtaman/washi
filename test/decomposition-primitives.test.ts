@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, minimize, maximize, HighsSolver } from "../src/index.js";
+import { Model, Constraint, expr, minimize, maximize, HighsSolver } from "../src/index.js";
 
 describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP Relaxation)", () => {
   it("extracts constraint duals after continuous LP solve", async () => {
@@ -15,8 +15,8 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(10); // x=2, y=2 -> 3*2 + 2*2 = 10
 
-    const c1 = m.getConstraintByName("capacity")!;
-    const c2 = m.getConstraintByName("x_limit")!;
+    const c1 = m.constraints.get("capacity")!;
+    const c2 = m.constraints.get("x_limit")!;
 
     // Dual values
     expect(c1.dual).not.toBeNull();
@@ -31,7 +31,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
 
     m.objective(maximize(expr`2 * ${x} + ${y}`));
     m.constraint(expr`${x} <= 10`, "limit");
-    const c = m.getConstraintByName("limit")!;
+    const c = m.constraints.get("limit") as Constraint;
 
     // Add y with coefficient 3 to the constraint
     c.addTerm(y, 3);
@@ -52,16 +52,16 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(c.lhs.terms.has(y)).toBe(false);
   });
 
-  it("injects dynamic columns via model.addColumn() with Record, Map, and Array coefficients", async () => {
+  it("injects dynamic columns via model.column() with Record, Map, and Array coefficients", async () => {
     const m = new Model("ColumnInjectionTest");
     m.constraint(expr`0 <= 10`, "res1");
     m.constraint(expr`0 <= 15`, "res2");
-    const c1 = m.getConstraintByName("res1")!;
-    const c2 = m.getConstraintByName("res2")!;
+    const c1 = m.constraints.get("res1") as Constraint;
+    const c2 = m.constraints.get("res2") as Constraint;
     m.objective(maximize(0));
 
     // Column 1: Record coefficient specification
-    const col1 = m.addColumn({
+    const col1 = m.column({
       name: "col1",
       cost: 5,
       lb: 0,
@@ -79,7 +79,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     const coeffMap = new Map();
     coeffMap.set(c1, 1);
     coeffMap.set("res2", 3);
-    const col2 = m.addColumn({
+    const col2 = m.column({
       name: "col2",
       cost: 6,
       lb: 0,
@@ -89,7 +89,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(c2.lhs.terms.get(col2)).toBe(3);
 
     // Column 3: Array of tuples
-    const col3 = m.addColumn({
+    const col3 = m.column({
       name: "col3",
       cost: 4,
       lb: 0,
@@ -139,7 +139,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
   it("throws a descriptive error when adding a column with non-existent constraint name", () => {
     const m = new Model("NonExistentConstraintTest");
     expect(() => {
-      m.addColumn({
+      m.column({
         name: "invalid_col",
         cost: 1,
         coefficients: {

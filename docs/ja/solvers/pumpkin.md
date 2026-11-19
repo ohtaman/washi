@@ -152,7 +152,7 @@ WaSHI は専用の Rust WebAssembly ラッパークレート（`wasm/pumpkin`、
 - **進捗監視と途中中断（対応済み）**:
   `solve()` 中は暫定解が見つかるたびにリアルタイムの進捗通知（`onProgress` で `elapsedTime`・`objectiveValue` を配信）を行い、`AbortSignal` による中断にも対応します。ブラウザ Web Worker 環境では実行中 Worker の即時停止とキューキャンセルが行われ、メインスレッドおよび Node.js 環境では探索フック上の協調的中断チェック（`should_abort`）が機能します。
 - **離散最適性の厳密証明**:
-  有限整数領域上の厳密 LCG ソルバーとして動作するため、LP 緩和ベースのギャップオプション（`mipGap`, `relGap`, `absGap`, `presolve`）ではなく、節学習（nogood learning）と目的境界の厳密化（`LinearSatUnsat`）によって最適性を証明します。
+  有限整数領域上の厳密 LCG ソルバーとして動作するため、LP 緩和ベースのギャップオプション（`relativeGap`, `absoluteGap`, `presolve`）ではなく、節学習（nogood learning）と目的境界の厳密化（`LinearSatUnsat`）によって最適性を証明します。
 
 ---
 

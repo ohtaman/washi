@@ -70,7 +70,7 @@ export interface Solver {
    * Main solve method for LP, MIP, QP, and SMT optimization models.
    *
    * @param modelData Typed in-memory model structure (variables, constraints, objective, sense, boolVars, logicalConstraints)
-   * @param options Runtime execution options (timeLimit, mipGap, verbose, signal, onProgress, etc.)
+   * @param options Runtime execution options (timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress, etc.)
    */
   solve(
     modelData: SolveModelData,
@@ -120,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 Custom solvers declare their supported features using `capabilities`. Before dispatching `solve()` or `check()`, `Model` validates:
 - `supportsQP === false` when the objective contains quadratic terms (`QuadExpr`),
-- when the model contains logical constraints (`m.logicalConstraints`) and the solver supports neither native logical constraints (`supportsLogicalConstraints !== true`) nor SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
+- when the model contains logical constraints (added via `m.constraint(...)`, appearing in `m.constraints` with `kind: "logical"` and passed to solvers in `modelData.logicalConstraints`) and the solver supports neither native logical constraints (`supportsLogicalConstraints !== true`) nor SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
 - `supportsWarmStart !== true` when any variable has a primal `initialValue` set.
 
 ```typescript
@@ -157,8 +157,11 @@ export interface SolverOptions {
   /** Time limit in seconds */
   timeLimit?: number;
 
-  /** Relative MIP optimality gap tolerance */
-  mipGap?: number;
+  /** Relative MIP optimality gap tolerance (e.g. 0.01 for 1%) */
+  relativeGap?: number;
+
+  /** Absolute MIP optimality gap tolerance */
+  absoluteGap?: number;
 
   /** Enable solver console logging */
   verbose?: boolean;
@@ -219,13 +222,10 @@ export interface SolverResult {
   objectiveBound?: number;
 
   /** Relative MIP optimality gap when provided by the solver */
-  relGap?: number;
-
-  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
-  mipGap?: number;
+  relativeGap?: number;
 
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| (computed automatically when both are finite) */
-  absGap?: number;
+  absoluteGap?: number;
 
   /** Variable primal values keyed by canonical variable name (non-finite values are ignored) */
   values: Record<string, number>;
@@ -321,7 +321,8 @@ export class CloudSolver implements Solver {
         body: JSON.stringify({
           lp: lpString,
           timeLimit: options.timeLimit,
-          mipGap: options.mipGap,
+          relativeGap: options.relativeGap,
+          absoluteGap: options.absoluteGap,
         }),
         signal: options.signal,
       });
@@ -519,7 +520,7 @@ describe("Custom Solver Integration", () => {
       const status = await model.solve();
       expect(status).toBe("Optimal");
       expect(x.value).toBe(2);
-      const c1 = model.getConstraintByName("budget");
+      const c1 = model.constraints.get("budget");
       expect(c1?.dual).toBe(2);
     } finally {
       fetchSpy.mockRestore();

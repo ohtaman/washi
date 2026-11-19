@@ -75,7 +75,7 @@ async function runProjectScheduling() {
 
   const status = await m.solve();
   const optMakespan = m.objectiveValue;
-  const report = m.validateSolution();
+  const report = m.verify();
   console.log(`Status: ${status} (valid: ${report.valid}), Minimum Makespan: ${optMakespan}h`);
   for (const t of tasks) {
     const s = start[t.id].value ?? 0;

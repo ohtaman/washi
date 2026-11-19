@@ -119,35 +119,35 @@ describe("README.md Code Snippets & Links Validation", () => {
       const [mQuick, mTransport, mPortfolio, mWorkshop, mStaffing] = createdModels;
       expect(mQuick.status).toBe("Optimal");
       expect(mQuick.objectiveValue).toBe(1100);
-      expect(mQuick.variables.map((v) => v.value)).toEqual([20, 10]);
-      expect(mQuick.validateSolution().valid).toBe(true);
+      expect([...mQuick.variables.values()].map((v) => v.value)).toEqual([20, 10]);
+      expect(mQuick.verify().valid).toBe(true);
 
       // 2. TransportPlanning: Tokyo -> StoreA = 100, min cost = 400
       expect(mTransport.status).toBe("Optimal");
       expect(mTransport.objectiveValue).toBeCloseTo(400, 6);
-      expect(mTransport.validateSolution().valid).toBe(true);
+      expect(mTransport.verify().valid).toBe(true);
 
       // 3. PortfolioQP: min 0.04*x^2 + 0.005*y^2 s.t. x+y=1, 0.14x+0.04y>=0.08 -> (0.4, 0.6), obj 0.0082
       expect(mPortfolio.status).toBe("Optimal");
-      expect(mPortfolio.getVarByName("tech")?.value).toBeCloseTo(0.4, 5);
-      expect(mPortfolio.getVarByName("bonds")?.value).toBeCloseTo(0.6, 5);
+      expect(mPortfolio.variables.get("tech")?.value).toBeCloseTo(0.4, 5);
+      expect(mPortfolio.variables.get("bonds")?.value).toBeCloseTo(0.6, 5);
       expect(mPortfolio.objectiveValue).toBeCloseTo(0.0082, 6);
-      expect(mPortfolio.validateSolution().valid).toBe(true);
+      expect(mPortfolio.verify().valid).toBe(true);
 
       // 4. WorkshopCP (Pumpkin): cut=0, weld=4, paint=7, makespan=9, 3 distinct benches
       expect(mWorkshop.status).toBe("Optimal");
       expect(mWorkshop.objectiveValue).toBe(9);
-      expect(mWorkshop.getVarByName("start_cut")?.value).toBe(0);
-      expect(mWorkshop.getVarByName("start_weld")?.value).toBe(4);
-      expect(mWorkshop.getVarByName("start_paint")?.value).toBe(7);
+      expect(mWorkshop.variables.get("start_cut")?.value).toBe(0);
+      expect(mWorkshop.variables.get("start_weld")?.value).toBe(4);
+      expect(mWorkshop.variables.get("start_paint")?.value).toBe(7);
       expect(
         new Set([
-          mWorkshop.getVarByName("bench_cut")?.value,
-          mWorkshop.getVarByName("bench_weld")?.value,
-          mWorkshop.getVarByName("bench_paint")?.value,
+          mWorkshop.variables.get("bench_cut")?.value,
+          mWorkshop.variables.get("bench_weld")?.value,
+          mWorkshop.variables.get("bench_paint")?.value,
         ])
       ).toEqual(new Set([1, 2, 3]));
-      expect(mWorkshop.validateSolution().valid).toBe(true);
+      expect(mWorkshop.verify().valid).toBe(true);
 
       // 5. StaffingRules: Infeasible conflict diagnosis -> Unsat, ["rush_required"]
       expect(mStaffing.status).toBe("Unsat");

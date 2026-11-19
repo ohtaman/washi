@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, minimize, maximize, solveColumnGeneration } from "../src/index.js";
+import { Model, Constraint, expr, minimize, maximize, solveColumnGeneration } from "../src/index.js";
 
 describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
   it("solves the classical Cutting Stock Problem (CSP) via dynamic pattern pricing", async () => {
@@ -28,7 +28,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
 
     // Add naive initial single-item patterns:
     // Pattern A: 2 of A (45*2 = 90 <= 100)
-    master.addColumn({
+    master.column({
       name: "init_pattern_A",
       type: "Integer",
       cost: 1,
@@ -36,7 +36,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     });
 
     // Pattern B: 2 of B (36*2 = 72 <= 100)
-    master.addColumn({
+    master.column({
       name: "init_pattern_B",
       type: "Integer",
       cost: 1,
@@ -44,7 +44,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     });
 
     // Pattern C: 6 of C (16*6 = 96 <= 100)
-    master.addColumn({
+    master.column({
       name: "init_pattern_C",
       type: "Integer",
       cost: 1,
@@ -229,7 +229,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     const master = new Model("MaxMaster");
     master.constraint(expr`0 <= 1`, "cap");
     // Initial column with cost 1, coeff 1
-    const initCol = master.addColumn({ cost: 1, type: "Continuous", coefficients: { cap: 1 } });
+    const initCol = master.column({ cost: 1, type: "Continuous", coefficients: { cap: 1 } });
     master.objective(maximize(initCol));
 
     // Pricing subproblem provides an improving column with cost 2 and coeff 1
@@ -266,14 +266,14 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
       master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
     }
 
-    const cA = master.getConstraintByName("demand_A")!;
-    const cB = master.getConstraintByName("demand_B")!;
-    const cC = master.getConstraintByName("demand_C")!;
+    const cA = master.constraints.get("demand_A") as Constraint;
+    const cB = master.constraints.get("demand_B") as Constraint;
+    const cC = master.constraints.get("demand_C") as Constraint;
 
     // Initial naive columns
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
     // Solve using pricing callback referencing constraints directly
     const result = await master.solveColumnGeneration({
@@ -313,7 +313,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
   it("throws a descriptive error when pricing callback is omitted", async () => {
     const master = new Model("MissingPricingMaster");
     master.constraint(expr`0 >= 5`, "demand");
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
 
     await expect(
       master.solveColumnGeneration({} as any)

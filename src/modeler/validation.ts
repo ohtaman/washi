@@ -1,4 +1,4 @@
-import type { Model } from "./model.js";
+import type { Model, LogicalConstraint } from "./model.js";
 import { Var } from "./variable.js";
 import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "./boolean-expr.js";
 import { Constraint } from "./constraint.js";
@@ -8,6 +8,23 @@ import { QuadExpr } from "./quad-expr.js";
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
 const topLevelConstrOwner = new WeakMap<Constraint, Model>();
+const modelMutationCallbacks = new WeakMap<object, () => void>();
+
+/**
+ * Registers an internal mutation callback for a Model instance.
+ */
+export function registerModelMutationCallback(model: object, onMutate: () => void): void {
+  modelMutationCallbacks.set(model, onMutate);
+}
+
+/**
+ * Notifies an owning model that one of its entities was mutated.
+ */
+export function notifyModelMutation(ownerModel: object | null | undefined): void {
+  if (ownerModel) {
+    modelMutationCallbacks.get(ownerModel)?.();
+  }
+}
 
 /**
  * Recursively attaches ownerModel mutation tracking to any Constraint nodes embedded in a logical expression.
@@ -450,18 +467,37 @@ export function validateLogicElement(
 }
 
 /**
+ * Internal snapshot passed to `validateModelIntegrity` so `Model` keeps backing arrays and lookup maps private.
+ */
+export interface ModelIntegritySnapshot {
+  model: Model;
+  name: string;
+  variables: readonly Var[];
+  boolVars: readonly BoolVar[];
+  constraints: readonly Constraint[];
+  logicalConstraints: readonly LogicalConstraint[];
+  objectiveExpr: LinExpr | QuadExpr;
+  getVarByName: (name: string) => Var | undefined;
+  getBoolVarByName: (name: string) => BoolVar | undefined;
+  getConstraintByName: (name: string) => Constraint | undefined;
+  getLogicalConstraintByName: (name: string) => LogicalConstraint | undefined;
+}
+
+/**
  * Validates the structural and numerical integrity of an optimization model.
  */
-export function validateModelIntegrity(model: Model): void {
+export function validateModelIntegrity(snapshot: ModelIntegritySnapshot): void {
+  const { model } = snapshot;
+
   // 1. Validate variable bounds, uniqueness, and canonical model registration
   const varNames = new Set<string>();
   const registeredVars = new Set<Var>();
-  for (const v of model.variables) {
+  for (const v of snapshot.variables) {
     validateVarBounds(v);
     const owner = varOwner.get(v);
-    if ((owner && owner !== model) || varNames.has(v.name) || model.getVarByName(v.name) !== v) {
+    if ((owner && owner !== model) || varNames.has(v.name) || snapshot.getVarByName(v.name) !== v) {
       throw new Error(
-        `Variable "${v.name}" is duplicated or not canonically registered in model "${model.name}".`
+        `Variable "${v.name}" is duplicated or not canonically registered in model "${snapshot.name}".`
       );
     }
     varNames.add(v.name);
@@ -471,10 +507,10 @@ export function validateModelIntegrity(model: Model): void {
   // 2. Validate Boolean variable uniqueness and canonical registration
   const boolVarNames = new Set<string>();
   const registeredBoolVars = new Set<BoolVar>();
-  for (const bv of model.boolVars) {
-    if (boolVarNames.has(bv.name) || model.getBoolVarByName(bv.name) !== bv) {
+  for (const bv of snapshot.boolVars) {
+    if (boolVarNames.has(bv.name) || snapshot.getBoolVarByName(bv.name) !== bv) {
       throw new Error(
-        `Boolean variable "${bv.name}" is duplicated or not canonically registered in model "${model.name}".`
+        `Boolean variable "${bv.name}" is duplicated or not canonically registered in model "${snapshot.name}".`
       );
     }
     boolVarNames.add(bv.name);
@@ -483,67 +519,67 @@ export function validateModelIntegrity(model: Model): void {
 
   // 3. Validate constraint name uniqueness across arithmetic, logical constraints, and Boolean variables
   const constraintNames = new Set<string>();
-  for (const c of model.constraints) {
+  for (const c of snapshot.constraints) {
     if (boolVarNames.has(c.name)) {
       throw new Error(
-        `Constraint name "${c.name}" conflicts with Boolean variable "${c.name}" in model "${model.name}".`
+        `Constraint name "${c.name}" conflicts with Boolean variable "${c.name}" in model "${snapshot.name}".`
       );
     }
     if (constraintNames.has(c.name)) {
       throw new Error(
-        `Duplicate constraint name "${c.name}" in model "${model.name}".`
+        `Duplicate constraint name "${c.name}" in model "${snapshot.name}".`
       );
     }
     constraintNames.add(c.name);
   }
 
-  for (const lc of model.logicalConstraints) {
+  for (const lc of snapshot.logicalConstraints) {
     if (boolVarNames.has(lc.name)) {
       throw new Error(
-        `Logical constraint name "${lc.name}" conflicts with Boolean variable "${lc.name}" in model "${model.name}".`
+        `Logical constraint name "${lc.name}" conflicts with Boolean variable "${lc.name}" in model "${snapshot.name}".`
       );
     }
     if (constraintNames.has(lc.name)) {
       throw new Error(
-        `Conflicting constraint name "${lc.name}" across arithmetic and logical constraints in model "${model.name}".`
+        `Conflicting constraint name "${lc.name}" across arithmetic and logical constraints in model "${snapshot.name}".`
       );
     }
     constraintNames.add(lc.name);
   }
 
-  for (const c of model.constraints) {
+  for (const c of snapshot.constraints) {
     const cOwner = constrOwner.get(c);
-    if ((cOwner && cOwner !== model) || model.getConstraintByName(c.name) !== c) {
+    if ((cOwner && cOwner !== model) || snapshot.getConstraintByName(c.name) !== c) {
       throw new Error(
-        `Constraint "${c.name}" is duplicated or not canonically registered in model "${model.name}".`
+        `Constraint "${c.name}" is duplicated or not canonically registered in model "${snapshot.name}".`
       );
     }
   }
 
-  for (const lc of model.logicalConstraints) {
-    if (model.getLogicalConstraintByName(lc.name) !== lc) {
+  for (const lc of snapshot.logicalConstraints) {
+    if (snapshot.getLogicalConstraintByName(lc.name) !== lc) {
       throw new Error(
-        `Logical constraint "${lc.name}" is duplicated or not canonically registered in model "${model.name}".`
+        `Logical constraint "${lc.name}" is duplicated or not canonically registered in model "${snapshot.name}".`
       );
     }
   }
 
   // 4. Model ownership & coefficients in objective
-  if (model.objectiveExpr) {
-    validateObjectiveExpr(model.objectiveExpr, model.name, (v) => registeredVars.has(v));
+  if (snapshot.objectiveExpr) {
+    validateObjectiveExpr(snapshot.objectiveExpr, snapshot.name, (v) => registeredVars.has(v));
   }
 
   // 5. Model ownership & numerical inputs in arithmetic constraints
-  for (const c of model.constraints) {
-    validateLinearConstraint(c, model.name, (v) => registeredVars.has(v));
+  for (const c of snapshot.constraints) {
+    validateLinearConstraint(c, snapshot.name, (v) => registeredVars.has(v));
   }
 
   // 6. Model ownership in logical constraints
-  for (const lc of model.logicalConstraints) {
+  for (const lc of snapshot.logicalConstraints) {
     validateLogicElement(
       lc.expr,
       lc.name,
-      model.name,
+      snapshot.name,
       (v) => registeredVars.has(v),
       (bv) => registeredBoolVars.has(bv),
       model

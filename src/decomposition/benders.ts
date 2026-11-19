@@ -5,7 +5,7 @@ import type {
   BendersSubproblemContext,
 } from "./types.js";
 import type { Model } from "../modeler/model.js";
-import type { Var } from "../modeler/variable.js";
+import { Var } from "../modeler/variable.js";
 import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
 import { LinExpr } from "../modeler/expression.js";
 import { Constraint } from "../modeler/constraint.js";
@@ -52,7 +52,8 @@ async function generateBendersCutFromSubproblem(
     let masterFixedSum = 0;
 
     for (const [v, coeff] of lhs.terms.entries()) {
-      const isMasterVar = v.ownerModel === master || master.getVarByName(v.name) !== undefined;
+      const masterCandidate = master.variables.get(v.name);
+      const isMasterVar = v.ownerModel === master || masterCandidate instanceof Var;
       if (isMasterVar) {
         masterTerms.push([v, coeff]);
         const mVal = masterValues[v.name] ?? 0;
@@ -102,8 +103,8 @@ async function generateBendersCutFromSubproblem(
   const masterCutCoeffs = new Map<Var, number>();
 
   const linkingSubConstrNames = new Set(processedLinking.map((p) => p.subConstr.name));
-  for (const c of subModel.constraints) {
-    if (linkingSubConstrNames.has(c.name)) continue;
+  for (const c of subModel.constraints.values()) {
+    if (!(c instanceof Constraint) || linkingSubConstrNames.has(c.name)) continue;
     const dual = subModel.solution?.duals[c.name] ?? c.dual ?? 0;
     if (Math.abs(dual) > 1e-12) {
       const rhsConst = c.rhs - (c.lhs.constant || 0);
@@ -196,10 +197,20 @@ export async function solveBenders(
 
   let thetaVar: Var | undefined;
   if (options.theta) {
-    thetaVar = typeof options.theta === "string" ? master.getVarByName(options.theta) : options.theta;
+    if (typeof options.theta === "string") {
+      const candidate = master.variables.get(options.theta);
+      thetaVar = candidate instanceof Var ? candidate : undefined;
+    } else {
+      thetaVar = options.theta;
+    }
   }
   if (!thetaVar) {
-    thetaVar = master.variables.find((v) => v.name === "theta" || v.name === "__benders_theta");
+    for (const v of master.variables.values()) {
+      if (v instanceof Var && (v.name === "theta" || v.name === "__benders_theta")) {
+        thetaVar = v;
+        break;
+      }
+    }
   }
 
   let cutsAdded = 0;
@@ -233,8 +244,8 @@ export async function solveBenders(
 
     // Extract master variable values
     const masterValues: Record<string, number> = {};
-    for (const v of master.variables) {
-      if (v.value !== null) {
+    for (const v of master.variables.values()) {
+      if (v instanceof Var && v.value !== null) {
         masterValues[v.name] = v.value;
       }
     }
@@ -269,9 +280,9 @@ export async function solveBenders(
         if (!thetaVar) {
           thetaVar = master.continuous("__benders_theta", { lb: 0 });
           if (isMinimize) {
-            master.objective(minimize(master.objectiveExpr.add(thetaVar)));
+            master.objective(minimize(master.objective().add(thetaVar)));
           } else {
-            master.objective(maximize(master.objectiveExpr.sub(thetaVar)));
+            master.objective(maximize(master.objective().sub(thetaVar)));
           }
         }
 
@@ -358,8 +369,8 @@ export async function solveBenders(
       ? bestIncumbentValues
       : (() => {
           const rec: Record<string, number> = {};
-          for (const v of master.variables) {
-            if (v.value !== null) {
+          for (const v of master.variables.values()) {
+            if (v instanceof Var && v.value !== null) {
               rec[v.name] = v.value;
             }
           }

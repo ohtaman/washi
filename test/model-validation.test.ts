@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { Model, Constraint, LinExpr, expr, maximize, minimize, implies, validateModelIntegrity } from "../src/index.js";
+import { Model, Constraint, LinExpr, expr, maximize, minimize, implies } from "../src/index.js";
 
 describe("Model Integrity Validation (Issue #51)", () => {
   beforeAll(async () => {
@@ -93,11 +93,14 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const x2 = m2.continuous("x", { lb: 0, ub: 10 });
 
       const constr = m2.continuous("y", { lb: 0, ub: 10 });
-      m2.constraint(expr`${x2} + ${constr} <= 10`, "mutated_c");
+      const mutatedC = m2.constraint(expr`${x2} + ${constr} <= 10`, "mutated_c");
 
       // Mutate internal terms map after construction to inject foreign variable x1
-      m2.constraints[0].lhs.terms.set(x1, 2);
+      mutatedC.lhs.terms.set(x1, 2);
 
+      expect(() => m2.toLpString()).toThrow(
+        /Variable "x" in constraint "mutated_c" does not belong to model "ModelB"/
+      );
       await expect(m2.solve("highs")).rejects.toThrow(
         /Variable "x" in constraint "mutated_c" does not belong to model "ModelB"/
       );
@@ -112,16 +115,64 @@ describe("Model Integrity Validation (Issue #51)", () => {
       );
     });
 
-    it("rejects adding a variable already owned by another model via mutable variables array", () => {
-      const m1 = new Model("ModelA");
-      const m2 = new Model("ModelB");
-      const x1 = m1.continuous("x", { lb: 0, ub: 10 });
+    it("exposes runtime-immutable ReadonlyMap views and rolls back m.variables and m.constraints cleanly on failed batches", () => {
+      const m = new Model("ImmutableAndAtomicModel");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const p = m.bool("p");
+      m.constraint(x.le(8), "c_init");
+      m.constraint(p.not(), "lc_init");
 
-      // Direct push to mutable variables array must be caught by validateModelIntegrity()
-      m2.variables.push(x1);
-      expect(() => validateModelIntegrity(m2)).toThrow(
-        /Variable "x" is duplicated or not canonically registered in model "ModelB"/
-      );
+      // ReadonlyMap views prevent direct structural tampering and never expose backing Maps via forEach
+      for (const view of [m.variables, m.constraints, m.values] as const) {
+        expect(Object.isFrozen(view)).toBe(true);
+        expect("set" in view).toBe(false);
+        expect("delete" in view).toBe(false);
+        expect("clear" in view).toBe(false);
+        expect("push" in view).toBe(false);
+        expect(() => {
+          (view as unknown as Map<string, unknown>).set("tamper", 1);
+        }).toThrow();
+        expect(() => {
+          Object.assign(view, { extra: 1 });
+        }).toThrow();
+        view.forEach((_val, _key, mapArg) => {
+          expect(mapArg).toBe(view);
+        });
+      }
+
+      // Failed batch variable creation (Var and BoolVar) leaves m.variables unchanged
+      expect(() => m.continuous(["v_ok", "v_ok"])).toThrow(/already exists/);
+      expect(m.variables.has("v_ok")).toBe(false);
+      expect(() => m.bool(["b_ok", "b_ok"])).toThrow(/already exists/);
+      expect(m.variables.has("b_ok")).toBe(false);
+      expect(m.variables.size).toBe(2);
+
+      // Failed batch constraint creation (linear and logical) leaves m.constraints unchanged
+      expect(() =>
+        m.constraint([
+          expr`${x} <= 6`,
+          p.and(p),
+          expr`${x} <= 7`,
+        ] as any)
+      ).not.toThrow();
+      const sizeBeforeFail = m.constraints.size;
+      const badVar = new Model("Other").continuous("other_v", { lb: 0, ub: 1 });
+      expect(() =>
+        m.constraint([
+          x.le(4),
+          p.not(),
+          badVar.le(1),
+        ])
+      ).toThrow(/does not belong to model/);
+      expect(m.constraints.size).toBe(sizeBeforeFail);
+      expect(
+        [...m.constraints.values()].every((c) => {
+          if ("lhs" in c) {
+            return c.rhs !== 4;
+          }
+          return true;
+        })
+      ).toBe(true);
     });
 
     it("keeps equality indicator() atomic when second generated row overflows RHS", () => {
@@ -133,8 +184,8 @@ describe("Model Integrity Validation (Issue #51)", () => {
         m.indicator(b, x.eq(-1e308), { M: 1e308, name: "ovf" });
       }).toThrow(/invalid right-hand side \(RHS\): -Infinity|shifted right-hand side overflows finite floating-point range/);
 
-      expect(m.constraints).toHaveLength(0);
-      expect(m.getConstraintByName("ovf_le")).toBeUndefined();
+      expect(m.constraints.size).toBe(0);
+      expect(m.constraints.get("ovf_le")).toBeUndefined();
     });
   });
 
@@ -260,7 +311,9 @@ describe("Model Integrity Validation (Issue #51)", () => {
 
       // Unnamed logical constraint auto-generates "lc_1"
       m.constraint(p.and(q));
-      expect(m.logicalConstraints[0].name).toBe("lc_1");
+      const lc1 = m.constraints.get("lc_1");
+      expect(lc1?.name).toBe("lc_1");
+      expect(lc1).toMatchObject({ kind: "logical", dual: null, slack: null });
 
       // Explicit arithmetic constraint with name "lc_1" must be rejected
       expect(() => {
@@ -270,28 +323,35 @@ describe("Model Integrity Validation (Issue #51)", () => {
       // If an explicit arithmetic constraint reserves "lc_2" first, the next unnamed logical constraint skips to "lc_3"
       m.constraint(expr`${x} <= 5`, "lc_2");
       m.constraint(p.or(q));
-      expect(m.logicalConstraints[1].name).toBe("lc_3");
+      expect([...m.constraints.keys()]).toEqual(["lc_1", "lc_2", "lc_3"]);
+      expect(m.constraints.get("lc_3")?.name).toBe("lc_3");
     });
 
-    it("catches post-construction duplicate constraint names via validateModelIntegrity()", () => {
+    it("catches post-construction duplicate constraint names automatically inside toLpString(), solve(), and check()", async () => {
       const m = new Model("MutatedNamesModel");
       const x = m.continuous("x", { lb: 0, ub: 10 });
       const p = m.bool("p");
 
       const c1 = m.continuous("y", { lb: 0, ub: 10 });
       m.constraint(expr`${x} <= 5`, "c_one");
-      m.constraint(expr`${c1} <= 5`, "c_two");
+      const cTwo = m.constraint(expr`${c1} <= 5`, "c_two");
       m.constraint(p.not(), "lc_one");
 
       // Mutate name to collide with logical constraint
-      m.constraints[1].name = "lc_one";
-      expect(() => validateModelIntegrity(m)).toThrow(
+      cTwo.name = "lc_one";
+      expect(() => m.toLpString()).toThrow(
+        /Conflicting constraint name "lc_one" across arithmetic and logical constraints/
+      );
+      await expect(m.solve("z3")).rejects.toThrow(
         /Conflicting constraint name "lc_one" across arithmetic and logical constraints/
       );
 
       // Mutate name to collide with arithmetic constraint
-      m.constraints[1].name = "c_one";
-      expect(() => validateModelIntegrity(m)).toThrow(
+      cTwo.name = "c_one";
+      expect(() => m.toLpString()).toThrow(
+        /Duplicate constraint name "c_one" in model "MutatedNamesModel"/
+      );
+      await expect(m.check("z3")).rejects.toThrow(
         /Duplicate constraint name "c_one" in model "MutatedNamesModel"/
       );
     });
@@ -310,8 +370,8 @@ describe("Model Integrity Validation (Issue #51)", () => {
       }).toThrow(/Constraint with name 'foo_ge' already exists in model/);
 
       // Ensure "foo_le" was NOT partially inserted into the model
-      expect(m.constraints.length).toBe(0);
-      expect(m.getConstraintByName("foo_le")).toBeUndefined();
+      expect(m.constraints.size).toBe(1);
+      expect(m.constraints.get("foo_le")).toBeUndefined();
     });
 
     it("rejects non-number variable bounds and clears prior solution state when validation fails", async () => {
@@ -374,7 +434,8 @@ describe("Model Integrity Validation (Issue #51)", () => {
       expect(() => {
         m.constraint(p.implies(badEmbedded), "lc_bad_emb");
       }).toThrow(/invalid LHS constant: NaN/);
-      expect(m.logicalConstraints.length).toBe(0);
+      expect(m.constraints.has("lc_bad_emb")).toBe(false);
+      expect(m.constraints.size).toBe(2);
     });
 
     it("preserves constraint names with spaces in unsatCore", async () => {
@@ -462,11 +523,17 @@ describe("Model Integrity Validation (Issue #51)", () => {
       expect(() => m.constraint([expr`${x} <= 5`, b as any])).toThrow(
         /Cannot add numeric variable "b" directly as a constraint/
       );
-      expect(m.constraints).toHaveLength(0);
+      expect(m.constraints.size).toBe(0);
 
       // Propositional BoolVar created with m.bool() remains valid in m.constraint()
       m.constraint(flag, "flag_must_hold");
-      expect(m.logicalConstraints).toHaveLength(1);
+      expect(m.constraints.size).toBe(1);
+      expect(m.constraints.get("flag_must_hold")).toMatchObject({
+        kind: "logical",
+        name: "flag_must_hold",
+        dual: null,
+        slack: null,
+      });
     });
 
     it("throws self-correcting precondition errors in m.indicator(...) and logical combinators", () => {

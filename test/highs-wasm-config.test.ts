@@ -231,6 +231,6 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
     const status = await model.solve();
     expect(status).toBe("Optimal");
     expect(model.objectiveValue).toBeCloseTo(9, 6);
-    expect(model.validateSolution().valid).toBe(true);
+    expect(model.verify().valid).toBe(true);
   });
 });

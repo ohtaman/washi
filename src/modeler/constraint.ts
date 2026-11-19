@@ -2,6 +2,7 @@ import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
 import type { Var } from "./variable.js";
 import { BoolOp, type LogicInput } from "./boolean-expr.js";
+import { notifyModelMutation } from "./validation.js";
 
 let constrIdCounter = 0;
 
@@ -38,7 +39,7 @@ export class Constraint {
   private _rhs: number;
   private _name: string;
   public hasExplicitName: boolean;
-  public ownerModel: { notifyMutation?: () => void } | null = null;
+  public ownerModel: object | null = null;
   private _indicatorOrigin?: IndicatorOrigin;
   private _indicatorSnapshot?: IndicatorRowSnapshot;
   private _discreteVars?: ReadonlySet<Var>;
@@ -57,7 +58,7 @@ export class Constraint {
     this._indicatorOrigin = undefined;
     this._indicatorSnapshot = undefined;
     this._lhs.addTerm(v, coeff);
-    this.ownerModel?.notifyMutation?.();
+    notifyModelMutation(this.ownerModel);
     return this;
   }
 
@@ -69,7 +70,7 @@ export class Constraint {
     this._indicatorOrigin = undefined;
     this._indicatorSnapshot = undefined;
     this._lhs.setTerm(v, coeff);
-    this.ownerModel?.notifyMutation?.();
+    notifyModelMutation(this.ownerModel);
     return this;
   }
 
@@ -102,7 +103,7 @@ export class Constraint {
       this._indicatorOrigin = undefined;
       this._indicatorSnapshot = undefined;
       this._lhs = value;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -120,7 +121,7 @@ export class Constraint {
       this._indicatorOrigin = undefined;
       this._indicatorSnapshot = undefined;
       this._sense = value;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -138,7 +139,7 @@ export class Constraint {
       this._indicatorOrigin = undefined;
       this._indicatorSnapshot = undefined;
       this._rhs = value;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -149,7 +150,7 @@ export class Constraint {
   set name(value: string) {
     if (this._name !== value) {
       this._name = value;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
     this.hasExplicitName = true;
   }

@@ -170,7 +170,7 @@ console.log(`isAdmin: ${isAdmin.value}`);
 const packedItems = items.filter((it) => selected[it].value === 1);
 console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 
-// 変数名をキーとする Map からの取得 (Map<string, number | boolean>)
+// 変数名をキーとする ReadonlyMap からの取得 (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 被約費用 (LP の感度分析)
@@ -181,10 +181,16 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## 名前による変数の検索
 
-登録済みの変数を名前から取得したり、モデル内の数値変数の総数を確認できます：
+登録済みの数値変数（`Var`）および命題論理変数（`BoolVar`）はすべて `m.variables`（`ReadonlyMap<string, Var | BoolVar>`）で参照できます：
 
 ```typescript
-const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
-console.log("数値変数の総数:", m.numVars);
+const v = m.variables.get("trucks");   // Var | BoolVar | undefined
+const b = m.variables.get("isAdmin");  // Var | BoolVar | undefined
+console.log("trucks の登録有無:", m.variables.has("trucks"));
+console.log("総変数数:", m.variables.size);
+
+// v.type ("Continuous" | "Integer" | "Binary" | "Boolean") で絞り込み可能:
+if (v && v.type !== "Boolean") {
+  console.log("上下界:", v.lb, v.ub);
+}
 ```

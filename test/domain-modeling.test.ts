@@ -135,7 +135,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
     m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood");
     m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor");
 
-    expect(m.numConstrs).toBe(2);
+    expect(m.constraints.size).toBe(2);
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -417,7 +417,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
       const p = m.bool("p");
       expect(p.name).toBe("p");
       expect(p.value).toBe(null);
-      expect(m.boolVars).toContain(p);
+      expect(m.variables.get("p")).toBe(p);
     });
 
     it("creates BoolVar[] by count", () => {
@@ -538,7 +538,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
       const m = new Model({ solver: "z3" });
       const a = m.bool("");
       expect(a.name).toBeTruthy();
-      expect(m.getBoolVarByName(a.name)).toBe(a);
+      expect(m.variables.get(a.name)).toBe(a);
 
       // Attempting to create duplicate using a's actual name should throw
       expect(() => m.bool(a.name)).toThrow(/already exists in model/);
@@ -548,7 +548,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
       // Second empty name creates independent variable with distinct name
       const b = m.bool("   ");
       expect(b.name).not.toBe(a.name);
-      expect(m.getBoolVarByName(b.name)).toBe(b);
+      expect(m.variables.get(b.name)).toBe(b);
 
       m.constraint(a);
       m.constraint(b.not());

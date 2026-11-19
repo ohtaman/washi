@@ -26,7 +26,7 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 Calling `m.objective()` with no arguments returns the current objective expression (`LinExpr | QuadExpr`). If you omit setting an objective, the model defaults to minimizing `0`.
 
 > [!TIP]
-> For objective formulation patterns—such as **Min-Max / Max-Min load balancing**, **weighted-sum vs. lexicographic multi-objective optimization**, and **MIP stopping tolerances (`relGap` / `absGap`)**—see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
+> For objective formulation patterns—such as **Min-Max / Max-Min load balancing**, **weighted-sum vs. lexicographic multi-objective optimization**, and **MIP stopping tolerances (`relativeGap` / `absoluteGap`)**—see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
 
 ---
 
@@ -41,9 +41,9 @@ WaSHI provides two asynchronous execution entrypoints:
 
 ```typescript
 const status = await m.solve({
-  timeLimit: 10.0, // Timeout in seconds
-  mipGap: 0.01,    // Stop within 1% of global optimum
-  outputFlag: false, // Enable/disable solver console logging (HiGHS: outputFlag, GLPK: verbose)
+  timeLimit: 10.0,     // Timeout in seconds
+  relativeGap: 0.01,   // Stop within 1% of global optimum
+  outputFlag: false,   // Enable/disable solver console logging (HiGHS: outputFlag, GLPK: verbose)
 });
 ```
 
@@ -53,8 +53,8 @@ const status = await m.solve({
 | :--- | :--- | :--- | :--- |
 | `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (e.g. `"highs"`, `"pumpkin"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
 | `timeLimit` | `number` | `undefined` | Maximum solve duration in seconds. |
-| `mipGap` / `relGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
-| `absGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
+| `relativeGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
+| `absoluteGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
 | `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver iteration logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
 | `useWorker` | `boolean` | `true` (browser) | Offloads **HiGHS** and **Pumpkin** to dedicated Web Workers in browsers. Set `false` for main-thread execution. |
@@ -80,16 +80,16 @@ console.log("Has Primal Solution:", m.hasPrimalSolution); // true when x.value /
 // Objective & MIP Gap Metrics
 console.log("Objective Value:", m.objectiveValue);        // Best primal objective (or null)
 console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or undefined)
-console.log("Relative Gap:", m.relGap);                   // Relative MIP gap (alias: m.mipGap)
-console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
+console.log("Relative Gap:", m.relativeGap);              // Relative MIP gap
+console.log("Absolute Gap:", m.absoluteGap);              // |objectiveValue - objectiveBound|
 
-// Variable Values (via .value or name-keyed m.values Map)
+// Variable Values (via .value or name-keyed m.values ReadonlyMap)
 console.log("x =", x.value, "y =", y.value);
 console.log("x by name:", m.values.get("x"));
 ```
 
 > [!TIP]
-> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.validateSolution()`—see [Diagnosis, Validation & Debugging](./unsat-core.md#independent-solution-validation-m-validatesolution).
+> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.verify()`—see [Diagnosis, Verification & Debugging](./unsat-core.md#independent-solution-verification-m-verify).
 
 ### Understanding `m.status` vs. `m.terminationStatus`
 
@@ -132,7 +132,7 @@ const status = await m.solve({
       `[${event.elapsedTime.toFixed(1)}s] ` +
       `Best: ${event.objectiveValue ?? "—"}, ` +
       `Bound: ${event.objectiveBound ?? "—"}, ` +
-      `Gap: ${event.mipGap !== undefined ? (event.mipGap * 100).toFixed(2) + "%" : "—"}`
+      `Gap: ${event.relativeGap !== undefined ? (event.relativeGap * 100).toFixed(2) + "%" : "—"}`
     );
 
     // Optional: stop early as soon as a good-enough incumbent is found
@@ -155,8 +155,8 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 | `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | Current solver phase when known. |
 | `objectiveValue` | `number \| undefined` | Current best feasible incumbent objective value (MIP). |
 | `objectiveBound` | `number \| undefined` | Current best proven dual / objective bound (MIP). |
-| `relGap` / `mipGap` | `number \| undefined` | Current relative MIP optimality gap (`0.05` = 5%). |
-| `absGap` | `number \| undefined` | Current absolute MIP optimality gap `\|objectiveValue - objectiveBound\|`. |
+| `relativeGap` | `number \| undefined` | Current relative MIP optimality gap (`0.05` = 5%). |
+| `absoluteGap` | `number \| undefined` | Current absolute MIP optimality gap `\|objectiveValue - objectiveBound\|`. |
 | `nodes` | `number \| undefined` | Branch-and-bound nodes explored so far. |
 | `iterations` | `number \| undefined` | Solver iteration count (simplex, IPM, or MIP LP iterations). |
 | `message` | `string \| undefined` | Raw progress line emitted by the solver. |
@@ -167,10 +167,10 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 
 A `Model` instance keeps its solution state synchronized across mutations made through `Model` methods and `Model` / `Var` / `Constraint` property setters:
 
-1. **Post-Solve Mutations Reset Solution State**: Adding variables or constraints, updating the objective (`m.objective(...)`, `m.objectiveExpr = ...`, `m.sense = ...`), or modifying variable bounds/types (`v.lb`, `v.ub`, `v.type`) or constraint properties (`c.lhs`, `c.sense`, `c.rhs`) immediately resets `m.status` to `"NotSolved"`, clears `m.solution` and `m.objectiveValue`, and resets variable/constraint primal and dual values to `null`.
+1. **Post-Solve Mutations Reset Solution State**: Adding variables or constraints, updating the objective (`m.objective(...)`, `m.sense = ...`), or modifying variable bounds/types (`v.lb`, `v.ub`, `v.type`) or constraint properties (`c.lhs`, `c.sense`, `c.rhs`) immediately resets `m.status` to `"NotSolved"`, clears `m.solution` and `m.objectiveValue`, and resets variable/constraint primal and dual values to `null`.
 2. **Mid-Flight Mutations Discard Stale Runs**: If the model is modified via these APIs while an asynchronous `m.solve()` or `m.check()` call is in progress, the stale solver result is discarded, the model remains in `"NotSolved"`, and the in-flight promise rejects with an explicit error.
 3. **Overlapping Executions**: Starting a new `m.solve()` or `m.check()` call supersedes any earlier in-flight call on the same model so out-of-order completions can never overwrite the latest run's state.
 4. **Transactional Batch Edits**: If an invalid edit is rejected (including batch array calls like `m.constraint([...])`), the model rolls back the failed edit without leaving partial entities registered or invalidating an existing valid solution.
 
 > [!NOTE]
-> Renaming already-registered variables or constraints (e.g., reassigning `c.name` after registration) or mutating internal backing collections and ASTs directly (such as `c.lhs.terms`, `m.constraints.splice(...)`, or `BoolOp.children`) is unsupported and will be rejected by model integrity validation on the next solve/check/export call.
+> Renaming already-registered variables or constraints (e.g., reassigning `c.name` after registration) or mutating internal backing maps and ASTs directly (such as `c.lhs.terms` or `BoolOp.children`) is unsupported and will be rejected by internal model integrity validation on the next solve/check/export call.

@@ -379,7 +379,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBeCloseTo(24);
-    expect(m.constraints).toHaveLength(1);
+    expect(m.constraints.size).toBe(1);
 
     // 1. Objective contexts must reject Constraint inputs immediately without mutating model state
     expect(() => maximize(expr`${x} <= 5`)).toThrow(/Cannot use a Constraint as an objective/);
@@ -389,9 +389,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => m.objective({ expr: expr`${x} <= 5`, sense: "maximize" })).toThrow(
       /Cannot use a Constraint as an objective/
     );
-    expect(() => {
-      m.objectiveExpr = expr`${x} <= 5`;
-    }).toThrow(/Cannot use a Constraint as an objective/);
+    expect(() => m.objective(expr`${x} <= 5` as any)).toThrow(/Cannot use a Constraint as an objective/);
     expect(() => m.objective({ expr: "x <= 5" as any, sense: "minimize" })).toThrow(
       /Cannot use a comparison constraint as an objective/
     );
@@ -413,7 +411,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     );
 
     // Verify constraints and solved state were NOT corrupted
-    expect(m.constraints).toHaveLength(1);
+    expect(m.constraints.size).toBe(1);
     expect(m.objectiveValue).toBeCloseTo(24);
 
     // 3. sum() must reject Constraint and non-zero QuadExpr in callback and array forms
@@ -558,7 +556,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
 
     const structuralLin = { terms: new Map([[x, 2]]), constant: 5 };
     m.objective(maximize(structuralLin as any));
-    expect(m.objectiveExpr.constant).toBe(5);
+    expect(m.objective().constant).toBe(5);
   });
 
   it("supports sum(), dot(), and element-wise container arithmetic (+, -, *, /, ^2) in expr`...`", async () => {

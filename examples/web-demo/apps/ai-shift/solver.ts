@@ -371,9 +371,11 @@ export function buildNurseWashiModel(
         return;
       }
       if (c.lhs.terms.size === 0) {
+        const existingZero = m.variables.get("__zero_const__");
         const zeroVar =
-          m.getVarByName("__zero_const__") ??
-          m.continuous("__zero_const__", { lb: 0, ub: 0 });
+          existingZero && existingZero.type !== "Boolean"
+            ? existingZero
+            : m.continuous("__zero_const__", { lb: 0, ub: 0 });
         const effectiveRhs = c.rhs - (c.lhs.constant || 0);
         if (c.sense === "<=") {
           m.constraint(expr`${zeroVar} <= ${effectiveRhs}`, normalizedMeta.name);
@@ -2555,15 +2557,14 @@ const m = new Model("NurseMonthlySchedule_3Shift", { solver: "highs" });
 //   Max Consecutive Work <= ${config.maxConsecutiveWorkDays} days | Min Days Off >= ${config.minMonthlyDaysOff} days | Max Night <= ${config.maxMonthlyNightShifts}
 //   NG Pairs: ${ngCount} pairs | Hard Requests: ${hardCount} | Soft Preferences: ${softCount} | Custom Rules: ${activeCustom.length}
 
-// Pre-solve integrity & CPLEX LP export
-m.validateIntegrity();
+// Export CPLEX LP representation (validates model integrity automatically)
 const lpText = m.toLpString();
 
 // Solve MIP with HiGHS WebAssembly (Web Worker)
-const status = await m.solve({ timeLimit: 2.5, relGap: 0.01 });
+const status = await m.solve({ timeLimit: 2.5, relativeGap: 0.01 });
 if (status === "Optimal" || m.hasPrimalSolution) {
   // Independent mathematical verification
-  const report = m.validateSolution();
+  const report = m.verify();
   console.log("Valid:", report.valid, "Max violation:", report.maxViolation);
 } else if (status === "Infeasible") {
   // Diagnose conflicting rules using HiGHS Elastic Constraint Relaxation (minimize weighted slacks)
@@ -3160,7 +3161,7 @@ export async function diagnoseNurseScheduleWithHiGHS(
       const checkFull = buildNurseWashiModel(state, { solver: "highs" });
       const checkStatus = await checkFull.model.solve({
         timeLimit: 2.0,
-        relGap: 1.0,
+        relativeGap: 1.0,
         signal: options?.signal,
       });
       needsFullElastic = !(checkStatus === "Optimal" || checkFull.model.hasPrimalSolution);
@@ -3266,7 +3267,7 @@ export function computeScheduleDiff(
 }
 
 /**
- * Solves the 1-month nurse scheduling problem using WaSHI (HiGHS), verifies with `validateSolution()`,
+ * Solves the 1-month nurse scheduling problem using WaSHI (HiGHS), verifies with `verify()`,
  * and automatically diagnoses conflicts using HiGHS Elastic Constraint Relaxation if `Infeasible`.
  */
 export async function solveNurseScheduleWithWashi(
@@ -3304,7 +3305,6 @@ export async function solveNurseScheduleWithWashi(
   });
   const customShiftDefs = state.customShiftDefs ?? [];
 
-  model.validateIntegrity();
   const lpFull = model.toLpString();
   const lpLines = lpFull.split("\n");
   const lpPreview =
@@ -3315,8 +3315,8 @@ export async function solveNurseScheduleWithWashi(
       : lpFull;
 
   const buildTimeMs = Math.max(1, Math.round(performance.now() - t0));
-  const numVariables = model.variables.length;
-  const numConstraints = model.constraints.length;
+  const numVariables = model.variables.size;
+  const numConstraints = model.constraints.size;
   const modelCodePreview = generateWashiCodePreview(state);
 
   const tSolve0 = performance.now();
@@ -3324,7 +3324,7 @@ export async function solveNurseScheduleWithWashi(
   try {
     status = await model.solve({
       timeLimit: options?.timeLimit ?? 4.0,
-      relGap: useRefSchedule ? 0.0005 : 0.01,
+      relativeGap: useRefSchedule ? 0.0005 : 0.01,
       signal: options?.signal,
     });
   } catch (err: any) {
@@ -3372,7 +3372,7 @@ export async function solveNurseScheduleWithWashi(
     }
 
     // Mandatory WaSHI self-verification
-    const report = model.validateSolution();
+    const report = model.verify();
     const evaluation = evaluateNurseSchedule(state, schedule);
     const diffFromPrevious = options?.referenceSchedule
       ? computeScheduleDiff(state, options.referenceSchedule, schedule)

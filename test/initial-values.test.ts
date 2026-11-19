@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   Model,
   Var,
+  Constraint,
   expr,
   implies,
   maximize,
@@ -52,12 +53,12 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(bGrid[0][0].initialValue).toBe(0);
       expect(bGrid[1][1].initialValue).toBe(0);
 
-      for (const v of m.variables) {
+      for (const v of m.variables.values()) {
         expect(v.value).toBeNull();
       }
     });
 
-    it("keeps Var.initialValue distinct from Var.value across solve(), check(), resetSolutionState(), and mutations", async () => {
+    it("keeps Var.initialValue distinct from Var.value across solve(), check(), and mutations", async () => {
       const m = new Model("DistinctLifecycle");
       // Hint x = 2, but unique optimal solution is x = 8, y = 2
       const x = m.integer("x", { lb: 0, ub: 8, initialValue: 2 });
@@ -83,8 +84,8 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(m.status).toBe("Optimal");
       expect(x.value).toBe(8);
 
-      // Resetting solution state clears Var.value but preserves Var.initialValue
-      m.resetSolutionState();
+      // Mutating the model clears Var.value (via invalidation) while preserving Var.initialValue
+      m.constraint(expr`${x} <= 9`, "redundant_cap");
       expect(m.status).toBe("NotSolved");
       expect(x.value).toBeNull();
       expect(x.initialValue).toBe(2);
@@ -172,7 +173,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       );
 
       // Failed creation must not leave partial variables registered in model
-      expect(m.variables).toHaveLength(0);
+      expect(m.variables.size).toBe(0);
     });
 
     it("accepts values within 1e-6 tolerance and normalizes them for solver consumption", async () => {
@@ -185,7 +186,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
 
       const status = await m.solve("highs");
       expect(status).toBe("Optimal");
-      expect(m.validateSolution().valid).toBe(true);
+      expect(m.verify().valid).toBe(true);
     });
 
     it("catches invalid post-construction Var.initialValue mutations before solve(), check(), and toLpString()", async () => {
@@ -194,9 +195,6 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       m.objective(maximize(x));
 
       x.initialValue = 1.25;
-      expect(() => m.validateIntegrity()).toThrow(
-        /Variable "x" of type "Integer" has non-integral or out-of-domain initialValue: 1\.25/
-      );
       expect(() => m.toLpString()).toThrow(
         /Variable "x" of type "Integer" has non-integral or out-of-domain initialValue: 1\.25/
       );
@@ -291,7 +289,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       // Unused default-bounded continuous variable with initialValue must also be emitted in LP Bounds
       const unused = m.continuous("unused-cont", { lb: 0, initialValue: 3.5 });
 
-      // Objective lists v1 first, so LP column 0 is item_1 while m.variables[0] is item-4
+      // Objective lists v1 first, so LP column 0 is item_1 while m.variables iterates item-4 first
       m.objective(maximize(expr`10 * ${v1} + 10 * ${v2} + 10 * ${v3} + 10 * ${v4}`));
       m.constraint(expr`${v1} + ${v2} + ${v3} + ${v4} <= 2`, "total");
       m.constraint(expr`${v1} + ${v2} >= 1`, "pair1");
@@ -303,7 +301,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(status).toBe("Optimal");
       expect([v1.value, v2.value, v3.value, v4.value]).toEqual([1, 0, 0, 1]);
       expect(unused.value).toBeDefined();
-      expect(m.validateSolution().valid).toBe(true);
+      expect(m.verify().valid).toBe(true);
     });
 
     it("preserves __proto__ as an own initial-value column key in the solve/Worker payload and solved values", async () => {
@@ -329,7 +327,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
         expect(alt.value).toBe(0);
         expect(Object.hasOwn(m.solution!.values, "__proto__")).toBe(true);
         expect(m.solution!.values["__proto__"]).toBe(1);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
 
         const checkRes = await m.check("highs");
         expect(checkRes.status).toBe("Sat");
@@ -380,7 +378,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(x2.lineA.value! + x2.lineB.value!).toBe(7);
       expect(x2.lineA.initialValue).toBe(prevValues.lineA);
       expect(x2.lineD.initialValue).toBeUndefined();
-      expect(m2.validateSolution().valid).toBe(true);
+      expect(m2.verify().valid).toBe(true);
     });
 
     it("treats initialValue as a hint only: does not fix variables and recovers from constraint-violating starts", async () => {
@@ -402,7 +400,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(await mInfeasStart.solve({ presolve: "off" })).toBe("Optimal");
       expect(y1.value).toBe(1);
       expect(y2.value).toBe(0);
-      expect(mInfeasStart.validateSolution().valid).toBe(true);
+      expect(mInfeasStart.verify().valid).toBe(true);
     });
   });
 
@@ -460,9 +458,9 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       const modelData = {
         name: m.name,
         sense: m.sense,
-        objective: m.objectiveExpr,
-        constraints: m.constraints,
-        variables: m.variables,
+        objective: m.objective(),
+        constraints: [...m.constraints.values()].filter((c): c is Constraint => c instanceof Constraint),
+        variables: [...m.variables.values()].filter((v): v is Var => v.type !== "Boolean"),
       };
       await expect(new GLPKSolver().solve(modelData, lpData)).rejects.toThrow(
         /Solver "GLPK" does not support primal initial values \(initialValue\)/
@@ -524,7 +522,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
         ]).toEqual([1, 0, 0, 1]);
         expect(partialA.x1.initialValue).toBe(1);
         expect(partialA.x2.initialValue).toBeUndefined();
-        expect(partialA.m.validateSolution().valid).toBe(true);
+        expect(partialA.m.verify().valid).toBe(true);
 
         const partialB = buildTiedPumpkinModel(kind);
         partialB.x2.initialValue = 1;
@@ -545,7 +543,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
         ]).toEqual([0, 1, 0, 1]);
         expect(partialB.x2.initialValue).toBe(1);
         expect(partialB.x1.initialValue).toBeUndefined();
-        expect(partialB.m.validateSolution().valid).toBe(true);
+        expect(partialB.m.verify().valid).toBe(true);
       }
     });
 
@@ -559,7 +557,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(mSub.objectiveValue).toBe(7);
       expect(x.value).toBe(7);
       expect(x.initialValue).toBe(-3);
-      expect(mSub.validateSolution().valid).toBe(true);
+      expect(mSub.verify().valid).toBe(true);
 
       // 2. Constraint-violating hint recovers cleanly via CDCL backtracking in both solve() and check()
       const mBad = new Model("PumpkinConflictingHint");
@@ -574,14 +572,14 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       const chk = await mBad.check({ solver: "pumpkin" });
       expect(chk.status).toBe("Sat");
       expect([y1.value, y2.value]).toEqual([0, 1]);
-      expect(mBad.validateSolution().valid).toBe(true);
+      expect(mBad.verify().valid).toBe(true);
 
       expect(await mBad.solve({ solver: "pumpkin" })).toBe("Optimal");
       expect(mBad.objectiveValue).toBe(2);
       expect([y1.value, y2.value]).toEqual([0, 1]);
       expect(y1.initialValue).toBe(1);
       expect(y2.initialValue).toBe(1);
-      expect(mBad.validateSolution().valid).toBe(true);
+      expect(mBad.verify().valid).toBe(true);
 
       // 3. Truly unsatisfiable model with initialValue still extracts named unsatCore / conflicts
       const mUnsat = new Model("PumpkinUnsatWithHint");
@@ -605,7 +603,7 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect(await mTol.solve({ solver: "pumpkin" })).toBe("Optimal");
       expect(b.value).toBe(1);
       expect(i.value).toBe(-3);
-      expect(mTol.validateSolution().valid).toBe(true);
+      expect(mTol.verify().valid).toBe(true);
 
       const solver = new PumpkinSolver();
       const makeRawVar = (overrides: Record<string, unknown>) => {

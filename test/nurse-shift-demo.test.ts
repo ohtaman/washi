@@ -47,7 +47,7 @@ import {
 } from "../examples/web-demo/apps/ai-shift/nano-client.js";
 
 describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", () => {
-  it("solves default 30-nurse 30-day schedule to Optimal with HiGHS and passes validateSolution()", async () => {
+  it("solves default 30-nurse 30-day schedule to Optimal with HiGHS and passes verify()", async () => {
     const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
     expect(state.nurses.length).toBe(30);
     expect(state.config.numDays).toBe(30);
@@ -2268,7 +2268,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(trace!.userPrompt).toContain("希望達成状況:");
       expect(trace!.userPrompt).toContain("前回\u306e\u30b7\u30d5\u30c8\u304b\u3089\u306e変更:");
       // Must NOT include solver-internal jargon or metrics
-      expect(trace!.userPrompt).not.toContain("validateSolution");
+      expect(trace!.userPrompt).not.toContain("verify()");
       expect(trace!.userPrompt).not.toContain("変数:");
       expect(trace!.userPrompt).not.toContain("制約:");
       expect(trace!.userPrompt).not.toContain("求解時間:");

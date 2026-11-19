@@ -45,7 +45,7 @@ function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): vo
  * - `status` and `terminationStatus`: `"Optimal" | "Infeasible" | "Error"`
  * - `hasPrimalSolution`: `true` when Z3 returns `"sat"` (`status === "Optimal"`), `false` otherwise.
  * - `objectiveValue`: Primal objective value when `hasPrimalSolution` is `true`, otherwise `null`.
- * - `objectiveBound`, `relGap` (`mipGap`), `absGap`: Z3 Optimize is an SMT optimization engine and does not expose branch-and-bound MIP dual bounds or relative/absolute MIP gaps, so these fields are intentionally left `undefined` rather than returning invented defaults.
+ * - `objectiveBound`, `relativeGap`, `absoluteGap`: Z3 Optimize is an SMT optimization engine and does not expose branch-and-bound MIP dual bounds or relative/absolute MIP gaps, so these fields are intentionally left `undefined` rather than returning invented defaults.
  */
 export class Z3Solver implements Solver {
   readonly name = "z3";

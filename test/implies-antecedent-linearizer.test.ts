@@ -1,6 +1,8 @@
 import { describe, it, expect, afterAll } from "vitest";
 import {
   Model,
+  Var,
+  BoolVar,
   Constraint,
   LinExpr,
   expr,
@@ -56,7 +58,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mBoundary.solve()).toBe("Optimal");
       expect(luxB.value).toBe(51);
       expect(isNightB.value).toBe(false);
-      expect(mBoundary.validateSolution().valid).toBe(true);
+      expect(mBoundary.verify().valid).toBe(true);
 
       // 3. At exact boundary lux == 50, isNight must be forced true even when minimizing an activated cost
       const mAt50 = new Model({ name: `ImpliesLeAt50_${solver}`, solver });
@@ -72,7 +74,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mAt50.solve()).toBe("Optimal");
       expect(isNight50.value).toBe(true);
       expect(lampOn.value).toBe(1);
-      expect(mAt50.validateSolution().valid).toBe(true);
+      expect(mAt50.verify().valid).toBe(true);
 
       // 4. Open-world one-way check: at lux == 51, isNight == true is also feasible (not iff)
       const mOpenWorld = new Model({ name: `ImpliesLeOpenWorld_${solver}`, solver });
@@ -85,7 +87,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect((await mOpenWorld.check()).status).toBe("Sat");
       expect(luxOw.value).toBe(51);
       expect(isNightOw.value).toBe(true);
-      expect(mOpenWorld.validateSolution().valid).toBe(true);
+      expect(mOpenWorld.verify().valid).toBe(true);
     }
   });
 
@@ -103,7 +105,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mGe.solve()).toBe("Optimal");
       expect(clearance.value).toBe(3);
       expect(hasMfa.value).toBe(false);
-      expect(mGe.validateSolution().valid).toBe(true);
+      expect(mGe.verify().valid).toBe(true);
 
       // 2. Multi-variable antecedent with negative coefficient and non-zero lhs.constant:
       //    2*a - 3*b + 5 <= 10  (i.e. 2*a - 3*b <= 5) => flag
@@ -130,7 +132,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
 
       expect(await mMulti.solve()).toBe("Optimal");
       expect(mMulti.objectiveValue).toBe(6);
-      expect(mMulti.validateSolution().valid).toBe(true);
+      expect(mMulti.verify().valid).toBe(true);
     }
 
     // 3. One-sided bounded integer antecedent on HiGHS & GLPK: (x <= 5) => (y >= 10) with x, y in [0, Infinity)
@@ -146,7 +148,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mOneSided.solve()).toBe("Optimal");
       expect(x.value).toBe(6);
       expect(y.value).toBe(4);
-      expect(mOneSided.validateSolution().valid).toBe(true);
+      expect(mOneSided.verify().valid).toBe(true);
     }
   });
 
@@ -173,7 +175,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
 
       expect(await mAbove.solve()).toBe("Optimal");
       expect(pinA.value).toBe(6);
-      expect(mAbove.validateSolution().valid).toBe(true);
+      expect(mAbove.verify().valid).toBe(true);
 
       // 3. With !unlocked and pin <= 5, maximizing pin skips 5 and selects 4
       const mBelow = new Model({ name: `ImpliesEqBelow_${solver}`, solver });
@@ -186,7 +188,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
 
       expect(await mBelow.solve()).toBe("Optimal");
       expect(pinB.value).toBe(4);
-      expect(mBelow.validateSolution().valid).toBe(true);
+      expect(mBelow.verify().valid).toBe(true);
 
       // 4. Direct binary antecedent where consequent also references the binary variable
       const mSelfRef = new Model({ name: `ImpliesBinSelfRef_${solver}`, solver });
@@ -199,7 +201,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mSelfRef.solve()).toBe("Optimal");
       expect(b.value).toBe(1);
       expect(x.value).toBeCloseTo(4, 5);
-      expect(mSelfRef.validateSolution().valid).toBe(true);
+      expect(mSelfRef.verify().valid).toBe(true);
     }
 
     // 5. Boundary equality on one-sided bounded integer [0, +Infinity): (x == 0) => flag
@@ -214,7 +216,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mOneSidedEq.solve()).toBe("Optimal");
       expect(x.value).toBe(1);
       expect(flag.value).toBe(false);
-      expect(mOneSidedEq.validateSolution().valid).toBe(true);
+      expect(mOneSidedEq.verify().valid).toBe(true);
     }
 
     // 6. Direct binary antecedent to BoolVar / not(BoolVar) emits zero extra auxiliary variables
@@ -226,9 +228,9 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
     const fn1 = mDirectBin.bool("fn1");
     const fn0 = mDirectBin.bool("fn0");
     const linDirect = linearizeModelForMip(
-      mDirectBin.variables,
-      mDirectBin.boolVars,
-      mDirectBin.constraints,
+      [...mDirectBin.variables.values()].filter((v): v is Var => v.type !== "Boolean"),
+      [...mDirectBin.variables.values()].filter((v): v is BoolVar => v.type === "Boolean"),
+      [...mDirectBin.constraints.values()].filter((c): c is Constraint => c instanceof Constraint),
       [
         { name: "b1_f1", expr: b1.eq(1).implies(f1) },
         { name: "b0_f0", expr: b0.eq(0).implies(f0) },
@@ -259,7 +261,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mNotLe.objective(minimize(x));
       expect(await mNotLe.solve()).toBe("Optimal");
       expect(x.value).toBe(51);
-      expect(mNotLe.validateSolution().valid).toBe(true);
+      expect(mNotLe.verify().valid).toBe(true);
 
       // 2. Top-level not(pin == 5) with pin >= 5 -> minimize(pin) == 6
       const mNotEq = new Model({ name: `NotEq_${solver}`, solver });
@@ -269,7 +271,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mNotEq.objective(minimize(pin));
       expect(await mNotEq.solve()).toBe("Optimal");
       expect(pin.value).toBe(6);
-      expect(mNotEq.validateSolution().valid).toBe(true);
+      expect(mNotEq.verify().valid).toBe(true);
 
       // 3. De Morgan: not(and(flag, y == 0)) with flag == true and one-sided y in [0, Infinity) -> minimize(y) == 1
       const mDeMorgan = new Model({ name: `DeMorgan_${solver}`, solver });
@@ -280,7 +282,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mDeMorgan.objective(minimize(y));
       expect(await mDeMorgan.solve()).toBe("Optimal");
       expect(y.value).toBe(1);
-      expect(mDeMorgan.validateSolution().valid).toBe(true);
+      expect(mDeMorgan.verify().valid).toBe(true);
 
       // 4. Negated consequent: implies(vip, not(fee >= 10)) with vip == true -> maximize(fee) == 9
       const mImpNot = new Model({ name: `ImpNot_${solver}`, solver });
@@ -291,7 +293,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mImpNot.objective(maximize(fee));
       expect(await mImpNot.solve()).toBe("Optimal");
       expect(fee.value).toBe(9);
-      expect(mImpNot.validateSolution().valid).toBe(true);
+      expect(mImpNot.verify().valid).toBe(true);
 
       // 5. xor(flag, lux <= 50): when flag == true, lux <= 50 must be false (min lux == 51);
       //    when flag == false, lux <= 50 must be true (max lux == 50)
@@ -303,7 +305,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mXorTrue.objective(minimize(luxT));
       expect(await mXorTrue.solve()).toBe("Optimal");
       expect(luxT.value).toBe(51);
-      expect(mXorTrue.validateSolution().valid).toBe(true);
+      expect(mXorTrue.verify().valid).toBe(true);
 
       const mXorFalse = new Model({ name: `XorFalse_${solver}`, solver });
       const fF = mXorFalse.bool("flag");
@@ -313,7 +315,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mXorFalse.objective(maximize(luxF));
       expect(await mXorFalse.solve()).toBe("Optimal");
       expect(luxF.value).toBe(50);
-      expect(mXorFalse.validateSolution().valid).toBe(true);
+      expect(mXorFalse.verify().valid).toBe(true);
 
       // 6. not(implies(x + 5 <= 10, flag)) <=> (x <= 5) AND !flag
       const mNotImp = new Model({ name: `NotImp_${solver}`, solver });
@@ -325,7 +327,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(await mNotImp.solve()).toBe("Optimal");
       expect(xImp.value).toBe(5);
       expect(fImp.value).toBe(false);
-      expect(mNotImp.validateSolution().valid).toBe(true);
+      expect(mNotImp.verify().valid).toBe(true);
     }
   });
 
@@ -357,7 +359,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect((await mConst.check()).status).toBe("Sat");
       expect(flagTrue.value).toBe(true);
       expect(flagFree.value).toBe(false);
-      expect(mConst.validateSolution().valid).toBe(true);
+      expect(mConst.verify().valid).toBe(true);
 
       // Identically-false top-level negations must be genuinely Infeasible / Unsat:
       // (a) not(3 <= 5)
@@ -429,7 +431,7 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       mExplicit.objective(minimize(tExp));
       expect(await mExplicit.solve()).toBe("Optimal");
       expect(tExp.value).toBeCloseTo(50.5, 5);
-      expect(mExplicit.validateSolution().valid).toBe(true);
+      expect(mExplicit.verify().valid).toBe(true);
     }
 
     expect((await createContinuousAntecedentModel("z3").check()).status).toBe("Unsat");
@@ -455,9 +457,9 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
     const bigFlag = mUnsafeInt.bool("bigFlag");
     expect(() =>
       linearizeModelForMip(
-        mUnsafeInt.variables,
-        mUnsafeInt.boolVars,
-        mUnsafeInt.constraints,
+        [...mUnsafeInt.variables.values()].filter((v): v is Var => v.type !== "Boolean"),
+        [...mUnsafeInt.variables.values()].filter((v): v is BoolVar => v.type === "Boolean"),
+        [...mUnsafeInt.constraints.values()].filter((c): c is Constraint => c instanceof Constraint),
         [{ name: "unsafe_rhs", expr: expr`${big} <= ${Number.MAX_SAFE_INTEGER}`.implies(bigFlag) }]
       )
     ).toThrow(/safe integer/i);

@@ -34,14 +34,14 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
 
     // Pollute process-level counters with another large model and standalone objects
     const noiseModel = new Model("NoiseModel");
-    noiseModel.continuous(25, { lb: 0, ub: 100 });
+    const noiseContinuous = noiseModel.continuous(25, { lb: 0, ub: 100 });
     noiseModel.binary(15);
-    noiseModel.bool(10);
+    const noiseBools = noiseModel.bool(10);
     for (let i = 0; i < 20; i++) {
-      noiseModel.constraint(expr`${noiseModel.variables[i]} <= ${i + 1}`);
+      noiseModel.constraint(expr`${noiseContinuous[i]} <= ${i + 1}`);
     }
     for (let i = 0; i < 5; i++) {
-      noiseModel.constraint(noiseModel.boolVars[i].not());
+      noiseModel.constraint(noiseBools[i].not());
     }
     // Also instantiate standalone objects outside any model
     for (let i = 0; i < 10; i++) {
@@ -55,24 +55,18 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
 
     const m2 = buildCanonicalModel("DeterministicModel");
 
-    expect(m2.variables.map((v) => v.name)).toEqual(["x_0", "x_1", "x_2", "x_3"]);
-    expect(m1.variables.map((v) => v.name)).toEqual(m2.variables.map((v) => v.name));
+    expect([...m2.variables.keys()]).toEqual(["x_0", "x_1", "x_2", "x_3", "p_0", "p_1", "p_2"]);
+    expect([...m1.variables.keys()]).toEqual([...m2.variables.keys()]);
 
-    expect(m2.boolVars.map((bv) => bv.name)).toEqual(["p_0", "p_1", "p_2"]);
-    expect(m1.boolVars.map((bv) => bv.name)).toEqual(m2.boolVars.map((bv) => bv.name));
-
-    expect(m2.constraints.map((con) => con.name)).toEqual([
+    expect([...m2.constraints.keys()]).toEqual([
       "c_1",
       "c_2",
       "c_3",
       "ind_x_3_c_4",
+      "lc_1",
+      "lc_2",
     ]);
-    expect(m1.constraints.map((con) => con.name)).toEqual(m2.constraints.map((con) => con.name));
-
-    expect(m2.logicalConstraints.map((lc) => lc.name)).toEqual(["lc_1", "lc_2"]);
-    expect(m1.logicalConstraints.map((lc) => lc.name)).toEqual(
-      m2.logicalConstraints.map((lc) => lc.name)
-    );
+    expect([...m1.constraints.keys()]).toEqual([...m2.constraints.keys()]);
 
     expect(m1.toLpString()).toBe(m2.toLpString());
   });
@@ -107,7 +101,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     preNamed.name = "custom_capacity";
     m2.constraint(preNamed);
     expect(preNamed.name).toBe("custom_capacity");
-    expect(m2.getConstraintByName("custom_capacity")).toBe(preNamed);
+    expect(m2.constraints.get("custom_capacity")).toBe(preNamed);
   });
 
   it("increments auto-generated variable names across multiple batch and single calls within the same model", () => {
@@ -147,11 +141,10 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     // Auto-generated arithmetic constraints skip c_1 and c_3 -> c_2, c_4
     m.constraint(expr`${autoX[0]} <= 8`);
     m.constraint(expr`${autoX[1]} <= 9`);
-    expect(m.constraints.map((con) => con.name)).toEqual(["c_1", "c_3", "c_2", "c_4"]);
 
     // Auto-generated logical constraint skips lc_1 -> lc_2
     m.constraint(autoP[0].or(autoP[1]));
-    expect(m.logicalConstraints.map((lc) => lc.name)).toEqual(["lc_1", "lc_2"]);
+    expect([...m.constraints.keys()]).toEqual(["c_1", "c_3", "lc_1", "c_2", "c_4", "lc_2"]);
 
     // 2. Explicit names registered AFTER auto-generated names -> rejected with clear error
     expect(() => m.continuous("x_1")).toThrow(/Variable with name 'x_1' already exists in model/);
@@ -189,10 +182,10 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(count.name).toBe("count");
     expect(active.name).toBe("active");
     expect(flag.name).toBe("flag");
-    expect(m.getVarByName("demand")).toBe(demand);
-    expect(m.getVarByName("count")).toBe(count);
-    expect(m.getVarByName("active")).toBe(active);
-    expect(m.getBoolVarByName("flag")).toBe(flag);
+    expect(m.variables.get("demand")).toBe(demand);
+    expect(m.variables.get("count")).toBe(count);
+    expect(m.variables.get("active")).toBe(active);
+    expect(m.variables.get("flag")).toBe(flag);
   });
 
   it("does not advance indicator constraint counter when indicator derivation fails and prevents cross-model Constraint reuse", () => {
@@ -211,14 +204,14 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     const sharedConstr = ownerVar.le(10);
     mOwner.constraint(sharedConstr);
     expect(sharedConstr.name).toBe("c_1");
-    expect(mOwner.getConstraintByName("c_1")).toBe(sharedConstr);
+    expect(mOwner.constraints.get("c_1")).toBe(sharedConstr);
 
     const mOther = new Model("OtherModel");
     const otherVar = mOther.continuous("x", { lb: 0, ub: 10 });
     mOther.constraint(otherVar.le(5)); // consumes c_1 in OtherModel
     expect(() => mOther.constraint(sharedConstr)).toThrow(/does not belong to model "OtherModel"/i);
     expect(sharedConstr.name).toBe("c_1");
-    expect(mOwner.getConstraintByName("c_1")).toBe(sharedConstr);
+    expect(mOwner.constraints.get("c_1")).toBe(sharedConstr);
   });
 });
 

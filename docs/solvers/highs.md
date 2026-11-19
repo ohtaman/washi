@@ -65,8 +65,8 @@ const controller = new AbortController();
 
 await model.solve({
   timeLimit: 60.0,       // Maximum solve time in seconds
-  mipGap: 0.001,         // Terminate when within 0.1% of global optimality (alias: relGap)
-  absGap: 1.0,           // Absolute MIP optimality gap tolerance
+  relativeGap: 0.001,    // Terminate when within 0.1% of global optimality
+  absoluteGap: 1.0,      // Absolute MIP optimality gap tolerance
   presolve: "on",        // Presolve control ("on" | "off" | "choose")
   outputFlag: true,      // Output internal simplex / branch-and-bound logs (output_flag)
   signal: controller.signal,
@@ -79,7 +79,7 @@ await model.solve({
 if (model.hasPrimalSolution) {
   console.log(
     `Usable solution (${model.status}, termination: ${model.terminationStatus}):`,
-    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+    `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
 ```

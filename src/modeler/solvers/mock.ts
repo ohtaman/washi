@@ -16,9 +16,8 @@ export interface MockSolverOptions extends SolverOptions {
   hasPrimalSolution?: boolean;
   objectiveValue?: number | null;
   objectiveBound?: number;
-  relGap?: number;
-  mipGap?: number;
-  absGap?: number;
+  relativeGap?: number;
+  absoluteGap?: number;
   values?: Record<string, number>;
   boolValues?: Record<string, boolean>;
   reducedCosts?: Record<string, number>;
@@ -97,12 +96,8 @@ export class MockSolver implements Solver {
           hasPrimalSolution: hasIncumbent,
           objectiveValue: hasIncumbent ? (opts.objectiveValue ?? 0) : null,
           ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
-          ...(opts.relGap !== undefined
-            ? { relGap: opts.relGap, mipGap: opts.relGap }
-            : opts.mipGap !== undefined
-              ? { relGap: opts.mipGap, mipGap: opts.mipGap }
-              : {}),
-          ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+          ...(opts.relativeGap !== undefined ? { relativeGap: opts.relativeGap } : {}),
+          ...(opts.absoluteGap !== undefined ? { absoluteGap: opts.absoluteGap } : {}),
           values: hasIncumbent ? opts.values || {} : {},
           ...(hasIncumbent && opts.boolValues !== undefined ? { boolValues: opts.boolValues } : {}),
           runTime: 0.001,
@@ -136,12 +131,8 @@ export class MockSolver implements Solver {
         elapsedSeconds: 0.001,
         ...(typeof obj === "number" && Number.isFinite(obj) ? { objectiveValue: obj } : {}),
         ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
-        ...(opts.relGap !== undefined
-          ? { relGap: opts.relGap, mipGap: opts.relGap }
-          : opts.mipGap !== undefined
-            ? { relGap: opts.mipGap, mipGap: opts.mipGap }
-            : {}),
-        ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+        ...(opts.relativeGap !== undefined ? { relativeGap: opts.relativeGap } : {}),
+        ...(opts.absoluteGap !== undefined ? { absoluteGap: opts.absoluteGap } : {}),
       });
     }
 
@@ -160,12 +151,8 @@ export class MockSolver implements Solver {
       hasPrimalSolution,
       objectiveValue: hasPrimalSolution ? (opts.objectiveValue ?? 0) : null,
       ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
-      ...(opts.relGap !== undefined
-        ? { relGap: opts.relGap, mipGap: opts.relGap }
-        : opts.mipGap !== undefined
-          ? { relGap: opts.mipGap, mipGap: opts.mipGap }
-          : {}),
-      ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+      ...(opts.relativeGap !== undefined ? { relativeGap: opts.relativeGap } : {}),
+      ...(opts.absoluteGap !== undefined ? { absoluteGap: opts.absoluteGap } : {}),
       values: hasPrimalSolution ? opts.values || {} : {},
       ...(hasPrimalSolution && opts.boolValues !== undefined ? { boolValues: opts.boolValues } : {}),
       reducedCosts: opts.reducedCosts,

@@ -40,8 +40,8 @@ describe("HiGHS Web Modeler", () => {
     const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
-    expect(m.getVarByName("chairs")?.value).toBe(20);
-    expect(m.getVarByName("tables")?.value).toBe(10);
+    expect(m.variables.get("chairs")?.value).toBe(20);
+    expect(m.variables.get("tables")?.value).toBe(10);
   });
 
   it("supports tagged template literal DSL: expr`...`", async () => {
@@ -109,8 +109,8 @@ describe("HiGHS Web Modeler", () => {
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
-    expect(m.numVars).toBe(4);
-    expect(m.numConstrs).toBe(4);
+    expect(m.variables.size).toBe(4);
+    expect(m.constraints.size).toBe(4);
   });
 
   it("clears Var values when re-running solve() transitioning from Optimal to Infeasible", async () => {

@@ -366,7 +366,7 @@ export async function solveOptimalPasture(
   }
 
   const optimalEvaluation = evaluatePasture(stage, optimalFences);
-  const report = model.validateSolution();
+  const report = model.verify();
   const verified = report.valid && optimalEvaluation.isSafe && !optimalEvaluation.isOverBudget;
 
   return {

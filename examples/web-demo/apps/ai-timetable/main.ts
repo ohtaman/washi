@@ -2093,7 +2093,6 @@ export function updateDeveloperModelInspector(): void {
     const { model } = buildTimetableWashiModel(appState, {
       referenceTimetable: appState.config.preserveCurrentTimetable ? currentTimetable : null,
     });
-    model.validateIntegrity();
     const lpFull = model.toLpString();
     const lpLines = lpFull.split("\n");
     const lpPreview =
@@ -2103,8 +2102,8 @@ export function updateDeveloperModelInspector(): void {
           lpLines.slice(-20).join("\n")
         : lpFull;
 
-    const numVars = model.variables.length;
-    const numConstrs = model.constraints.length;
+    const numVars = model.variables.size;
+    const numConstrs = model.constraints.size;
     statsBadge.textContent = `${numVars} vars / ${numConstrs} constraints`;
     lpBox.textContent = lpPreview;
     codeBox.textContent = generateTimetableWashiCodePreview(appState);

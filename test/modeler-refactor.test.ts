@@ -24,12 +24,12 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
 
     expect(wood).toBeInstanceOf(Constraint);
     expect(capX).toBe(prebuilt);
-    expect(m.getConstraintByName("cap_x")).toBe(prebuilt);
+    expect(m.constraints.get("cap_x")).toBe(prebuilt);
     expect(parsed).toBeInstanceOf(Constraint);
-    expect(m.getConstraintByName("sum_limit")).toBe(parsed);
+    expect(m.constraints.get("sum_limit")).toBe(parsed);
     expect(batch).toHaveLength(1);
     expect(batch[0]).toBeInstanceOf(Constraint);
-    expect(m.numConstrs).toBe(4);
+    expect(m.constraints.size).toBe(4);
 
     m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
     const status = await m.solve();
@@ -41,7 +41,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(wood.dual).toBeCloseTo(25, 4);
     expect(capX.dual).toBeCloseTo(5, 4);
 
-    // Logical constraints preserve BoolVar / BoolOp / array return types
+    // Logical constraints preserve BoolVar / BoolOp / array return types and expose unified ReadonlyMap entries
     const mLogic = new Model();
     const flagA = mLogic.bool("flagA");
     const flagB = mLogic.bool("flagB");
@@ -54,7 +54,15 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(regOp).toBeInstanceOf(BoolOp);
     expect(regBatch[0]).toBe(flagB);
     expect(regBatch[1]).toBeInstanceOf(BoolOp);
-    expect(mLogic.logicalConstraints).toHaveLength(4);
+    expect(mLogic.constraints.size).toBe(4);
+    expect(mLogic.constraints.get("require_A")).toMatchObject({
+      kind: "logical",
+      name: "require_A",
+      dual: null,
+      slack: null,
+    });
+    expect(mLogic.constraints.get("a_implies_z")?.dual).toBeNull();
+    expect(mLogic.constraints.get("a_implies_z")?.slack).toBeNull();
   });
 
   it("strictly rejects raw arithmetic expressions in model.constraint()", () => {
@@ -86,9 +94,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(() => m.objective({ expr: x.le(10), sense: "Maximize" })).toThrow(
       /Cannot use a Constraint as an objective/
     );
-    expect(() => {
-      m.objectiveExpr = x.le(10);
-    }).toThrow(/Cannot use a Constraint as an objective/);
+    expect("objectiveExpr" in m).toBe(false);
   });
 
   it("replaces prior objective when objective() is called repeatedly", async () => {
@@ -231,9 +237,9 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.objectiveValue).toBeNull();
     expect(m.solution).toBeNull();
 
-    // 3. Property setter paths also invalidate immediately
+    // 3. Property setter m.sense also invalidates immediately
     await m.solve();
-    m.objectiveExpr = x.mul(2);
+    m.sense = "Maximize";
     expect(m.status).toBe("NotSolved");
   });
 
@@ -258,12 +264,6 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     // Re-solving still optimizes original objective to upper bound (10), not 0
     await m.solve();
     expect(x.value).toBe(10);
-
-    // Also verify objectiveExpr setter transactional behavior
-    expect(() => {
-      m.objectiveExpr = expr`${x} <= 5` as any;
-    }).toThrow();
-    expect(m.sense).toBe("Maximize");
   });
 
   it("[Review Fix 4] preserves extracted empty unsat core as defined readonly array", async () => {
@@ -294,8 +294,8 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
       (m.conflicts as any).push("illegal");
     }).toThrow();
 
-    // Resetting explicitly clears unsatCore to undefined
-    m.resetSolutionState();
+    // Mutating the model clears unsatCore and conflicts back to undefined
+    m.continuous("extra");
     expect(m.conflicts).toBeUndefined();
     expect(m.unsatCore).toBeUndefined();
   });
