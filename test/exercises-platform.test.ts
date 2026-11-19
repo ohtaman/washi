@@ -252,6 +252,97 @@ export function solve(input: number): number {
     // asi = input + 2, fn(input) = 2*input => 3*input + 2 + (0+1+2) + (1+2+3) + (4+5) + (6+7) + 1 + (1+2+3+1)
     expect(solve(3)).toBe(11 + 3 + 6 + 9 + 13 + 1 + 7);
   });
+
+  it("keeps relational comparisons from hiding declarator commas alongside real generics", () => {
+    const sample = `
+export function solve(input: number) {
+  const min = 2, max = 10;
+  let low = input<min, high: boolean = input>max;
+  let a = input<min, b = input>max;
+  let m: Map<string, number> = new Map<string, number>(), k: number = a === b ? 0 : 1;
+  return { low, high, k, size: m.size };
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => {
+      low: boolean;
+      high: boolean;
+      k: number;
+      size: number;
+    };
+    expect(solve(1)).toEqual({ low: true, high: false, k: 1, size: 0 });
+    expect(solve(12)).toEqual({ low: false, high: true, k: 1, size: 0 });
+    expect(solve(5)).toEqual({ low: false, high: false, k: 0, size: 0 });
+  });
+
+  it("strips as and satisfies assertions following object literals", () => {
+    const sample = `
+type Output = { x: number };
+export function solve(input: number) {
+  const obj = { x: input } as { x: number };
+  const sat = { x: input + 1 } satisfies Output;
+  const ro = { x: input + 2 } as const;
+  if (obj.x < 0) return { x: -1, sum: sat.x + ro.x } as Output & { sum: number };
+  return { x: input + sat.x + ro.x } as Output;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => { x: number };
+    expect(solve(5)).toEqual({ x: 5 + 6 + 7 });
+  });
+
+  it("removes type parameters from generic arrow functions", async () => {
+    const sample = `
+const identity = <T>(x: T): T => x;
+const tag = <T,>(x: T): T => x;
+const asyncId = async <T extends number>(x: T): Promise<T> => x;
+const pair = <A, B>(a: A, b: B): [A, B] => [a, b], extra: number = 5;
+const curry = () => <T>(x: T): T => x;
+export async function solve(input: number, fn = <T>(x: T): T => x): Promise<number> {
+  const [p0, p1] = pair<number, number>(input, extra);
+  return identity(p0) + tag(p1) + (await asyncId(2)) + curry()(3) + fn(4);
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => Promise<number>;
+    expect(await solve(10)).toBe(10 + 5 + 2 + 3 + 4);
+  });
+
+  it("handles local type/interface declarations, export default functions, and object/class methods", () => {
+    const sample = `
+export default function solve(input: number): number {
+  interface Pair {
+    a: number;
+    b: number;
+  }
+  type Transform = (x: number) => number;
+  const helper = {
+    type: 100,
+    add(x: number, y: number): number {
+      return x + y;
+    },
+    async mul(x: number, y: number): Promise<number> {
+      return x * y;
+    },
+  };
+  class Acc {
+    add<T extends number>(x: T): number {
+      return x + 1;
+    }
+  }
+  const p: Pair = { a: input, b: 2 };
+  const inc: Transform = (v: number): number => v + 1;
+  const check = input > 0 ? true : false;
+  if (check) {
+    return helper.add(p.a, p.b) + new Acc().add<number>(inc(1)) + helper.type;
+  }
+  return 0;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(5)).toBe(7 + 3 + 100);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

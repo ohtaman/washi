@@ -390,6 +390,22 @@ function scanGenericArgListEnd(s: string, start: number, prevChar: string): numb
     return -1;
   }
   if (!looksLikeGenericTypeArgList(angInner)) return -1;
+  const after = skipWsHorizontal(s, endAng);
+  const nextCh = s[after] ?? "";
+  if (
+    nextCh !== "" &&
+    nextCh !== "(" &&
+    nextCh !== "\uE000" &&
+    nextCh !== "," &&
+    nextCh !== ";" &&
+    nextCh !== ")" &&
+    nextCh !== "}" &&
+    nextCh !== "]" &&
+    nextCh !== "." &&
+    nextCh !== "\n"
+  ) {
+    return -1;
+  }
   return endAng;
 }
 
@@ -615,7 +631,18 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
       if (two === "||" || two === "&&" || two === "==" || two === "!=") {
         return false;
       }
-      if (ch === ";" || ch === "+" || ch === "*" || ch === "/" || ch === "%") {
+      if (
+        ch === ";" ||
+        ch === "+" ||
+        ch === "*" ||
+        ch === "/" ||
+        ch === "%" ||
+        ch === "=" ||
+        ch === ":" ||
+        ch === "!" ||
+        ch === "~" ||
+        ch === "^"
+      ) {
         return false;
       }
     }
@@ -633,30 +660,33 @@ function stripTopLevelDeclarations(s: string): string {
     const ch = s[i];
     const atLineStart = i === 0 || s[i - 1] === "\n";
 
-    if (depth === 0 && atLineStart) {
+    if (atLineStart) {
       // Skip leading horizontal whitespace on the line
       let wsEnd = i;
       while (wsEnd < s.length && (s[wsEnd] === " " || s[wsEnd] === "\t")) wsEnd++;
 
-      // import ... ;
-      if (s.startsWith("import", wsEnd) && !isIdentChar(s[wsEnd + 6] ?? "")) {
-        let j = wsEnd + 6;
-        while (j < s.length && s[j] !== ";") {
-          // Stop if single-line import without semicolon hits newline after quote placeholder
-          if (s[j] === "\n" && s.slice(wsEnd, j).includes("\uE001")) {
+      // Top-level `import ... ;` (excluding dynamic `import(...)` calls)
+      if (depth === 0 && s.startsWith("import", wsEnd) && !isIdentChar(s[wsEnd + 6] ?? "")) {
+        const afterImp = skipWsHorizontal(s, wsEnd + 6);
+        if (s[afterImp] !== "(") {
+          let j = wsEnd + 6;
+          while (j < s.length && s[j] !== ";") {
+            // Stop if single-line import without semicolon hits newline after quote placeholder
+            if (s[j] === "\n" && s.slice(wsEnd, j).includes("\uE001")) {
+              j++;
+              break;
+            }
             j++;
-            break;
           }
-          j++;
+          if (s[j] === ";") j++;
+          while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
+          if (s[j] === "\n") j++;
+          i = j;
+          continue;
         }
-        if (s[j] === ";") j++;
-        while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
-        if (s[j] === "\n") j++;
-        i = j;
-        continue;
       }
 
-      // export interface / export type / interface / type
+      // `export interface / export type / interface / type` at module or local block scope
       let declStart = wsEnd;
       if (s.startsWith("export", declStart) && /\s/.test(s[declStart + 6] ?? "")) {
         let afterExport = declStart + 6;
@@ -671,69 +701,77 @@ function stripTopLevelDeclarations(s: string): string {
         }
       }
 
-      if (s.startsWith("interface", declStart) && /\s/.test(s[declStart + 9] ?? "")) {
-        let j = declStart + 9;
-        while (j < s.length && s[j] !== "{") j++;
-        if (s[j] === "{") j = skipBalanced(s, j, "{", "}");
-        while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
-        if (s[j] === "\n") j++;
-        i = j;
-        continue;
+      if (s.startsWith("interface", declStart) && (s[declStart + 9] === " " || s[declStart + 9] === "\t")) {
+        const nameStart = skipWsHorizontal(s, declStart + 9);
+        if (isIdentStart(s[nameStart] ?? "")) {
+          let j = nameStart;
+          while (j < s.length && s[j] !== "{") j++;
+          if (s[j] === "{") j = skipBalanced(s, j, "{", "}");
+          while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
+          if (s[j] === "\n") j++;
+          i = j;
+          continue;
+        }
       }
 
-      if (s.startsWith("type", declStart) && /\s/.test(s[declStart + 4] ?? "")) {
-        let j = declStart + 4;
-        let b = 0;
-        let p = 0;
-        let sq = 0;
-        let a = 0;
-        let seenEq = false;
-        while (j < s.length) {
-          const c = s[j];
-          if (c === "=" && s[j + 1] === ">") {
-            j += 2;
-            continue;
+      if (s.startsWith("type", declStart) && (s[declStart + 4] === " " || s[declStart + 4] === "\t")) {
+        const nameStart = skipWsHorizontal(s, declStart + 4);
+        if (isIdentStart(s[nameStart] ?? "")) {
+          let afterName = nameStart;
+          while (afterName < s.length && isIdentChar(s[afterName])) afterName++;
+          afterName = skipWsHorizontal(s, afterName);
+          if (s[afterName] === "<") {
+            afterName = skipWsHorizontal(s, skipBalanced(s, afterName, "<", ">"));
           }
-          if (c === "=" && b === 0 && p === 0 && sq === 0 && a === 0 && !seenEq) {
-            seenEq = true;
-            j++;
-            continue;
-          }
-          if (c === "{") b++;
-          else if (c === "}" && b > 0) b--;
-          else if (c === "(") p++;
-          else if (c === ")" && p > 0) p--;
-          else if (c === "[") sq++;
-          else if (c === "]" && sq > 0) sq--;
-          else if (c === "<") a++;
-          else if (c === ">" && a > 0) a--;
-          else if (c === ";" && b === 0 && p === 0 && sq === 0 && a === 0) {
-            j++;
-            break;
-          } else if (c === "\n" && seenEq && b === 0 && p === 0 && sq === 0 && a === 0) {
-            let back = j - 1;
-            while (back >= declStart && (s[back] === " " || s[back] === "\t" || s[back] === "\r")) {
-              back--;
-            }
-            const prevCh = s[back] ?? "";
-            let fwd = j + 1;
-            while (fwd < s.length && (s[fwd] === " " || s[fwd] === "\t" || s[fwd] === "\r")) {
-              fwd++;
-            }
-            const nextCh = s[fwd] ?? "";
-            const continuesLine =
-              prevCh === "=" || prevCh === "|" || prevCh === "&" || nextCh === "|" || nextCh === "&";
-            if (!continuesLine) {
+          if (s[afterName] === "=" && s[afterName + 1] !== ">" && s[afterName + 1] !== "=") {
+            let j = afterName + 1;
+            let b = 0;
+            let p = 0;
+            let sq = 0;
+            let a = 0;
+            while (j < s.length) {
+              const c = s[j];
+              if (c === "=" && s[j + 1] === ">") {
+                j += 2;
+                continue;
+              }
+              if (c === "{") b++;
+              else if (c === "}" && b > 0) b--;
+              else if (c === "(") p++;
+              else if (c === ")" && p > 0) p--;
+              else if (c === "[") sq++;
+              else if (c === "]" && sq > 0) sq--;
+              else if (c === "<") a++;
+              else if (c === ">" && a > 0) a--;
+              else if (c === ";" && b === 0 && p === 0 && sq === 0 && a === 0) {
+                j++;
+                break;
+              } else if (c === "\n" && b === 0 && p === 0 && sq === 0 && a === 0) {
+                let back = j - 1;
+                while (back >= afterName && (s[back] === " " || s[back] === "\t" || s[back] === "\r")) {
+                  back--;
+                }
+                const prevCh = s[back] ?? "";
+                let fwd = j + 1;
+                while (fwd < s.length && (s[fwd] === " " || s[fwd] === "\t" || s[fwd] === "\r")) {
+                  fwd++;
+                }
+                const nextCh = s[fwd] ?? "";
+                const continuesLine =
+                  prevCh === "=" || prevCh === "|" || prevCh === "&" || nextCh === "|" || nextCh === "&";
+                if (!continuesLine) {
+                  j++;
+                  break;
+                }
+              }
               j++;
-              break;
             }
+            while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
+            if (s[j] === "\n") j++;
+            i = j;
+            continue;
           }
-          j++;
         }
-        while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
-        if (s[j] === "\n") j++;
-        i = j;
-        continue;
       }
     }
 
@@ -842,6 +880,11 @@ function scanExpressionEnd(
           i = endAng;
           continue;
         }
+        const genericArrowEnd = scanGenericArrowPrefixEnd(s, i);
+        if (genericArrowEnd > i) {
+          i = genericArrowEnd;
+          continue;
+        }
       } else if (stopChars.has(ch)) {
         return i;
       } else if (stopOnAsiNewline && ch === "\n" && !continuesExpressionAcrossNewline(s, i, start)) {
@@ -861,7 +904,10 @@ function isBindingStart(ch: string): boolean {
 }
 
 function stripExportKeywords(s: string): string {
-  return s.replace(/^([ \t]*)export\s+(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm, "$1");
+  return s.replace(
+    /^([ \t]*)export\s+(?:default\s+)?(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm,
+    "$1",
+  );
 }
 
 function stripVariableTypeAnnotations(s: string): string {
@@ -940,8 +986,100 @@ function stripVariableTypeAnnotations(s: string): string {
   return out;
 }
 
+const NON_METHOD_KEYWORDS = new Set([
+  "if",
+  "else",
+  "for",
+  "while",
+  "switch",
+  "catch",
+  "with",
+  "return",
+  "throw",
+  "typeof",
+  "void",
+  "delete",
+  "await",
+  "yield",
+  "new",
+  "case",
+  "do",
+  "in",
+  "instanceof",
+  "function",
+]);
+
+function matchArrowHeader(
+  s: string,
+  parenStart: number,
+): { closeIdx: number; bodyStart: number } | null {
+  if (s[parenStart] !== "(") return null;
+  const closeIdx = skipBalanced(s, parenStart, "(", ")");
+  if (s[closeIdx - 1] !== ")") return null;
+  const after = skipWsHorizontal(s, closeIdx);
+  if (s.slice(after, after + 2) === "=>") {
+    return { closeIdx, bodyStart: after };
+  }
+  if (s[after] === ":") {
+    // Arrow function return types cannot be unparenthesized function types, so leave top-level `=>` to the arrow body
+    const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1, false));
+    if (s.slice(afterColon, afterColon + 2) === "=>") {
+      return { closeIdx, bodyStart: afterColon };
+    }
+  }
+  return null;
+}
+
+function isGenericArrowPrefixContext(out: string): boolean {
+  const trimmed = out.trimEnd();
+  if (!trimmed) return true;
+  if ("=(,:?[{;>".includes(trimmed[trimmed.length - 1])) return true;
+  const prevWord = readPrevWord(out);
+  return prevWord === "async" || REGEX_PREFIX_KEYWORDS.has(prevWord);
+}
+
+function scanGenericArrowPrefixEnd(s: string, ltStart: number): number {
+  if (s[ltStart] !== "<") return -1;
+  const endAngle = skipBalanced(s, ltStart, "<", ">");
+  if (s[endAngle - 1] !== ">") return -1;
+  const inner = s.slice(ltStart + 1, endAngle - 1);
+  if (!inner.trim() || inner.includes(";") || inner.includes("\n")) return -1;
+  const parenIdx = skipWs(s, endAngle);
+  if (s[parenIdx] !== "(") return -1;
+  return matchArrowHeader(s, parenIdx) ? endAngle : -1;
+}
+
+function isMethodHeaderPrefix(out: string): boolean {
+  const trimmed = out.trimEnd();
+  if (!trimmed) return false;
+  const prevWord = readPrevWord(trimmed);
+  if (!prevWord || NON_METHOD_KEYWORDS.has(prevWord)) return false;
+  const beforeWord = trimmed.slice(0, trimmed.length - prevWord.length).trimEnd();
+  return !beforeWord.endsWith(".");
+}
+
+function matchMethodHeader(
+  s: string,
+  parenStart: number,
+): { closeIdx: number; bodyStart: number } | null {
+  if (s[parenStart] !== "(") return null;
+  const closeIdx = skipBalanced(s, parenStart, "(", ")");
+  if (s[closeIdx - 1] !== ")") return null;
+  const after = skipWsHorizontal(s, closeIdx);
+  if (s[after] === "{") {
+    return { closeIdx, bodyStart: after };
+  }
+  if (s[after] === ":") {
+    const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1));
+    if (s[afterColon] === "{") {
+      return { closeIdx, bodyStart: afterColon };
+    }
+  }
+  return null;
+}
+
 function stripParameterAndReturnTypes(s: string): string {
-  // Handle `function foo<T>(...) : RetType {` and `const f = async (x: T): Promise<U> =>`
+  // Handle `function foo<T>(...) : RetType {`, generic/typed arrows `<T>(x: T): R =>`, and methods
   let out = "";
   let i = 0;
 
@@ -984,28 +1122,54 @@ function stripParameterAndReturnTypes(s: string): string {
       continue;
     }
 
-    // Arrow functions `(a: T, b: U): R =>` (preserve `expr as (x: T) => U` for the `as` pass)
-    if (s[i] === "(" && readPrevWord(out) !== "as") {
-      const closeIdx = skipBalanced(s, i, "(", ")");
-      // Inspect whether this `(` list is immediately followed by `=>` or `: Type =>`
-      let after = closeIdx;
-      while (after < s.length && (s[after] === " " || s[after] === "\t")) after++;
-      let isArrowWithTypes = false;
-      let bodyStart = after;
-      if (s.slice(after, after + 2) === "=>") {
-        isArrowWithTypes = true;
-      } else if (s[after] === ":") {
-        // Arrow function return types cannot be unparenthesized function types, so leave top-level `=>` to the arrow body
-        const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1, false));
-        if (s.slice(afterColon, afterColon + 2) === "=>") {
-          isArrowWithTypes = true;
-          bodyStart = afterColon;
+    // Generic arrow functions `<T>(a: T): R =>`
+    if (s[i] === "<" && isGenericArrowPrefixContext(out)) {
+      const endAngle = scanGenericArrowPrefixEnd(s, i);
+      if (endAngle > i) {
+        const parenIdx = skipWs(s, endAngle);
+        const arrow = matchArrowHeader(s, parenIdx);
+        if (arrow) {
+          out += stripParamList(s.slice(parenIdx, arrow.closeIdx));
+          i = arrow.bodyStart;
+          continue;
         }
       }
-      if (isArrowWithTypes) {
-        out += stripParamList(s.slice(i, closeIdx));
-        i = bodyStart;
-        continue;
+    }
+
+    // Generic object/class methods `add<T>(a: T): R {`
+    if (s[i] === "<" && isMethodHeaderPrefix(out)) {
+      const endAngle = skipBalanced(s, i, "<", ">");
+      if (s[endAngle - 1] === ">") {
+        const parenIdx = skipWsHorizontal(s, endAngle);
+        const method = matchMethodHeader(s, parenIdx);
+        if (method) {
+          out += stripParamList(s.slice(parenIdx, method.closeIdx));
+          out += " ";
+          i = method.bodyStart;
+          continue;
+        }
+      }
+    }
+
+    // Arrow functions `(a: T, b: U): R =>` (preserve `expr as/satisfies (x: T) => U` for Pass 6)
+    if (s[i] === "(") {
+      const prevWord = readPrevWord(out);
+      if (prevWord !== "as" && prevWord !== "satisfies") {
+        const arrow = matchArrowHeader(s, i);
+        if (arrow) {
+          out += stripParamList(s.slice(i, arrow.closeIdx));
+          i = arrow.bodyStart;
+          continue;
+        }
+      }
+      if (isMethodHeaderPrefix(out)) {
+        const method = matchMethodHeader(s, i);
+        if (method) {
+          out += stripParamList(s.slice(i, method.closeIdx));
+          out += " ";
+          i = method.bodyStart;
+          continue;
+        }
       }
     }
 
@@ -1112,21 +1276,29 @@ function stripGenericsAsAndNonNull(s: string): string {
       }
     }
 
-    // 2. `as const` or `as Type` assertions
-    if (
-      s.startsWith("as", i) &&
-      (i === 0 || !isIdentChar(s[i - 1])) &&
-      (s[i + 2] === " " || s[i + 2] === "\t")
-    ) {
-      let j = i + 2;
+    // 2. `as const`, `as Type`, or `satisfies Type` assertions
+    const assertKw =
+      s.startsWith("as", i) && (s[i + 2] === " " || s[i + 2] === "\t")
+        ? "as"
+        : s.startsWith("satisfies", i) && (s[i + 9] === " " || s[i + 9] === "\t")
+          ? "satisfies"
+          : null;
+    if (assertKw && (i === 0 || !isIdentChar(s[i - 1]))) {
+      let j = i + assertKw.length;
       while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
-      if (s.startsWith("const", j) && !isIdentChar(s[j + 5] ?? "")) {
+      if (assertKw === "as" && s.startsWith("const", j) && !isIdentChar(s[j + 5] ?? "")) {
         i = j + 5;
         continue;
       }
       const prevTrim = out.trimEnd();
       const prevC = prevTrim[prevTrim.length - 1] ?? "";
-      if (isIdentChar(prevC) || prevC === ")" || prevC === "]" || prevC === "\uE001") {
+      if (
+        isIdentChar(prevC) ||
+        prevC === ")" ||
+        prevC === "]" ||
+        prevC === "}" ||
+        prevC === "\uE001"
+      ) {
         const typeEnd = readTypeEnd(s, j);
         if (typeEnd > j) {
           if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
