@@ -474,6 +474,15 @@ async function run() {
 
       // Verify #000-#003 starters in real Pyodide highspy too
       if (id === "000" || id === "001" || id === "002" || id === "003") {
+        if (id === "001") {
+          const origPyStarter = await page.locator("#editor-highspy").inputValue();
+          await page
+            .locator("#editor-highspy")
+            .fill(origPyStarter.replace(/^\s*h\.maximize\(.*\)$/m, ""));
+          await page.click('button[data-action="run"][data-runtime="highspy"]');
+          await page.waitForSelector("#judge-results .verdict-pill.is-error", { timeout: 120_000 });
+          await page.click('button[data-action="reset"][data-runtime="highspy"]');
+        }
         await page.click('button[data-action="run"][data-runtime="highspy"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-violation", { timeout: 120_000 });
       }
@@ -482,8 +491,23 @@ async function run() {
       const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
       await pySolBtn.click();
       await pySolBtn.click();
+      if (id === "010") {
+        const pySol = await page.locator("#editor-highspy").inputValue();
+        await page
+          .locator("#editor-highspy")
+          .fill(pySol.replace("h.maximize(", "h.addConstr(quantities[0] >= 9999)\n    h.maximize("));
+        await page.click('button[data-action="run"][data-runtime="highspy"]');
+        await page.waitForSelector("#judge-results .verdict-pill.is-infeasible", { timeout: 120_000 });
+        await page.locator("#editor-highspy").fill(pySol);
+      }
       await page.click('button[data-action="run"][data-runtime="highspy"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
+      if (id !== "000") {
+        assert(
+          (await page.locator("#judge-results .case-meta").count()) > 0,
+          `${id}: expected Python case-meta variable/constraint metrics from pyodide-worker`
+        );
+      }
 
       const pyCheckText = await page.locator("#tab-highspy .runtime-tab-check").innerText();
       assert(pyCheckText.includes("✓"), `${id}: expected highspy tab checkmark after Python AC`);

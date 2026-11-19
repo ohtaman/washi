@@ -831,6 +831,7 @@ class ExercisesApp {
           originGeneration,
           {
             error: runRes.error,
+            metrics: runRes.metrics,
           }
         );
       }

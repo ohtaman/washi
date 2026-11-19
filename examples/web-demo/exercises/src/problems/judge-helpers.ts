@@ -80,10 +80,10 @@ export function applySolverStatusToVerdict(
   if (solverStatus === "Unbounded") {
     return runtimeError(messages.unbounded);
   }
+  if (solverStatus === "NotSolved") {
+    return runtimeError(messages.notSolved);
+  }
   if (verdict.status === "RUNTIME_ERROR") {
-    if (solverStatus === "NotSolved") {
-      return runtimeError(messages.notSolved);
-    }
     if (solverStatus !== "Optimal" && solverStatus !== "Feasible" && solverStatus !== "Sat") {
       return runtimeError(messages.solverError(solverStatus));
     }

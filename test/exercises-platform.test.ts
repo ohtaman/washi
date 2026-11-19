@@ -2,6 +2,11 @@ import { describe, it, expect } from "vitest";
 import { transpileExerciseTsToJs } from "../examples/web-demo/exercises/src/runner/ts-transpile.js";
 import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
 import {
+  applySolverStatusToVerdict,
+  violation,
+  accepted,
+} from "../examples/web-demo/exercises/src/problems/judge-helpers.js";
+import {
   PROGRESS_STORAGE_KEY,
   clearAllSolved,
   clearSolvedProblem,
@@ -1268,5 +1273,29 @@ export function solve(n: number) {
     const res4 = await runWashiExerciseCode(ownGetterCode, [2600, 3500]);
     expect(res4.ok).toBe(true);
     expect(res4.outputs).toEqual([{ totalProfit: 2600 }, { totalProfit: 3500 }]);
+  });
+});
+
+describe("Exercises Platform — Solver Status Verdict Mapping", () => {
+  it("reports INFEASIBLE, Unbounded, and NotSolved honestly even when a solver returns fallback numbers", () => {
+    const msgs = UI_STRINGS.en.results.solverStatus;
+    const baseViol = violation("Fallback 0 violates constraints");
+    const baseAc = accepted(100, "AC");
+
+    expect(applySolverStatusToVerdict(baseViol, "Infeasible", msgs).status).toBe("INFEASIBLE");
+    expect(applySolverStatusToVerdict(baseViol, "InfeasibleOrUnbounded", msgs).status).toBe(
+      "INFEASIBLE"
+    );
+    expect(applySolverStatusToVerdict(baseViol, "Unbounded", msgs)).toEqual({
+      status: "RUNTIME_ERROR",
+      ok: false,
+      message: msgs.unbounded,
+    });
+    expect(applySolverStatusToVerdict(baseViol, "NotSolved", msgs)).toEqual({
+      status: "RUNTIME_ERROR",
+      ok: false,
+      message: msgs.notSolved,
+    });
+    expect(applySolverStatusToVerdict(baseAc, "Optimal", msgs)).toBe(baseAc);
   });
 });

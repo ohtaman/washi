@@ -51,7 +51,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
     ```
   - **Use vector/matrix helpers (`sum`, `dot`, array `m.continuous(n, ...)`, `.map()`, `.flatMap()`)** rather than imperative accumulator loops.
   - **Clean outputs**: Use `v.value!` directly for continuous LP results, and normalize integer/binary solutions cleanly with `Math.round(v.value!)` (converting `-0` to `0` if needed via `|| 0`).
-  - Omit unnecessary `if (status !== "Optimal")` throw scaffolding unless multi-status branching is part of the problem; the workbook runner reports `solverStatus` (`Infeasible`, `Unbounded`, `NotSolved`) directly to `applySolverStatusToVerdict()`.
+  - Omit unnecessary `if (status !== "Optimal")` throw scaffolding unless multi-status branching is part of the problem; both the WaSHI runner (`washi-runner.ts`) and the Python runner (`pyodide-worker.ts`) report `solverStatus` (`Infeasible`, `Unbounded`, `NotSolved`) directly to `applySolverStatusToVerdict()`.
 - **Idiomatic Python (`highspy`)**:
   - Always call `h.silent()`.
   - Use clear comprehensions, `h.qsum(...)`, `h.addConstr(...)` / `h.addConstrs(...)`, `float(h.val(v))` for continuous variables, `int(round(h.val(v)))` for integer/binary variables, and `float(h.getObjectiveValue())`.
