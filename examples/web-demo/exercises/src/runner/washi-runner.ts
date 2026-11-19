@@ -60,7 +60,29 @@ export interface WashiExerciseRunResult {
   runTimeMs: number;
 }
 
-function cloneFallbackWithCycles(value: unknown, seen: WeakMap<object, unknown>): unknown {
+function collectMaterializableKeys(obj: object): Set<string> {
+  const keys = new Set<string>();
+  for (const k of Object.getOwnPropertyNames(obj)) {
+    const desc = Object.getOwnPropertyDescriptor(obj, k);
+    if (desc && (desc.enumerable || typeof desc.get === "function")) {
+      keys.add(k);
+    }
+  }
+  let proto: object | null = Object.getPrototypeOf(obj);
+  while (proto && proto !== Object.prototype) {
+    for (const k of Object.getOwnPropertyNames(proto)) {
+      if (k === "constructor") continue;
+      const desc = Object.getOwnPropertyDescriptor(proto, k);
+      if (desc && (typeof desc.get === "function" || (desc.enumerable && typeof desc.value !== "function"))) {
+        keys.add(k);
+      }
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return keys;
+}
+
+function snapshotValue(value: unknown, seen: WeakMap<object, unknown>): unknown {
   if (value === null || typeof value !== "object") {
     return value;
   }
@@ -71,31 +93,58 @@ function cloneFallbackWithCycles(value: unknown, seen: WeakMap<object, unknown>)
     const arrCopy: unknown[] = [];
     seen.set(value, arrCopy);
     for (let i = 0; i < value.length; i++) {
-      arrCopy.push(cloneFallbackWithCycles(value[i], seen));
+      arrCopy.push(snapshotValue(value[i], seen));
     }
     return arrCopy;
   }
-  if (ArrayBuffer.isView(value)) {
+  if (
+    value instanceof Date ||
+    value instanceof RegExp ||
+    value instanceof ArrayBuffer ||
+    ArrayBuffer.isView(value)
+  ) {
     try {
       return structuredClone(value);
     } catch {
       return value;
     }
   }
-  const objCopy: Record<string, unknown> = {};
-  seen.set(value, objCopy);
-  for (const [k, v] of Object.entries(value)) {
-    objCopy[k] = typeof v === "function" ? v : cloneFallbackWithCycles(v, seen);
+  if (value instanceof Map) {
+    const mapCopy = new Map<unknown, unknown>();
+    seen.set(value, mapCopy);
+    for (const [k, v] of value.entries()) {
+      mapCopy.set(snapshotValue(k, seen), snapshotValue(v, seen));
+    }
+    return mapCopy;
   }
-  return objCopy;
+  if (value instanceof Set) {
+    const setCopy = new Set<unknown>();
+    seen.set(value, setCopy);
+    for (const v of value.values()) {
+      setCopy.add(snapshotValue(v, seen));
+    }
+    return setCopy;
+  }
+  if (value instanceof Error) {
+    return value;
+  }
+
+  const copy: Record<string, unknown> = {};
+  seen.set(value, copy);
+  const rec = value as Record<string, unknown>;
+  for (const key of collectMaterializableKeys(value)) {
+    Object.defineProperty(copy, key, {
+      value: snapshotValue(rec[key], seen),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return copy;
 }
 
 function snapshotCaseOutput(value: unknown): unknown {
-  try {
-    return structuredClone(value);
-  } catch {
-    return cloneFallbackWithCycles(value, new WeakMap<object, unknown>());
-  }
+  return snapshotValue(value, new WeakMap<object, unknown>());
 }
 
 function formatLogArg(arg: unknown): string {

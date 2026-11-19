@@ -1150,5 +1150,46 @@ export function solve(n: number) {
     expect(res2.ok).toBe(true);
     expect((res2.outputs[0] as { value: number }).value).toBe(3);
     expect((res2.outputs[1] as { value: number }).value).toBe(4);
+
+    const accessorClassCode = `
+class BakeryResult {
+  croissants = 0;
+  loaves = 0;
+  get totalProfit() {
+    return this.croissants * 40 + this.loaves * 70;
+  }
+}
+const reusable = new BakeryResult();
+export function solve(inp: { c: number; l: number }) {
+  reusable.croissants = inp.c;
+  reusable.loaves = inp.l;
+  return reusable;
+}
+`;
+    const res3 = await runWashiExerciseCode(accessorClassCode, [
+      { c: 30, l: 20 },
+      { c: 10, l: 5 },
+    ]);
+    expect(res3.ok).toBe(true);
+    expect(res3.outputs).toEqual([
+      { croissants: 30, loaves: 20, totalProfit: 2600 },
+      { croissants: 10, loaves: 5, totalProfit: 750 },
+    ]);
+
+    const ownGetterCode = `
+let current = 0;
+const box = {};
+Object.defineProperty(box, "totalProfit", {
+  get() { return current; },
+  enumerable: false,
+});
+export function solve(n: number) {
+  current = n;
+  return box;
+}
+`;
+    const res4 = await runWashiExerciseCode(ownGetterCode, [2600, 3500]);
+    expect(res4.ok).toBe(true);
+    expect(res4.outputs).toEqual([{ totalProfit: 2600 }, { totalProfit: 3500 }]);
   });
 });
