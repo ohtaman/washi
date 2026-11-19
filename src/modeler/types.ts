@@ -84,11 +84,9 @@ export interface SolveProgressEvent {
   /** Best proven dual / objective bound when available */
   objectiveBound?: number;
   /** Relative MIP optimality gap when available */
-  relGap?: number;
-  /** Alias for relGap: relative MIP optimality gap when available */
-  mipGap?: number;
+  relativeGap?: number;
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when available */
-  absGap?: number;
+  absoluteGap?: number;
   /** Explored MIP branch-and-bound node count when available */
   nodes?: number;
   /** Solver iteration count (simplex, IPM, or MIP LP iterations) when available */
@@ -102,8 +100,8 @@ export interface SolveOptions {
   outputFlag?: boolean;
   presolve?: "on" | "off" | "choose";
   solver?: any;
-  relGap?: number;
-  absGap?: number;
+  relativeGap?: number;
+  absoluteGap?: number;
   wasmUrl?: string;
   /**
    * AbortSignal to cancel a solve:
@@ -133,11 +131,9 @@ export interface SolverSolution {
   /** Best proven dual/objective bound when provided by the solver */
   objectiveBound?: number;
   /** Relative MIP optimality gap when provided by the solver */
-  relGap?: number;
-  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
-  mipGap?: number;
+  relativeGap?: number;
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when provided by the solver */
-  absGap?: number;
+  absoluteGap?: number;
   values: Record<string, number>;
   duals: Record<string, number>;
   reducedCosts: Record<string, number>;

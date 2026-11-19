@@ -70,9 +70,9 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           require(x.value === 7 && m.objectiveValue === 26, "Wrong primal or objective offset");
           require(m.hasPrimalSolution && m.terminationStatus === "Optimal", "Wrong solution metrics");
           require(progress.length > 0, "No progress callback received");
-          const report = m.validateSolution();
+          const report = m.verify();
           require(report.valid && report.complete && report.violations.length === 0, "Invalid solution");
-          const invalid = m.validateSolution({ values: { x: 8, active: 1 } });
+          const invalid = m.verify({ values: { x: 8, active: 1 } });
           require(!invalid.valid, "Validator accepted an indicator violation");
 
           let rejected = false;
@@ -145,7 +145,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
             const a = logic.bool("a");
             logic.constraint(a, "required presence");
             require((await logic.check(solverName)).status === "Sat", "Expected Sat");
-            require(logic.validateSolution().valid, "Boolean solution validation failed");
+            require(logic.verify().valid, "Boolean solution verification failed");
             logic.constraint(a.not(), "requested absence");
             require((await logic.check(solverName)).status === "Unsat", "Expected Unsat");
             require(logic.unsatCore.length === 2 && logic.unsatCore.includes("required presence") &&
@@ -204,7 +204,7 @@ async function checkZ3FailureRecovery(page, assets) {
     require(await z3.loadZ3() === replacement, "Old cleanup invalidated the replacement");
     require((await checkModel.check("z3")).status === "Sat", "check() did not recover");
     require(await solveModel.solve("z3") === "Optimal" && x.value === 7, "solve() did not recover");
-    require(solveModel.validateSolution().valid, "Recovered solution is invalid");
+    require(solveModel.verify().valid, "Recovered solution is invalid");
     await z3.killZ3Threads();
   }, assets));
 }
@@ -285,7 +285,7 @@ async function checkWorkerCancellation(page) {
           protoHint.initialValue === 1 &&
           Object.hasOwn(remaining.solution.values, "__proto__") &&
           remaining.solution.values["__proto__"] === 1 &&
-          remaining.validateSolution().valid,
+          remaining.verify().valid,
         "Remaining queued solve failed after Worker replacement"
       );
       require(await queued.solve({ useWorker: true }) === "Optimal" && q.value === 3,

@@ -177,7 +177,7 @@ describe("Benders Decomposition", () => {
     expect(result.status).toBe("Optimal");
     expect(result.objectiveValue).toBeCloseTo(referenceObjective, 1e-4);
     expect(result.cutsAdded).toBeGreaterThanOrEqual(1);
-    expect(master.getConstraintByName("benders_cut_1")).toBeDefined();
+    expect(master.constraints.get("benders_cut_1")).toBeDefined();
 
     // Both facilities must be open in the optimal solution
     expect(Math.round(result.values["y_F1"] ?? 0)).toBe(1);
@@ -249,7 +249,7 @@ describe("Benders Decomposition", () => {
     expect(Math.round(result.values.y)).toBe(0);
 
     // Verify master solution state remains internally consistent
-    expect(master.validateSolution().valid).toBe(true);
+    expect(master.verify().valid).toBe(true);
     expect(master.values.get("y")).toBe(y.value);
     expect(master.solution?.values.y).toBe(y.value);
   });

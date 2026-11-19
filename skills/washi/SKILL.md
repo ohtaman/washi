@@ -48,12 +48,11 @@ Select the solver engine and execution method that match the problem class:
 
 ---
 
-## 3. Model Inspection (`validateIntegrity` & `toLpString`)
+## 3. Model Inspection (`toLpString`)
 
 Before solving or when debugging formulation bugs:
 
-- **`m.validateIntegrity()`**: Validates variable ownership (variables and constraints cannot be shared across `Model` instances), bound sanity (`lb <= ub`, finite `initialValue` within bounds/integrality tolerance `1e-6`), and finite objective/constraint coefficients.
-- **`m.toLpString()`**: Calls `validateIntegrity()` and exports the numeric LP / MIP / QP formulation in standard CPLEX LP format (`Maximize` / `Minimize`, `Subject To`, `Bounds`, `General`, `Binary`, `End`). Inspect this string to confirm objective sense, signs, coefficients, and right-hand sides match the mathematical specification.
+- **`m.toLpString()`**: Automatically validates model integrity (variable ownership across `Model` instances, bound sanity `lb <= ub`, finite `initialValue` within bounds/integrality tolerance `1e-6`, and finite objective/constraint coefficients) and exports the numeric LP / MIP / QP formulation in standard CPLEX LP format (`Maximize` / `Minimize`, `Subject To`, `Bounds`, `General`, `Binary`, `End`). Inspect this string to confirm objective sense, signs, coefficients, and right-hand sides match the mathematical specification.
 
 ---
 
@@ -63,9 +62,9 @@ Never report a model solution as final without executing the verification step:
 
 1. **After `const status = await m.solve(options?)`**:
    - Verify `status === "Optimal"` (or `status === "Feasible"` / `m.hasPrimalSolution === true` when solver limits apply).
-   - Call `const report = m.validateSolution()` and assert `report.valid === true`.
+   - Call `const report = m.verify()` and assert `report.valid === true`.
    - If `report.valid === false`, inspect `report.violations`, `report.missingVariables`, `report.uncheckedConstraints`, and `report.maxViolation`.
-   - Note: `m.validateSolution()` independently checks variable finiteness, variable bounds (`lb`/`ub`), integrality (`Integer`, `Binary`, `BoolVar`), linear constraint residuals, and logical constraints. It does **not** recompute `m.objectiveValue` or verify natural-language problem coverage.
+   - Note: `m.verify()` independently checks variable finiteness, variable bounds (`lb`/`ub`), integrality (`Integer`, `Binary`, `BoolVar`), linear constraint residuals, and logical constraints. It does **not** recompute `m.objectiveValue` or verify natural-language problem coverage.
 2. **When a model is infeasible (`"Infeasible"` or `"Unsat"`)**:
    - Run `const res = await m.check()` (diagnoses with built-in HiGHS via single-solve elastic slack relaxation), `const res = await m.check({ solver: "pumpkin" })` (for `unsatCore` on bounded integer/boolean models without `COOP`/`COEP` requirements), or `const res = await m.check({ solver: "z3" })` (for exact SMT `unsatCore` including `Continuous`/fractional constraints).
    - When `res.status === "Unsat"`, inspect `res.conflicts` (also stored on `m.conflicts`). On HiGHS, `conflicts` reports the subset of constraints requiring relaxation to restore feasibility (with `unsatCore: undefined` for semantic rigor). On Z3 and Pumpkin, both `unsatCore` and `conflicts` report the contradictory constraint subset.
@@ -75,7 +74,7 @@ Never report a model solution as final without executing the verification step:
 
 ## 5. Executable Workflow Recipes
 
-### Recipe 1: MIP Formulation, `toLpString()` Inspection & `validateSolution()` Verification
+### Recipe 1: MIP Formulation, `toLpString()` Inspection & `verify()` Verification
 
 ```ts
 import { Model, expr, dot, sum, maximize } from "@ohtaman/washi";
@@ -98,15 +97,14 @@ export async function solveAndVerifyMip() {
     name: "closed_line_zero_output",
   });
 
-  // 1. Pre-solve integrity & LP formulation inspection
-  m.validateIntegrity();
+  // 1. Pre-solve integrity validation & LP formulation inspection
   const lpText = m.toLpString();
 
   // 2. Solve with default HiGHS solver
   const status = await m.solve();
 
   // 3. Mandatory independent solution verification
-  const report = m.validateSolution();
+  const report = m.verify();
 
   return {
     status,
@@ -135,7 +133,7 @@ export async function solveAndVerifyQp() {
 
   const lpText = m.toLpString();
   const status = await m.solve();
-  const report = m.validateSolution();
+  const report = m.verify();
 
   return {
     status,
@@ -176,7 +174,7 @@ export async function diagnoseAndVerifyWithZ3() {
   satModel.constraint(expr`${discountSat} <= 25`, "campaign_cap");
 
   const satRes = await satModel.check();
-  const report = satModel.validateSolution();
+  const report = satModel.verify();
 
   return {
     unsatStatus: unsatRes.status,
@@ -215,7 +213,7 @@ export async function solveAndDiagnoseWithPumpkin() {
   cpModel.objective(minimize(expr`${start.paint} + 2`));
 
   const status = await cpModel.solve();
-  const report = cpModel.validateSolution();
+  const report = cpModel.verify();
 
   // Part B: Zero-COOP/COEP unsatCore diagnosis on bounded integers & booleans
   const unsatModel = new Model("PolicyConflict", { solver: "pumpkin" });
@@ -248,7 +246,7 @@ export async function solveAndDiagnoseWithPumpkin() {
 - **No quadratic constraints or MIQP**: Quadratic terms (`${x}^2`, `${x} * ${y}`) are only valid in `m.objective(...)` (using them in `m.constraint(...)` throws `"Quadratic constraints are not supported"`), and built-in HiGHS requires Convex QP models to contain only continuous variables (`m.continuous`).
 - **Do not confuse `LinExpr` and `Constraint`**: `m.objective(maximize(...))` requires a `LinExpr`, `QuadExpr`, `Var`, or `number` (never a `Constraint`). `m.constraint(...)` requires a `Constraint` (with `<=`, `>=`, `==`, `=`, or integer-only `<`, `>`, `!=`) or `BoolExpr` (`distinct`, `disjoint`, `cumulative`, `allowed`, `and`, `or`, `not`, `implies`, `xor`), never a bare `LinExpr`.
 - **Do not mutate during async solve/check**: Modifying variables, bounds, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight run and rejects the promise.
-- **Do not use retired aliases**: Always use `expr` (not `c`), `m.constraint(...)` (not `m.constrain` or `m.add`), `m.objective(maximize(...))` (not `m.maximize` or `m.setObjective`), `await m.solve()` (not `m.optimize`), `.le()` / `.ge()` / `.eq()` / `.lt()` / `.gt()` / `.ne()` (not `.lessThanOrEqual()`), `.value` (not `m.getValues(...)` or `.getValue()`), and `m.variables` / `m.constraints` (not `m.vars` / `m.constrs`).
+- **Do not use retired aliases**: Always use `expr` (not `c`), `m.constraint(...)` (not `m.constrain` or `m.add`), `m.objective(maximize(...))` / `m.objective()` (not `m.maximize`, `m.setObjective`, or `m.objectiveExpr`), `await m.solve()` (not `m.optimize`), `m.verify()` (not `m.validateSolution()`), `m.column(...)` (not `m.addColumn(...)`), `.le()` / `.ge()` / `.eq()` / `.lt()` / `.gt()` / `.ne()` (not `.lessThanOrEqual()`), `.value` (not `m.getValues(...)` or `.getValue()`), `m.variables` / `m.constraints` as `ReadonlyMap` with `.get(...)` / `.size` (not `m.vars`, `m.constrs`, `m.boolVars`, `m.logicalConstraints`, `m.numVars`, `m.numConstrs`, or `get*ByName()`), and `relativeGap` / `absoluteGap` (not `relGap` / `mipGap` / `absGap`). Also never call retired `m.validateIntegrity()` (integrity validation runs automatically inside `solve()`, `check()`, and `toLpString()`).
 - **Practical OR formulation guardrails**:
   - **Prefer inequalities (`>=` / `<=`) over `==`** for demand coverage and capacity limits when costs are non-negative; reserve `==` for flow conservation or normalization identities.
   - **Provide finite `lb` and `ub` bounds** on variables inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M instead of a loose `1e6` fallback.

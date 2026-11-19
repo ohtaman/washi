@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   Model,
+  Constraint,
   expr,
   maximize,
   minimize,
@@ -95,7 +96,7 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     const b = m.continuous("v_b");
     m.objective(maximize(a.mul(2).add(b.mul(3))));
     m.constraint(a.add(b).le(30), "c_budget");
-    const c1 = m.getConstraintByName("c_budget")!;
+    const c1 = m.constraints.get("c_budget")!;
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -174,7 +175,7 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     expect(status).toBe("Optimal");
     expect(x.value).toBe(0);
     expect(y.value).toBe(12);
-    const c1 = model.getConstraintByName("budget");
+    const c1 = model.constraints.get("budget");
     expect(c1?.dual).toBe(3);
   });
 
@@ -231,8 +232,11 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     m.objective(maximize(expr`${xDash} + 10 * ${xUnder}`));
     m.constraint(expr`${xDash} <= 3`, "c-1");
     m.constraint(expr`${xUnder} <= 7`, "c_1");
-    const cDash = m.getConstraintByName("c-1")!;
-    const cUnder = m.getConstraintByName("c_1")!;
+    const cDash = m.constraints.get("c-1");
+    const cUnder = m.constraints.get("c_1");
+    if (!(cDash instanceof Constraint) || !(cUnder instanceof Constraint)) {
+      throw new Error("Expected linear Constraint instances");
+    }
 
     // 1. HiGHS
     expect(await m.solve("highs")).toBe("Optimal");
@@ -341,8 +345,8 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     const flag = m.bool("flag");
     m.constraint(expr`${x} + ${y} <= 10`, "c1");
     m.constraint(expr`${y} + ${z} <= 10`, "c2");
-    const c1 = m.getConstraintByName("c1")!;
-    const c2 = m.getConstraintByName("c2")!;
+    const c1 = m.constraints.get("c1")!;
+    const c2 = m.constraints.get("c2")!;
     m.objective(maximize(expr`${x} + ${y} + ${z}`));
 
     const noisySolver: Solver = {
@@ -505,7 +509,7 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     const pVar = m.continuous("__proto__", { lb: 0, ub: 10 });
     m.objective(maximize(pVar));
     m.constraint(pVar.le(6), "__proto__");
-    const pConstr = m.getConstraintByName("__proto__")!;
+    const pConstr = m.constraints.get("__proto__")!;
 
     const protoLpAdapter: Solver = {
       name: "ProtoLpAdapter",

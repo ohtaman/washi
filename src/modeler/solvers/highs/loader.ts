@@ -277,13 +277,11 @@ export async function solveLpWithHighs(
   if (options.solver !== undefined) {
     highsOptions.solver = options.solver;
   }
-  if (options.relGap !== undefined) {
-    highsOptions.mip_rel_gap = options.relGap;
-  } else if (options.mipGap !== undefined) {
-    highsOptions.mip_rel_gap = options.mipGap;
+  if (options.relativeGap !== undefined) {
+    highsOptions.mip_rel_gap = options.relativeGap;
   }
-  if (options.absGap !== undefined) {
-    highsOptions.mip_abs_gap = options.absGap;
+  if (options.absoluteGap !== undefined) {
+    highsOptions.mip_abs_gap = options.absoluteGap;
   }
 
   const passthroughKeys = [
@@ -415,11 +413,11 @@ export async function solveLpWithHighs(
             typeof data.mip_dual_bound === "number" && Number.isFinite(data.mip_dual_bound)
               ? data.mip_dual_bound
               : undefined;
-          const relGap =
+          const relativeGap =
             typeof data.mip_gap === "number" && Number.isFinite(data.mip_gap)
               ? data.mip_gap
               : undefined;
-          const absGap =
+          const absoluteGap =
             objectiveValue !== undefined && objectiveBound !== undefined
               ? Math.abs(objectiveValue - objectiveBound)
               : undefined;
@@ -446,8 +444,8 @@ export async function solveLpWithHighs(
             elapsedSeconds,
             ...(objectiveValue !== undefined ? { objectiveValue } : {}),
             ...(objectiveBound !== undefined ? { objectiveBound } : {}),
-            ...(relGap !== undefined ? { relGap, mipGap: relGap } : {}),
-            ...(absGap !== undefined ? { absGap } : {}),
+            ...(relativeGap !== undefined ? { relativeGap } : {}),
+            ...(absoluteGap !== undefined ? { absoluteGap } : {}),
             ...(nodes !== undefined ? { nodes } : {}),
             ...(iterations !== undefined ? { iterations } : {}),
             ...(message !== undefined ? { message } : {}),
@@ -656,8 +654,8 @@ export async function solveLpWithHighs(
           } catch {
             // Unavailable info
           }
-          if (mipGap === undefined && lastProgressEvent && (lastProgressEvent as SolveProgressEvent).relGap !== undefined) {
-            mipGap = (lastProgressEvent as SolveProgressEvent).relGap;
+          if (mipGap === undefined && lastProgressEvent && (lastProgressEvent as SolveProgressEvent).relativeGap !== undefined) {
+            mipGap = (lastProgressEvent as SolveProgressEvent).relativeGap;
           }
         }
 

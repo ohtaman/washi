@@ -313,8 +313,8 @@ export class HighsSolver implements Solver {
     }
 
     let objectiveBound: number | undefined;
-    let relGap: number | undefined;
-    let absGap: number | undefined;
+    let relativeGap: number | undefined;
+    let absoluteGap: number | undefined;
 
     if (typeof result?.MipDualBound === "number" && Number.isFinite(result.MipDualBound)) {
       objectiveBound = result.MipDualBound + remainingOffset;
@@ -323,22 +323,22 @@ export class HighsSolver implements Solver {
     }
 
     if (objectiveValue !== null && objectiveBound !== undefined && Number.isFinite(objectiveBound)) {
-      absGap = Math.abs(objectiveValue - objectiveBound);
+      absoluteGap = Math.abs(objectiveValue - objectiveBound);
     }
 
-    if (remainingOffset !== 0 && isMip && objectiveValue !== null && objectiveBound !== undefined && absGap !== undefined) {
-      if (absGap === 0) {
-        relGap = 0;
+    if (remainingOffset !== 0 && isMip && objectiveValue !== null && objectiveBound !== undefined && absoluteGap !== undefined) {
+      if (absoluteGap === 0) {
+        relativeGap = 0;
       } else if (Math.abs(objectiveValue) > 0) {
-        const shiftedGap = absGap / Math.abs(objectiveValue);
-        relGap = Number.isFinite(shiftedGap) ? shiftedGap : undefined;
+        const shiftedGap = absoluteGap / Math.abs(objectiveValue);
+        relativeGap = Number.isFinite(shiftedGap) ? shiftedGap : undefined;
       } else {
-        relGap = undefined;
+        relativeGap = undefined;
       }
     } else if (typeof result?.MipGap === "number" && Number.isFinite(result.MipGap)) {
-      relGap = result.MipGap;
-    } else if (isMip && terminationStatus === "Optimal" && hasPrimalSolution && (absGap === undefined || absGap === 0)) {
-      relGap = 0;
+      relativeGap = result.MipGap;
+    } else if (isMip && terminationStatus === "Optimal" && hasPrimalSolution && (absoluteGap === undefined || absoluteGap === 0)) {
+      relativeGap = 0;
     }
 
     if (!hasPrimalSolution) {
@@ -348,8 +348,8 @@ export class HighsSolver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         ...(objectiveBound !== undefined ? { objectiveBound } : {}),
-        ...(relGap !== undefined ? { relGap, mipGap: relGap } : {}),
-        ...(absGap !== undefined ? { absGap } : {}),
+        ...(relativeGap !== undefined ? { relativeGap } : {}),
+        ...(absoluteGap !== undefined ? { absoluteGap } : {}),
         values: {},
         reducedCosts: {},
         duals: {},
@@ -418,8 +418,8 @@ export class HighsSolver implements Solver {
       hasPrimalSolution: true,
       objectiveValue,
       ...(objectiveBound !== undefined ? { objectiveBound } : {}),
-      ...(relGap !== undefined ? { relGap, mipGap: relGap } : {}),
-      ...(absGap !== undefined ? { absGap } : {}),
+      ...(relativeGap !== undefined ? { relativeGap } : {}),
+      ...(absoluteGap !== undefined ? { absoluteGap } : {}),
       values: valuesRecord,
       reducedCosts: reducedCostsRecord,
       duals: dualsRecord,

@@ -9,65 +9,6 @@ When monolithic Mixed-Integer Programming (MIP) models have exponentially many c
 
 ---
 
-## Foundational Primitives
-
-WaSHI exposes four lower-level primitives used internally by the decomposition orchestrators and available directly for custom algorithms:
-
-### 1. Constraint Duals (`c.dual`)
-After solving a continuous linear program (LP), read the shadow price (marginal impact on the objective per unit change in RHS) of each constraint:
-
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model();
-const x = m.continuous("x", { lb: 0 });
-const y = m.continuous("y", { lb: 0 });
-
-m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
-await m.solve();
-
-console.log(c.dual);                    // Dual value / shadow price
-console.log(m.solution?.duals.capacity); // Lookup by constraint name
-```
-
-### 2. Continuous LP Relaxation (`m.relax()`)
-`m.relax()` temporarily relaxes all `Integer` and `Binary` variables to continuous variables within their `[lb, ub]` bounds and solves the LP relaxation so constraint duals are populated:
-
-```typescript
-// Solves the continuous LP relaxation and populates m.solution.duals
-const status = await m.relax();
-console.log("LP relaxation bound:", m.objectiveValue);
-```
-
-### 3. Dynamic Column Injection (`m.addColumn()`)
-Create a new decision variable, set its objective coefficient, and attach its non-zero coefficients to existing named constraints in a single call:
-
-```typescript
-const col = m.addColumn({
-  name: "pattern_1",
-  type: "Integer", // or "Continuous" / "Binary"
-  lb: 0,
-  cost: 1, // Objective coefficient
-  coefficients: {
-    capacity: 2,
-  },
-});
-```
-
-### 4. Dynamic Constraint Term Updates (`c.addTerm()` / `c.setTerm()`)
-Increment or overwrite the coefficient of a variable inside an existing linear constraint:
-
-```typescript
-const extra = m.continuous("extra", { lb: 0 });
-const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
-
-budget.addTerm(extra, 5); // Adds +5 * extra to the LHS
-budget.setTerm(extra, 0); // Setting 0 removes extra from the constraint
-```
-
----
-
 ## Column Generation (`solveColumnGeneration`)
 
 `master.solveColumnGeneration(options)` starts from a **Restricted Master Problem (RMP)** containing an initial feasible subset of columns and executes the column generation loop:
@@ -255,6 +196,65 @@ const result = await master.solveBenders({
 });
 
 console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
+```
+
+---
+
+## Low-Level Primitives (Custom Loops)
+
+The two orchestrators above are built on four lower-level primitives that you can also call directly when writing your own cutting-plane or column-generation loops:
+
+### 1. Constraint Duals (`c.dual`)
+After solving a continuous linear program (LP), read the shadow price (marginal impact on the objective per unit change in RHS) of each constraint:
+
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
+const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+await m.solve();
+
+console.log(c.dual);                    // Dual value / shadow price
+console.log(m.solution?.duals.capacity); // Lookup by constraint name
+```
+
+### 2. Continuous LP Relaxation (`m.relax()`)
+`m.relax()` temporarily relaxes all `Integer` and `Binary` variables to continuous variables within their `[lb, ub]` bounds and solves the LP relaxation so constraint duals are populated:
+
+```typescript
+// Solves the continuous LP relaxation and populates m.solution.duals
+const status = await m.relax();
+console.log("LP relaxation bound:", m.objectiveValue);
+```
+
+### 3. Dynamic Column Injection (`m.column()`)
+Create a new decision variable, set its objective coefficient, and attach its non-zero coefficients to existing named constraints in a single call:
+
+```typescript
+const col = m.column({
+  name: "pattern_1",
+  type: "Integer", // or "Continuous" / "Binary"
+  lb: 0,
+  cost: 1, // Objective coefficient
+  coefficients: {
+    capacity: 2,
+  },
+});
+```
+
+### 4. Dynamic Constraint Term Updates (`c.addTerm()` / `c.setTerm()`)
+Increment or overwrite the coefficient of a variable inside an existing linear constraint:
+
+```typescript
+const extra = m.continuous("extra", { lb: 0 });
+const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
+
+budget.addTerm(extra, 5); // Adds +5 * extra to the LHS
+budget.setTerm(extra, 0); // Setting 0 removes extra from the constraint
 ```
 
 ---

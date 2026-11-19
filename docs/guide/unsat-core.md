@@ -1,10 +1,11 @@
-# Conflict Diagnosis (`unsatCore`) & Solution Validation
+# Conflict Diagnosis (`unsatCore`), Validation & Debugging
 
-When building real-world optimization and configuration systems, two verification questions arise constantly:
-1. **Why is my model infeasible?** Which specific business rules contradict each other?
-2. **Does the solver's solution genuinely satisfy every constraint?** How do I verify tolerances, integrality, and formulations?
+When building real-world optimization and rule systems, you need to diagnose infeasible models, verify returned solutions, and inspect or unit-test formulations cleanly.
 
-WaSHI provides built-in tools for both: **conflict diagnosis** via built-in HiGHS elastic relaxation, bundled Pumpkin Unsat Core, or Z3 Unsat Core (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
+WaSHI provides a unified verification and debugging toolkit for all three:
+- **Conflict diagnosis (`m.check()`)**: Pinpoint contradictory constraints via built-in HiGHS elastic relaxation, bundled Pumpkin Unsat Core, or Z3 Unsat Core.
+- **Solution verification & LP inspection (`m.verify()`, `m.toLpString()`)**: Independently verify variable bounds, integrality, and constraints, and export CPLEX `.lp` text to inspect generated equations.
+- **Fast unit testing (`MockSolver`)**: Test application model-building and post-processing logic in CI without loading WebAssembly.
 
 ---
 
@@ -84,7 +85,7 @@ if (status === "Infeasible") {
 
 ---
 
-## Independent Solution Validation (`m.validateSolution()`)
+## Independent Solution Verification (`m.verify()`)
 
 After solving a model (or supplying a custom candidate map via `values`), you can independently verify that all variable bounds, integer/binary domains, linear constraints, and logical SMT formulas hold against the original model definitions:
 
@@ -92,7 +93,7 @@ After solving a model (or supplying a custom candidate map via `values`), you ca
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution({
+  const report = m.verify({
     feasibilityTolerance: 1e-6,     // Max allowed violation for bounds and linear constraints
     integralityTolerance: 1e-6,     // Max distance from nearest integer for Integer/Binary vars
     evaluateLogicalConstraints: true,
@@ -109,18 +110,18 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-### `SolutionValidationReport` Summary
+### `VerificationReport` Summary
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `valid` | `boolean` | `true` iff `complete === true`, `uncheckedConstraints.length === 0`, and `violations.length === 0`. |
 | `complete` | `boolean` | `true` when all variables, Boolean variables, linear constraints, and logical constraints were evaluated. |
 | `maxViolation` | `number` | Largest numeric violation magnitude across all evaluated bounds, integrality checks, and constraints. |
-| `violations` | `SolutionViolation[]` | Flat list of violations (`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`). |
-| `violationsByName` | `Record<string, SolutionViolation[]>` | Violations grouped by variable or constraint name. |
+| `violations` | `VerificationViolation[]` | Flat list of violations (`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`). |
+| `violationsByName` | `Record<string, VerificationViolation[]>` | Violations grouped by variable or constraint name. |
 | `uncheckedConstraints` | `string[]` | Names of constraints that could not be evaluated. |
 | `missingVariables` | `string[]` | Names of numeric or Boolean variables whose values were `null` or `undefined`. |
-| `summary` | `SolutionValidationSummary` | Counts of checked vs. total variables, Boolean variables, linear constraints, and logical constraints. |
+| `summary` | `VerificationSummary` | Counts of checked vs. total variables, Boolean variables, linear constraints, and logical constraints. |
 
 ---
 

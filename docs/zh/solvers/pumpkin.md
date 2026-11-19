@@ -11,29 +11,9 @@
 - **内置打包・零外部依赖**：`pumpkin.wasm`（约 1.4 MB）随 `@ohtaman/washi` 一起分发并按需摇树打包到 `@ohtaman/washi/solvers/pumpkin`，无需额外执行 `npm install` 安装 peer dependencies 或配置 Rust 工具链。
 - **商用友好的 MIT 许可证**：所有传递 Rust WASM 依赖均采用宽松许可（`MIT`、`Apache-2.0`、`Unicode-3.0`）。
 - **后台 Web Worker 与免 `COOP` / `COEP`**：在常规 HTTP(S) 源下自动在专用 Web Worker 中运行，不依赖 `SharedArrayBuffer` 或跨源隔离响应头，既不会阻塞主线程渲染，也适用于普通静态托管及第三方 iframe。
-- **原生 CP 全局约束与传播器**：将 `distinct()`、`disjoint()`、`cumulative()`、`allowed()`、`at()`、`max()` / `min()` / `abs()`、离散 `!=` 以及省略 `M` 时的 `m.indicator()`（`implied_by`）直接下沉为 Pumpkin 原生传播器与条件约束。
+- **原生 CP 全局约束与传播器**：将 `distinct()`（Pumpkin `v0.5.0` 的 `all_different`，内部按两两 `binary_not_equals` 分解）、`disjoint()`（`disjunctive_strict` Vilím 边缘推导）、`cumulative()`（时间表滤波）、`allowed()` / `not(allowed())`（`table` / `negative_table`）、`at()`（`element`）、`max()` / `min()` / `abs()`（`maximum` / `minimum` / `absolute`）、离散 `!=`（`not_equals`）以及省略 `M` 时的 `m.indicator()`（`implied_by`）直接下沉为原生 Pumpkin 约束。
 - **免 `COOP` / `COEP` 的 Unsat Core 冲突诊断**：通过 `await model.check({ solver: "pumpkin" })`，无需跨源隔离即可对有界整数与布尔约束提取冲突约束子集（`unsatCore` / `conflicts`）。
-- **支持热启动提示（`initialValue`）**：在 `solve()` 与 `check()` 中均支持为有界 `Integer` / `Binary` 变量提供 `initialValue` 初始解提示，通过 Pumpkin 的 `WarmStart` 分支策略应用。
-
----
-
-## 架构与 WebAssembly 运行时
-
-WaSHI 通过 Rust WebAssembly 包装箱（`wasm/pumpkin`，链接 `pumpkin-core`、`pumpkin-constraints`、`pumpkin-propagators` 与 `pumpkin-conflict-resolvers` `v0.5.0` 并编译至 `wasm32-unknown-unknown`）直接生成 `pumpkin.wasm` 及 `wasm-bindgen` 绑定。
-
-### 回调与求解器交互控制
-
-- **进度监控与取消控制（已支持）**：
-  在 `solve()` 期间，Pumpkin 支持实时最优解进度回调（`onProgress`，传递 `elapsedTime` 与 `objectiveValue`）以及 `AbortSignal` 取消控制：在浏览器 Web Worker 中支持抢占式终止正在运行的 Worker 并取消排队请求，在主线程与 Node.js 中则在分支和终止钩子处轮询协作式 `should_abort` 检查点。
-- **离散最优性证明**：
-  作为有限整数域上的精确 LCG 求解器，Pumpkin 通过子句学习与目标边界收紧（`LinearSatUnsat`）来严格证明最优性，而非依赖浮点 LP 容差选项（`mipGap`、`relGap`、`absGap` 或 `presolve`）。
-
-### WebAssembly 资源管理与按需构建
-
-Pumpkin 的 WebAssembly 二进制（`public/pumpkin.wasm`）与 JS/TS 运行时（`runtime.js` / `runtime.d.ts`）通过 `pumpkin.config.json` 结合 SHA-256 校验和进行版本控制：
-- **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-pumpkin-wasm.mjs`，在打包前于毫秒内验证本地资源。
-- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-pumpkin-wasm.mjs` 会自动从 WaSHI 的 `pumpkin-v<version>` GitHub Release 资产（`pumpkin.config.json` 中的 `downloadUrl`）下载已验证的二进制包。
-- **从源码编译**：升级 Pumpkin 或修改 `wasm/pumpkin` 时，在安装了 Rust 及 `wasm32-unknown-unknown` 目标的环境下（如需更新版本，可先执行 `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>`）运行 `npm run build:pumpkin-wasm` 重新构建，合并后通过 `gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`（首次发布使用 `gh release create`）同步 Release 资产，或触发 `.github/workflows/build-pumpkin-wasm.yml` 并将 `pumpkin-wasm-assets` 产物中的更新提交到仓库。
+- **支持热启动提示（`initialValue`）**：在 `solve()` 与 `check()` 中均支持为有界 `Integer` / `Binary` 变量提供 `initialValue` 非强制初始解提示（`supportsWarmStart: true`），通过 Pumpkin 的 `WarmStart` 分支策略应用（`Var.initialValue` 与求解后的 `Var.value` 保持独立）。
 
 ---
 
@@ -131,8 +111,6 @@ Pumpkin 是**严格的有界整数与布尔约束规划求解器**。不支持�
 
 - **仅支持有界整数 / Binary / BoolVar**：所有 `Var` 必须具有有限整数上下界，且 `lb` / `ub` 均处于 `[-(2^30 - 1), 2^30 - 1]` 范围内。无界整数（`-Infinity` / `Infinity`）或 `Continuous` 连续变量会直接报错。
 - **整数线性算术**：约束系数、修正右端项（`rhs - lhs.constant`）以及缩放后变量边界必须为整数，且满足有符号 32 位安全范围（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）；目标函数常数项允许小数。
-- **支持热启动提示（`initialValue`）**：支持在有界 `Integer` / `Binary` 变量上通过 `solve()` 和 `check()` 使用 `initialValue` 初始解提示（`supportsWarmStart: true`），底层通过 Pumpkin 的 `WarmStart` 分支策略作为非强制搜索提示应用（`Var.initialValue` 与求解后的 `Var.value` 保持独立）。
-- **原生 CP 与分段线性传播器**：直接将 `distinct()`（Pumpkin `v0.5.0` 的 `all_different`，内部按两两 `binary_not_equals` 分解）、`disjoint()`（`disjunctive_strict` Vilím 边缘推导）、`cumulative()`（时间表滤波）、`allowed()` / `not(allowed())`（`table` / `negative_table`）、`at()`（`element`）、`max()`/`min()`/`abs()`（`maximum`/`minimum`/`absolute`）、离散 `!=`（`not_equals`）以及省略 `M` 时的 `m.indicator()`（`implied_by`）下沉为原生 Pumpkin 约束。
 - **不支持的特性**：`QuadExpr` 二次表达式、`Continuous` 变量、无界变量与 LP 松弛（`relax: true`）会明确抛出错误。
 
 ---
@@ -160,6 +138,21 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
 若目标 URL 缺失或错误地返回了 HTML 回退页面，加载器会立即报错并指明实际请求的 URL，**绝不会暗中回退到公共 CDN**。
+
+---
+
+## 架构与 WebAssembly 运行时
+
+WaSHI 通过 Rust WebAssembly 包装箱（`wasm/pumpkin`，链接 `pumpkin-core`、`pumpkin-constraints`、`pumpkin-propagators` 与 `pumpkin-conflict-resolvers` `v0.5.0` 并编译至 `wasm32-unknown-unknown`）直接生成 `pumpkin.wasm` 及 `wasm-bindgen` 绑定。
+
+随包分发的 `pumpkin.wasm` 与 `runtime.js` / `runtime.d.ts` 通过 `pumpkin.config.json` 中的 SHA-256 校验和进行完整性验证。如需从源码重新编译或更新 Release 资产，维护者可参考 [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow)。
+
+### 回调与求解器交互控制
+
+- **进度监控与取消控制（已支持）**：
+  在 `solve()` 期间，Pumpkin 支持实时最优解进度回调（`onProgress`，传递 `elapsedTime` 与 `objectiveValue`）以及 `AbortSignal` 取消控制：在浏览器 Web Worker 中支持抢占式终止正在运行的 Worker 并取消排队请求，在主线程与 Node.js 中则在分支和终止钩子处轮询协作式 `should_abort` 检查点。
+- **离散最优性证明**：
+  作为有限整数域上的精确 LCG 求解器，Pumpkin 通过子句学习与目标边界收紧（`LinearSatUnsat`）来严格证明最优性，而非依赖浮点 LP 容差选项（`relativeGap`、`absoluteGap` 或 `presolve`）。
 
 ---
 

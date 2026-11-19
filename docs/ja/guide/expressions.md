@@ -43,6 +43,7 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **単項プラスとマイナス**: `-${x} + 10`, `+${x}`
 - **丸括弧**: `2 * (${x} + ${y})`
 - **集計関数 (`sum` & `dot`)**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
+- **区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`)**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})`（[区分線形関数・インデックス参照](#piecewise-linear) 参照）
 - **コンテナの要素ごとの四則演算**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
 - **ネスト式**: 変数、数値、`Array` / `Record` コンテナ（`sum` または `dot` の内部）、およびネストした `LinExpr` / `QuadExpr` を埋め込めます。
 
@@ -132,9 +133,7 @@ const totalShippingCost = expr`dot(${costs}, ${ship})`;
 
 ## `expr` による集計・一括記述の書き方
 
-### 演算子とデータの分離
-
-演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）はテンプレート文字列側に記述し、`${...}` には変数・定数・コンテナ（配列・辞書）を渡します：
+演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）をテンプレート文字列側にまとめ、`${...}` には変数・定数・コンテナを直接渡します（`Object.values()` や事前呼び出しのネストは不要です）：
 
 ```typescript
 // テンプレートのネストと Object.values() を使った冗長な記述
@@ -145,8 +144,6 @@ const cap1 = expr`${sum(Object.values(vars))} <= 100`;
 const totalProfit2 = expr`dot(${profits}, ${vars})`;
 const cap2 = expr`sum(${vars}) <= 100`;
 ```
-
-### 主な集計・一括記述の構文一覧
 
 | 操作 | 数式 | WaSHI での記述例 |
 | :--- | :--- | :--- |
@@ -211,6 +208,38 @@ m.objective(minimize(risk));
 
 ---
 
+## 区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`) {#piecewise-linear}
+
+WaSHI は区分線形関数（`max`, `min`, `abs`）および 0 始まり変数インデックス参照（`at`）を提供しており、`` expr`...` `` タグ内でも `@ohtaman/washi` のスタンドアロン関数としてもそのまま記述できます：
+
+```typescript
+import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
+
+const m = new Model();
+const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
+const target = [4, 7, 10];
+const route = m.integer("route", { lb: 0, ub: 2 });
+const routeCost = [18, 12, 25];
+
+// 凸方向（minimize の max/abs 等）はバイナリ変数ゼロの純粋 LP エピグラフに変換：
+m.objective(
+  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
+);
+m.constraint(expr`max(${w}) <= 15`, "peak_cap");
+
+// ネスト合成やスタンドアロン関数呼び出しにも対応：
+const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
+m.constraint(expr`${maxErr} <= 3`);
+```
+
+- **コンテナ要素ごとの合成**: `expr` 内では `abs(${arr} - ${target})` が 1D/2D の `Array`・`Iterable`・`Record` に対して要素ごとに展開されるため、`` expr`sum(abs(${w} - ${target}))` `` や `` expr`max(abs(${pred} - ${actual}))` `` を簡潔に記述できます。
+- **極性に応じた LP/MIP 変換とネイティブ CP/SMT 対応**:
+  - 凸方向（`max`/`abs` の最小化または `<=`、`min` の最大化または `>=`）では、HiGHS / GLPK 上で**バイナリ変数を一切導入しない**純粋 LP エピグラフへ変換されます（無界な連続変数にも対応）。
+  - 非凸方向・等式コンテキスト（`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs` 等）では、HiGHS / GLPK が有限境界つきの厳密 MIP 定式化を行い、Pumpkin は有界整数向けネイティブ伝播器（`maximum`/`minimum`/`absolute`）、Z3 はネイティブ `If`（ITE）として解きます。
+- **0 始まりインデックス参照 (`at(array, index)`)**: CP の `Element` 制約（`array[index]`）に相当し、整数値の `index` 式を要求して全ソルバー共通で $0 \le \text{index} < \text{array.length}$ を自動強制します（Pumpkin は `element` 伝播器、Z3 は入れ子 `If` ＋範囲ガード、HiGHS / GLPK は凸包バイナリ＋McCormick 線形化）。
+
+---
+
 ## 求解後の数式評価 (`.value`)
 
 `LinExpr` と `QuadExpr` は `.value` ゲッター（`number | null`）を備えています。モデルの求解後、式に含まれるすべての変数に有限の解が格納されていれば、部分式の値を直接取得できます：
@@ -250,41 +279,9 @@ console.log("労働力使用量:", laborUsed.value); // 50
 | `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | スカラー倍、または1次式同士の積（`QuadExpr`）を計算します。 |
 | `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 非ゼロの有限スカラー数値で除算します。 |
 | `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 符号を反転します（$-e$）。 |
-| `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | $\le$ 制約（`lhs <= rhs`）を生成します。 |
-| `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | $\ge$ 制約（`lhs >= rhs`）を生成します。 |
-| `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | $==$ 等式制約（`lhs == rhs`）を生成します。 |
-| `.lt(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $<$ 制約（`lhs - rhs <= -1`。整数値式のみ）を生成します。 |
-| `.gt(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $>$ 制約（`lhs - rhs >= 1`。整数値式のみ）を生成します。 |
-| `.ne(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $\ne$ 制約（`lhs != rhs`。整数値式のみ）を生成します。 |
-
----
-
-## 区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`)
-
-WaSHI は区分線形関数（`max`, `min`, `abs`）および 0 始まり変数インデックス参照（`at`）を提供しており、`` expr`...` `` タグ内でも `@ohtaman/washi` のスタンドアロン関数としてもそのまま記述できます：
-
-```typescript
-import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
-
-const m = new Model();
-const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
-const target = [4, 7, 10];
-const route = m.integer("route", { lb: 0, ub: 2 });
-const routeCost = [18, 12, 25];
-
-// 凸方向（minimize の max/abs 等）はバイナリ変数ゼロの純粋 LP エピグラフに変換：
-m.objective(
-  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
-);
-m.constraint(expr`max(${w}) <= 15`, "peak_cap");
-
-// ネスト合成やスタンドアロン関数呼び出しにも対応：
-const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
-m.constraint(expr`${maxErr} <= 3`);
-```
-
-- **コンテナ要素ごとの合成**: `expr` 内では `abs(${arr} - ${target})` が 1D/2D の `Array`・`Iterable`・`Record` に対して要素ごとに展開されるため、`` expr`sum(abs(${w} - ${target}))` `` や `` expr`max(abs(${pred} - ${actual}))` `` を簡潔に記述できます。
-- **極性に応じた LP/MIP 変換とネイティブ CP/SMT 対応**:
-  - 凸方向（`max`/`abs` の最小化または `<=`、`min` の最大化または `>=`）では、HiGHS / GLPK 上で**バイナリ変数を一切導入しない**純粋 LP エピグラフへ変換されます（無界な連続変数にも対応）。
-  - 非凸方向・等式コンテキスト（`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs` 等）では、HiGHS / GLPK が有限境界つきの厳密 MIP 定式化を行い、Pumpkin は有界整数向けネイティブ伝播器（`maximum`/`minimum`/`absolute`）、Z3 はネイティブ `If`（ITE）として解きます。
-- **0 始まりインデックス参照 (`at(array, index)`)**: CP の `Element` 制約（`array[index]`）に相当し、整数値の `index` 式を要求して全ソルバー共通で $0 \le \text{index} < \text{array.length}$ を自動強制します（Pumpkin は `element` 伝播器、Z3 は入れ子 `If` ＋範囲ガード、HiGHS / GLPK は凸包バイナリ＋McCormick 線形化）。
+| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | $\le$ 制約（`lhs <= rhs`。左辺は線形である必要があります）を生成します。 |
+| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | $\ge$ 制約（`lhs >= rhs`。左辺は線形である必要があります）を生成します。 |
+| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | $==$ 等式制約（`lhs == rhs`。左辺は線形である必要があります）を生成します。 |
+| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 離散 $<$ 制約（`lhs - rhs <= -1`。整数値式のみ）を生成します。 |
+| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 離散 $>$ 制約（`lhs - rhs >= 1`。整数値式のみ）を生成します。 |
+| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 離散 $\ne$ 制約（`lhs != rhs`。整数値式のみ）を生成します。 |

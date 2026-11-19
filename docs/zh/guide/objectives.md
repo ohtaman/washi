@@ -26,7 +26,7 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 无参数调用 `m.objective()` 可读取当前的目标函数表达式（`LinExpr | QuadExpr`）。如果未设置目标函数，模型默认最小化常数 `0`。
 
 > [!TIP]
-> 关于 **Min-Max / Max-Min 负载均衡**、**多目标优化（加权求和与词典序两阶段求解）** 以及 **MIP 停止间隙容差（`relGap` / `absGap`）设计**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#multi-objective)。
+> 关于 **Min-Max / Max-Min 负载均衡**、**多目标优化（加权求和与词典序两阶段求解）** 以及 **MIP 停止间隙容差（`relativeGap` / `absoluteGap`）设计**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#multi-objective)。
 
 ---
 
@@ -41,9 +41,9 @@ WaSHI 提供两个异步执行入口：
 
 ```typescript
 const status = await m.solve({
-  timeLimit: 10.0, // 超时时间（秒）
-  mipGap: 0.01,    // 距离全局最优解在 1% 以内时停止
-  outputFlag: false, // 启用/禁用求解器控制台日志输出（HiGHS: outputFlag, GLPK: verbose）
+  timeLimit: 10.0,     // 超时时间（秒）
+  relativeGap: 0.01,   // 距离全局最优解在 1% 以内时停止
+  outputFlag: false,   // 启用/禁用求解器控制台日志输出（HiGHS: outputFlag, GLPK: verbose）
 });
 ```
 
@@ -53,8 +53,8 @@ const status = await m.solve({
 | :--- | :--- | :--- | :--- |
 | `solver` | `string` \| `Solver` | 模型的求解器 (`"highs"`) | 本次运行使用的已注册求解器名称（例如 `"highs"`、`"pumpkin"`、`"z3"`、`"glpk"` 或自定义名称）或 `Solver` 实例。 |
 | `timeLimit` | `number` | `undefined` | 最大求解时间上限（秒）。 |
-| `mipGap` / `relGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
-| `absGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
+| `relativeGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
+| `absoluteGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
 | `useWorker` | `boolean` | `true` (浏览器) | 在浏览器中将 **HiGHS** 与 **Pumpkin** 卸载到专用 Web Worker 中执行。设为 `false` 则在主线程执行。 |
@@ -63,52 +63,6 @@ const status = await m.solve({
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 接收实时求解进度快照的回调函数。 |
 
 您也可以将求解器名称直接作为第一个参数传入：`await m.solve("glpk", { timeLimit: 5 })`。
-
----
-
-## 实时进度回调 (`onProgress`) 与取消执行 (`AbortSignal`)
-
-在交互式 UI 中运行耗时较长的 MIP 优化时，您可以通过 `onProgress` 实时获取分支定界法的进度流（`SolveProgressEvent`），并借助 `AbortController` 让用户随时安全地中断求解：
-
-```typescript
-const controller = new AbortController();
-
-// 示例：当用户点击“停止”按钮或满足自定义条件时取消求解
-const status = await m.solve({
-  signal: controller.signal,
-  onProgress: (event) => {
-    console.log(
-      `[${event.elapsedTime.toFixed(1)}s] ` +
-      `Best: ${event.objectiveValue ?? "—"}, ` +
-      `Bound: ${event.objectiveBound ?? "—"}, ` +
-      `Gap: ${event.mipGap !== undefined ? (event.mipGap * 100).toFixed(2) + "%" : "—"}`
-    );
-
-    // 可选：一旦找到足够好的可行解（Incumbent）即提前终止
-    if (event.objectiveValue !== undefined && event.objectiveValue >= 1000) {
-      controller.abort();
-    }
-  },
-});
-
-console.log("Status:", m.status);                   // 若中断前已找到可行解则为 "Feasible"，否则为 "Unknown"
-console.log("Termination:", m.terminationStatus);   // "Interrupted"
-console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解则为 true
-```
-
-### `SolveProgressEvent` 字段说明
-
-| 字段 | 类型 | 说明 |
-| :--- | :--- | :--- |
-| `elapsedTime` | `number` | 自求解开始以来经过的求解时间（秒；可选别名：`elapsedSeconds`）。 |
-| `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | 当前求解器阶段（已知时提供）。 |
-| `objectiveValue` | `number \| undefined` | 当前找到的最佳可行整数解（Incumbent）的目标函数值（MIP）。 |
-| `objectiveBound` | `number \| undefined` | 当前已证明的目标函数最佳对偶界（Objective Bound，MIP）。 |
-| `relGap` / `mipGap` | `number \| undefined` | 当前相对最优性间隙（`0.05` = 5%）。 |
-| `absGap` | `number \| undefined` | 当前绝对最优性间隙 `\|objectiveValue - objectiveBound\|`。 |
-| `nodes` | `number \| undefined` | 截至目前已探索的分支定界节点数。 |
-| `iterations` | `number \| undefined` | 求解器迭代次数（单纯形法、内点法或 MIP LP 迭代）。 |
-| `message` | `string \| undefined` | 求解器输出的原始进度日志行。 |
 
 ---
 
@@ -126,13 +80,16 @@ console.log("Has Primal Solution:", m.hasPrimalSolution); // 当 x.value / m.obj
 // 目标函数与 MIP 间隙指标
 console.log("Objective Value:", m.objectiveValue);        // 最佳原问题目标值 (或 null)
 console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (或 undefined)
-console.log("Relative Gap:", m.relGap);                   // 相对 MIP 间隙 (别名: m.mipGap)
-console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
+console.log("Relative Gap:", m.relativeGap);              // 相对 MIP 间隙
+console.log("Absolute Gap:", m.absoluteGap);              // |objectiveValue - objectiveBound|
 
-// 读取变量值（通过 .value 或按名称索引的 m.values Map）
+// 读取变量值（通过 .value 或按名称索引的 m.values ReadonlyMap）
 console.log("x =", x.value, "y =", y.value);
 console.log("x by name:", m.values.get("x"));
 ```
+
+> [!TIP]
+> 如需在容差范围内独立校验返回解是否满足所有变量边界、整数性与约束，请调用 `m.verify()`——详见[冲突诊断、验证与调试](./unsat-core.md)。
 
 ### 理解 `m.status` 与 `m.terminationStatus` 的区别
 
@@ -160,14 +117,60 @@ console.log("x by name:", m.values.get("x"));
 
 ---
 
+## 实时进度回调 (`onProgress`) 与取消执行 (`AbortSignal`)
+
+在交互式 UI 中运行耗时较长的 MIP 优化时，您可以通过 `onProgress` 实时获取分支定界法的进度流（`SolveProgressEvent`），并借助 `AbortController` 让用户随时安全地中断求解：
+
+```typescript
+const controller = new AbortController();
+
+// 示例：当用户点击“停止”按钮或满足自定义条件时取消求解
+const status = await m.solve({
+  signal: controller.signal,
+  onProgress: (event) => {
+    console.log(
+      `[${event.elapsedTime.toFixed(1)}s] ` +
+      `Best: ${event.objectiveValue ?? "—"}, ` +
+      `Bound: ${event.objectiveBound ?? "—"}, ` +
+      `Gap: ${event.relativeGap !== undefined ? (event.relativeGap * 100).toFixed(2) + "%" : "—"}`
+    );
+
+    // 可选：一旦找到足够好的可行解（Incumbent）即提前终止
+    if (event.objectiveValue !== undefined && event.objectiveValue >= 1000) {
+      controller.abort();
+    }
+  },
+});
+
+console.log("Status:", m.status);                   // 若中断前已找到可行解则为 "Feasible"，否则为 "Unknown"
+console.log("Termination:", m.terminationStatus);   // "Interrupted"
+console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解则为 true
+```
+
+### `SolveProgressEvent` 字段说明
+
+| 字段 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `elapsedTime` | `number` | 自求解开始以来经过的求解时间（秒；可选别名：`elapsedSeconds`）。 |
+| `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | 当前求解器阶段（已知时提供）。 |
+| `objectiveValue` | `number \| undefined` | 当前找到的最佳可行整数解（Incumbent）的目标函数值（MIP）。 |
+| `objectiveBound` | `number \| undefined` | 当前已证明的目标函数最佳对偶界（Objective Bound，MIP）。 |
+| `relativeGap` | `number \| undefined` | 当前相对最优性间隙（`0.05` = 5%）。 |
+| `absoluteGap` | `number \| undefined` | 当前绝对最优性间隙 `\|objectiveValue - objectiveBound\|`。 |
+| `nodes` | `number \| undefined` | 截至目前已探索的分支定界节点数。 |
+| `iterations` | `number \| undefined` | 求解器迭代次数（单纯形法、内点法或 MIP LP 迭代）。 |
+| `message` | `string \| undefined` | 求解器输出的原始进度日志行。 |
+
+---
+
 ## 模型修改与解状态同步
 
 当通过 `Model` 方法以及 `Model` / `Var` / `Constraint` 的属性设置器修改模型时，`Model` 实例会自动同步并维护其解状态的一致性：
 
-1. **求解后修改自动重置解状态**：添加变量或约束、更新目标函数（`m.objective(...)`、`m.objectiveExpr = ...`、`m.sense = ...`），或修改变量的边界/类型（`v.lb`、`v.ub`、`v.type`）与约束属性（`c.lhs`、`c.sense`、`c.rhs`），都会立即将 `m.status` 重置为 `"NotSolved"`，清空 `m.solution` 与 `m.objectiveValue`，并将变量和约束的原问题解与对偶值重置为 `null`。
+1. **求解后修改自动重置解状态**：添加变量或约束、更新目标函数（`m.objective(...)`、`m.sense = ...`），或修改变量的边界/类型（`v.lb`、`v.ub`、`v.type`）与约束属性（`c.lhs`、`c.sense`、`c.rhs`），都会立即将 `m.status` 重置为 `"NotSolved"`，清空 `m.solution` 与 `m.objectiveValue`，并将变量和约束的原问题解与对偶值重置为 `null`。
 2. **求解中途修改自动丢弃过期结果**：如果在异步 `m.solve()` 或 `m.check()` 执行期间通过上述 API 修改了模型，正在运行的过期求解结果将被丢弃，模型保持 `"NotSolved"` 状态，且该进行中的 Promise 会以明确的错误 reject。
 3. **并发调用保护**：在同一模型上发起新的 `m.solve()` 或 `m.check()` 调用会取代先前仍在运行中的调用，防止乱序完成的旧任务覆盖最新运行的状态。
 4. **事务性批量编辑**：如果无效的修改被拒绝（包括如 `m.constraint([...])` 等批量数组调用），模型会自动回滚失败的修改，不会残留半成品实体，也不会破坏已有的合法解。
 
 > [!NOTE]
-> 不支持重命名已注册的变量或约束（例如在注册后重新赋值 `c.name`），也不支持直接篡改内部底层集合或 AST（例如 `c.lhs.terms`、`m.constraints.splice(...)` 或 `BoolOp.children`）；此类操作会在下一次调用求解、检查或导出时被模型完整性校验拒绝。
+> 不支持重命名已注册的变量或约束（例如在注册后重新赋值 `c.name`），也不支持直接篡改内部底层映射或 AST（例如 `c.lhs.terms` 或 `BoolOp.children`）；此类操作会在下一次调用求解、检查或导出时被内部模型完整性校验拒绝。

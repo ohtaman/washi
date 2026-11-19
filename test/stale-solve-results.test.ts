@@ -96,7 +96,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.solution).toBeNull();
     expect(x.value).toBeNull();
     expect(m.values.size).toBe(0);
-    expect(m.validateSolution().valid).toBe(false);
+    expect(m.verify().valid).toBe(false);
   });
 
   it("discards stale solve() results when constraints, variables, bounds, or types change mid-flight", async () => {
@@ -141,9 +141,9 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
         },
       },
       {
-        label: "explicit resetSolutionState()",
+        label: "mutate sense in-place",
         mutate: (m) => {
-          m.resetSolutionState();
+          m.sense = "Minimize";
         },
       },
     ];
@@ -357,20 +357,21 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
 
-    // Direct property replacements on m.sense and m.objectiveExpr must also invalidate
+    // Direct property replacement on m.sense must also invalidate
     await m.solve();
     expect(m.status).toBe("Optimal");
     m.sense = "Minimize";
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
 
+    // m.objective() commits updated objective and invalidates immediately
     await m.solve();
     expect(m.status).toBe("Optimal");
-    m.objectiveExpr = expr`2 * ${x}`;
+    m.objective(minimize(x.mul(2)));
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
 
-    // m.objective() and m.objectiveExpr return defensive clones so external mutation
+    // m.objective() returns a defensive clone so external mutation
     // of a returned objective expression cannot silently diverge the model's live objective from its solved state
     await m.solve();
     expect(m.status).toBe("Optimal");
@@ -456,8 +457,8 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
 
     // Neither the model entities nor the solved state should have been mutated
-    expect(m.constraints).toHaveLength(0);
-    expect(m.getConstraintByName("c_1")).toBeUndefined();
+    expect(m.constraints.size).toBe(0);
+    expect(m.constraints.get("c_1")).toBeUndefined();
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(10, 5);
 
@@ -466,17 +467,17 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(() => {
       m.constraint([unnamedExtConstr, expr`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
-    expect(m.getConstraintByName("c_1")).toBeUndefined();
+    expect(m.constraints.get("c_1")).toBeUndefined();
     expect(m.status).toBe("Optimal");
 
     // validConstraint ownership and auto-naming counter must have been released on rollback
     m.constraint(validConstraint);
-    expect(m.constraints).toHaveLength(1);
+    expect(m.constraints.size).toBe(1);
     expect(validConstraint).toBeInstanceOf(Constraint);
     if (validConstraint instanceof Constraint) {
       expect(validConstraint.name).toBe("c_1");
     }
-    expect(m.getConstraintByName("c_1")).toBe(validConstraint);
+    expect(m.constraints.get("c_1")).toBe(validConstraint);
     expect(m.status).toBe("NotSolved");
 
     // Re-solve and verify failed variable batch creation also rolls back cleanly
@@ -487,8 +488,8 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(() => {
       m.continuous(["new_var", "x"]);
     }).toThrow(/already exists in model/);
-    expect(m.getVarByName("new_var")).toBeUndefined();
-    expect(m.variables).toHaveLength(1);
+    expect(m.variables.get("new_var")).toBeUndefined();
+    expect(m.variables.size).toBe(1);
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(9, 5);
 

@@ -150,7 +150,7 @@ describe("Pumpkin WASM LCG solver", () => {
     expect(typeof checkResult.values.a).toBe("boolean");
     expect(checkResult.values.a).toBe(true);
     expect(Number(Boolean(checkResult.values.b)) + Number(Boolean(checkResult.values.c))).toBe(1);
-    expect(m.validateSolution().valid).toBe(true);
+    expect(m.verify().valid).toBe(true);
   });
 
   it("isolates unsatisfiable cores and excludes unrelated feasible constraints", async () => {
@@ -222,7 +222,7 @@ describe("Pumpkin WASM LCG solver", () => {
     expect(m.objectiveValue).toBe(7);
     expect(Object.prototype.hasOwnProperty.call(m.solution!.values, "__proto__")).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(m.solution!.values, "toString")).toBe(true);
-    expect(m.validateSolution().valid).toBe(true);
+    expect(m.verify().valid).toBe(true);
   });
 
   it("solves minimize and maximize problems with negative bounds, fixed bounds, and fractional objective constants", async () => {
@@ -239,7 +239,7 @@ describe("Pumpkin WASM LCG solver", () => {
     expect(x.value).toBe(-3);
     expect(y.value).toBe(2);
     expect(mMin.objectiveValue).toBeCloseTo(-9.5, 9);
-    expect(mMin.validateSolution().valid).toBe(true);
+    expect(mMin.verify().valid).toBe(true);
 
     const mMax = new Model("max-bounds");
     const a = mMax.integer("a", { lb: -4, ub: 4 });
@@ -252,7 +252,7 @@ describe("Pumpkin WASM LCG solver", () => {
     expect(a.value).toBe(1);
     expect(b.value).toBe(1);
     expect(mMax.objectiveValue).toBeCloseTo(6.75, 9);
-    expect(mMax.validateSolution().valid).toBe(true);
+    expect(mMax.verify().valid).toBe(true);
   });
 
   it("solves constant / zero-term objective models cleanly", async () => {
@@ -266,7 +266,7 @@ describe("Pumpkin WASM LCG solver", () => {
     const status = await m.solve({ solver: "pumpkin" });
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBeCloseTo(4.25, 9);
-    expect(m.validateSolution().valid).toBe(true);
+    expect(m.verify().valid).toBe(true);
   });
 
   it("solves the ft06 6x6 Job-Shop benchmark to proven optimum (55)", async () => {
@@ -277,7 +277,7 @@ describe("Pumpkin WASM LCG solver", () => {
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(55);
-    expect(m.validateSolution().valid).toBe(true);
+    expect(m.verify().valid).toBe(true);
   });
 
   it("returns Infeasible honestly on root-inconsistent and logically-inconsistent models", async () => {
@@ -391,7 +391,7 @@ describe("Pumpkin WASM LCG solver", () => {
     const highsStatus = await m.solve({ solver: "highs" });
     expect(highsStatus).toBe("Optimal");
     expect(m.objectiveValue).toBe(0);
-    expect(m.validateSolution().valid).toBe(true);
+    expect(m.verify().valid).toBe(true);
   });
 
   it("rejects unsupported model features explicitly without ad-hoc fallbacks", async () => {
@@ -694,7 +694,7 @@ describe("Pumpkin WASM LCG solver", () => {
     expect(await mWidened.solve({ solver: "pumpkin" })).toBe("Optimal");
     expect(x.value).toBe(1);
     expect(mWidened.objectiveValue).toBe(1);
-    expect(mWidened.validateSolution().valid).toBe(true);
+    expect(mWidened.verify().valid).toBe(true);
 
     mWidened.constraint(x.ge(2), "ge_2");
     const checkWidened = await mWidened.check({ solver: "pumpkin" });
@@ -711,12 +711,12 @@ describe("Pumpkin WASM LCG solver", () => {
 
     expect(await mConverted.solve({ solver: "pumpkin" })).toBe("Optimal");
     expect(y.value).toBe(1);
-    expect(mConverted.validateSolution().valid).toBe(true);
+    expect(mConverted.verify().valid).toBe(true);
 
     mConverted.objective(minimize(y));
     expect(await mConverted.solve({ solver: "pumpkin" })).toBe("Optimal");
     expect(y.value).toBe(0);
-    expect(mConverted.validateSolution().valid).toBe(true);
+    expect(mConverted.verify().valid).toBe(true);
 
     // 3. Disjoint binary domain ([2, 5] ∩ [0, 1] = ∅) must report Unsat / Infeasible honestly
     const mEmpty = new Model("empty-binary");

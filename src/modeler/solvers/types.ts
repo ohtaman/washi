@@ -56,11 +56,9 @@ export interface SolverResult {
   /** Best proven dual/objective bound when provided by the solver */
   objectiveBound?: number;
   /** Relative MIP optimality gap when provided by the solver */
-  relGap?: number;
-  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
-  mipGap?: number;
+  relativeGap?: number;
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when provided by the solver */
-  absGap?: number;
+  absoluteGap?: number;
   /** Variable primal values (keyed by canonical variable name) */
   values: Record<string, number>;
   /** Boolean variable assignments (optional, keyed by canonical BoolVar name) */
@@ -87,11 +85,9 @@ export interface SolverOptions {
   /** Presolve mode */
   presolve?: "on" | "off" | "choose";
   /** Relative MIP gap tolerance (e.g. 0.01 for 1%) */
-  mipGap?: number;
-  /** Relative MIP gap tolerance alias */
-  relGap?: number;
+  relativeGap?: number;
   /** Absolute MIP gap tolerance */
-  absGap?: number;
+  absoluteGap?: number;
   /** Number of parallel threads */
   threads?: number;
   /** Enable verbose solver logging */

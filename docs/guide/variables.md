@@ -117,10 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). |
+| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). Pass `-Infinity` for free lower bounds. |
 | `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
+| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalar variables and indexed arrays/matrices (e.g., `queen_0_0`). |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
 | `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP warm start), kept distinct from solved `variable.value`. |
+
+### Designing Bounds (`lb` & `ub`)
+
+- **Default non-negativity**: Numeric variables default to `lb: 0, ub: Infinity`. If a variable can take negative values (such as net inventory change or deviation), explicitly pass `{ lb: -Infinity }`.
+- **Prefer realistic finite bounds**: Specifying finite `lb` and `ub` values strengthens MIP presolve, allows `m.indicator()` to derive tight Big-M constants automatically, and is required by bounded-integer CP solvers such as **Pumpkin**.
 
 ---
 
@@ -164,7 +170,7 @@ console.log(`isAdmin: ${isAdmin.value}`);
 const packedItems = items.filter((it) => selected[it].value === 1);
 console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 
-// Name-keyed Map lookup (Map<string, number | boolean>)
+// Name-keyed ReadonlyMap lookup (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // Reduced cost (LP sensitivity analysis)
@@ -175,10 +181,16 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## Looking Up Variables by Name
 
-You can retrieve registered decision variables by name or inspect the total numeric variable count on the model:
+All registered numeric (`Var`) and propositional Boolean (`BoolVar`) variables are exposed through `m.variables` (`ReadonlyMap<string, Var | BoolVar>`):
 
 ```typescript
-const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
-console.log("Total numeric variables:", m.numVars);
+const v = m.variables.get("trucks");   // Var | BoolVar | undefined
+const b = m.variables.get("isAdmin");  // Var | BoolVar | undefined
+console.log("Has trucks:", m.variables.has("trucks"));
+console.log("Total variables:", m.variables.size);
+
+// Narrow by v.type ("Continuous" | "Integer" | "Binary" | "Boolean"):
+if (v && v.type !== "Boolean") {
+  console.log("Bounds:", v.lb, v.ub);
+}
 ```

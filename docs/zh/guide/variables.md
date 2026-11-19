@@ -117,10 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | 选项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | 下界（Lower bound）。默认为非负约束 `0`。 |
+| `lb` | `number` | `0` | 下界（Lower bound）。默认为非负约束 `0`；允许负值时传入 `-Infinity`。 |
 | `ub` | `number` | `Infinity`（`binary` 为 `1`） | 上界（Upper bound）。 |
+| `prefix` | `string` | `"x"`（`m.bool()` 为 `"p"`） | 未命名标量变量以及索引数组/矩阵的命名前缀（如 `queen_0_0`）。 |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | 由方法自动推断 | 底层变量定义域类别。 |
 | `initialValue` | `number` | `undefined` | 可选的原问题初始解提示（MIP 热启动），与求解后的 `variable.value` 保持独立。 |
+
+### 上下界（`lb`, `ub`）设置要点
+
+- **默认非负**：数值变量默认区间为 `[0, Infinity)`。若变量可取负值（如净库存变化或偏差项），请显式传入 `{ lb: -Infinity }`。
+- **尽量指定合理的有限上下界**：给出有限的 `lb` 与 `ub` 可显著增强 MIP 预处理（Presolve）、支持 `m.indicator()` 自动推导紧凑的 Big-M，也是 **Pumpkin** 等有界整数 CP 求解器的前置要求。
 
 ---
 
@@ -164,7 +170,7 @@ console.log(`isAdmin: ${isAdmin.value}`);
 const packedItems = items.filter((it) => selected[it].value === 1);
 console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 
-// 按变量名从 Map 查询 (Map<string, number | boolean>)
+// 按变量名从 ReadonlyMap 查询 (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 缩减成本（LP 灵敏度分析）
@@ -175,10 +181,16 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## 按名称查找变量
 
-您可以按名称检索已注册的决策变量，或查看模型中的数值变量总数：
+所有已注册的数值决策变量（`Var`）和命题布尔变量（`BoolVar`）均统一存储在 `m.variables`（`ReadonlyMap<string, Var | BoolVar>`）中：
 
 ```typescript
-const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
-console.log("Total numeric variables:", m.numVars);
+const v = m.variables.get("trucks");   // Var | BoolVar | undefined
+const b = m.variables.get("isAdmin");  // Var | BoolVar | undefined
+console.log("是否包含 trucks:", m.variables.has("trucks"));
+console.log("总变量数:", m.variables.size);
+
+// 可通过 v.type ("Continuous" | "Integer" | "Binary" | "Boolean") 进行类型窄化：
+if (v && v.type !== "Boolean") {
+  console.log("变量上下界:", v.lb, v.ub);
+}
 ```

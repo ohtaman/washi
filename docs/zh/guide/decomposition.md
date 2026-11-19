@@ -9,65 +9,6 @@
 
 ---
 
-## 基础原语
-
-分解编排器内部使用的四个底层原语也可直接用于编写自定义迭代算法：
-
-### 1. 约束对偶值 (`c.dual`)
-求解连续线性规划（LP）后，读取每条约束右端项（RHS）每变动 1 单位对目标函数的边际影响（影子价格）：
-
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model();
-const x = m.continuous("x", { lb: 0 });
-const y = m.continuous("y", { lb: 0 });
-
-m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
-await m.solve();
-
-console.log(c.dual);                    // 对偶值 / 影子价格
-console.log(m.solution?.duals.capacity); // 按约束名称读取
-```
-
-### 2. 连续 LP 松弛求解 (`m.relax()`)
-`m.relax()` 会在 `[lb, ub]` 边界内临时将所有 `Integer` 与 `Binary` 变量松弛为连续变量求解 LP，并将影子价格填充到 `m.solution.duals`：
-
-```typescript
-// 求解连续 LP 松弛并填充 m.solution.duals
-const status = await m.relax();
-console.log("LP 松弛目标界:", m.objectiveValue);
-```
-
-### 3. 动态列注入 (`m.addColumn()`)
-在单次调用中创建新决策变量、设置其目标函数系数，并将非零系数注入既有命名约束中：
-
-```typescript
-const col = m.addColumn({
-  name: "pattern_1",
-  type: "Integer", // 或 "Continuous" / "Binary"
-  lb: 0,
-  cost: 1, // 目标函数系数
-  coefficients: {
-    capacity: 2,
-  },
-});
-```
-
-### 4. 动态修改约束项 (`c.addTerm()` / `c.setTerm()`)
-动态增减或覆盖既有线性约束中某个变量的系数：
-
-```typescript
-const extra = m.continuous("extra", { lb: 0 });
-const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
-
-budget.addTerm(extra, 5); // 在左端项增加 +5 * extra
-budget.setTerm(extra, 0); // 设为 0 可将该变量从约束中移除
-```
-
----
-
 ## 列生成法 (`solveColumnGeneration`)
 
 `master.solveColumnGeneration(options)` 从包含少量可行初始列的**受限主问题（Restricted Master Problem, RMP）**出发，自动执行列生成循环：
@@ -255,6 +196,65 @@ const result = await master.solveBenders({
 });
 
 console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
+```
+
+---
+
+## 底层原语（自定义迭代循环）
+
+上述两个分解编排器内部使用了四个底层原语；如果需要编写自定义的割平面或列生成迭代循环，也可以直接调用它们：
+
+### 1. 约束对偶值 (`c.dual`)
+求解连续线性规划（LP）后，读取每条约束右端项（RHS）每变动 1 单位对目标函数的边际影响（影子价格）：
+
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
+const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+await m.solve();
+
+console.log(c.dual);                    // 对偶值 / 影子价格
+console.log(m.solution?.duals.capacity); // 按约束名称读取
+```
+
+### 2. 连续 LP 松弛求解 (`m.relax()`)
+`m.relax()` 会在 `[lb, ub]` 边界内临时将所有 `Integer` 与 `Binary` 变量松弛为连续变量求解 LP，并将影子价格填充到 `m.solution.duals`：
+
+```typescript
+// 求解连续 LP 松弛并填充 m.solution.duals
+const status = await m.relax();
+console.log("LP 松弛目标界:", m.objectiveValue);
+```
+
+### 3. 动态列注入 (`m.column()`)
+在单次调用中创建新决策变量、设置其目标函数系数，并将非零系数注入既有命名约束中：
+
+```typescript
+const col = m.column({
+  name: "pattern_1",
+  type: "Integer", // 或 "Continuous" / "Binary"
+  lb: 0,
+  cost: 1, // 目标函数系数
+  coefficients: {
+    capacity: 2,
+  },
+});
+```
+
+### 4. 动态修改约束项 (`c.addTerm()` / `c.setTerm()`)
+动态增减或覆盖既有线性约束中某个变量的系数：
+
+```typescript
+const extra = m.continuous("extra", { lb: 0 });
+const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
+
+budget.addTerm(extra, 5); // 在左端项增加 +5 * extra
+budget.setTerm(extra, 0); // 设为 0 可将该变量从约束中移除
 ```
 
 ---

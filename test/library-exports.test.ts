@@ -81,6 +81,8 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect((WashiRoot as any).isValidWasmHeader).toBeUndefined();
     expect((WashiRoot as any).probeWasmUrl).toBeUndefined();
     expect((WashiRoot as any).resolveBrowserWasmUrl).toBeUndefined();
+    expect((WashiRoot as any).validateModelSolution).toBeUndefined();
+    expect((WashiRoot as any).validateModelIntegrity).toBeUndefined();
   });
 
   it("exports GLPK, Z3, and Pumpkin solvers as separate plugins", async () => {
@@ -121,27 +123,97 @@ describe("WaSHI Library Entry Point Exports", () => {
     const quad = x.mul(x);
 
     // Retired Model methods & properties
-    expect((m as any).constrain).toBeUndefined();
-    expect((m as any).optimize).toBeUndefined();
-    expect((m as any).maximize).toBeUndefined();
-    expect((m as any).minimize).toBeUndefined();
-    expect((m as any).setObjective).toBeUndefined();
-    expect((m as any).add).toBeUndefined();
-    expect((m as any).vars).toBeUndefined();
-    expect((m as any).constrs).toBeUndefined();
-    expect(Reflect.get(m, "getValues")).toBeUndefined();
-    expect("getValues" in m).toBe(false);
+    for (const retiredMember of [
+      "constrain",
+      "optimize",
+      "maximize",
+      "minimize",
+      "setObjective",
+      "add",
+      "vars",
+      "constrs",
+      "getValues",
+      "validateSolution",
+      "validateIntegrity",
+      "addColumn",
+      "getVarByName",
+      "getBoolVarByName",
+      "getConstraintByName",
+      "getLogicalConstraintByName",
+      "boolVars",
+      "logicalConstraints",
+      "numVars",
+      "numConstrs",
+      "objectiveExpr",
+      "notifyMutation",
+      "resetSolutionState",
+      "relGap",
+      "mipGap",
+      "absGap",
+    ] as const) {
+      expect(Reflect.get(m, retiredMember)).toBeUndefined();
+      expect(retiredMember in m).toBe(false);
+    }
 
     // Canonical Model methods & properties exist
     expect(typeof m.constraint).toBe("function");
     expect(typeof m.objective).toBe("function");
     expect(typeof m.solve).toBe("function");
-    expect(Array.isArray(m.variables)).toBe(true);
-    expect(Array.isArray(m.constraints)).toBe(true);
+    expect(typeof m.verify).toBe("function");
+    expect(typeof m.column).toBe("function");
+    expect(typeof m.toLpString).toBe("function");
+    expect("relativeGap" in m).toBe(true);
+    expect("absoluteGap" in m).toBe(true);
+    expect(m.relativeGap).toBeUndefined();
+    expect(m.absoluteGap).toBeUndefined();
     expect(m.conflicts).toBeUndefined();
     expect(m.unsatCore).toBeUndefined();
     expect("conflicts" in m).toBe(true);
     expect("unsatCore" in m).toBe(true);
+
+    // Unified ReadonlyMap collections: variables, constraints, values
+    const b = m.bool("flag");
+    expect(b.type).toBe("Boolean");
+    const cLin = m.constraint(x.le(10), "c_lin");
+    const cLog = m.constraint(b.implies(x.le(5)), "c_log");
+    expect(cLog).toBeDefined();
+
+    for (const mapView of [m.variables, m.constraints, m.values] as any[]) {
+      expect(Array.isArray(mapView)).toBe(false);
+      expect(typeof mapView.get).toBe("function");
+      expect(typeof mapView.has).toBe("function");
+      expect(typeof mapView.size).toBe("number");
+      expect(typeof mapView.keys).toBe("function");
+      expect(typeof mapView.values).toBe("function");
+      expect(typeof mapView.entries).toBe("function");
+      expect(typeof mapView[Symbol.iterator]).toBe("function");
+      expect(typeof mapView.forEach).toBe("function");
+      expect(mapView.set).toBeUndefined();
+      expect(mapView.delete).toBeUndefined();
+      expect(mapView.clear).toBeUndefined();
+      expect(mapView.push).toBeUndefined();
+    }
+
+    expect(m.variables.size).toBe(2);
+    expect([...m.variables.keys()]).toEqual(["x", "flag"]);
+    expect(m.variables.get("x")).toBe(x);
+    expect(m.variables.get("flag")).toBe(b);
+    expect(m.variables.has("flag")).toBe(true);
+    const iteratedVars: string[] = [];
+    m.variables.forEach((v, k) => {
+      iteratedVars.push(`${k}:${v.type}`);
+    });
+    expect(iteratedVars).toEqual(["x:Continuous", "flag:Boolean"]);
+
+    expect(m.constraints.size).toBe(2);
+    expect([...m.constraints.keys()]).toEqual(["c_lin", "c_log"]);
+    expect(m.constraints.get("c_lin")).toBe(cLin);
+    const storedLog = m.constraints.get("c_log");
+    expect(storedLog).toBeDefined();
+    expect(Object.isFrozen(storedLog)).toBe(true);
+    expect(storedLog && "kind" in storedLog ? storedLog.kind : undefined).toBe("logical");
+    expect(storedLog?.dual).toBeNull();
+    expect(storedLog?.slack).toBeNull();
 
     // Retired comparison and value aliases on Var, LinExpr, and QuadExpr
     for (const target of [x, lin, quad] as any[]) {
@@ -172,5 +244,33 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect(() => {
       x.type = "InvalidType" as any;
     }).toThrow(/Invalid variable type/);
+  });
+
+  it("supports uniform m.constraints.get(name)?.dual and ?.slack access across LP, MIP, and logical/CP models", async () => {
+    // 1. LP model: numeric dual and slack via unified ReadonlyMap
+    const lp = new Model("DualSlackLP");
+    const xLp = lp.continuous("x", { lb: 0, ub: 10 });
+    lp.constraint(expr`${xLp} <= 4`, "cap");
+    lp.objective(maximize(expr`3 * ${xLp}`));
+    expect(await lp.solve()).toBe("Optimal");
+    expect(lp.constraints.get("cap")?.dual).toBeCloseTo(3, 6);
+    expect(lp.constraints.get("cap")?.slack).toBeCloseTo(0, 6);
+
+    // 2. MIP model with linearized logical constraint: linear Constraint exposes null dual (no MIP duals) and numeric slack,
+    //    while LogicalConstraint entries uniformly expose null for both dual and slack
+    const mip = new Model("DualSlackMIP");
+    const xMip = mip.integer("x", { lb: 0, ub: 10 });
+    const flag = mip.bool("flag");
+    mip.constraint(expr`${xMip} <= 6`, "cap_int");
+    mip.constraint(flag.implies(expr`${xMip} >= 2`), "logic_min");
+    mip.constraint(flag, "force_flag");
+    mip.objective(maximize(expr`5 * ${xMip}`));
+    expect(await mip.solve()).toBe("Optimal");
+    expect(mip.constraints.get("cap_int")?.dual).toBeNull();
+    expect(mip.constraints.get("cap_int")?.slack).toBeCloseTo(0, 6);
+    expect(mip.constraints.get("logic_min")?.dual).toBeNull();
+    expect(mip.constraints.get("logic_min")?.slack).toBeNull();
+    expect(mip.constraints.get("force_flag")?.dual).toBeNull();
+    expect(mip.constraints.get("force_flag")?.slack).toBeNull();
   });
 });

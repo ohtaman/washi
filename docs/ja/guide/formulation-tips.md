@@ -75,7 +75,9 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 
 ### Min-Max / Max-Min 目的関数（負荷平準化）
 
-LP/MIP の目的関数には `Math.max(...)` を直接記述できません。残業時間や設備負荷の最大値を抑えて平準化する $\min \max_i (\text{load}_i)$ を表現するには、補助上限変数 $z$ を導入し、全要素に対して $\text{load}_i \le z$ を課したうえで $z$ を最小化します：
+WaSHI 組み込みの `max(...)` / `min(...)`（[区分線形関数・インデックス参照](./expressions.md#piecewise-linear)）を使えば、HiGHS/GLPK 向けの凸 LP エピグラフ変換や Pumpkin のネイティブ伝播器への変換を自動で行えます。
+
+一方、第4節の辞書式2段階最適化のように上限・下限変数 $z$ 自体を後続の制約で直接参照したい場合は、補助変数 $z$ を明示的に導入して全要素に $\text{load}_i \le z$ を課し $z$ を最小化します（最小水準を最大化する Max-Min では $u_i \ge z$ として $z$ を最大化）：
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -94,8 +96,6 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 // maxHours を最小化することで 60 時間が均等配分（各 20 時間）される
 m.objective(minimize(maxHours));
 ```
-
-*（同様に、最小水準を最大化する **Max-Min 最適化** $\max \min_i u_i$ では、すべての $i$ について $u_i \ge z$ を課し、`m.objective(maximize(z))` を設定します。なお WaSHI は組み込みの `max(...)`・`min(...)` でも同様の凸 LP エピグラフ変換を自動生成し、Pumpkin ではネイティブプロパゲータへ直接マッピングします。詳細は [数式の記述 (区分線形・Element)](./expressions.md) を参照してください。）*
 
 ---
 
@@ -193,8 +193,8 @@ await m.solve();
 組合せ最適化（MIP）では、探索開始から短時間で実用上十分な良質解（Incumbent）が見つかる一方、残りの 0.5% 未満のギャップを詰めて数学的な大域最適性を証明するまでに計算時間の大半が費やされる現象（**Tail-Off**）が頻発します。
 
 対話型 UI やバッチ処理では、[`m.solve(options)`](./objectives.md#solve-options) の `timeLimit` と併せてビジネス上意味のある許容ギャップを設定することを推奨します：
-- **`relGap: 0.01`**: 理論上の双対境界との相対差が **1% 以内**に入った時点で終了します。
-- **`absGap: 100`**: 目的関数の単位（円やドルなど）において `|objectiveValue - objectiveBound| <= 100` となった時点で終了します。
+- **`relativeGap: 0.01`**: 理論上の双対境界との相対差が **1% 以内**に入った時点で終了します。
+- **`absoluteGap: 100`**: 目的関数の単位（円やドルなど）において `|objectiveValue - objectiveBound| <= 100` となった時点で終了します。
 
 ---
 

@@ -16,26 +16,6 @@
 
 ---
 
-## 架构与 WebAssembly 运行时
-
-WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），开启 `-fwasm-exceptions` 并采用单线程通用运行架构（`-DHIGHS_NO_DEFAULT_THREADS=ON`）。通过直接对接 HiGHS 的原生 C API（`highs_c_api.h`），WaSHI 实现了基于 WebAssembly 线性内存 TypedArray 视图的零拷贝解提取、快速追踪上游版本，以及无额外依赖的独立分发。
-
-### 回调与求解器交互控制
-
-- **进度监控与中途取消（已支持）**：
-  通过 HiGHS 内部的日志与中断钩子，WaSHI 提供实时进度回调（`onProgress`），并支持通过标准 `AbortSignal` 进行协作式中途取消。
-- **动态割平面 / 惰性约束（WASM 驱动暂未公开）**：
-  WaSHI 的 HiGHS WebAssembly C API 驱动目前绑定了日志、进度、中断与可行解（incumbent）回调，尚未跨 WASM ↔ JS 边界公开搜索树内的惰性约束（lazy constraints）或用户割平面（user cuts）回调。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请使用 [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（或手动外层割平面循环：求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解），通过外层迭代分离割平面收敛到相同的精确最优解。
-
-### WebAssembly 资源管理与按需构建
-
-HiGHS 的 WebAssembly 二进制（`public/highs.wasm`）与运行时（`runtime.js`）通过 `highs.config.json` 结合 SHA-256 校验和进行版本控制：
-- **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-highs-wasm.mjs`，在打包前于毫秒内验证本地资源。
-- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-highs-wasm.mjs` 会自动从 WaSHI 的 GitHub Release 资产中下载已验证的二进制包。
-- **从源码编译**：升级 HiGHS 或修改编译选项时，在安装有 Emscripten SDK（`emcc`）、CMake 与 Ninja 的环境下运行 `npm run build:highs-wasm` 即可本地重新构建，合并后运行 `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` 同步 Release 资产（亦可通过 `.github/workflows/build-wasm.yml` 自动构建与上传，并将 `highs-wasm-assets` 产物中的 `highs.config.json` 等文件提交至仓库）。
-
----
-
 ## 支持的问题类型
 
 ### 1. 线性规划 (LP)
@@ -86,8 +66,8 @@ const controller = new AbortController();
 
 await model.solve({
   timeLimit: 60.0,       // 最大求解时间（秒）
-  mipGap: 0.001,         // 当相对 MIP 间隙达到 0.1% 以内时终止（别名：relGap）
-  absGap: 1.0,           // 绝对 MIP 最优间隙容差
+  relativeGap: 0.001,    // 当相对 MIP 间隙达到 0.1% 以内时终止
+  absoluteGap: 1.0,      // 绝对 MIP 最优间隙容差
   presolve: "on",        // 预处理控制（"on" | "off" | "choose"）
   outputFlag: true,      // 输出内部单纯形法 / 分支定界法日志 (output_flag)
   signal: controller.signal,
@@ -100,7 +80,7 @@ await model.solve({
 if (model.hasPrimalSolution) {
   console.log(
     `可用解 (${model.status}, 终止原因: ${model.terminationStatus}):`,
-    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+    `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
 ```
@@ -124,6 +104,21 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## 架构与 WebAssembly 运行时
+
+WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），开启 `-fwasm-exceptions` 并采用单线程通用运行架构（`-DHIGHS_NO_DEFAULT_THREADS=ON`）。通过直接对接 HiGHS 的原生 C API（`highs_c_api.h`），WaSHI 实现了基于 WebAssembly 线性内存 TypedArray 视图的零拷贝解提取、快速追踪上游版本，以及无额外依赖的独立分发。
+
+随包分发的 `highs.wasm` 与 `runtime.js` 通过 `highs.config.json` 中的 SHA-256 校验和进行完整性验证。如需从源码重新编译或更新 Release 资产，维护者可参考 [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow)。
+
+### 回调与求解器交互控制
+
+- **进度监控与中途取消（已支持）**：
+  通过 HiGHS 内部的日志与中断钩子，WaSHI 提供实时进度回调（`onProgress`），并支持通过标准 `AbortSignal` 进行协作式中途取消。
+- **动态割平面 / 惰性约束（WASM 驱动暂未公开）**：
+  WaSHI 的 HiGHS WebAssembly C API 驱动目前绑定了日志、进度、中断与可行解（incumbent）回调，尚未跨 WASM ↔ JS 边界公开搜索树内的惰性约束（lazy constraints）或用户割平面（user cuts）回调。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请使用 [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（或手动外层割平面循环：求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解），通过外层迭代分离割平面收敛到相同的精确最优解。
 
 ---
 

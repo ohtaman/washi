@@ -192,7 +192,7 @@ describe("Playground Presets Runtime Execution", () => {
         expect(m.status).toBe("Optimal");
         expect(m.objectiveValue).not.toBeNull();
         expect(m.objectiveValue!).toBeCloseTo(expectedObjectives[ex.id], 4);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       } else if (ex.id === "project_conflict_unsat") {
         expect(m.status).toBe("Unsat");
         expect(m.unsatCore).toEqual(
@@ -232,10 +232,10 @@ describe("Playground Presets Runtime Execution", () => {
         expect(m.values.get("lightsOn")).toBe(true);
         expect(m.values.get("frontDoorUnlocked")).toBe(false);
         expect(m.values.get("isNight")).toBe(true);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       } else if (ex.id === "smt_sat_scheduling") {
         expect(m.status).toBe("Sat");
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       } else {
         throw new Error(`Unhandled preset id "${ex.id}" in runtime execution suite`);
       }
@@ -268,7 +268,7 @@ describe("Playground Presets Runtime Execution", () => {
       expect(schedRes.success).toBe(true);
       expect(schedRes.model?.status).toBe("Optimal");
       expect(schedRes.model?.objectiveValue).toBeCloseTo(12, 4);
-      expect(schedRes.model?.validateSolution().valid).toBe(true);
+      expect(schedRes.model?.verify().valid).toBe(true);
 
       const conflictRes = await executeModelCode(replaceSolverInCode(conflictEx.code, solver));
       expect(conflictRes.error, `project_conflict_unsat with ${solver}: ${conflictRes.error}`).toBeUndefined();

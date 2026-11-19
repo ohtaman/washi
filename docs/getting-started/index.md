@@ -2,29 +2,6 @@
 
 **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. Write expressions naturally with tagged templates (`expr`) and solve mathematical optimization and constraint programming problems directly in **Node.js and the browser** using WebAssembly solvers (**HiGHS**, **Pumpkin**, **Z3**, and **GLPK**).
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("production");
-
-// 1. Define decision variables with realistic finite bounds (lb / ub)
-const desks = m.integer("desks", { lb: 0, ub: 100 });
-const chairs = m.integer("chairs", { lb: 0, ub: 100 });
-
-// 2. Set the objective function and constraints
-m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
-m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
-
-// 3. Solve (built-in HiGHS WebAssembly) and validate the solution
-const status = await m.solve();
-if (m.hasPrimalSolution) {
-  const report = m.validateSolution();
-  console.log(status, report.valid); // "Optimal", true
-  console.log(`Profit: ${m.objectiveValue} (desks=${desks.value}, chairs=${chairs.value})`); // 1100 (desks=20, chairs=10)
-}
-```
-
 ---
 
 ## 📦 Installation
@@ -63,19 +40,42 @@ npx skills add ohtaman/washi
 
 ---
 
-## 🔍 Core Workflow Essentials
+## 🚀 Quick Start
 
-Three practical habits cover the essentials shown in the snippet above:
+Here is a complete production-planning model illustrating the three steps of a typical WaSHI workflow:
 
-1. **Set realistic finite bounds (`lb`, `ub`)**: When defining variables with `m.continuous`, `m.integer`, or `m.binary`, finite bounds strengthen MIP presolve and enable automatic tight Big-M derivation for logical constraints.
-2. **Formulate objectives and constraints with `expr`**: Use `` m.objective(maximize(expr`...`)) `` and `` m.constraint(expr`... <= ...`, "name") ``. Naming constraints lets you pinpoint conflicting rules immediately if a model becomes infeasible.
-3. **Check `hasPrimalSolution` and call `validateSolution()`**: After `await m.solve()`, check `m.hasPrimalSolution` before reading `.value` on variables, and call `m.validateSolution()` to independently verify that bounds, integrality, and constraints hold within tolerance.
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model("production");
+
+// 1. Define decision variables with realistic finite bounds (lb / ub)
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
+
+// 2. Set the objective function and constraints
+m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
+
+// 3. Solve (built-in HiGHS WebAssembly) and verify the solution
+const status = await m.solve();
+if (m.hasPrimalSolution) {
+  const report = m.verify();
+  console.log(status, report.valid); // "Optimal", true
+  console.log(`Profit: ${m.objectiveValue} (desks=${desks.value}, chairs=${chairs.value})`); // 1100 (desks=20, chairs=10)
+}
+```
+
+1. **Define decision variables (`lb`, `ub`)**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`, providing finite `lb` and `ub` bounds when known.
+2. **Describe the objective and constraints (`expr`)**: Formulate equations naturally with `` expr`...` ``, and pass constraint names to make infeasibility debugging straightforward.
+3. **Solve and verify (`solve`, `verify`)**: `await m.solve()` runs the bundled HiGHS WebAssembly solver. Check `m.hasPrimalSolution` before reading `.value`, and call `m.verify()` to independently verify that bounds, integrality, and constraints hold.
 
 ---
 
 ## 🧭 Next Steps
 
-- **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and Unsat Core diagnosis
-- **[Examples & API Finder](../examples/)**: 11 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
+- **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and conflict diagnosis
+- **[Examples & API Finder](../examples/)**: 12 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
 - **[Solvers Overview](../solvers/)**: Compare bundled HiGHS and Pumpkin with optional Z3 and GLPK adapters
 - **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, and static hosting

@@ -112,8 +112,12 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
     expect(modelDts).toContain("initialValue");
     expect(modelDts).toContain("supportsWarmStart");
     expect(modelDts).toContain("unsatCore");
-    expect(modelDts).toContain("validateSolution");
+    expect(modelDts).toContain("verify");
+    expect(modelDts).toContain("column");
     expect(modelDts).toContain("toLpString");
+    expect(modelDts).not.toContain("validateSolution");
+    expect(modelDts).not.toContain("addColumn");
+    expect(modelDts).not.toMatch(/\bvalidateIntegrity\b/);
     expect(modelDts).not.toContain("getValues");
 
     const parserDts = fs.readFileSync(
@@ -319,9 +323,9 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
       expect(prodPlan).toBeDefined();
       expect(prodPlan!.status).toBe("Optimal");
       expect(prodPlan!.objectiveValue).toBeCloseTo(1080, 6);
-      expect(prodPlan!.getVarByName("desk")?.value).toBe(20);
-      expect(prodPlan!.getVarByName("chair")?.value).toBe(10);
-      expect(prodPlan!.validateSolution().valid).toBe(true);
+      expect(prodPlan!.variables.get("desk")?.value).toBe(20);
+      expect(prodPlan!.variables.get("chair")?.value).toBe(10);
+      expect(prodPlan!.verify().valid).toBe(true);
 
       expect(byName.has("GetValuesExample")).toBe(false);
 
@@ -329,13 +333,15 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
       expect(solveModel).toBeDefined();
       expect(solveModel!.status).toBe("Optimal");
       expect(solveModel!.objectiveValue).toBeCloseTo(1200, 6);
-      expect(solveModel!.validateSolution().valid).toBe(true);
+      expect(solveModel!.verify().valid).toBe(true);
 
       const linearCheck = byName.get("LinearCheck");
       expect(linearCheck).toBeDefined();
       expect(linearCheck!.status).toBe("Sat");
       expect(linearCheck!.hasPrimalSolution).toBe(true);
-      expect(linearCheck!.getVarByName("x")?.value).toBeGreaterThanOrEqual(4 - 1e-6);
+      const linearX = linearCheck!.variables.get("x");
+      expect(linearX?.type).toBe("Continuous");
+      expect((linearX as Washi.Var).value).toBeGreaterThanOrEqual(4 - 1e-6);
 
       const policyCheck = byName.get("PolicyCheck");
       expect(policyCheck).toBeDefined();
@@ -343,12 +349,12 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
       expect(policyCheck!.conflicts).toEqual(expect.arrayContaining(["is_vip", "vip_min", "cap"]));
       expect(policyCheck!.unsatCore).toEqual(policyCheck!.conflicts);
 
-      const validateModel = byName.get("ValidateExample");
+      const validateModel = byName.get("VerifyExample");
       expect(validateModel).toBeDefined();
       expect(validateModel!.status).toBe("Optimal");
       expect(validateModel!.objectiveValue).toBeCloseTo(21, 6);
-      expect(validateModel!.getVarByName("x")?.value).toBeCloseTo(7, 6);
-      expect(validateModel!.validateSolution().valid).toBe(true);
+      expect(validateModel!.variables.get("x")?.value).toBeCloseTo(7, 6);
+      expect(validateModel!.verify().valid).toBe(true);
     } finally {
       await killZ3Threads();
     }

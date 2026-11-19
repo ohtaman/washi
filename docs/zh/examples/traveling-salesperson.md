@@ -12,7 +12,7 @@ $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S
 
 由于子集共有 $2^n - 2$ 个，当城市数量增加时，预先加入全部子回路约束并不现实。采用 **Benders分解（延迟割平面分离: Lazy Subtour Elimination）** 可按需添加被违反的约束：
 1. **主问题（Master Problem）**：求解度数分配松弛（每个城市入度为 1、出度为 1）。
-2. **分离平子问题（Subproblem）**：检查主问题解构成的有向图；若存在多个连通环路，则生成一条消除最小子回路的 **Benders 可行割（Feasibility Cut）** 并加入主问题，迭代直至形成单一回路。
+2. **分离子问题（Subproblem）**：检查主问题解构成的有向图；若存在多个连通环路，则一次性为所有检测到的子回路生成 **Benders 可行割（Feasibility Cuts）**（多割平面分离）并加入主问题，迭代直至形成单一回路。
 
 ## 输入数据
 

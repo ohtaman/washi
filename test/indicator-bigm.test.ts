@@ -433,14 +433,14 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(() => m.indicator(z, y.mul(2).eq(0), { name: "eq_overflow" })).toThrow(
         /Cannot derive safe Big-M.*numeric overflow/i
       );
-      expect(m.constraints.length).toBe(0);
+      expect(m.constraints.size).toBe(0);
 
       // 4. User-supplied finite M that overflows shifted RHS (rhs + M => Infinity)
       const u = m.continuous("u", { lb: 0, ub: 100 });
       expect(() =>
         m.indicator(z, u.le(1e308), { activeValue: 1, M: 1e308, name: "shifted_rhs_overflow" })
       ).toThrow(/shifted right-hand side overflows finite floating-point range/i);
-      expect(m.constraints.length).toBe(0);
+      expect(m.constraints.size).toBe(0);
 
       // 5. Representable indicator with large cancelling lhs.constant and rhs (effectiveRhs = 0) succeeds
       const w = m.continuous("w", { lb: 0, ub: 1e308 });

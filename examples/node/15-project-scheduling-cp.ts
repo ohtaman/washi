@@ -73,7 +73,7 @@ export async function runProjectSchedulingCP() {
   m.objective(minimize(makespan));
 
   const status = await m.solve();
-  const report = m.validateSolution();
+  const report = m.verify();
   const makespanValue = m.objectiveValue;
 
   const starts: Record<string, number> = {};

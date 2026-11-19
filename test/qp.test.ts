@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, minimize } from "../src/index.js";
+import { Model, Var, Constraint, expr, minimize } from "../src/index.js";
 import { generateLpString } from "../src/modeler/lp-writer.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -17,8 +17,8 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
       name: m.name,
       sense: m.sense,
       objective: m.objective(),
-      constraints: m.constraints,
-      variables: m.variables,
+      constraints: [...m.constraints.values()].filter((c): c is Constraint => c instanceof Constraint),
+      variables: [...m.variables.values()].filter((v): v is Var => v.type !== "Boolean"),
     });
 
     expect(lpString).toContain("Minimize");

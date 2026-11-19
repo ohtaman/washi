@@ -26,9 +26,9 @@ import {
   type SolverResult,
 } from "./solvers/index.js";
 import {
-  validateModelSolution,
-  type SolutionValidationOptions,
-  type SolutionValidationReport,
+  verifyModel,
+  type VerifyOptions,
+  type VerificationReport,
 } from "./solution-validator.js";
 import { linearizeModelForMip } from "./linearizer.js";
 
@@ -120,6 +120,7 @@ import {
   attachLogicElementOwnership,
   claimConstraintOwnership,
   claimVarOwnership,
+  registerModelMutationCallback,
   releaseConstraintOwnership,
   releaseVarOwnership,
   validateLinearConstraint,
@@ -134,8 +135,46 @@ export type { IndicatorOptions };
  * Named propositional or SMT constraint registered on a `Model`.
  */
 export interface LogicalConstraint {
-  name: string;
-  expr: BoolExpr | Constraint;
+  readonly kind: "logical";
+  readonly name: string;
+  readonly expr: BoolExpr | Constraint;
+  readonly dual: null;
+  readonly slack: null;
+}
+
+function createReadonlyMapView<K, V>(source: Map<K, V>): ReadonlyMap<K, V> {
+  const view: ReadonlyMap<K, V> = Object.freeze({
+    get size(): number {
+      return source.size;
+    },
+    get(key: K): V | undefined {
+      return source.get(key);
+    },
+    has(key: K): boolean {
+      return source.has(key);
+    },
+    forEach(
+      callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void,
+      thisArg?: unknown
+    ): void {
+      source.forEach((value, key) => {
+        callbackfn.call(thisArg, value, key, view);
+      });
+    },
+    entries() {
+      return source.entries();
+    },
+    keys() {
+      return source.keys();
+    },
+    values() {
+      return source.values();
+    },
+    [Symbol.iterator]() {
+      return source[Symbol.iterator]();
+    },
+  });
+  return view;
 }
 
 function isKeyCollection(val: unknown): val is Iterable<string | number> {
@@ -226,7 +265,7 @@ function assertValidCount(count: number, label: string): void {
  * m.constraint(expr`${sum(Object.values(qty))} <= 30 * ${setup}`, "require_setup");
  *
  * const status = await m.solve();
- * const report = m.validateSolution();
+ * const report = m.verify();
  * const solvedQty = { desk: qty.desk.value, chair: qty.chair.value };
  * ```
  */
@@ -234,13 +273,13 @@ export class Model {
   public name: string;
   private _sense: OptimizationSense;
   private _objectiveExpr: LinExpr | QuadExpr;
-  public variables: Var[] = [];
-  public constraints: Constraint[] = [];
-  public boolVars: BoolVar[] = [];
-  public logicalConstraints: LogicalConstraint[] = [];
+  private _variables: Var[] = [];
+  private _constraints: Constraint[] = [];
+  private _boolVars: BoolVar[] = [];
+  private _logicalConstraints: LogicalConstraint[] = [];
   public unsatCore: readonly string[] | undefined = undefined;
   private _conflicts: readonly string[] | undefined = undefined;
-  public values = new Map<string, number | boolean>();
+  private _values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
   private varPrefixCounters = new Map<string, number>();
@@ -250,15 +289,20 @@ export class Model {
   private constrPrefixCounters = new Map<string, number>();
   private logicalConstrMapByName = new Map<string, LogicalConstraint>();
   private logicalConstrCounter = 0;
+  private allVarsMap = new Map<string, Var | BoolVar>();
+  private allConstrsMap = new Map<string, Constraint | LogicalConstraint>();
+
+  public readonly variables: ReadonlyMap<string, Var | BoolVar>;
+  public readonly constraints: ReadonlyMap<string, Constraint | LogicalConstraint>;
+  public readonly values: ReadonlyMap<string, number | boolean>;
 
   public status: SolverStatus = "NotSolved";
   public terminationStatus: TerminationStatus = "NotSolved";
   public hasPrimalSolution: boolean = false;
   public objectiveValue: number | null = null;
   public objectiveBound: number | undefined = undefined;
-  public relGap: number | undefined = undefined;
-  public mipGap: number | undefined = undefined;
-  public absGap: number | undefined = undefined;
+  public relativeGap: number | undefined = undefined;
+  public absoluteGap: number | undefined = undefined;
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
@@ -284,6 +328,10 @@ export class Model {
     this.name = options.name || "OptimizationModel";
     this._sense = normalizeSense(options.sense);
     this._objectiveExpr = new LinExpr();
+    this.variables = createReadonlyMapView(this.allVarsMap);
+    this.constraints = createReadonlyMapView(this.allConstrsMap);
+    this.values = createReadonlyMapView(this._values);
+    registerModelMutationCallback(this, () => this.recordModelMutation());
     if (options.solver) {
       this.solver = getSolver(options.solver);
     }
@@ -301,14 +349,6 @@ export class Model {
     }
   }
 
-  get objectiveExpr(): LinExpr | QuadExpr {
-    return this._objectiveExpr.clone();
-  }
-
-  set objectiveExpr(value: LinExpr | QuadExpr | Constraint) {
-    this.applyObjective(value);
-  }
-
   /**
    * User-friendly alias for unsatCore or MIP elastic conflict diagnosis.
    * Returns a subset of conflicting constraint names causing infeasibility,
@@ -320,14 +360,6 @@ export class Model {
 
   set conflicts(value: readonly string[] | undefined) {
     this._conflicts = value;
-  }
-
-  get numVars(): number {
-    return this.variables.length;
-  }
-
-  get numConstrs(): number {
-    return this.constraints.length;
   }
 
   /**
@@ -350,22 +382,21 @@ export class Model {
     this.hasPrimalSolution = false;
     this.objectiveValue = null;
     this.objectiveBound = undefined;
-    this.relGap = undefined;
-    this.mipGap = undefined;
-    this.absGap = undefined;
+    this.relativeGap = undefined;
+    this.absoluteGap = undefined;
     this.solution = null;
     this.runTime = 0;
     this.unsatCore = undefined;
     this._conflicts = undefined;
-    this.values.clear();
-    for (const v of this.variables) {
+    this._values.clear();
+    for (const v of this._variables) {
       v.value = null;
       v.reducedCost = null;
     }
-    for (const bv of this.boolVars) {
+    for (const bv of this._boolVars) {
       bv.value = null;
     }
-    for (const c of this.constraints) {
+    for (const c of this._constraints) {
       c.dual = null;
       c.slack = null;
     }
@@ -384,21 +415,6 @@ export class Model {
   }
 
   /**
-   * @internal Notifies the model that an owned entity (e.g., Var bounds/type or Constraint RHS/sense) was mutated.
-   */
-  public notifyMutation(): void {
-    this.recordModelMutation();
-  }
-
-  /**
-   * Reset prior solution and diagnostic state to avoid stale data leakage across runs,
-   * and invalidate any in-flight solve() or check() execution.
-   */
-  public resetSolutionState(): void {
-    this.recordModelMutation();
-  }
-
-  /**
    * Executes a multi-item model mutation atomically so failed batch edits neither leave
    * partial entities registered nor invalidate prior solved / in-flight state.
    */
@@ -406,10 +422,10 @@ export class Model {
     if (this.batchDepth > 0) {
       return fn();
     }
-    const varsLen = this.variables.length;
-    const boolVarsLen = this.boolVars.length;
-    const constrsLen = this.constraints.length;
-    const logicalConstrsLen = this.logicalConstraints.length;
+    const varsLen = this._variables.length;
+    const boolVarsLen = this._boolVars.length;
+    const constrsLen = this._constraints.length;
+    const logicalConstrsLen = this._logicalConstraints.length;
     const savedVarCounters = new Map(this.varPrefixCounters);
     const savedBoolVarCounters = new Map(this.boolVarPrefixCounters);
     const savedConstrCounters = new Map(this.constrPrefixCounters);
@@ -433,31 +449,35 @@ export class Model {
       this.batchDepth = 0;
       this.batchMutated = false;
 
-      for (let i = varsLen; i < this.variables.length; i++) {
-        const v = this.variables[i];
+      for (let i = varsLen; i < this._variables.length; i++) {
+        const v = this._variables[i];
         this.varMapByName.delete(v.name);
+        this.allVarsMap.delete(v.name);
         v.ownerModel = null;
         releaseVarOwnership(v, this);
       }
-      this.variables.length = varsLen;
+      this._variables.length = varsLen;
 
-      for (let i = boolVarsLen; i < this.boolVars.length; i++) {
-        const bv = this.boolVars[i];
+      for (let i = boolVarsLen; i < this._boolVars.length; i++) {
+        const bv = this._boolVars[i];
         this.boolVarMapByName.delete(bv.name);
+        this.allVarsMap.delete(bv.name);
       }
-      this.boolVars.length = boolVarsLen;
+      this._boolVars.length = boolVarsLen;
 
-      for (let i = constrsLen; i < this.constraints.length; i++) {
-        const c = this.constraints[i];
+      for (let i = constrsLen; i < this._constraints.length; i++) {
+        const c = this._constraints[i];
         this.constrMapByName.delete(c.name);
+        this.allConstrsMap.delete(c.name);
       }
-      this.constraints.length = constrsLen;
+      this._constraints.length = constrsLen;
 
-      for (let i = logicalConstrsLen; i < this.logicalConstraints.length; i++) {
-        const lc = this.logicalConstraints[i];
+      for (let i = logicalConstrsLen; i < this._logicalConstraints.length; i++) {
+        const lc = this._logicalConstraints[i];
         this.logicalConstrMapByName.delete(lc.name);
+        this.allConstrsMap.delete(lc.name);
       }
-      this.logicalConstraints.length = logicalConstrsLen;
+      this._logicalConstraints.length = logicalConstrsLen;
 
       for (let i = this.batchUndoActions.length - 1; i >= 0; i--) {
         this.batchUndoActions[i]();
@@ -771,7 +791,7 @@ export class Model {
    * const m = new Model("ColumnExample");
    * m.constraint(expr`0 <= 10`, "demand_itemA");
    * m.constraint(expr`0 <= 10`, "demand_itemB");
-   * const colVar = m.addColumn({
+   * const colVar = m.column({
    *   name: "pattern_1",
    *   type: "Continuous",
    *   lb: 0,
@@ -783,7 +803,7 @@ export class Model {
    * });
    * ```
    */
-  addColumn(options: ColumnDefinition): Var {
+  column(options: ColumnDefinition): Var {
     const varType = options.type || "Continuous";
     const v = this.addVar({
       name: options.name,
@@ -802,7 +822,7 @@ export class Model {
         for (const item of options.coefficients) {
           if (Array.isArray(item)) {
             const [cOrName, coeff] = item;
-            const c = typeof cOrName === "string" ? this.getConstraintByName(cOrName) : cOrName;
+            const c = typeof cOrName === "string" ? this.constrMapByName.get(cOrName) : cOrName;
             if (!c) {
               throw new Error(`Constraint '${String(cOrName)}' not found in model when adding column`);
             }
@@ -810,7 +830,7 @@ export class Model {
           } else if (typeof item === "object" && item !== null) {
             const c =
               typeof item.constraint === "string"
-                ? this.getConstraintByName(item.constraint)
+                ? this.constrMapByName.get(item.constraint)
                 : item.constraint;
             if (!c) {
               throw new Error(`Constraint '${String(item.constraint)}' not found in model when adding column`);
@@ -820,7 +840,7 @@ export class Model {
         }
       } else if (options.coefficients instanceof Map) {
         for (const [cOrName, coeff] of options.coefficients.entries()) {
-          const c = typeof cOrName === "string" ? this.getConstraintByName(cOrName) : cOrName;
+          const c = typeof cOrName === "string" ? this.constrMapByName.get(cOrName) : cOrName;
           if (!c) {
             throw new Error(`Constraint '${String(cOrName)}' not found in model when adding column`);
           }
@@ -828,7 +848,7 @@ export class Model {
         }
       } else if (typeof options.coefficients === "object") {
         for (const [cName, coeff] of Object.entries(options.coefficients)) {
-          const c = this.getConstraintByName(cName);
+          const c = this.constrMapByName.get(cName);
           if (!c) {
             throw new Error(`Constraint '${cName}' not found in model when adding column`);
           }
@@ -1051,8 +1071,9 @@ export class Model {
       );
     }
     const bv = new BoolVar(varName);
-    this.boolVars.push(bv);
+    this._boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
+    this.allVarsMap.set(bv.name, bv);
     this.recordModelMutation();
     return bv;
   }
@@ -1081,8 +1102,9 @@ export class Model {
       claimVarOwnership(v, this);
       v.ownerModel = this;
 
-      this.variables.push(v);
+      this._variables.push(v);
       this.varMapByName.set(v.name, v);
+      this.allVarsMap.set(v.name, v);
       this.recordModelMutation();
       return v;
     } catch (err) {
@@ -1095,34 +1117,6 @@ export class Model {
       }
       throw err;
     }
-  }
-
-  /**
-   * Find variable by name
-   */
-  getVarByName(name: string): Var | undefined {
-    return this.varMapByName.get(name);
-  }
-
-  /**
-   * Find boolean variable by name
-   */
-  getBoolVarByName(name: string): BoolVar | undefined {
-    return this.boolVarMapByName.get(name);
-  }
-
-  /**
-   * Find a constraint by its name
-   */
-  getConstraintByName(name: string): Constraint | undefined {
-    return this.constrMapByName.get(name);
-  }
-
-  /**
-   * Find a logical constraint by its name
-   */
-  getLogicalConstraintByName(name: string): LogicalConstraint | undefined {
-    return this.logicalConstrMapByName.get(name);
   }
 
   /**
@@ -1148,7 +1142,7 @@ export class Model {
   objective(spec: ObjectiveSpec): this;
   objective(spec?: ObjectiveSpec): LinExpr | QuadExpr | this {
     if (arguments.length === 0) {
-      return this.objectiveExpr;
+      return this._objectiveExpr.clone();
     }
     const raw = spec as unknown;
     if (
@@ -1202,7 +1196,7 @@ export class Model {
 
     let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
-      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
+      parsedExpr = parseExpr(expr, (name) => this.varMapByName.get(name));
     } else if (typeof expr === "number") {
       parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
@@ -1388,19 +1382,23 @@ export class Model {
         this,
         this.batchDepth > 0 ? this.batchUndoActions : undefined
       );
-      const lcEntry: LogicalConstraint = {
+      const lcEntry: LogicalConstraint = Object.freeze({
+        kind: "logical" as const,
         name: constrName,
         expr: constraint,
-      };
-      this.logicalConstraints.push(lcEntry);
+        dual: null,
+        slack: null,
+      });
+      this._logicalConstraints.push(lcEntry);
       this.logicalConstrMapByName.set(constrName, lcEntry);
+      this.allConstrsMap.set(constrName, lcEntry);
       this.recordModelMutation();
       return constraint;
     }
 
     const constr =
       typeof constraint === "string"
-        ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
+        ? parseConstraint(constraint, (varName) => this.varMapByName.get(varName), name)
         : constraint;
 
     if (
@@ -1468,8 +1466,9 @@ export class Model {
     }
     constr._assignModelName(resolvedName, true);
     constr.ownerModel = this;
-    this.constraints.push(constr);
+    this._constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
+    this.allConstrsMap.set(constr.name, constr);
     this.recordModelMutation();
     return constr;
   }
@@ -1675,11 +1674,11 @@ export class Model {
   }
 
   /**
-   * Validate model integrity (`validateIntegrity()`) and serialize the model's linear/quadratic objective,
+   * Validate model integrity and serialize the model's linear/quadratic objective,
    * linear constraints, and numeric variable bounds/domains (`Continuous`, `Integer`, `Binary`) to a
    * standard CPLEX LP format string with collision-free sanitized identifiers.
    *
-   * **Note**: Propositional `BoolVar`s and SMT `logicalConstraints` are not part of the CPLEX LP format.
+   * **Note**: Propositional `BoolVar`s and SMT logical constraints are not part of the CPLEX LP format.
    *
    * @example
    * ```ts
@@ -1691,12 +1690,12 @@ export class Model {
    * ```
    */
   toLpString(): string {
-    this.validateIntegrity();
-    if (hasNonlinearOrNeq(this._objectiveExpr, this.constraints)) {
+    this.validateIntegrityInternal();
+    if (hasNonlinearOrNeq(this._objectiveExpr, this._constraints)) {
       const linResult = linearizeModelForMip(
-        this.variables,
+        this._variables,
         [],
-        this.constraints,
+        this._constraints,
         [],
         { expr: this._objectiveExpr, sense: this.sense }
       );
@@ -1712,19 +1711,30 @@ export class Model {
     const { lpString } = generateLpString({
       name: this.name,
       sense: this.sense,
-      objective: this.objectiveExpr,
-      constraints: this.constraints,
-      variables: this.variables,
+      objective: this._objectiveExpr.clone(),
+      constraints: this._constraints,
+      variables: this._variables,
     });
     return lpString;
   }
 
   /**
-   * Validates model integrity: variable bounds, ownership, numeric sanity, and unique constraint names.
-   * Throws an Error with actionable explanation if any validation rule is violated.
+   * Internally validates model integrity: variable bounds, ownership, numeric sanity, and unique constraint names.
    */
-  validateIntegrity(): void {
-    validateModelIntegrity(this);
+  private validateIntegrityInternal(): void {
+    validateModelIntegrity({
+      model: this,
+      name: this.name,
+      variables: this._variables,
+      boolVars: this._boolVars,
+      constraints: this._constraints,
+      logicalConstraints: this._logicalConstraints,
+      objectiveExpr: this._objectiveExpr,
+      getVarByName: (name) => this.varMapByName.get(name),
+      getBoolVarByName: (name) => this.boolVarMapByName.get(name),
+      getConstraintByName: (name) => this.constrMapByName.get(name),
+      getLogicalConstraintByName: (name) => this.logicalConstrMapByName.get(name),
+    });
   }
 
   private ensureExecutionValid(
@@ -1901,7 +1911,7 @@ export class Model {
    *   primal incumbent, `solve()` returns `"Feasible"` (`m.hasPrimalSolution === true`, with the exact
    *   stopping reason in `m.terminationStatus`).
    * - After solving, read primal/dual values via `x.value`, `m.values`, `m.objectiveValue`,
-   *   `constr.dual`, `constr.slack`, and `x.reducedCost`, and verify primal feasibility with `m.validateSolution()`.
+   *   `constr.dual`, `constr.slack`, and `x.reducedCost`, and verify primal feasibility with `m.verify()`.
    *
    * **Solver capability preconditions**:
    * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on Pumpkin, GLPK, and Z3).
@@ -1920,7 +1930,7 @@ export class Model {
    * m.constraint(expr`${x} + 2 * ${y} <= 40`, "resource_limit");
    *
    * const status = await m.solve();
-   * const report = m.validateSolution();
+   * const report = m.verify();
    * const obj = m.objectiveValue;
    * ```
    */
@@ -1931,7 +1941,7 @@ export class Model {
     const opId = ++this.activeOperationId;
     const startRevision = this.modelRevision;
     this.clearSolutionFields();
-    this.validateIntegrity();
+    this.validateIntegrityInternal();
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
@@ -1956,16 +1966,16 @@ export class Model {
 
     const needsMipLinearization =
       !supportsNativeLogic &&
-      (this.logicalConstraints.length > 0 ||
-        this.boolVars.length > 0 ||
-        hasNonlinearOrNeq(this._objectiveExpr, this.constraints));
+      (this._logicalConstraints.length > 0 ||
+        this._boolVars.length > 0 ||
+        hasNonlinearOrNeq(this._objectiveExpr, this._constraints));
 
     if (needsMipLinearization) {
       linResult = linearizeModelForMip(
-        this.variables,
-        this.boolVars,
-        this.constraints,
-        this.logicalConstraints,
+        this._variables,
+        this._boolVars,
+        this._constraints,
+        this._logicalConstraints,
         { expr: this._objectiveExpr, sense: this.sense }
       );
       modelData = {
@@ -1982,16 +1992,16 @@ export class Model {
         name: this.name,
         sense: this.sense,
         objective: this._objectiveExpr,
-        constraints: this.constraints,
-        variables: this.variables,
-        logicalConstraints: this.logicalConstraints,
-        boolVars: this.boolVars,
+        constraints: this._constraints,
+        variables: this._variables,
+        logicalConstraints: this._logicalConstraints,
+        boolVars: this._boolVars,
       };
     }
 
     // Capability check: Validate if solver supports primal initial values (warm starts)
     if (
-      this.variables.some((v) => v.initialValue !== undefined) &&
+      this._variables.some((v) => v.initialValue !== undefined) &&
       activeSolver.capabilities?.supportsWarmStart !== true
     ) {
       throw new Error(
@@ -2029,17 +2039,14 @@ export class Model {
       typeof result.objectiveBound === "number" && Number.isFinite(result.objectiveBound)
         ? result.objectiveBound
         : undefined;
-    const resolvedRelGap =
-      typeof result.relGap === "number" && Number.isFinite(result.relGap)
-        ? result.relGap
-        : typeof result.mipGap === "number" && Number.isFinite(result.mipGap)
-          ? result.mipGap
-          : undefined;
-    this.relGap = resolvedRelGap;
-    this.mipGap = resolvedRelGap;
-    this.absGap =
-      typeof result.absGap === "number" && Number.isFinite(result.absGap)
-        ? result.absGap
+    const resolvedRelativeGap =
+      typeof result.relativeGap === "number" && Number.isFinite(result.relativeGap)
+        ? result.relativeGap
+        : undefined;
+    this.relativeGap = resolvedRelativeGap;
+    this.absoluteGap =
+      typeof result.absoluteGap === "number" && Number.isFinite(result.absoluteGap)
+        ? result.absoluteGap
         : this.objectiveValue !== null && this.objectiveBound !== undefined
           ? Math.abs(this.objectiveValue - this.objectiveBound)
           : undefined;
@@ -2058,14 +2065,14 @@ export class Model {
     const reducedCostsRecord: Record<string, number> = {};
     const slacksRecord: Record<string, number> = {};
 
-    this.values.clear();
+    this._values.clear();
 
     // Map variable solutions back to Var/BoolVar objects only when a feasible primal solution exists
     if (hasPrimal && result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          const v = this.getVarByName(vName);
-          const bv = this.getBoolVarByName(vName);
+          const v = this.varMapByName.get(vName);
+          const bv = this.boolVarMapByName.get(vName);
           if (v) {
             const normalizedPrimal = this.normalizePrimalValue(
               v,
@@ -2075,29 +2082,29 @@ export class Model {
             );
             v.value = normalizedPrimal;
             setOwnProperty(valuesRecord, v.name, normalizedPrimal);
-            this.values.set(v.name, normalizedPrimal);
+            this._values.set(v.name, normalizedPrimal);
           }
           if (bv) {
             bv.value = Boolean(primal);
-            this.values.set(bv.name, primal);
+            this._values.set(bv.name, primal);
           }
           if (!v && !bv && !linResult) {
-            this.values.set(vName, primal);
+            this._values.set(vName, primal);
           }
         } else if (typeof (primal as unknown) === "boolean") {
           const boolVal = primal as unknown as boolean;
-          const bv = this.getBoolVarByName(vName);
+          const bv = this.boolVarMapByName.get(vName);
           if (bv) {
             bv.value = boolVal;
             setOwnProperty(valuesRecord, bv.name, boolVal ? 1 : 0);
-            this.values.set(bv.name, boolVal);
+            this._values.set(bv.name, boolVal);
           } else {
-            this.values.set(vName, boolVal);
+            this._values.set(vName, boolVal);
           }
         }
       }
       if (linResult) {
-        for (const bv of this.boolVars) {
+        for (const bv of this._boolVars) {
           const binVar = linResult.boolVarToBinary.get(bv);
           if (binVar && result.values) {
             const raw = result.values[binVar.name];
@@ -2105,7 +2112,7 @@ export class Model {
               const boolVal = Math.round(raw) === 1;
               bv.value = boolVal;
               setOwnProperty(valuesRecord, bv.name, boolVal ? 1 : 0);
-              this.values.set(bv.name, boolVal);
+              this._values.set(bv.name, boolVal);
             }
           }
         }
@@ -2115,14 +2122,14 @@ export class Model {
     if (hasPrimal && result.boolValues) {
       for (const [bName, bVal] of Object.entries(result.boolValues)) {
         if (typeof bVal !== "boolean") continue;
-        const bv = this.getBoolVarByName(bName);
+        const bv = this.boolVarMapByName.get(bName);
         if (bv) {
           bv.value = bVal;
-          if (!this.values.has(bv.name)) {
-            this.values.set(bv.name, bVal);
+          if (!this._values.has(bv.name)) {
+            this._values.set(bv.name, bVal);
           }
-        } else if (!this.values.has(bName)) {
-          this.values.set(bName, bVal);
+        } else if (!this._values.has(bName)) {
+          this._values.set(bName, bVal);
         }
       }
     }
@@ -2130,7 +2137,7 @@ export class Model {
     if (hasPrimal && result.reducedCosts) {
       for (const [vName, rc] of Object.entries(result.reducedCosts)) {
         if (typeof rc !== "number" || !Number.isFinite(rc)) continue;
-        const v = this.getVarByName(vName);
+        const v = this.varMapByName.get(vName);
         if (v) {
           v.reducedCost = rc;
           setOwnProperty(reducedCostsRecord, v.name, rc);
@@ -2142,7 +2149,7 @@ export class Model {
     if (result.duals) {
       for (const [cName, dual] of Object.entries(result.duals)) {
         if (typeof dual !== "number" || !Number.isFinite(dual)) continue;
-        const c = this.getConstraintByName(cName);
+        const c = this.constrMapByName.get(cName);
         if (c) {
           c.dual = dual;
           setOwnProperty(dualsRecord, c.name, dual);
@@ -2153,7 +2160,7 @@ export class Model {
     if (result.slacks) {
       for (const [cName, slack] of Object.entries(result.slacks)) {
         if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
-        const c = this.getConstraintByName(cName);
+        const c = this.constrMapByName.get(cName);
         if (c) {
           c.slack = slack;
           setOwnProperty(slacksRecord, c.name, slack);
@@ -2167,8 +2174,8 @@ export class Model {
       hasPrimalSolution: this.hasPrimalSolution,
       objectiveValue: this.objectiveValue,
       ...(this.objectiveBound !== undefined ? { objectiveBound: this.objectiveBound } : {}),
-      ...(this.relGap !== undefined ? { relGap: this.relGap, mipGap: this.mipGap } : {}),
-      ...(this.absGap !== undefined ? { absGap: this.absGap } : {}),
+      ...(this.relativeGap !== undefined ? { relativeGap: this.relativeGap } : {}),
+      ...(this.absoluteGap !== undefined ? { absoluteGap: this.absoluteGap } : {}),
       values: valuesRecord,
       duals: dualsRecord,
       reducedCosts: reducedCostsRecord,
@@ -2231,13 +2238,13 @@ export class Model {
     const opId = ++this.activeOperationId;
     const startRevision = this.modelRevision;
     this.clearSolutionFields();
-    this.validateIntegrity();
+    this.validateIntegrityInternal();
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
     // Guard against primal initial values if solver lacks warm-start support
     if (
-      this.variables.some((v) => v.initialValue !== undefined) &&
+      this._variables.some((v) => v.initialValue !== undefined) &&
       activeSolver.capabilities?.supportsWarmStart !== true
     ) {
       throw new Error(
@@ -2258,10 +2265,10 @@ export class Model {
 
     const checkModelData: CheckModelData = {
       name: this.name,
-      variables: this.variables,
-      boolVars: this.boolVars,
-      constraints: this.constraints,
-      logicalConstraints: this.logicalConstraints,
+      variables: this._variables,
+      boolVars: this._boolVars,
+      constraints: this._constraints,
+      logicalConstraints: this._logicalConstraints,
     };
 
     // 2. If solver implements native check() (e.g. Z3 or custom check-capable solver)
@@ -2294,8 +2301,8 @@ export class Model {
         for (const [name, val] of Object.entries(checkResult.values)) {
           if (typeof val === "number") {
             if (!Number.isFinite(val)) continue;
-            const v = this.getVarByName(name);
-            const bv = this.getBoolVarByName(name);
+            const v = this.varMapByName.get(name);
+            const bv = this.boolVarMapByName.get(name);
             if (v) {
               const normalizedVal = this.normalizePrimalValue(
                 v,
@@ -2304,26 +2311,26 @@ export class Model {
                 activeOptions
               );
               v.value = normalizedVal;
-              this.values.set(v.name, normalizedVal);
+              this._values.set(v.name, normalizedVal);
               setOwnProperty(values, v.name, normalizedVal);
             }
             if (bv) {
               bv.value = Boolean(val);
-              this.values.set(bv.name, bv.value);
+              this._values.set(bv.name, bv.value);
               setOwnProperty(values, bv.name, bv.value);
             }
             if (!v && !bv) {
-              this.values.set(name, val);
+              this._values.set(name, val);
               setOwnProperty(values, name, val);
             }
           } else if (typeof val === "boolean") {
-            const bv = this.getBoolVarByName(name);
+            const bv = this.boolVarMapByName.get(name);
             if (bv) {
               bv.value = val;
-              this.values.set(bv.name, val);
+              this._values.set(bv.name, val);
               setOwnProperty(values, bv.name, val);
             } else {
-              this.values.set(name, val);
+              this._values.set(name, val);
               setOwnProperty(values, name, val);
             }
           }
@@ -2343,16 +2350,16 @@ export class Model {
     // Auto-linearize logical constraints if needed, and solve an elastic feasibility problem
     // with non-negative slack variables (min sum s_i) to detect satisfiability and identify conflicts.
     const needsCheckMipLinearization =
-      this.logicalConstraints.length > 0 ||
-      this.boolVars.length > 0 ||
-      constraintsHaveNonlinearOrNeq(this.constraints);
+      this._logicalConstraints.length > 0 ||
+      this._boolVars.length > 0 ||
+      constraintsHaveNonlinearOrNeq(this._constraints);
     const linResult = needsCheckMipLinearization
-      ? linearizeModelForMip(this.variables, this.boolVars, this.constraints, this.logicalConstraints)
+      ? linearizeModelForMip(this._variables, this._boolVars, this._constraints, this._logicalConstraints)
       : {
-          variables: [...this.variables],
-          constraints: [...this.constraints],
+          variables: [...this._variables],
+          constraints: [...this._constraints],
           boolVarToBinary: new Map<BoolVar, Var>(),
-          constraintToOriginalName: new Map(this.constraints.map((c) => [c, c.name])),
+          constraintToOriginalName: new Map(this._constraints.map((c) => [c, c.name])),
         };
 
     // Construct elastic constraints with slack variables
@@ -2449,16 +2456,15 @@ export class Model {
     this.hasPrimalSolution = isSat;
     this.objectiveValue = null;
     this.objectiveBound = undefined;
-    this.relGap = undefined;
-    this.mipGap = undefined;
-    this.absGap = undefined;
+    this.relativeGap = undefined;
+    this.absoluteGap = undefined;
     this.solution = null;
-    this.values.clear();
+    this._values.clear();
 
     const values: Record<string, number | boolean> = {};
     if (isSat && result.values) {
       // 1. Map base numeric variables
-      for (const v of this.variables) {
+      for (const v of this._variables) {
         const primal = result.values[v.name];
         if (typeof primal === "number" && Number.isFinite(primal)) {
           const normalizedPrimal = this.normalizePrimalValue(
@@ -2468,18 +2474,18 @@ export class Model {
             activeOptions
           );
           v.value = normalizedPrimal;
-          this.values.set(v.name, normalizedPrimal);
+          this._values.set(v.name, normalizedPrimal);
           setOwnProperty(values, v.name, normalizedPrimal);
         }
       }
       // 2. Map BoolVars back to boolean values from linearized binary vars
-      for (const bv of this.boolVars) {
+      for (const bv of this._boolVars) {
         const binVar = linResult.boolVarToBinary.get(bv);
         const binVal = binVar ? result.values[binVar.name] : result.values[bv.name];
         if (typeof binVal === "number" && Number.isFinite(binVal)) {
           const boolVal = Math.round(binVal) === 1;
           bv.value = boolVal;
-          this.values.set(bv.name, boolVal);
+          this._values.set(bv.name, boolVal);
           setOwnProperty(values, bv.name, boolVal);
         }
       }
@@ -2514,7 +2520,7 @@ export class Model {
    * integer/binary/boolean domains, linear constraint residuals, and logical (SMT/propositional)
    * constraints against the model's current solved values (or an explicit `options.values` map).
    *
-   * Returns a `SolutionValidationReport` (`{ valid, complete, maxViolation, violations, violationsByName, uncheckedConstraints, missingVariables, summary }`).
+   * Returns a `VerificationReport` (`{ valid, complete, maxViolation, violations, violationsByName, uncheckedConstraints, missingVariables, summary }`).
    *
    * **Verification notes**:
    * - Runs purely in JavaScript/TypeScript without requiring any WASM solver runtime.
@@ -2522,18 +2528,18 @@ export class Model {
    *
    * @example
    * ```ts
-   * const m = new Model("ValidateExample");
+   * const m = new Model("VerifyExample");
    * const x = m.integer("x", { lb: 0, ub: 10 });
    * m.objective(maximize(expr`3 * ${x}`));
    * m.constraint(expr`${x} <= 7`, "cap");
    *
    * await m.solve();
-   * const report = m.validateSolution();
+   * const report = m.verify();
    * const isFeasible = report.valid && report.maxViolation <= 1e-6;
    * ```
    */
-  validateSolution(options: SolutionValidationOptions = {}): SolutionValidationReport {
-    return validateModelSolution(this, options);
+  verify(options: VerifyOptions = {}): VerificationReport {
+    return verifyModel(this, options);
   }
 
   /**
@@ -2639,9 +2645,8 @@ export class Model {
    * ```ts
    * const master = new Model("CuttingStock");
    * master.objective(minimize(0));
-   * master.constraint(expr`0 >= 10`, "demand");
-   * const [demand] = master.constraints;
-   * master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
+   * const demand = master.constraint(expr`0 >= 10`, "demand");
+   * master.column({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
    *
    * const result = await master.solveColumnGeneration({
    *   finalizeAsMIP: true,

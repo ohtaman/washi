@@ -117,10 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | オプション | 型 | デフォルト | 説明 |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | 下限（Lower bound）。デフォルトは非負制約 `0`。 |
+| `lb` | `number` | `0` | 下限（Lower bound）。デフォルトは非負制約 `0`。負値を許す場合は `-Infinity` を指定します。 |
 | `ub` | `number` | `Infinity`（`binary` は `1`） | 上限（Upper bound）。 |
+| `prefix` | `string` | `"x"`（`m.bool()` は `"p"`） | 無名スカラー変数や配列・2次元コンテナの変数名プレフィックス（例：`queen_0_0`）。 |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | メソッドから自動推論 | 変数のドメイン種別。 |
 | `initialValue` | `number` | `undefined` | オプションの主問題初期値ヒント（MIP ウォームスタート）。求解結果の `variable.value` とは独立して保持されます。 |
+
+### 上下限（`lb`, `ub`）の設計ポイント
+
+- **デフォルトは非負制約**: 数値変数はデフォルトで `lb: 0, ub: Infinity` になります。差分や過不足など負の値をとり得る変数には `{ lb: -Infinity }` を明示してください。
+- **現実的な有限境界の指定を推奨**: 有限の上下限（`lb`, `ub`）を設定すると MIP の前処理（Presolve）が効きやすくなるほか、`m.indicator()` が安全でタイトな Big-M を自動導出できます。また **Pumpkin** のような有界整数 CP ソルバーでは有限の整数上下限が必須となります。
 
 ---
 
@@ -164,7 +170,7 @@ console.log(`isAdmin: ${isAdmin.value}`);
 const packedItems = items.filter((it) => selected[it].value === 1);
 console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 
-// 変数名をキーとする Map からの取得 (Map<string, number | boolean>)
+// 変数名をキーとする ReadonlyMap からの取得 (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 被約費用 (LP の感度分析)
@@ -175,10 +181,16 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## 名前による変数の検索
 
-登録済みの変数を名前から取得したり、モデル内の数値変数の総数を確認できます：
+登録済みの数値変数（`Var`）および命題論理変数（`BoolVar`）はすべて `m.variables`（`ReadonlyMap<string, Var | BoolVar>`）で参照できます：
 
 ```typescript
-const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
-console.log("数値変数の総数:", m.numVars);
+const v = m.variables.get("trucks");   // Var | BoolVar | undefined
+const b = m.variables.get("isAdmin");  // Var | BoolVar | undefined
+console.log("trucks の登録有無:", m.variables.has("trucks"));
+console.log("総変数数:", m.variables.size);
+
+// v.type ("Continuous" | "Integer" | "Binary" | "Boolean") で絞り込み可能:
+if (v && v.type !== "Boolean") {
+  console.log("上下界:", v.lb, v.ub);
+}
 ```

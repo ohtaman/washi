@@ -75,7 +75,7 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       }
     }
 
-    expect(m.variables.length).toBe(20050);
+    expect(m.variables.size).toBe(20050);
 
     // Set Objective: Minimize total cost using fast O(N) sum
     m.objective(minimize(sum(objTerms, (t) => t.v.mul(t.c))));
@@ -107,7 +107,7 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
     m.constraint(sum(y).le(25), "max_warehouses");
 
     const tBuilt = performance.now();
-    console.log(`[LargeScale] Model built in ${(tBuilt - t0).toFixed(1)} ms. Total vars: ${m.variables.length}, constraints: ${m.constraints.length}`);
+    console.log(`[LargeScale] Model built in ${(tBuilt - t0).toFixed(1)} ms. Total vars: ${m.variables.size}, constraints: ${m.constraints.size}`);
 
     // 4. Solve with HiGHS WASM
     const status = await m.solve();

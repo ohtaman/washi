@@ -70,8 +70,8 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     m.constraint(x1.mul(2).add(x2).le(100), "res_labor");
     // c2: x1 + x2 <= 80
     m.constraint(x1.add(x2).le(80), "res_material");
-    const c1 = m.getConstraintByName("res_labor")!;
-    const c2 = m.getConstraintByName("res_material")!;
+    const c1 = m.constraints.get("res_labor")!;
+    const c2 = m.constraints.get("res_material")!;
 
     const status = await m.solve();
     expect(status).toBe("Optimal");

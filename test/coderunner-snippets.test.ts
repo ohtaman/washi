@@ -103,7 +103,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   });
 
-  it("executes guide examples for validateSolution, MockSolver, batch constraint, LinExpr.value, numConstrs, toLpString, and check() at runtime", async () => {
+  it("executes guide examples for verify, MockSolver, batch constraint, LinExpr.value, constraints.size, toLpString, and check() at runtime", async () => {
     const { Model, MockSolver, expr, maximize } = Washi;
 
     // 1. MockSolver flat options (docs/guide/unsat-core.md)
@@ -122,7 +122,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mx.value).toBe(10);
     expect(my.value).toBe(20);
 
-    // 2. SolutionValidationOptions & SolutionValidationReport + LinExpr.value + numConstrs (docs/guide/unsat-core.md, expressions.md, constraints.md)
+    // 2. VerifyOptions & VerificationReport + LinExpr.value + constraints.size (docs/guide/unsat-core.md, expressions.md, constraints.md)
     const m = new Model();
     const x = m.integer("x", { lb: 0 });
     const y = m.integer("y", { lb: 0 });
@@ -130,14 +130,15 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     const laborUsed = expr`2 * ${x} + ${y}`;
     m.objective(maximize(revenue));
     m.constraint([expr`${x} + 2 * ${y} <= 40`, expr`${laborUsed} <= 50`]);
-    expect(m.numConstrs).toBe(2);
-    expect((m as Record<string, unknown>).numConstraints).toBeUndefined();
+    expect(m.constraints.size).toBe(2);
+    expect("numConstrs" in m).toBe(false);
+    expect("numConstraints" in m).toBe(false);
     await m.solve();
 
     expect(revenue.value).toBe(1100);
     expect(laborUsed.value).toBe(50);
 
-    const report = m.validateSolution({
+    const report = m.verify({
       feasibilityTolerance: 1e-6,
       integralityTolerance: 1e-6,
       evaluateLogicalConstraints: true,
@@ -559,7 +560,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
           model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
           model.constraint(expr`${x} + ${y} <= 12`, "budget");
           const status = await model.solve();
-          return { model, x, y, c1: model.getConstraintByName("budget"), status };
+          return { model, x, y, c1: model.constraints.get("budget"), status };
         } finally {
           fetchSpy.mockRestore();
         }
@@ -927,7 +928,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         status: string;
       };
       expect(res.status).toBe("Optimal");
-      expect(res.m.validateSolution().valid).toBe(true);
+      expect(res.m.verify().valid).toBe(true);
       expect(res.m.objectiveValue).toBeCloseTo(1100, 6);
       expect(res.desks.value).toBeCloseTo(20, 6);
       expect(res.chairs.value).toBeCloseTo(10, 6);
@@ -952,7 +953,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         `const { Model, expr } = Washi;\n${jsBody}\nreturn m;`
       );
       const m = runner(Washi) as Washi.Model;
-      expect(m.numConstrs).toBe(2);
+      expect(m.constraints.size).toBe(2);
       const lp = m.toLpString();
       expect(lp).toContain("max_items: A + B + C <= 2");
       expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
@@ -983,7 +984,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       // Block 1: IntervalSchedulingCP -> Optimal makespan 12
       const sched = await runCpBlock<{ status: string; obj: number | null; valid: boolean }>(
         blocks[0],
-        `({ status: m.status, obj: m.objectiveValue, valid: m.validateSolution().valid })`
+        `({ status: m.status, obj: m.objectiveValue, valid: m.verify().valid })`
       );
       expect(sched.status).toBe("Optimal");
       expect(sched.obj).toBe(12);
@@ -997,7 +998,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         valid: boolean;
       }>(
         blocks[1],
-        `({ status: m.status, obj: m.objectiveValue, machine: { jobA: machine.jobA.value, jobB: machine.jobB.value, jobC: machine.jobC.value }, valid: m.validateSolution().valid })`
+        `({ status: m.status, obj: m.objectiveValue, machine: { jobA: machine.jobA.value, jobB: machine.jobB.value, jobC: machine.jobC.value }, valid: m.verify().valid })`
       );
       expect(assign.status).toBe("Optimal");
       expect(assign.obj).toBe(55);
@@ -1012,7 +1013,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         valid: boolean;
       }>(
         blocks[2],
-        `({ status: m.status, obj: m.objectiveValue, slots: slot.map((s) => s.value), valid: m.validateSolution().valid })`
+        `({ status: m.status, obj: m.objectiveValue, slots: slot.map((s) => s.value), valid: m.verify().valid })`
       );
       expect(sym.status).toBe("Optimal");
       expect(sym.obj).toBe(1270);

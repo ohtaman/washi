@@ -86,15 +86,19 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
       numConstraints: 231,
       numNonZeros: 1680,
     });
-    expect(mip.variables.every((v) => v.initialValue === undefined)).toBe(true);
+    expect([...mip.variables.values()].every((v) => v.type !== "Boolean" && v.initialValue === undefined)).toBe(true);
 
     const seededMip = buildSchedulingMipModel(washi, {
       assign_w0_d0_s0: 1,
       shortage_d0_s0: 0,
     });
-    expect(seededMip.getVarByName("assign_w0_d0_s0")?.initialValue).toBe(1);
-    expect(seededMip.getVarByName("shortage_d0_s0")?.initialValue).toBe(0);
-    expect(seededMip.getVarByName("assign_w0_d0_s1")?.initialValue).toBeUndefined();
+    const getSeedVar = (name: string) => {
+      const v = seededMip.variables.get(name);
+      return v && v.type !== "Boolean" ? v : undefined;
+    };
+    expect(getSeedVar("assign_w0_d0_s0")?.initialValue).toBe(1);
+    expect(getSeedVar("shortage_d0_s0")?.initialValue).toBe(0);
+    expect(getSeedVar("assign_w0_d0_s1")?.initialValue).toBeUndefined();
   });
 
   it("excludes model construction from browser worker solve timings and validates every warm solve", async () => {
@@ -104,9 +108,8 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
     class FakeModel {
       name = "FakeLP";
       sense = "Minimize";
-      objectiveExpr = { terms: new Map(), constant: 0 };
-      constraints = [];
-      variables = [];
+      constraints = new Map();
+      variables = new Map();
       objectiveValue = 42;
       solution = {
         status: "Optimal",
@@ -116,6 +119,10 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
         reducedCosts: {},
         slacks: {},
       };
+
+      objective() {
+        return { terms: new Map(), constant: 0 };
+      }
 
       async solve(arg: unknown) {
         if (arg && typeof arg === "object" && "useWorker" in arg) {
@@ -127,7 +134,10 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
         return "Optimal";
       }
 
-      validateSolution() {
+      verify(opts?: unknown) {
+        if (opts !== undefined) {
+          events.push("verify");
+        }
         return {
           valid: true,
           complete: true,
@@ -148,9 +158,6 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
 
     const fakeApi = {
       generateLpString: () => ({ lpString: "Minimize\n obj: x\nEnd\n" }),
-      validateModelIntegrity: () => {
-        events.push("validate");
-      },
       MockSolver: class {
         constructor() {}
       },
@@ -196,7 +203,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
       "checkSolved:small-lp (browser worker cold solve)",
       // Iteration 1
       "build",
-      "validate",
+      "verify",
       "build",
       "mockSolve",
       "build",
@@ -204,7 +211,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
       "checkSolved:small-lp (browser worker warm solve iteration 1)",
       // Iteration 2
       "build",
-      "validate",
+      "verify",
       "build",
       "mockSolve",
       "build",
@@ -267,10 +274,10 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
       })
     ).toThrow(/invalid or incomplete solution in invalid-check.*maxViolation=0\.25/);
 
-    // Verify verifySolvedModel reads top-level maxViolation from a real SolutionValidationReport
+    // Verify verifySolvedModel reads top-level maxViolation from a real VerificationReport
     const realLp = buildSmallLpModel(washi);
     const realStatus = await realLp.solve({ solver: "highs", presolve: "on" });
-    const realValidation = realLp.validateSolution();
+    const realValidation = realLp.verify();
     const realChecked = verifySolvedModel({
       model: realLp,
       status: realStatus,
@@ -352,7 +359,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
       const phases = sc.warmRepeated.phases;
       for (const phaseKey of [
         "modelBuildMs",
-        "validationMs",
+        "verificationMs",
         "resultMappingMs",
         "adapterSolveMs",
         "endToEndSolveMs",
@@ -421,7 +428,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
             iterations: 2,
             phases: {
               modelBuildMs: lpHighs.warmRepeated.phases.modelBuildMs,
-              validationMs: lpHighs.warmRepeated.phases.validationMs,
+              verificationMs: lpHighs.warmRepeated.phases.verificationMs,
               lpSerializationMs: lpHighs.warmRepeated.phases.lpSerializationMs,
               resultMappingMs: lpHighs.warmRepeated.phases.resultMappingMs,
               browserWorkerWarmSolveMs: lpHighs.warmRepeated.phases.adapterSolveMs,

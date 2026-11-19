@@ -93,7 +93,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     expect(m.objectiveValue).toBe(42);
     expect(x.value).toBe(12);
     expect(y.value).toBe(30);
-    expect(m.constraints[0].dual).toBe(1.5);
+    expect(m.constraints.get("c1")?.dual).toBe(1.5);
   });
 
   it("supports user-defined custom solver implementing Solver interface", async () => {

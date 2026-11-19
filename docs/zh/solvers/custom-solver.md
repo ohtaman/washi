@@ -70,7 +70,7 @@ export interface Solver {
    * 求解 LP、MIP、QP 和 SMT 优化模型的主方法。
    *
    * @param modelData 内存中的强类型模型结构（variables, constraints, objective, sense, boolVars, logicalConstraints）
-   * @param options 运行时执行选项（timeLimit, mipGap, verbose, signal, onProgress 等）
+   * @param options 运行时执行选项（timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress 等）
    */
   solve(
     modelData: SolveModelData,
@@ -120,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 自定义求解器通过 `capabilities` 声明其支持的功能特性。在分发调用 `solve()` 或 `check()` 之前，`Model` 会自动校验以下能力标志：
 - 当目标函数包含二次项（`QuadExpr`）时检查 `supportsQP === false`；
-- 当模型包含逻辑约束（`m.logicalConstraints`）且求解器既不支持原生逻辑约束（`supportsLogicalConstraints !== true`）也不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
+- 当模型包含逻辑约束（通过 `m.constraint(...)` 添加，在 `m.constraints` 中以 `kind: "logical"` 存储，并在 `modelData.logicalConstraints` 中传递给求解器）且求解器既不支持原生逻辑约束（`supportsLogicalConstraints !== true`）也不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
 - 当任意变量设置了初始值（`initialValue`）时检查 `supportsWarmStart !== true`。
 
 ```typescript
@@ -157,8 +157,11 @@ export interface SolverOptions {
   /** 求解时间上限（秒） */
   timeLimit?: number;
 
-  /** 相对 MIP 最优间隙容差 */
-  mipGap?: number;
+  /** 相对 MIP 最优间隙容差（例如 0.01 表示 1%） */
+  relativeGap?: number;
+
+  /** 绝对 MIP 最优间隙容差 */
+  absoluteGap?: number;
 
   /** 启用求解器控制台日志输出 */
   verbose?: boolean;
@@ -219,13 +222,10 @@ export interface SolverResult {
   objectiveBound?: number;
 
   /** 求解器提供的相对 MIP 最优间隙 */
-  relGap?: number;
-
-  /** relGap 的别名：求解器提供的相对 MIP 最优间隙 */
-  mipGap?: number;
+  relativeGap?: number;
 
   /** 绝对 MIP 最优间隙 |objectiveValue - objectiveBound|（当两者均为有限值时自动计算） */
-  absGap?: number;
+  absoluteGap?: number;
 
   /** 以原始变量名为键的变量取值映射（非有限数值会被忽略） */
   values: Record<string, number>;
@@ -321,7 +321,8 @@ export class CloudSolver implements Solver {
         body: JSON.stringify({
           lp: lpString,
           timeLimit: options.timeLimit,
-          mipGap: options.mipGap,
+          relativeGap: options.relativeGap,
+          absoluteGap: options.absoluteGap,
         }),
         signal: options.signal,
       });
@@ -519,7 +520,7 @@ describe("Custom Solver Integration", () => {
       const status = await model.solve();
       expect(status).toBe("Optimal");
       expect(x.value).toBe(2);
-      const c1 = model.getConstraintByName("budget");
+      const c1 = model.constraints.get("budget");
       expect(c1?.dual).toBe(2);
     } finally {
       fetchSpy.mockRestore();

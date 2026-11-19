@@ -1,7 +1,7 @@
 # AI Coding Agent Quick-Reference Guide
 
 > **Scope Note**: This document is the **consumer modeling quick-reference** for AI coding agents and developers building optimization or satisfiability models with `@ohtaman/washi`.
-> - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `validateSolution()` verification, and Pumpkin / Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
+> - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `verify()` verification, and Pumpkin / Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
 >   ```bash
 >   # Install directly via the skills CLI (skills.sh / vercel-labs/skills)
 >   npx skills add ohtaman/washi
@@ -145,12 +145,12 @@ const limit = m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
 m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 ```
 
-### Step 4: Execute (`solve` or `check`) & Verify (`validateSolution`)
+### Step 4: Execute (`solve` or `check`) & Verify (`verify`)
 
 - **Optimization (`await m.solve(options?)`)**:
   - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`). Built-in optimization solvers return the optimization statuses (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`), where a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`; `"Sat"` and `"Unsat"` are included in `SolverStatus` for satisfiability/custom solver adapters (such as `MockSolver`).
-  - Read values via `x.value`, `expr`...`.value`, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
-  - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
+  - Read values via `x.value`, `expr`...`.value`, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`, and inspect registered entities via `m.variables` (`ReadonlyMap<string, Var | BoolVar>`) and `m.constraints` (`ReadonlyMap<string, Constraint | LogicalConstraint>`).
+  - Call `m.verify()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`VerificationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `verify()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
 - **Satisfiability & Conflict Diagnosis (`await m.check(options?)`)**:
   - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` is populated when the model is proven `"Unsat"`.
   - For models containing linear arithmetic constraints or logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`), `m.check()` works with any solver (including the default HiGHS and GLPK via single-solve elastic slack relaxation, automatically linearizing logical constraints into 0-1 MIP formulation) and diagnoses conflicting constraints as `conflicts` (leaving `unsatCore: undefined` for semantic rigor).
@@ -186,7 +186,7 @@ export async function runMipExample() {
   });
 
   const status = await m.solve();
-  const report = m.validateSolution();
+  const report = m.verify();
   const values = { desk: qty.desk.value, chair: qty.chair.value };
 
   return {
@@ -217,7 +217,7 @@ export async function runQpExample() {
   m.constraint(expr`${x} + ${y} >= 4`, "budget");
 
   const status = await m.solve();
-  const report = m.validateSolution();
+  const report = m.verify();
 
   return {
     status,
@@ -278,7 +278,7 @@ export async function runPumpkinExample() {
   cpModel.objective(minimize(expr`${start.paint} + 2`));
 
   const status = await cpModel.solve();
-  const report = cpModel.validateSolution();
+  const report = cpModel.verify();
 
   // Part 2: Zero-COOP/COEP unsatCore diagnosis on bounded integers & booleans
   const unsatModel = new Model("DiscreteConflict", { solver: "pumpkin" });
@@ -327,14 +327,17 @@ export function verifyNegativePatterns() {
   // 3. DO NOT use quadratic terms inside linear constraints:
   // WRONG: expr`${x}^2 <= 10`; -> throws Error ("Quadratic constraints are not supported")
 
-  // 4. DO NOT use retired aliases (removed in #59 / #81 / #236):
+  // 4. DO NOT use retired aliases (removed in #59 / #81 / #236 / #273):
   // - Use `expr` instead of retired `c` template tag
   // - Use `m.constraint(...)` instead of `m.constrain(...)` or `m.add(...)`
-  // - Use `m.objective(maximize(...))` / `m.objective(minimize(...))` instead of `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)`
+  // - Use `m.objective(maximize(...))` / `m.objective(minimize(...))` / `m.objective()` instead of `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)` / `m.objectiveExpr`
   // - Use `await m.solve()` instead of `await m.optimize()`
+  // - Use `m.verify()` instead of `m.validateSolution()` (and rely on automatic integrity validation in `solve()` / `check()` / `toLpString()` instead of `m.validateIntegrity()`)
+  // - Use `m.column(...)` instead of `m.addColumn(...)`
   // - Use `.le()`, `.ge()`, `.eq()` instead of `.lessThanOrEqual()`, `.greaterThanOrEqual()`, `.equalTo()`
   // - Use `.value` instead of `m.getValues(...)` or `expr.getValue()`
-  // - Use `m.variables` / `m.constraints` instead of `m.vars` / `m.constrs`
+  // - Use `m.variables` / `m.constraints` (`ReadonlyMap` with `.get()` / `.size`) instead of `m.vars` / `m.constrs` / `m.boolVars` / `m.logicalConstraints` / `m.numVars` / `m.numConstrs` / `get*ByName()`
+  // - Use `relativeGap` / `absoluteGap` instead of `relGap` / `mipGap` / `absGap`
   return { m, x, y, maximize };
 }
 ```
@@ -342,7 +345,7 @@ export function verifyNegativePatterns() {
 ### Practical OR Modeling Guardrails
 
 - **Prefer inequalities (`>=` / `<=`) over exact equalities (`==`)** for demand coverage and resource limits when objective costs are positive; reserve `==` for physical conservation laws (e.g., flow balance, portfolio weights summing to `1`).
-- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M instead of falling back to `1e6`.
+- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M (`m.indicator()` throws if required bounds are infinite and no explicit `M` is provided).
 - **Use soft constraints (elastic slack variables)** for non-rigid business targets (e.g., preferred staffing, safety stock, day-off requests) by adding a non-negative slack variable (`lb: 0`) with a tiered objective penalty, reserving hard constraints for physical or legal invariants.
 
 

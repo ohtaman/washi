@@ -20,8 +20,8 @@ export const MEASUREMENT_BOUNDARIES = Object.freeze({
     "First end-to-end model build + model.solve() call on a freshly initialized runtime.",
   modelBuildMs:
     "Constructing a fresh Model instance, variables, linear expressions, constraints, and objective in JavaScript.",
-  validationMs:
-    "Running validateModelIntegrity(model) on the constructed Model instance.",
+  verificationMs:
+    "Running model.verify({ values }) on the constructed Model instance.",
   lpSerializationMs:
     "Running generateLpString(modelData) to serialize CPLEX LP text and build symbol maps (applicable to LP-string adapters such as HiGHS; null for structured adapters such as GLPK).",
   symbolMapMs:
@@ -89,14 +89,26 @@ export function summarizeSamples(samples) {
  * ExtractSolveModelData helper mirroring Model's internal SolveModelData view.
  */
 function toSolveModelData(model) {
+  const variables = [];
+  const boolVars = [];
+  for (const v of model.variables.values()) {
+    if (v.type === "Boolean") boolVars.push(v);
+    else variables.push(v);
+  }
+  const constraints = [];
+  const logicalConstraints = [];
+  for (const c of model.constraints.values()) {
+    if (c.kind === "logical") logicalConstraints.push(c);
+    else constraints.push(c);
+  }
   return {
     name: model.name,
     sense: model.sense,
-    objective: model.objectiveExpr,
-    constraints: model.constraints,
-    variables: model.variables,
-    logicalConstraints: model.logicalConstraints,
-    boolVars: model.boolVars,
+    objective: model.objective(),
+    constraints,
+    variables,
+    logicalConstraints,
+    boolVars,
   };
 }
 
@@ -107,19 +119,20 @@ export function countModelSize(model) {
   let numContinuous = 0;
   let numInteger = 0;
   let numBinary = 0;
-  for (const v of model.variables) {
+  for (const v of model.variables.values()) {
     if (v.type === "Continuous") numContinuous++;
     else if (v.type === "Integer") numInteger++;
     else if (v.type === "Binary") numBinary++;
   }
   let constraintNonZeros = 0;
-  for (const c of model.constraints) {
+  for (const c of model.constraints.values()) {
+    if (c.kind === "logical") continue;
     for (const [, coef] of c.lhs.terms) {
       if (coef !== 0) constraintNonZeros++;
     }
   }
   let objectiveNonZeros = 0;
-  const obj = model.objectiveExpr;
+  const obj = model.objective();
   const terms = "linearTerms" in obj ? obj.linearTerms : obj.terms;
   if (terms) {
     for (const [, coef] of terms) {
@@ -127,11 +140,11 @@ export function countModelSize(model) {
     }
   }
   return {
-    numVariables: model.variables.length,
+    numVariables: model.variables.size,
     numContinuous,
     numInteger,
     numBinary,
-    numConstraints: model.constraints.length,
+    numConstraints: model.constraints.size,
     numNonZeros: constraintNonZeros + objectiveNonZeros,
   };
 }
@@ -434,7 +447,6 @@ async function measureNodeScenario({
   iterations,
 }) {
   const {
-    validateModelIntegrity,
     generateLpString,
     buildLpSymbolMaps,
     MockSolver,
@@ -453,7 +465,7 @@ async function measureNodeScenario({
   const coldStatus = await coldModel.solve({ solver: solverKey, ...solverOptions });
   const coldFirstSolveMs = Number((performance.now() - tColdSolve0).toFixed(3));
 
-  const coldValidation = coldModel.validateSolution();
+  const coldValidation = coldModel.verify();
   const coldChecked = verifySolvedModel({
     model: coldModel,
     status: coldStatus,
@@ -463,6 +475,7 @@ async function measureNodeScenario({
   });
 
   const referenceSolution = coldModel.solution;
+  const refValues = referenceSolution?.values ?? {};
   const modelSize = countModelSize(coldModel);
 
   let lpStringBytes = null;
@@ -485,7 +498,7 @@ async function measureNodeScenario({
 
   // 2. Repeated warm measurements on the already-initialized runtime
   const modelBuildSamples = [];
-  const validationSamples = [];
+  const verificationSamples = [];
   const lpSerializationSamples = [];
   const symbolMapSamples = [];
   const resultMappingSamples = [];
@@ -506,11 +519,11 @@ async function measureNodeScenario({
 
     const modelData = toSolveModelData(m);
 
-    // Phase B: Integrity validation
+    // Phase B: Solution verification
     const tVal0 = performance.now();
-    validateModelIntegrity(m);
+    m.verify({ values: refValues });
     const tVal1 = performance.now();
-    validationSamples.push(tVal1 - tVal0);
+    verificationSamples.push(tVal1 - tVal0);
 
     // Phase C: Serialization / symbol mapping
     if (serializationMode === "lp-string") {
@@ -537,7 +550,7 @@ async function measureNodeScenario({
     const tAdapter0 = performance.now();
     const adapterResult = await solverInstance.solve(modelData, solverOptions);
     const tAdapter1 = performance.now();
-    const adapterValidation = m.validateSolution({ values: adapterResult.values });
+    const adapterValidation = m.verify({ values: adapterResult.values });
     const adapterChecked = verifySolvedModel({
       model: m,
       status: adapterResult.status,
@@ -555,7 +568,7 @@ async function measureNodeScenario({
     const e2eModel = buildModel();
     const warmStatus = await e2eModel.solve({ solver: solverKey, ...solverOptions });
     const tE2E1 = performance.now();
-    const warmValidation = e2eModel.validateSolution();
+    const warmValidation = e2eModel.verify();
     const warmChecked = verifySolvedModel({
       model: e2eModel,
       status: warmStatus,
@@ -603,7 +616,7 @@ async function measureNodeScenario({
       iterations,
       phases: {
         modelBuildMs: summarizeSamples(modelBuildSamples),
-        validationMs: summarizeSamples(validationSamples),
+        verificationMs: summarizeSamples(verificationSamples),
         lpSerializationMs:
           serializationMode === "lp-string"
             ? summarizeSamples(lpSerializationSamples)
@@ -649,7 +662,7 @@ export async function executeBrowserScenario({
     presolve: "on",
   });
   const coldSolveMs = Number((performance.now() - tCold0).toFixed(3));
-  const firstValidation = firstModel.validateSolution();
+  const firstValidation = firstModel.verify();
   const coldChecked = checkSolved({
     model: firstModel,
     status: firstStatus,
@@ -659,13 +672,14 @@ export async function executeBrowserScenario({
   });
 
   const refSolution = firstModel.solution;
+  const refValues = refSolution?.values ?? {};
   const size = getSize(firstModel);
   const { lpString } = api.generateLpString({
     name: firstModel.name,
     sense: firstModel.sense,
-    objective: firstModel.objectiveExpr,
-    constraints: firstModel.constraints,
-    variables: firstModel.variables,
+    objective: firstModel.objective(),
+    constraints: [...firstModel.constraints.values()],
+    variables: [...firstModel.variables.values()],
   });
   const lpStringBytes = new TextEncoder().encode(lpString).byteLength;
 
@@ -681,7 +695,7 @@ export async function executeBrowserScenario({
   });
 
   const modelBuildSamples = [];
-  const validationSamples = [];
+  const verificationSamples = [];
   const lpSerializationSamples = [];
   const resultMappingSamples = [];
   const warmWorkerSolveSamples = [];
@@ -698,17 +712,17 @@ export async function executeBrowserScenario({
     modelBuildSamples.push(tb1 - tb0);
 
     const tv0 = performance.now();
-    api.validateModelIntegrity(m);
+    m.verify({ values: refValues });
     const tv1 = performance.now();
-    validationSamples.push(tv1 - tv0);
+    verificationSamples.push(tv1 - tv0);
 
     const tlp0 = performance.now();
     api.generateLpString({
       name: m.name,
       sense: m.sense,
-      objective: m.objectiveExpr,
-      constraints: m.constraints,
-      variables: m.variables,
+      objective: m.objective(),
+      constraints: [...m.constraints.values()],
+      variables: [...m.variables.values()],
     });
     const tlp1 = performance.now();
     lpSerializationSamples.push(tlp1 - tlp0);
@@ -728,7 +742,7 @@ export async function executeBrowserScenario({
       presolve: "on",
     });
     const tw1 = performance.now();
-    const warmValidation = warmModel.validateSolution();
+    const warmValidation = warmModel.verify();
     const warmChecked = checkSolved({
       model: warmModel,
       status: warmStatus,
@@ -754,7 +768,7 @@ export async function executeBrowserScenario({
     maxViolation,
     modelSize: { ...size, lpStringBytes },
     modelBuildSamples,
-    validationSamples,
+    verificationSamples,
     lpSerializationSamples,
     resultMappingSamples,
     warmWorkerSolveSamples,
@@ -920,7 +934,7 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
             iterations,
             phases: {
               modelBuildMs: summarizeSamples(r.modelBuildSamples),
-              validationMs: summarizeSamples(r.validationSamples),
+              verificationMs: summarizeSamples(r.verificationSamples),
               lpSerializationMs: summarizeSamples(r.lpSerializationSamples),
               resultMappingMs: summarizeSamples(r.resultMappingSamples),
               browserWorkerWarmSolveMs: summarizeSamples(r.warmWorkerSolveSamples),
@@ -1149,7 +1163,7 @@ export function formatReportText(report) {
     const fmt = (stat) =>
       `${stat.medianMs.toFixed(3)} / ${stat.meanMs.toFixed(3)} (${stat.minMs.toFixed(3)}..${stat.maxMs.toFixed(3)}) ms`;
     lines.push(`    modelBuildMs      : ${fmt(p.modelBuildMs)}`);
-    lines.push(`    validationMs      : ${fmt(p.validationMs)}`);
+    lines.push(`    verificationMs    : ${fmt(p.verificationMs)}`);
     if (p.lpSerializationMs) {
       lines.push(`    lpSerializationMs : ${fmt(p.lpSerializationMs)}`);
     }
@@ -1193,7 +1207,7 @@ export function formatReportText(report) {
         `  Warm Phases (${bsc.warmRepeated.iterations} runs, ${bsc.warmRepeated.runtimeCondition}) [median / mean / min..max ms]:`
       );
       lines.push(`    modelBuildMs             : ${fmt(bp.modelBuildMs)}`);
-      lines.push(`    validationMs             : ${fmt(bp.validationMs)}`);
+      lines.push(`    verificationMs           : ${fmt(bp.verificationMs)}`);
       lines.push(`    lpSerializationMs        : ${fmt(bp.lpSerializationMs)}`);
       lines.push(`    resultMappingMs          : ${fmt(bp.resultMappingMs)}`);
       lines.push(`    browserWorkerWarmSolveMs : ${fmt(bp.browserWorkerWarmSolveMs)}`);

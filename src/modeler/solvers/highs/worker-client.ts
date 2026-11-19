@@ -62,8 +62,8 @@ function createInterruptedRawResult(
         : inc.mipDualBound !== undefined
           ? { MipDualBound: inc.mipDualBound }
           : {}),
-      ...(prog?.relGap !== undefined
-        ? { MipGap: prog.relGap }
+      ...(prog?.relativeGap !== undefined
+        ? { MipGap: prog.relativeGap }
         : inc.mipGap !== undefined
           ? { MipGap: inc.mipGap }
           : {}),
@@ -78,7 +78,7 @@ function createInterruptedRawResult(
     ObjectiveValue: NaN,
     ObjectiveOffsetApplied: true,
     ...(prog?.objectiveBound !== undefined ? { MipDualBound: prog.objectiveBound } : {}),
-    ...(prog?.relGap !== undefined ? { MipGap: prog.relGap } : {}),
+    ...(prog?.relativeGap !== undefined ? { MipGap: prog.relativeGap } : {}),
     Columns: {},
     Rows: [],
   };

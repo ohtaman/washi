@@ -43,6 +43,7 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **一元正负号**：`-${x} + 10`、`+${x}`
 - **圆括号分组**：`2 * (${x} + ${y})`
 - **聚合函数 (`sum` & `dot`)**：`sum(${xVec}) <= 100`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
+- **分段线性与下标索引 (`max`, `min`, `abs`, `at`)**：`max(${xVec}) <= 15`、`sum(abs(${w} - ${target}))`、`at(${costs}, ${idx})`（见 [分段线性与下标索引表达式](#分段线性与下标索引表达式-max-min-abs-at)）
 - **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${xVec} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
 - **嵌套表达式**：`expr` 可插值变量、数字、`Array` / `Record` 容器（在 `sum` 或 `dot` 内部）以及嵌套的 `LinExpr` / `QuadExpr` 对象。
 
@@ -132,9 +133,7 @@ const totalShippingCost = expr`dot(${costs}, ${ship})`;
 
 ## `expr` 聚合与批量书写方式
 
-### 分离运算符与数据
-
-将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中，并通过 `${...}` 传入变量、标量和容器（`Array` / `Record`）：
+建议直接在模板字符串内部书写 `sum(...)`、`dot(..., ...)` 与比较符号，并通过 `${...}` 传入变量与容器（无需嵌套独立调用或 `Object.values()`）：
 
 ```typescript
 // 嵌套模板调用与 Object.values()（较繁琐）
@@ -145,8 +144,6 @@ const cap1 = expr`${sum(Object.values(vars))} <= 100`;
 const totalProfit2 = expr`dot(${profits}, ${vars})`;
 const cap2 = expr`sum(${vars}) <= 100`;
 ```
-
-### 常见 `expr` 聚合语法速查
 
 | 操作 | 数学公式 | WaSHI 写法 |
 | :--- | :--- | :--- |
@@ -211,6 +208,38 @@ m.objective(minimize(risk));
 
 ---
 
+## 分段线性与下标索引表达式 (`max`, `min`, `abs`, `at`)
+
+WaSHI 提供后端无关的分段线性函数（`max`, `min`, `abs`）及基于 0 下标的变量索引查找（`at`），可在 `` expr`...` `` 模板字面量中直接使用，也可作为从 `@ohtaman/washi` 导出的独立辅助函数调用：
+
+```typescript
+import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
+
+const m = new Model();
+const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
+const target = [4, 7, 10];
+const route = m.integer("route", { lb: 0, ub: 2 });
+const routeCost = [18, 12, 25];
+
+// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯 LP 上镜图（epigraph）：
+m.objective(
+  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
+);
+m.constraint(expr`max(${w}) <= 15`, "peak_cap");
+
+// 支持嵌套组合与独立辅助函数调用：
+const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
+m.constraint(expr`${maxErr} <= 3`);
+```
+
+- **逐元素容器算术组合**：在 `expr` 中，`abs(${arr} - ${target})` 会自动在匹配的 1D/2D `Array`、`Iterable` 或 `Record` 容器上逐元素展开，因此可直接编写 `` expr`sum(abs(${w} - ${target}))` `` 与 `` expr`max(abs(${pred} - ${actual}))` ``。
+- **极性感知的 MIP 化简与原生 CP/SMT 降级**：
+  - 在凸方向上（最小化或 `<=` 中的 `max`/`abs`，最大化或 `>=` 中的 `min`），HiGHS 与 GLPK 会降级为**零二元变量**的纯连续 LP 上镜图形式（支持无界 `Continuous` 变量）。
+  - 在非凸或等式上下文中（如 `minimize(min(...))`、`maximize(abs(...))`、`max(...) >= rhs`、`abs(...) == rhs`），HiGHS 与 GLPK 要求变量有有限边界并采用精确有界 MIP 线性化，Pumpkin 通过原生 `maximum`/`minimum`/`absolute` 传播器求解，Z3 则使用原生 `If`（ITE）。
+- **基于 0 下标的元素查找 (`at(array, index)`)**：对应约束规划中的 `Element` 约束（`array[index]`），要求 `index` 为整数值表达式，并在全部求解器上自动约束 $0 \le \text{index} < \text{array.length}$（Pumpkin 原生 `element` 传播器，Z3 嵌套 `If` 与越界守卫，HiGHS / GLPK 凸包二元变量 + McCormick 线性化）。
+
+---
+
 ## 求解后求值表达式 (`.value`)
 
 `LinExpr` 与 `QuadExpr` 均提供 `.value` 访问器（`number | null`）。当模型完成求解且表达式引用的所有变量均具有有限原问题解时，可以直接读取子表达式的值：
@@ -250,41 +279,9 @@ console.log("Labor Used:", laborUsed.value);    // 50
 | `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 乘以标量 `number`，或将两个一次项相乘得到 `QuadExpr`。 |
 | `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 除以非零有限标量 `number`。 |
 | `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 对所有项取反（$-e$）。 |
-| `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`）。 |
-| `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`）。 |
-| `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $==$ 等式约束（`lhs == rhs`）。 |
-| `.lt(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $<$ 约束（`lhs - rhs <= -1`；仅限整数值表达式）。 |
-| `.gt(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $>$ 约束（`lhs - rhs >= 1`；仅限整数值表达式）。 |
-| `.ne(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $\ne$ 约束（`lhs != rhs`；仅限整数值表达式）。 |
-
----
-
-## 分段线性与下标索引表达式 (`max`, `min`, `abs`, `at`)
-
-WaSHI 提供后端无关的分段线性函数（`max`, `min`, `abs`）及基于 0 下标的变量索引查找（`at`），可在 `` expr`...` `` 模板字面量中直接使用，也可作为从 `@ohtaman/washi` 导出的独立辅助函数调用：
-
-```typescript
-import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
-
-const m = new Model();
-const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
-const target = [4, 7, 10];
-const route = m.integer("route", { lb: 0, ub: 2 });
-const routeCost = [18, 12, 25];
-
-// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯 LP 上镜图（epigraph）：
-m.objective(
-  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
-);
-m.constraint(expr`max(${w}) <= 15`, "peak_cap");
-
-// 支持嵌套组合与独立辅助函数调用：
-const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
-m.constraint(expr`${maxErr} <= 3`);
-```
-
-- **逐元素容器算术组合**：在 `expr` 中，`abs(${arr} - ${target})` 会自动在匹配的 1D/2D `Array`、`Iterable` 或 `Record` 容器上逐元素展开，因此可直接编写 `` expr`sum(abs(${w} - ${target}))` `` 与 `` expr`max(abs(${pred} - ${actual}))` ``。
-- **极性感知的 MIP 化简与原生 CP/SMT 降级**：
-  - 在凸方向上（最小化或 `<=` 中的 `max`/`abs`，最大化或 `>=` 中的 `min`），HiGHS 与 GLPK 会降级为**零二元变量**的纯连续 LP 上镜图形式（支持无界 `Continuous` 变量）。
-  - 在非凸或等式上下文中（如 `minimize(min(...))`、`maximize(abs(...))`、`max(...) >= rhs`、`abs(...) == rhs`），HiGHS 与 GLPK 要求变量有有限边界并采用精确有界 MIP 线性化，Pumpkin 通过原生 `maximum`/`minimum`/`absolute` 传播器求解，Z3 则使用原生 `If`（ITE）。
-- **基于 0 下标的元素查找 (`at(array, index)`)**：对应约束规划中的 `Element` 约束（`array[index]`），要求 `index` 为整数值表达式，并在全部求解器上自动约束 $0 \le \text{index} < \text{array.length}$（Pumpkin 原生 `element` 传播器，Z3 嵌套 `If` 与越界守卫，HiGHS / GLPK 凸包二元变量 + McCormick 线性化）。
+| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`；要求左端为线性）。 |
+| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`；要求左端为线性）。 |
+| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $==$ 等式约束（`lhs == rhs`；要求左端为线性）。 |
+| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $<$ 约束（`lhs - rhs <= -1`；仅限整数值表达式）。 |
+| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $>$ 约束（`lhs - rhs >= 1`；仅限整数值表达式）。 |
+| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $\ne$ 约束（`lhs != rhs`；仅限整数值表达式）。 |

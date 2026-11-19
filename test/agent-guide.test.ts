@@ -186,7 +186,7 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
       expect(Array.isArray(res.grid[0])).toBe(true);
       expect(res.byItem.desk.name).toBe("desk");
       expect(Array.isArray(res.mixed.A)).toBe(true);
-      expect(res.m.constraints.length).toBe(2);
+      expect(res.m.constraints.size).toBe(2);
 
       const mipStatus = await res.m.solve();
       expect(mipStatus, `Expected Step 1 + Step 3 in ${relPath} to solve to Optimal`).toBe("Optimal");
@@ -223,7 +223,7 @@ m.constraint(expr\`\${x} + \${y} >= 4\`, "min_sum");
 m.objective(minimize(q1.add(q2)));
 return (async () => {
   const status = await m.solve();
-  const report = m.validateSolution();
+  const report = m.verify();
   return { status, objectiveValue: m.objectiveValue, x: x.value, y: y.value, vec: vec.map((v) => v.value), valid: report.valid };
 })();`
       );
@@ -239,7 +239,7 @@ return (async () => {
     }
   });
 
-  it("executes Example A (MIP) and Example B (QP) from the guide and passes validateSolution()", async () => {
+  it("executes Example A (MIP) and Example B (QP) from the guide and passes verify()", async () => {
     const mipJs = stripTypeScriptTypes(codeBlocks[3])
       .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")
       .replace(/\bexport\s+async\s+function\b/, "async function");
@@ -534,7 +534,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Expressions (`expr`, `sum`, `dot`)");
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
     expect(llmsFullTxt).toContain("# Objectives & Solving (`m.solve` & `m.check`)");
-    expect(llmsFullTxt).toContain("# Conflict Diagnosis (`unsatCore`) & Solution Validation");
+    expect(llmsFullTxt).toContain("# Conflict Diagnosis (`unsatCore`), Validation & Debugging");
     expect(llmsFullTxt).toContain("# Constraint Programming (CP) Modeling");
     expect(llmsFullTxt).toContain("# Decomposition Methods (`solveColumnGeneration` & `solveBenders`)");
     expect(llmsFullTxt).toContain("# Formulation Patterns & Optimization Tips");
@@ -719,8 +719,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     expect(skillContent).toContain("node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md");
     expect(skillContent).not.toContain("](../../");
     expect(skillContent).toContain("toLpString()");
-    expect(skillContent).toContain("validateIntegrity()");
-    expect(skillContent).toContain("validateSolution()");
+    expect(skillContent).toContain("verify()");
     expect(skillContent).toContain("unsatCore");
     expect(skillContent).toContain("conflicts");
 
@@ -864,7 +863,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       return runner(...paramValues);
     };
 
-    // Recipe 1: MIP + toLpString() + validateSolution()
+    // Recipe 1: MIP + toLpString() + verify()
     const mipRes = await runBlockFunction(skillCodeBlocks[0], "solveAndVerifyMip()");
     expect(mipRes.status).toBe("Optimal");
     expect(mipRes.valid).toBe(true);
@@ -877,7 +876,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     expect(mipRes.lpText).toContain("labor_limit:");
     expect(mipRes.lpText).toContain("closed_line_zero_output:");
 
-    // Recipe 2: Convex QP + toLpString() + validateSolution()
+    // Recipe 2: Convex QP + toLpString() + verify()
     const qpRes = await runBlockFunction(skillCodeBlocks[1], "solveAndVerifyQp()");
     expect(qpRes.status).toBe("Optimal");
     expect(qpRes.valid).toBe(true);

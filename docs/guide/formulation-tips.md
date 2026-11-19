@@ -77,7 +77,9 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 
 ### Min-Max & Max-Min Objectives (Load Balancing)
 
-Linear and quadratic objectives cannot call `Math.max(...)` directly. To minimize a bottleneck or peak workload $\min \max_i (\text{load}_i)$, introduce an auxiliary ceiling variable $z$, constrain every individual load by $\text{load}_i \le z$, and minimize $z$:
+WaSHI's built-in `max(...)` and `min(...)` primitives (see [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at)) already automate convex LP epigraph lowering on HiGHS/GLPK and map directly to native propagators on Pumpkin.
+
+When you need explicit access to the auxiliary ceiling/floor variable $z$—for example, to reuse it inside a second-stage constraint for lexicographic optimization (Section 4)—you can write the epigraph reformulation directly by constraining every individual load $\text{load}_i \le z$ and minimizing $z$ (or $\text{u}_i \ge z$ and maximizing $z$ for Max-Min):
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -96,8 +98,6 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 // Minimizing maxHours distributes the 60 hours evenly (20 hours each)
 m.objective(minimize(maxHours));
 ```
-
-*(Symmetrically, to **maximize the minimum** level $\max \min_i u_i$, impose $u_i \ge z$ for all $i$ and set `m.objective(maximize(z))`. WaSHI also automates this convex LP epigraph lowering via built-in `max(...)` and `min(...)`, which map to native propagators when solving with Pumpkin—see [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at).)*
 
 ---
 
@@ -195,8 +195,8 @@ await m.solve();
 In combinatorial MIP problems, solvers often find a near-optimal feasible solution within seconds, then spend most of the remaining runtime closing the final fraction of a percent in the branch-and-bound tree (**tail-off**).
 
 In interactive UIs and batch pipelines, combine `timeLimit` with business-meaningful tolerances in [`m.solve(options)`](./objectives.md#solve-options-solveoptions):
-- **`relGap: 0.01`**: Stop immediately once the incumbent is proven within **1%** of the theoretical dual bound.
-- **`absGap: 100`**: Stop immediately once `|objectiveValue - objectiveBound| <= 100` in the objective's native units.
+- **`relativeGap: 0.01`**: Stop immediately once the incumbent is proven within **1%** of the theoretical dual bound.
+- **`absoluteGap: 100`**: Stop immediately once `|objectiveValue - objectiveBound| <= 100` in the objective's native units.
 
 ---
 

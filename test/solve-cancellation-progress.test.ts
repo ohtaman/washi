@@ -60,7 +60,7 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
       expect(ev.elapsedTime).toBeGreaterThanOrEqual(0);
       expect(ev.elapsedSeconds).toBe(ev.elapsedTime);
       if (ev.objectiveValue !== undefined && ev.objectiveBound !== undefined) {
-        expect(ev.absGap).toBeCloseTo(Math.abs(ev.objectiveValue - ev.objectiveBound), 6);
+        expect(ev.absoluteGap).toBeCloseTo(Math.abs(ev.objectiveValue - ev.objectiveBound), 6);
       }
     }
     const lastEv = progressEvents[progressEvents.length - 1];
@@ -184,8 +184,8 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
           elapsedSeconds: 0.05,
           objectiveValue: 1,
           objectiveBound: 1,
-          relGap: 0,
-          absGap: 0,
+          relativeGap: 0,
+          absoluteGap: 0,
           nodes: 2,
           iterations: 5,
         },
@@ -194,6 +194,8 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
 
     expect(receivedProgress).toHaveLength(1);
     expect(receivedProgress[0].objectiveValue).toBe(1);
+    expect(receivedProgress[0].relativeGap).toBe(0);
+    expect(receivedProgress[0].absoluteGap).toBe(0);
 
     // Abort the first solve while it is still running in the Worker
     controller1.abort();
@@ -248,8 +250,8 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
       objectiveValue: 7,
       values: { x: 7 },
       progressEvents: [
-        { elapsedTime: 0.01, elapsedSeconds: 0.01, objectiveValue: 5, objectiveBound: 10, relGap: 1.0, absGap: 5 },
-        { elapsedTime: 0.02, elapsedSeconds: 0.02, objectiveValue: 7, objectiveBound: 7, relGap: 0, absGap: 0 },
+        { elapsedTime: 0.01, elapsedSeconds: 0.01, objectiveValue: 5, objectiveBound: 10, relativeGap: 1.0, absoluteGap: 5 },
+        { elapsedTime: 0.02, elapsedSeconds: 0.02, objectiveValue: 7, objectiveBound: 7, relativeGap: 0, absoluteGap: 0 },
       ],
     });
     await model.solve({

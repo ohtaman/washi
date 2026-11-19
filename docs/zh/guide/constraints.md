@@ -58,7 +58,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ### 为什么要为约束命名？
 1. **模型检查 (`m.toLpString()`)**：导出的 CPLEX LP 格式字符串会保留这些名称（必要时自动转义），便于核对生成的数学模型。
 2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，`m.check()`（通过内置 HiGHS 弹性松弛、内置 Pumpkin `unsatCore` 或 Z3 `unsatCore`）会返回构成冲突子集的具体约束名称。
-3. **按名称查询 (`m.getConstraintByName()`)**：求解后可按名称获取约束对象，读取其影子价格（`dual`）或松弛量（`slack`）。
+3. **按名称查询 (`m.constraints.get()`)**：求解后可按名称获取约束对象，读取其影子价格（`dual`）或松弛量（`slack`）。
 
 ---
 
@@ -79,6 +79,23 @@ m.constraint(expr`sum(${selected}) <= 2`, "max_items");
 
 // 总重量不得超过容量上限 25
 m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
+```
+
+---
+
+## 对偶值（影子价格）与松弛变量
+
+对于连续线性规划（LP）问题，求解后可在每条约束（由 `m.constraint()` 返回，或通过 `m.constraints.get()` 查询）上读取其影子价格/对偶值（`dual`）与松弛量（`slack`）：
+
+```typescript
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+
+await m.solve();
+
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
+console.log("Looked-up dual:", m.constraints.get("wood")?.dual); // number | null（MIP / CP / 逻辑约束为 null）
+console.log("Total constraints:", m.constraints.size);
 ```
 
 ---
@@ -153,6 +170,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
+所有已命名约束——包括线性 `Constraint` 与逻辑/CP `LogicalConstraint`（`{ kind: "logical", name, expr, dual: null, slack: null }`）——均统一保存在 `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）中，可通过 `m.constraints.get(name)` 按名称检索。
+
 ### 如何选择 `m.indicator()` 与 `implies()`
 
 | 特性 | `m.indicator(binVar, constraint, opts)` | `implies(a, b)` / `a.implies(b)` |
@@ -187,7 +206,7 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin 原生 not_e
 
 ## CP 全局约束 (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束：
+WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束。关于区间调度、对称性破缺与 **Pumpkin** 求解建模技巧，请参阅专门的 [约束规划 (CP) 建模指南](./constraint-programming.md)。
 
 | 全局约束 | 语义 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -209,24 +228,6 @@ m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
 m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
 m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
-
----
-
-## 对偶值（影子价格）、松弛变量与查询
-
-对于连续线性规划（LP）问题，求解后可在每条约束（由 `m.constraint()` 返回，或通过 `m.getConstraintByName()` 查询）上读取其影子价格/对偶值（`dual`）与松弛量（`slack`）：
-
-```typescript
-const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
-
-await m.solve();
-
-console.log("Shadow price (dual):", woodConstraint.dual);
-console.log("Slack surplus:", woodConstraint.slack);
-console.log("Total linear constraints:", m.numConstrs);
-```
-
-对于已命名的逻辑约束，可使用 `m.getLogicalConstraintByName(name)` 查询已注册的 `LogicalConstraintItem`。
 
 > [!TIP]
 > 关于**使用松弛变量构建软约束**与**同构资源对称性破缺（Symmetry Breaking）**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。
