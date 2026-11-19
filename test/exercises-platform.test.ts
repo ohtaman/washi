@@ -512,6 +512,112 @@ export function solve(input: { default: number }) {
     // input.default = 2 => total=4, loopInit=1 (i=2), fn(2)=3, arr[0]=1, y=3, bad()=1 => 13
     expect(solve({ default: 2 })).toBe(13);
   });
+
+  it("strips type annotations from catch bindings while preserving .catch callbacks", () => {
+    const sample = `
+      export function solve(shouldThrow: boolean): number {
+        try {
+          if (shouldThrow) {
+            throw new Error("boom");
+          }
+          return 1;
+        } catch (err: unknown) {
+          try {
+            throw err;
+          } catch ({ message }: Error) {
+            const catcher = {
+              catch(fn: (e: unknown) => number): number {
+                return fn(err);
+              },
+            };
+            const extra = catcher.catch((_e: unknown): number => 10);
+            return message.length + extra;
+          }
+        }
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (b: boolean) => number;
+    expect(solve(false)).toBe(1);
+    expect(solve(true)).toBe(14);
+  });
+
+  it("strips generic interfaces whose constraints contain object braces", () => {
+    const sample = `
+      interface Value<T extends { x: number }> { value: T };
+      interface Base<T> { base: T }
+      interface Child<T extends { a: number }> extends Base<{ b: number }> {
+        item: T;
+      }
+      export function solve(x: number): number {
+        const v: Value<{ x: number }> = { value: { x } };
+        const c: Child<{ a: number }> = { base: { b: 2 }, item: { a: 3 } };
+        return v.value.x + c.base.b + c.item.a;
+      }
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (x: number) => number;
+    expect(solve(5)).toBe(10);
+  });
+
+  it("strips export type/re-export statements, this parameter types, generic arrow constraints with semicolons, optional-chaining generics, and class TS syntax", () => {
+    const sample = `
+      interface Ctx { v: number; }
+      type Foo = { x: number };
+      export type { Foo };
+      function readVal(this: Ctx, add: number): number {
+        return this.v + add;
+      }
+      function onlyThis(this: Ctx): number {
+        return this.v;
+      }
+      function id<T>(x: T): T {
+        return x;
+      }
+      class Box<T extends { x: number }> implements Iterable<T> {
+        private count: number = 1;
+        value!: T;
+        readonly label?: string;
+        constructor(item: T, label?: string) {
+          this.value = item;
+          this.label = label;
+        }
+        *[Symbol.iterator](): Iterator<T> {
+          yield this.value;
+        }
+        public getTotal(this: Box<T>): number {
+          return this.value.x + this.count;
+        }
+      }
+      export function solve(input: number): number {
+        const pickA = <T extends { a: number; b: number }>(o: T): number => o.a;
+        const maybeFn: (<T>(x: T) => T) | undefined = id;
+        const box = new Box<{ x: number }>({ x: input }, "ok");
+        const arr = [...box];
+        const Inner = class Holder<U> {
+          val: U;
+          constructor(u: U) {
+            this.val = u;
+          }
+        };
+        const holder = new Inner<number>(3);
+        return (
+          readVal.call({ v: 10 }, 5) +
+          onlyThis.call({ v: 7 }) +
+          pickA<{ a: number; b: number }>({ a: 2, b: 3 }) +
+          (maybeFn?.<number>(input) ?? 0) +
+          box.getTotal() +
+          arr[0].x +
+          holder.val
+        );
+      }
+      export { solve };
+    `;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    // input=4: readVal=15, onlyThis=7, pickA=2, maybeFn=4, box.getTotal()=5, arr[0].x=4, holder.val=3 => 40
+    expect(solve(4)).toBe(40);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

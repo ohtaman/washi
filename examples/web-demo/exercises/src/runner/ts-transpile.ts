@@ -401,7 +401,8 @@ function isPropertyAccessWord(text: string, word: string): boolean {
 }
 
 function scanGenericArgListEnd(s: string, start: number, prevChar: string): number {
-  if (!isIdentChar(prevChar) || s[start] !== "<" || s[start + 1] === "=") {
+  const isOptionalChain = start >= 2 && s[start - 2] === "?" && s[start - 1] === ".";
+  if ((!isIdentChar(prevChar) && !isOptionalChain) || s[start] !== "<" || s[start + 1] === "=") {
     return -1;
   }
   const endAng = skipBalanced(s, start, "<", ">");
@@ -749,6 +750,44 @@ function stripTopLevelDeclarations(s: string): string {
         }
       }
 
+      // Top-level `export { ... }`, `export type { ... }`, `export * ...`, `export type * ...`
+      if (
+        depth === 0 &&
+        s.startsWith("export", wsEnd) &&
+        !isIdentChar(s[wsEnd + 6] ?? "")
+      ) {
+        const afterExport = skipWsHorizontal(s, wsEnd + 6);
+        let exportTailStart = afterExport;
+        if (s.startsWith("type", afterExport) && !isIdentChar(s[afterExport + 4] ?? "")) {
+          const afterTypeKw = skipWsHorizontal(s, afterExport + 4);
+          if (s[afterTypeKw] === "{" || s[afterTypeKw] === "*") {
+            exportTailStart = afterTypeKw;
+          }
+        }
+        if (s[exportTailStart] === "{" || s[exportTailStart] === "*") {
+          let j =
+            s[exportTailStart] === "{"
+              ? skipBalanced(s, exportTailStart, "{", "}")
+              : exportTailStart + 1;
+          if (s[exportTailStart] === "*") {
+            const afterStar = skipWsHorizontal(s, j);
+            if (s.startsWith("as", afterStar) && (s[afterStar + 2] === " " || s[afterStar + 2] === "\t")) {
+              j = skipWsHorizontal(s, afterStar + 2);
+              while (j < s.length && isIdentChar(s[j])) j++;
+            }
+          }
+          const kwPos = skipWsHorizontal(s, j);
+          if (s.startsWith("from", kwPos) && !isIdentChar(s[kwPos + 4] ?? "")) {
+            j = skipWsHorizontal(s, kwPos + 4);
+            while (j < s.length && !/[\s;]/.test(s[j])) j++;
+          }
+          while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
+          if (s[j] === "\n") j++;
+          i = j;
+          continue;
+        }
+      }
+
       // `export interface / export type / interface / type` at module or inline statement boundary
       let declStart = wsEnd;
       if (s.startsWith("export", declStart) && (s[declStart + 6] === " " || s[declStart + 6] === "\t")) {
@@ -765,7 +804,23 @@ function stripTopLevelDeclarations(s: string): string {
         const nameStart = skipWsHorizontal(s, declStart + 9);
         if (isIdentStart(s[nameStart] ?? "")) {
           let j = nameStart;
-          while (j < s.length && s[j] !== "{" && s[j] !== ";") j++;
+          while (j < s.length) {
+            const ch = s[j];
+            if (ch === "<") {
+              j = skipBalanced(s, j, "<", ">");
+              continue;
+            }
+            if (ch === "(") {
+              j = skipBalanced(s, j, "(", ")");
+              continue;
+            }
+            if (ch === "[") {
+              j = skipBalanced(s, j, "[", "]");
+              continue;
+            }
+            if (ch === "{" || ch === ";" || ch === "}") break;
+            j++;
+          }
           if (s[j] === "{") {
             j = skipBalanced(s, j, "{", "}");
             while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
@@ -1110,6 +1165,301 @@ function isBindingStart(ch: string): boolean {
   return ch === "{" || ch === "[" || isIdentStart(ch);
 }
 
+const TS_MEMBER_MODIFIERS = new Set([
+  "public",
+  "private",
+  "protected",
+  "readonly",
+  "override",
+  "abstract",
+  "declare",
+]);
+
+const JS_MEMBER_MODIFIERS = new Set(["static", "async", "get", "set", "accessor"]);
+
+function scanClassFieldInitializerEnd(s: string, start: number): number {
+  let i = start;
+  let paren = 0;
+  let bracket = 0;
+  let brace = 0;
+  while (i < s.length) {
+    const ch = s[i];
+    if (ch === "(") paren++;
+    else if (ch === ")" && paren > 0) paren--;
+    else if (ch === "[") bracket++;
+    else if (ch === "]" && bracket > 0) bracket--;
+    else if (ch === "{") brace++;
+    else if (ch === "}") {
+      if (brace === 0 && paren === 0 && bracket === 0) return i;
+      brace--;
+    } else if (ch === ";" && paren === 0 && bracket === 0 && brace === 0) {
+      return i;
+    } else if (ch === "\n" && paren === 0 && bracket === 0 && brace === 0) {
+      const before = s.slice(start, i).trimEnd();
+      const last = before[before.length - 1] ?? "";
+      const next = skipWs(s, i + 1);
+      const nextCh = s[next] ?? "";
+      const continuesBefore = before.length === 0 || "=+-*/%&|^?:,.<>".includes(last);
+      const continuesAfter = ".?:+-*/%&|".includes(nextCh);
+      if (!continuesBefore && !continuesAfter) {
+        return i;
+      }
+    }
+    i++;
+  }
+  return i;
+}
+
+function stripClassBody(body: string): string {
+  let out = "";
+  let i = 0;
+
+  while (i < body.length) {
+    while (i < body.length && (/\s/.test(body[i]) || body[i] === ";")) {
+      out += body[i++];
+    }
+    if (i >= body.length) break;
+
+    const firstWord = readWordAt(body, i);
+    if (firstWord === "static") {
+      const afterStatic = skipWs(body, i + 6);
+      if (body[afterStatic] === "{") {
+        const closeBlock = skipBalanced(body, afterStatic, "{", "}");
+        if (body[closeBlock - 1] === "}") {
+          out += `static {${stripClassDeclarations(body.slice(afterStatic + 1, closeBlock - 1))}}`;
+          i = closeBlock;
+          continue;
+        }
+      }
+    }
+
+    const memberStartOutLen = out.length;
+    let isAmbient = false;
+
+    while (i < body.length) {
+      const modWord = readWordAt(body, i);
+      if (!modWord || (!TS_MEMBER_MODIFIERS.has(modWord) && !JS_MEMBER_MODIFIERS.has(modWord))) {
+        break;
+      }
+      const modEnd = i + modWord.length;
+      const afterMod = skipWs(body, modEnd);
+      const nextCh = body[afterMod] ?? "";
+      if (!nextCh || ":=;()<>?!}".includes(nextCh)) {
+        break;
+      }
+      if (modWord === "declare" || modWord === "abstract") {
+        isAmbient = true;
+      }
+      if (TS_MEMBER_MODIFIERS.has(modWord)) {
+        i = afterMod;
+      } else {
+        out += modWord + body.slice(modEnd, afterMod);
+        i = afterMod;
+      }
+    }
+
+    if (body[i] === "*") {
+      out += "*";
+      i++;
+      while (i < body.length && /\s/.test(body[i])) out += body[i++];
+    }
+
+    if (body[i] === "[") {
+      const endBracket = skipBalanced(body, i, "[", "]");
+      out += stripClassDeclarations(body.slice(i, endBracket));
+      i = endBracket;
+    } else if (body[i] === "#") {
+      out += "#";
+      i++;
+      while (i < body.length && isIdentChar(body[i])) out += body[i++];
+    } else if (isIdentStart(body[i] ?? "")) {
+      while (i < body.length && isIdentChar(body[i])) out += body[i++];
+    } else {
+      const nameStart = i;
+      while (i < body.length && !/[\s<(?!=:;}\n]/.test(body[i])) out += body[i++];
+      if (i === nameStart) {
+        out += body[i++];
+        continue;
+      }
+    }
+
+    let pos = skipWsHorizontal(body, i);
+    if (body[pos] === "?" || body[pos] === "!") {
+      pos = skipWsHorizontal(body, pos + 1);
+    }
+
+    if (body[pos] === "<") {
+      const endAng = skipBalanced(body, pos, "<", ">");
+      const afterAng = skipWsHorizontal(body, endAng);
+      if (body[endAng - 1] === ">" && body[afterAng] === "(") {
+        pos = afterAng;
+      }
+    }
+
+    if (body[pos] === "(") {
+      const closeParen = skipBalanced(body, pos, "(", ")");
+      if (body[closeParen - 1] !== ")") {
+        out += body.slice(i);
+        break;
+      }
+      const paramsText = body.slice(pos, closeParen);
+      let afterParen = skipWsHorizontal(body, closeParen);
+      if (body[afterParen] === ":") {
+        afterParen = skipWsHorizontal(body, readTypeEnd(body, afterParen + 1));
+      }
+      const bodyStart = skipWs(body, afterParen);
+      if (!isAmbient && body[bodyStart] === "{") {
+        const closeBrace = skipBalanced(body, bodyStart, "{", "}");
+        out += `${paramsText} {${stripClassDeclarations(body.slice(bodyStart + 1, closeBrace - 1))}}`;
+        i = closeBrace;
+        continue;
+      }
+      out = out.slice(0, memberStartOutLen);
+      i = body[afterParen] === ";" ? afterParen + 1 : afterParen;
+      continue;
+    }
+
+    if (body[pos] === ":") {
+      pos = skipWsHorizontal(body, readTypeEnd(body, pos + 1));
+    }
+    i = pos;
+
+    if (isAmbient) {
+      if (body[i] === ";") i++;
+      out = out.slice(0, memberStartOutLen);
+      continue;
+    }
+
+    if (body[i] === "=") {
+      out += " =";
+      i++;
+      const initEnd = scanClassFieldInitializerEnd(body, i);
+      out += stripClassDeclarations(body.slice(i, initEnd));
+      i = initEnd;
+    }
+  }
+
+  return out;
+}
+
+function parseAndStripClass(
+  s: string,
+  classStart: number,
+): { text: string; nextIndex: number } | null {
+  let p = skipWs(s, classStart + 5);
+  let header = "class";
+
+  const nameWord = readWordAt(s, p);
+  if (nameWord && nameWord !== "extends" && nameWord !== "implements") {
+    header += ` ${nameWord}`;
+    p = skipWs(s, p + nameWord.length);
+  }
+
+  if (s[p] === "<") {
+    const endAng = skipBalanced(s, p, "<", ">");
+    if (s[endAng - 1] !== ">") return null;
+    p = skipWs(s, endAng);
+  }
+
+  const nextWord = readWordAt(s, p);
+  if (nextWord !== "extends" && nextWord !== "implements" && s[p] !== "{") {
+    return null;
+  }
+
+  if (nextWord === "extends") {
+    header += " extends ";
+    p = skipWs(s, p + 7);
+    let extOut = "";
+    while (p < s.length) {
+      const ch = s[p];
+      if (ch === "<") {
+        const endAng = skipBalanced(s, p, "<", ">");
+        if (s[endAng - 1] === ">" && looksLikeGenericTypeArgList(s.slice(p + 1, endAng - 1))) {
+          p = endAng;
+          continue;
+        }
+      }
+      if (ch === "(") {
+        const endParen = skipBalanced(s, p, "(", ")");
+        extOut += stripClassDeclarations(s.slice(p, endParen));
+        p = endParen;
+        continue;
+      }
+      if (ch === "[") {
+        const endBracket = skipBalanced(s, p, "[", "]");
+        extOut += stripClassDeclarations(s.slice(p, endBracket));
+        p = endBracket;
+        continue;
+      }
+      if (ch === "{") break;
+      if (readWordAt(s, p) === "implements" && (p === 0 || !isIdentChar(s[p - 1]))) {
+        break;
+      }
+      extOut += s[p++];
+    }
+    header += extOut.trimEnd();
+  }
+
+  p = skipWs(s, p);
+  if (readWordAt(s, p) === "implements") {
+    p += 10;
+    while (p < s.length) {
+      const ch = s[p];
+      if (ch === "<") {
+        p = skipBalanced(s, p, "<", ">");
+        continue;
+      }
+      if (ch === "(") {
+        p = skipBalanced(s, p, "(", ")");
+        continue;
+      }
+      if (ch === "[") {
+        p = skipBalanced(s, p, "[", "]");
+        continue;
+      }
+      if (ch === "{") break;
+      if (ch === ";" || ch === "}") return null;
+      p++;
+    }
+  }
+
+  p = skipWs(s, p);
+  if (s[p] !== "{") return null;
+  const bodyClose = skipBalanced(s, p, "{", "}");
+  if (s[bodyClose - 1] !== "}") return null;
+
+  return {
+    text: `${header} {${stripClassBody(s.slice(p + 1, bodyClose - 1))}}`,
+    nextIndex: bodyClose,
+  };
+}
+
+function stripClassDeclarations(s: string): string {
+  let out = "";
+  let i = 0;
+
+  while (i < s.length) {
+    if (
+      s.startsWith("class", i) &&
+      (i === 0 || !isIdentChar(s[i - 1])) &&
+      !isIdentChar(s[i + 5] ?? "")
+    ) {
+      const trimmed = out.trimEnd();
+      if (!trimmed.endsWith(".") && !trimmed.endsWith("#")) {
+        const parsed = parseAndStripClass(s, i);
+        if (parsed) {
+          out += parsed.text;
+          i = parsed.nextIndex;
+          continue;
+        }
+      }
+    }
+    out += s[i++];
+  }
+
+  return out;
+}
+
 function stripExportKeywords(s: string): string {
   return s.replace(
     /(^|[;\n{}])([ \t]*)export\s+(?:default\s+)?(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm,
@@ -1250,12 +1600,29 @@ function isGenericArrowPrefixContext(out: string): boolean {
   return prevWord === "async" || REGEX_PREFIX_KEYWORDS.has(prevWord);
 }
 
+function hasTopLevelSemicolon(s: string): boolean {
+  let paren = 0;
+  let bracket = 0;
+  let brace = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "(") paren++;
+    else if (ch === ")" && paren > 0) paren--;
+    else if (ch === "[") bracket++;
+    else if (ch === "]" && bracket > 0) bracket--;
+    else if (ch === "{") brace++;
+    else if (ch === "}" && brace > 0) brace--;
+    else if (ch === ";" && paren === 0 && bracket === 0 && brace === 0) return true;
+  }
+  return false;
+}
+
 function scanGenericArrowPrefixEnd(s: string, ltStart: number): number {
   if (s[ltStart] !== "<") return -1;
   const endAngle = skipBalanced(s, ltStart, "<", ">");
   if (s[endAngle - 1] !== ">") return -1;
   const inner = s.slice(ltStart + 1, endAngle - 1);
-  if (!inner.trim() || inner.includes(";") || inner.includes("\n")) return -1;
+  if (!inner.trim() || hasTopLevelSemicolon(inner)) return -1;
   const parenIdx = skipWs(s, endAngle);
   if (s[parenIdx] !== "(") return -1;
   return matchArrowHeader(s, parenIdx) ? endAngle : -1;
@@ -1264,6 +1631,28 @@ function scanGenericArrowPrefixEnd(s: string, ltStart: number): number {
 function isMethodHeaderPrefix(out: string): boolean {
   const trimmed = out.trimEnd();
   if (!trimmed) return false;
+  if (trimmed.endsWith("]")) {
+    let depth = 0;
+    let k = trimmed.length - 1;
+    while (k >= 0) {
+      if (trimmed[k] === "]") depth++;
+      else if (trimmed[k] === "[") {
+        depth--;
+        if (depth === 0) break;
+      }
+      k--;
+    }
+    if (k < 0) return false;
+    const beforeBracket = trimmed.slice(0, k).trimEnd();
+    if (!beforeBracket) return true;
+    const lastCh = beforeBracket[beforeBracket.length - 1];
+    if ("{,;}\n*".includes(lastCh)) return true;
+    const kw = readPrevWord(beforeBracket);
+    return (
+      (kw === "static" || kw === "async" || kw === "get" || kw === "set") &&
+      !isPropertyAccessWord(beforeBracket, kw)
+    );
+  }
   const prevWord = readPrevWord(trimmed);
   if (!prevWord || NON_METHOD_KEYWORDS.has(prevWord)) return false;
   const beforeWord = trimmed.slice(0, trimmed.length - prevWord.length).trimEnd();
@@ -1367,6 +1756,21 @@ function stripParameterAndReturnTypes(s: string): string {
     if (s[i] === "(") {
       const prevTrim = out.trimEnd();
       const prevWord = readPrevWord(prevTrim);
+      if (prevWord === "catch" && !isPropertyAccessWord(prevTrim, prevWord)) {
+        const method = matchMethodHeader(s, i);
+        if (method) {
+          out += stripParamList(s.slice(i, method.closeIdx));
+          out += " ";
+          i = method.bodyStart;
+          continue;
+        }
+        const closeIdx = skipBalanced(s, i, "(", ")");
+        if (s[closeIdx - 1] === ")" && s[skipWs(s, closeIdx)] === "{") {
+          out += stripParamList(s.slice(i, closeIdx));
+          i = closeIdx;
+          continue;
+        }
+      }
       const isAssertCast =
         (prevWord === "as" || prevWord === "satisfies") &&
         !isPropertyAccessWord(prevTrim, prevWord) &&
@@ -1401,16 +1805,22 @@ function stripParamList(parenText: string): string {
   const inner = parenText.slice(1, -1);
   let out = "";
   let i = 0;
+  let isFirstParam = true;
 
   while (i < inner.length) {
+    const beforeWsOutLen = out.length;
+    const wsStart = i;
     while (i < inner.length && /\s/.test(inner[i])) out += inner[i++];
     if (i >= inner.length) break;
     if (inner[i] === ",") {
       out += inner[i++];
+      isFirstParam = false;
       continue;
     }
 
+    let hasPrefix = false;
     if (inner.startsWith("...", i)) {
+      hasPrefix = true;
       out += "...";
       i += 3;
       while (i < inner.length && /\s/.test(inner[i])) out += inner[i++];
@@ -1421,6 +1831,7 @@ function stripParamList(parenText: string): string {
       if (!modMatch) break;
       const afterMod = skipWs(inner, i + modMatch[0].length);
       if (afterMod > i + modMatch[0].length && isBindingStart(inner[afterMod] ?? "")) {
+        hasPrefix = true;
         i = afterMod;
         continue;
       }
@@ -1434,11 +1845,31 @@ function stripParamList(parenText: string): string {
       out += stripParameterAndReturnTypes(inner.slice(i, patEnd));
       i = patEnd;
     } else if (isIdentStart(inner[i] ?? "")) {
-      while (i < inner.length && isIdentChar(inner[i])) out += inner[i++];
+      const identStart = i;
+      while (i < inner.length && isIdentChar(inner[i])) i++;
+      const ident = inner.slice(identStart, i);
+      const thisColonPos = skipWs(inner, i);
+      if (isFirstParam && !hasPrefix && ident === "this" && inner[thisColonPos] === ":") {
+        i = readTypeExpressionEnd(inner, thisColonPos + 1, [","], false);
+        i = skipWsHorizontal(inner, i);
+        if (inner[i] === ",") {
+          i++;
+          i = skipWsHorizontal(inner, i);
+        }
+        if (!inner.slice(wsStart, identStart).includes("\n")) {
+          out = out.slice(0, beforeWsOutLen);
+        }
+        isFirstParam = false;
+        continue;
+      }
+      out += ident;
     } else {
       out += inner[i++];
+      isFirstParam = false;
       continue;
     }
+
+    isFirstParam = false;
 
     const afterBinding = skipWs(inner, i);
     if (inner[afterBinding] === "?") {
@@ -1538,6 +1969,7 @@ export function transpileExerciseTsToJs(rawCode: string): string {
   const { masked, tokens } = maskVerbatim(rawCode);
   let transformed = stripTopLevelDeclarations(masked);
   transformed = stripExportKeywords(transformed);
+  transformed = stripClassDeclarations(transformed);
   transformed = stripVariableTypeAnnotations(transformed);
   transformed = stripParameterAndReturnTypes(transformed);
   transformed = stripGenericsAsAndNonNull(transformed);
