@@ -15,8 +15,6 @@ export interface P005Output {
 }
 
 export async function solve(input: P005Input): Promise<P005Output> {
-  const nRaw = input.costs.length;
-  const nElem = input.minRatios.length;
   const m = new Model("AlloyBlending");
 
   const amounts = input.availabilities.map((avail, i) =>
@@ -25,23 +23,18 @@ export async function solve(input: P005Input): Promise<P005Output> {
 
   m.constraint(expr`${sum(amounts)} == ${input.targetBatch}`, "total_weight");
 
-  for (let k = 0; k < nElem; k++) {
-    const elemCol = input.compositions.map((row) => row[k]);
-    m.constraint(
-      expr`dot(${elemCol}, ${amounts}) >= ${input.minRatios[k] * input.targetBatch}`,
-      `elem_${k}_min`
-    );
-    m.constraint(
-      expr`dot(${elemCol}, ${amounts}) <= ${input.maxRatios[k] * input.targetBatch}`,
-      `elem_${k}_max`
-    );
-  }
+  m.constraint(
+    input.minRatios.flatMap((minRatio, k) => {
+      const elemCol = input.compositions.map((row) => row[k]);
+      return [
+        expr`dot(${elemCol}, ${amounts}) >= ${minRatio * input.targetBatch}`,
+        expr`dot(${elemCol}, ${amounts}) <= ${input.maxRatios[k] * input.targetBatch}`,
+      ];
+    })
+  );
 
   m.objective(minimize(expr`dot(${input.costs}, ${amounts})`));
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
     amounts: amounts.map((v) => v.value!),

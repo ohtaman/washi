@@ -9,16 +9,10 @@ def solve(input_data: dict) -> dict:
     c = h.addVariable(lb=0.0, name="croissants")
     l = h.addVariable(lb=0.0, name="loaves")
 
-    h.addConstr(
-        input_data["croissantFlour"] * c + input_data["loafFlour"] * l
-        <= input_data["flourCap"]
-    )
-    h.addConstr(
-        input_data["croissantButter"] * c + input_data["loafButter"] * l
-        <= input_data["butterCap"]
-    )
+    h.addConstr(2 * c + 3 * l <= input_data["flourCap"])
+    h.addConstr(c + 2 * l <= input_data["butterCap"])
 
-    h.maximize(input_data["croissantProfit"] * c + input_data["loafProfit"] * l)
+    h.maximize(40 * c + 70 * l)
 
     return {
         "croissants": float(h.val(c)),

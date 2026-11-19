@@ -48,20 +48,3 @@
 ```
 
 运费更低的仓库 1 将 80 单位货物全数发往门店 1 与门店 2，仓库 0 补足门店 0 与门店 1 剩余的 10 单位（余留 10 库存），即可取得最低总运费 **420**。
-
-<!-- section:hint1 -->
-二维连续决策变量矩阵 `shipments[i][j] >= 0` 已在初始代码中声明：
-- **供应上限**（对每个仓库 $i$）：`sum(shipments[i]) <= supplies[i]`
-- **需求满足**（对每家门店 $j$）：`sum(shipments.map((row) => row[j])) >= demands[j]`
-
-<!-- section:hint2 -->
-最小化 `sum_{i, j} unitCosts[i][j] * shipments[i][j]`。值得一提的是，当供需均为整数时，由于运输矩阵的全幺模性，即使不设为整数变量，LP 顶点也会天然落在整数解上！
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min_{x \ge 0} \quad & \sum_{i=0}^{S-1} \sum_{j=0}^{D-1} c_{i,j} x_{i,j} \\
-\text{s.t.} \quad & \sum_{j=0}^{D-1} x_{i,j} \le S_i && \forall i \in \{0, \dots, S-1\} \\
-& \sum_{i=0}^{S-1} x_{i,j} \ge D_j && \forall j \in \{0, \dots, D-1\}
-\end{aligned}
-$$

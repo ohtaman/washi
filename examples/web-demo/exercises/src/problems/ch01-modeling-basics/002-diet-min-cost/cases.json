@@ -1,0 +1,16 @@
+[
+  {
+    "input": {
+      "minProtein": 8,
+      "minFiber": 9
+    },
+    "expectedOptimal": 190
+  },
+  {
+    "input": {
+      "minProtein": 12,
+      "minFiber": 11
+    },
+    "expectedOptimal": 250
+  }
+]

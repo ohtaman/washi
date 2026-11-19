@@ -15,8 +15,6 @@ export interface P005Output {
 }
 
 export async function solve(input: P005Input): Promise<P005Output> {
-  const nRaw = input.costs.length;
-  const nElem = input.minRatios.length;
   const m = new Model("AlloyBlending");
 
   // Decision variables: continuous amounts bounded by stock availabilities
@@ -26,7 +24,7 @@ export async function solve(input: P005Input): Promise<P005Output> {
 
   // TODO:
   // 1. Add total batch weight constraint: sum(amounts) == input.targetBatch
-  // 2. For each element k in 0..nElem-1, linearize min/max ratios using input.targetBatch
+  // 2. For each element k, linearize min/max ratios using input.targetBatch
   // 3. Minimize dot(input.costs, amounts), solve, and return { amounts, totalCost }
   throw new Error("Not implemented");
 }

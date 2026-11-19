@@ -44,19 +44,3 @@ The starter code currently has two deliberate gaps: it uses continuous variables
 ```
 
 Packing 2 units of Item 0 and 1 unit of Item 1 gives weight $2 \times 3 + 1 \times 4 = 10$, achieving the maximum integer total value of **135**.
-
-<!-- section:hint1 -->
-- **WaSHI**: Declare integer arrays with `m.integer("item_" + i, { lb: 0, ub: cap })` inside `map`, and add the weight limit using `` expr`dot(${input.weights}, ${counts}) <= ${input.maxWeight}` ``.
-- **highspy**: Use `h.addIntegral(lb=0, ub=cap, name=f"item_{i}")` and add `h.addConstr(h.qsum(w * x for w, x in zip(weights, counts)) <= input_data["maxWeight"])`.
-
-<!-- section:hint2 -->
-Without the integer requirement (`continuous`), packing fractional units can reach higher LP relaxation values that are physically impossible for whole items! Using `Math.round(...)` (`round(...)` in Python) when reading solved integer variables also safely cleans `1.999999999` tolerances.
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} v_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} w_i x_i \le W_{\max} \\
-& x_i \in \{0, 1, \dots, u_i\} \quad \forall i
-\end{aligned}
-$$

@@ -1,9 +1,13 @@
+import type { ExerciseCaseMetrics } from "./washi-runner.js";
+
 export type PyodideRunPhase = "loading-pyodide" | "loading-highspy" | "running";
 
 export interface PyodideExerciseRunResult {
   ok: boolean;
   logs: string[];
   outputs: unknown[];
+  metrics: ExerciseCaseMetrics[];
+  failedSolverStatus?: string;
   error?: string;
   wasCached: boolean;
   loadTimeMs: number;
@@ -52,6 +56,10 @@ class LazyPyodideClient {
             ok: Boolean(data.ok),
             logs: Array.isArray(data.logs) ? (data.logs as string[]) : [],
             outputs: Array.isArray(data.outputs) ? data.outputs : [],
+            metrics: Array.isArray(data.metrics) ? (data.metrics as ExerciseCaseMetrics[]) : [],
+            ...(typeof data.failedSolverStatus === "string"
+              ? { failedSolverStatus: data.failedSolverStatus }
+              : {}),
             ...(typeof data.error === "string" ? { error: data.error } : {}),
             wasCached: Boolean(data.wasCached),
             loadTimeMs: typeof data.loadTimeMs === "number" ? data.loadTimeMs : 0,
@@ -79,6 +87,7 @@ class LazyPyodideClient {
         ok: false,
         logs: [],
         outputs: [],
+        metrics: [],
         error: message,
         wasCached: false,
         loadTimeMs: 0,

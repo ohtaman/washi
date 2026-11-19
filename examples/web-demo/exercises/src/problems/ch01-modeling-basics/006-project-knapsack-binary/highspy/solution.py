@@ -16,10 +16,6 @@ def solve(input_data: dict) -> dict:
     h.addConstr(h.qsum(costs[i] * selected[i] for i in range(n)) <= budget)
     h.maximize(h.qsum(values[i] * selected[i] for i in range(n)))
 
-    status = h.modelStatusToString(h.getModelStatus())
-    if status != "Optimal":
-        raise RuntimeError(f"Expected Optimal, got {status}")
-
     return {
         "selected": [round(h.val(v)) for v in selected],
         "totalValue": float(h.getObjectiveValue()),

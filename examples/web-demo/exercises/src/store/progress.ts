@@ -13,8 +13,13 @@ export interface DraftEntry {
   highspy?: string;
 }
 
+// Exercises whose v1 schemas/problem definitions were redesigned in v2:
+// invalidate legacy v1 solved badges and drafts so returning users are not
+// shown stale starter/solution code or unearned solved badges.
+const V1_TO_V2_RESET_IDS = new Set(["001", "002"]);
+
 export interface ProgressState {
-  version: 1;
+  version: 2;
   solved: Record<string, SolvedEntry>;
   drafts: Record<string, DraftEntry>;
   tutorialDismissed?: boolean;
@@ -22,7 +27,7 @@ export interface ProgressState {
 
 export function createEmptyProgress(): ProgressState {
   return {
-    version: 1,
+    version: 2,
     solved: {},
     drafts: {},
     tutorialDismissed: false,
@@ -33,14 +38,15 @@ function isValidRuntime(v: unknown): v is RuntimeId {
   return v === "washi" || v === "highspy";
 }
 
-function validateAndNormalizeProgress(raw: unknown): ProgressState {
+function normalizeProgress(raw: unknown): { state: ProgressState; migrated: boolean } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     throw new Error("Invalid progress JSON: expected an object.");
   }
   const obj = raw as Record<string, unknown>;
-  if (obj.version !== 1) {
+  if (obj.version !== 1 && obj.version !== 2) {
     throw new Error(`Unsupported progress version: ${String(obj.version)}.`);
   }
+  const migratingFromV1 = obj.version === 1;
   if (typeof obj.solved !== "object" || obj.solved === null || Array.isArray(obj.solved)) {
     throw new Error("Invalid progress JSON: 'solved' must be an object.");
   }
@@ -53,6 +59,9 @@ function validateAndNormalizeProgress(raw: unknown): ProgressState {
     const entry = entryVal as Record<string, unknown>;
     if (!Array.isArray(entry.runtimes) || entry.runtimes.some((r) => !isValidRuntime(r))) {
       throw new Error(`Invalid runtimes array for "${id}".`);
+    }
+    if (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) {
+      continue;
     }
     const uniqueRuntimes = Array.from(new Set(entry.runtimes));
     const solvedAt =
@@ -88,6 +97,9 @@ function validateAndNormalizeProgress(raw: unknown): ProgressState {
         if (typeof dObj.highspy !== "string") throw new Error(`Invalid highspy draft for "${id}".`);
         draft.highspy = dObj.highspy;
       }
+      if (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) {
+        continue;
+      }
       if (draft.washi !== undefined || draft.highspy !== undefined) {
         drafts[id] = draft;
       }
@@ -95,21 +107,30 @@ function validateAndNormalizeProgress(raw: unknown): ProgressState {
   }
 
   return {
-    version: 1,
-    solved,
-    drafts,
-    ...(obj.tutorialDismissed === true ? { tutorialDismissed: true } : { tutorialDismissed: false }),
+    state: {
+      version: 2,
+      solved,
+      drafts,
+      ...(obj.tutorialDismissed === true ? { tutorialDismissed: true } : { tutorialDismissed: false }),
+    },
+    migrated: migratingFromV1,
   };
 }
 
-export function loadProgress(storage?: Pick<Storage, "getItem"> | null): ProgressState {
+export function loadProgress(
+  storage?: (Pick<Storage, "getItem"> & Partial<Pick<Storage, "setItem">>) | null
+): ProgressState {
   try {
     const targetStorage =
       storage !== undefined ? storage : typeof window !== "undefined" ? window.localStorage : null;
     if (!targetStorage) return createEmptyProgress();
     const raw = targetStorage.getItem(PROGRESS_STORAGE_KEY);
     if (!raw) return createEmptyProgress();
-    return validateAndNormalizeProgress(JSON.parse(raw));
+    const { state, migrated } = normalizeProgress(JSON.parse(raw));
+    if (migrated && typeof targetStorage.setItem === "function") {
+      saveProgress(state, { setItem: targetStorage.setItem.bind(targetStorage) });
+    }
+    return state;
   } catch {
     return createEmptyProgress();
   }
@@ -154,6 +175,24 @@ export function recordSolvedProblem(
         solvedAt: existing?.solvedAt || nowIso,
       },
     },
+  };
+}
+
+export function clearSolvedProblem(state: ProgressState, problemId: string): ProgressState {
+  if (!(problemId in state.solved)) return state;
+  const nextSolved = { ...state.solved };
+  delete nextSolved[problemId];
+  return {
+    ...state,
+    solved: nextSolved,
+  };
+}
+
+export function clearAllSolved(state: ProgressState): ProgressState {
+  if (Object.keys(state.solved).length === 0) return state;
+  return {
+    ...state,
+    solved: {},
   };
 }
 
@@ -273,5 +312,5 @@ export function exportProgressJson(state: ProgressState): string {
 
 export function importProgressJson(rawJson: string): ProgressState {
   const parsed: unknown = JSON.parse(rawJson);
-  return validateAndNormalizeProgress(parsed);
+  return normalizeProgress(parsed).state;
 }

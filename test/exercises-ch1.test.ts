@@ -12,6 +12,7 @@ const GAMEY_COPY_RE =
   /\bBoss\b|\u30dc\u30b9|\u{1f451}|\u30af\u30a8\u30b9\u30c8|\u6483\u7834|\u901a\u5173|\u5173\u5361|\u9053\u5834|\u9053\u573a|\u6311\u6226/ui;
 
 const EXPECTED_IDS = [
+  "000",
   "001",
   "002",
   "003",
@@ -103,19 +104,25 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
 
     for (const prob of PROBLEMS) {
-      expect(prob.meta.chapter).toBe(1);
-      expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
+      const isTutorial = prob.meta.id === "000";
+      if (isTutorial) {
+        expect(prob.meta.chapter).toBe(0);
+        expect(prob.meta.role).toBe("tutorial");
+      } else {
+        expect(prob.meta.chapter).toBe(1);
+        expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
+        expect(prob.washiStarter).toContain("import ");
+        expect(prob.washiStarter).toContain("new Model(");
+        expect(prob.highspyStarter).toContain("import highspy");
+        expect(prob.highspyStarter).toContain("highspy.Highs()");
+      }
       expect(prob.washiStarter).not.toContain("ReducedCostBoss");
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
-      expect(prob.washiStarter).toContain("import ");
-      expect(prob.washiStarter).toContain("new Model(");
       expect(prob.washiStarter).toContain(`interface P${prob.meta.id}Input`);
       expect(prob.washiStarter).toContain(`interface P${prob.meta.id}Output`);
       expect(prob.washiStarter).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
       expect(prob.washiSolution).toContain(`interface P${prob.meta.id}Output`);
       expect(prob.washiSolution).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
-      expect(prob.highspyStarter).toContain("import highspy");
-      expect(prob.highspyStarter).toContain("highspy.Highs()");
       expect(prob.highspyStarter).toContain("def solve(input_data: dict) -> dict:");
       expect(prob.highspyStarter).toContain('"""Return {');
       expect(prob.highspySolution).toContain('"""Return {');
@@ -158,9 +165,19 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         );
         expect(exVerdict.ok, `${prob.meta.id} (${locale}) example verdict: ${exVerdict.message}`).toBe(true);
         expect(exVerdict.status, `${prob.meta.id} (${locale}) example status`).toBe("AC");
-        expect(sections.hint1.trim().length, `${prob.meta.id} (${locale}) hint1`).toBeGreaterThan(0);
-        expect(sections.hint2.trim().length, `${prob.meta.id} (${locale}) hint2`).toBeGreaterThan(0);
-        expect(sections.formulation.trim().length, `${prob.meta.id} (${locale}) formulation`).toBeGreaterThan(0);
+
+        expect(prob.loadEditorial, `${prob.meta.id} missing loadEditorial`).toBeDefined();
+        const ed = await prob.loadEditorial!(locale);
+        const edCached = await prob.loadEditorial!(locale);
+        expect(edCached).toBe(ed);
+        expect(ed.trim().length, `${prob.meta.id} (${locale}) editorial`).toBeGreaterThan(0);
+        expect(ed).not.toMatch(GAMEY_COPY_RE);
+        expect(ed, `${prob.meta.id} (${locale}) editorial missing TypeScript label`).toContain("TypeScript");
+        expect(ed, `${prob.meta.id} (${locale}) editorial missing Python label`).toContain("Python");
+        expect(renderSafeMarkdown(ed)).toContain("?view=guide");
+        expect(sections.hint1.trim().length, `${prob.meta.id} (${locale}) unexpected problem-tab hint1`).toBe(0);
+        expect(sections.hint2.trim().length, `${prob.meta.id} (${locale}) unexpected problem-tab hint2`).toBe(0);
+        expect(sections.formulation.trim().length, `${prob.meta.id} (${locale}) unexpected problem-tab formulation`).toBe(0);
 
         for (const c of prob.cases) {
           expect(c.name[locale].trim().length).toBeGreaterThan(0);
@@ -235,27 +252,30 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(v10.status).toBe("VIOLATION");
       }
 
-      // Starter verification: #001 -> SUBOPTIMAL, #002 & #003 -> VIOLATION, #004-#010 -> unimplemented / non-AC
+      // Starter verification: #000-#003 -> VIOLATION, #004-#010 -> unimplemented / non-AC
       const starterRun = await runWashiExerciseCode(prob.washiStarter, [structuredClone(prob.cases[0].input)]);
-      if (prob.meta.id === "001") {
+      if (["000", "001", "002", "003"].includes(prob.meta.id)) {
         expect(starterRun.ok).toBe(true);
         const v = prob.judge(prob.cases[0].input, starterRun.outputs[0], prob.cases[0].expectedOptimal, "en");
-        expect(v.status).toBe("SUBOPTIMAL");
-        expect(v.ok).toBe(false);
-      } else if (prob.meta.id === "002" || prob.meta.id === "003") {
-        expect(starterRun.ok).toBe(true);
-        const v = prob.judge(prob.cases[0].input, starterRun.outputs[0], prob.cases[0].expectedOptimal, "en");
-        expect(v.status).toBe("VIOLATION");
+        expect(v.status, `${prob.meta.id} starter verdict`).toBe("VIOLATION");
         expect(v.ok).toBe(false);
       } else {
         expect(starterRun.ok).toBe(false);
       }
     }
 
-    // Verify solverStatus telemetry and honest verdict refinement for NotSolved, Infeasible, and Unbounded on #001
-    const p1 = PROBLEMS[0];
+    // Verify solverStatus telemetry and honest verdict refinement for NotSolved, Infeasible, Unbounded, and Suboptimal on #001
+    const p1 = PROBLEMS.find((p) => p.meta.id === "001")!;
     const p1In = structuredClone(p1.cases[0].input);
     const statusMsgs = UI_STRINGS.en.results.solverStatus;
+
+    const suboptRun = await runWashiExerciseCode(
+      p1.washiSolution.replace("import { Model, expr, maximize }", "import { Model, expr, minimize }").replace("maximize(", "minimize("),
+      [p1In]
+    );
+    expect(suboptRun.ok).toBe(true);
+    const suboptVerdict = p1.judge(p1In, suboptRun.outputs[0], p1.cases[0].expectedOptimal, "en");
+    expect(suboptVerdict.status).toBe("SUBOPTIMAL");
 
     const omittedSolveRun = await runWashiExerciseCode(
       p1.washiSolution.replace("await m.solve();", ""),
@@ -328,34 +348,21 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       }
     }
 
-    // Verify #001-#003 highspy starters reproduce intentional SUBOPTIMAL (#001) and VIOLATION (#002, #003) states
+    // Verify #000-#003 highspy starters reproduce intentional VIOLATION states
     const starterBatch = runHighspyBatch(
-      PROBLEMS.slice(0, 3).map((p) => ({
-        id: p.meta.id,
-        code: p.highspyStarter,
-        inputs: [p.cases[0].input],
-      }))
+      ["000", "001", "002", "003"].map((id) => {
+        const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+        return {
+          id: p.meta.id,
+          code: p.highspyStarter,
+          inputs: [p.cases[0].input],
+        };
+      })
     );
-    const p1StarterV = PROBLEMS[0].judge(
-      PROBLEMS[0].cases[0].input,
-      starterBatch["001"].outputs![0],
-      PROBLEMS[0].cases[0].expectedOptimal,
-      "en"
-    );
-    expect(p1StarterV.status).toBe("SUBOPTIMAL");
-    const p2StarterV = PROBLEMS[1].judge(
-      PROBLEMS[1].cases[0].input,
-      starterBatch["002"].outputs![0],
-      PROBLEMS[1].cases[0].expectedOptimal,
-      "en"
-    );
-    expect(p2StarterV.status).toBe("VIOLATION");
-    const p3StarterV = PROBLEMS[2].judge(
-      PROBLEMS[2].cases[0].input,
-      starterBatch["003"].outputs![0],
-      PROBLEMS[2].cases[0].expectedOptimal,
-      "en"
-    );
-    expect(p3StarterV.status).toBe("VIOLATION");
+    for (const id of ["000", "001", "002", "003"]) {
+      const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+      const v = p.judge(p.cases[0].input, starterBatch[id].outputs![0], p.cases[0].expectedOptimal, "en");
+      expect(v.status, `${id} python starter verdict`).toBe("VIOLATION");
+    }
   }, 60_000);
 });

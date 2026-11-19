@@ -58,23 +58,3 @@
 ```
 
 利用第 0 期富余的正常产能提前生产 30 单位并转存到第 1 期，仅需支付每单位 3 的保管费，而避免每单位 12 的加班溢价，从而达到最小总成本 **8,680**。
-
-<!-- section:hint1 -->
-初始代码已声明 `regular`、`overtime` 与 `inventory`（含期末安全库存下界）。请用线性等式刻画连接相邻周期的**库存流守恒方程**：
-$$\text{prevInventory} + \text{regular}[t] + \text{overtime}[t] - \text{inventory}[t] == \text{demands}[t]$$
-其中 $t=0$ 时取 `initialInventory`，$t \ge 1$ 时取 `inventory[t - 1]`。
-
-<!-- section:hint2 -->
-最小化总成本 `regCost * sum(regular) + otCost * sum(overtime) + holdCost * sum(inventory)`，求解并返回 `{ regular, overtime, inventory, totalCost }`。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min_{r, o, I \ge 0} \quad & \sum_{t=0}^{T-1} \left( c_r r_t + c_o o_t + c_h I_t \right) \\
-\text{s.t.} \quad & I_t = I_{t-1} + r_t + o_t - d_t && \forall t \;\; (I_{-1} = I_{\text{init}}) \\
-& 0 \le r_t \le R_t, \; 0 \le o_t \le O_t, \; 0 \le I_t \le I_{\max} && \forall t \\
-& I_{T-1} \ge I_{\min,\text{end}}
-\end{aligned}
-$$
-
-“期末状态 = 上期状态 + 流入 - 流出”的跨期流平衡是供应链排产、储能调度与资金流动性管理的核心骨架。

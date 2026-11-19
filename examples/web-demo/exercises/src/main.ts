@@ -1,13 +1,16 @@
 import "katex/dist/katex.min.css";
 import "./style.css";
 
+import { loadGuideMarkdown } from "./guide/index.js";
 import { UI_STRINGS } from "./i18n/ui-strings.js";
 import { applySolverStatusToVerdict } from "./problems/judge-helpers.js";
 import { CHAPTERS, PROBLEMS, getProblemById } from "./problems/registry.js";
 import { runHighspyExerciseCode, type PyodideRunPhase } from "./runner/pyodide-runner.js";
 import { runWashiExerciseCode } from "./runner/washi-runner.js";
 import {
+  clearAllSolved,
   clearDraft,
+  clearSolvedProblem,
   countMainSolved,
   isProblemSolved,
   loadProgress,
@@ -21,12 +24,14 @@ import { highlightCode, renderLineNumbers } from "./ui/code-editor.js";
 import {
   escapeHtml,
   renderExerciseIndexHtml,
+  renderGuidePageHtml,
   renderHeaderHtml,
   renderResultsHtml,
-  renderSolvedStatusBadgeHtml,
   renderWorkspaceHtml,
+  renderWorkspaceSolvedControlHtml,
   type RenderedRunReport,
 } from "./ui/components.js";
+import { renderSafeMarkdown } from "./ui/markdown.js";
 
 const LOCALE_STORAGE_KEY = "washi_exercises_locale";
 const SHARED_LOCALE_STORAGE_KEY = "washi_locale";
@@ -75,11 +80,29 @@ function detectInitialLocale(): Locale {
   return "en";
 }
 
-function parseRouteProblemId(): string | null {
-  if (typeof window === "undefined") return null;
-  const id = new URLSearchParams(window.location.search).get("id");
-  if (!id) return null;
-  return getProblemById(id) ? id : null;
+interface RouteState {
+  viewMode: "index" | "guide" | "workspace";
+  problemId: string | null;
+  problemTab: "problem" | "editorial";
+}
+
+function parseRouteState(): RouteState {
+  if (typeof window === "undefined") {
+    return { viewMode: "index", problemId: null, problemTab: "problem" };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+  if (id && getProblemById(id)) {
+    return {
+      viewMode: "workspace",
+      problemId: id,
+      problemTab: params.get("tab") === "editorial" ? "editorial" : "problem",
+    };
+  }
+  if (params.get("view") === "guide") {
+    return { viewMode: "guide", problemId: null, problemTab: "problem" };
+  }
+  return { viewMode: "index", problemId: null, problemTab: "problem" };
 }
 
 function getEffectiveTheme(): "light" | "dark" {
@@ -104,22 +127,35 @@ class ExercisesApp {
   private root: HTMLElement;
   private locale: Locale;
   private progress: ProgressState;
+  private viewMode: "index" | "guide" | "workspace";
   private problemId: string | null;
+  private problemTab: "problem" | "editorial" = "problem";
   private renderedProblemId: string | null = null;
   private activeRuntime: RuntimeId = "washi";
   private viewGeneration = 0;
   private renderSeq = 0;
   private markdownCache = new Map<string, string>();
+  private editorialCache = new Map<string, string>();
+  private guideCache = new Map<Locale, string>();
+  private pendingHash: string | null = null;
   private runningGeneration: number | null = null;
   private armedSolutionRuntime: RuntimeId | null = null;
   private armedSolutionTimer: ReturnType<typeof setTimeout> | null = null;
+  private armedClearAllSolved = false;
+  private armedClearAllTimer: ReturnType<typeof setTimeout> | null = null;
   private lastReport: RenderedRunReport | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
     this.locale = detectInitialLocale();
     this.progress = loadProgress();
-    this.problemId = parseRouteProblemId();
+    const route = parseRouteState();
+    this.viewMode = route.viewMode;
+    this.problemId = route.problemId;
+    this.problemTab = route.problemTab;
+    if (typeof window !== "undefined" && window.location.hash) {
+      this.pendingHash = window.location.hash;
+    }
 
     this.attachGlobalEvents();
     void this.render();
@@ -129,14 +165,27 @@ class ExercisesApp {
     return UI_STRINGS[this.locale];
   }
 
-  private pushUrl(id: string | null, replace: boolean = false): void {
+  private pushUrl(replace: boolean = false, hash: string = ""): void {
     const url = new URL(window.location.href);
     url.searchParams.set("lang", this.locale);
-    if (id) {
-      url.searchParams.set("id", id);
+    if (this.viewMode === "workspace" && this.problemId) {
+      url.searchParams.set("id", this.problemId);
+      url.searchParams.delete("view");
+      if (this.problemTab === "editorial") {
+        url.searchParams.set("tab", "editorial");
+      } else {
+        url.searchParams.delete("tab");
+      }
+    } else if (this.viewMode === "guide") {
+      url.searchParams.set("view", "guide");
+      url.searchParams.delete("id");
+      url.searchParams.delete("tab");
     } else {
       url.searchParams.delete("id");
+      url.searchParams.delete("view");
+      url.searchParams.delete("tab");
     }
+    url.hash = hash;
     if (replace) {
       window.history.replaceState({}, "", url.toString());
     } else {
@@ -148,7 +197,11 @@ class ExercisesApp {
     window.addEventListener("popstate", () => {
       this.viewGeneration++;
       this.locale = detectInitialLocale();
-      this.problemId = parseRouteProblemId();
+      const route = parseRouteState();
+      this.viewMode = route.viewMode;
+      this.problemId = route.problemId;
+      this.problemTab = route.problemTab;
+      this.pendingHash = window.location.hash || null;
       this.clearArmingState();
       this.lastReport = null;
       void this.render();
@@ -162,7 +215,7 @@ class ExercisesApp {
         const synced = normalizeLocale(e.newValue);
         if (synced && synced !== this.locale) {
           this.locale = synced;
-          this.pushUrl(this.problemId, true);
+          this.pushUrl(true, window.location.hash);
           void this.render();
         }
       } else if (e.key === "washi_exercises_progress_v1") {
@@ -202,6 +255,11 @@ class ExercisesApp {
       clearTimeout(this.armedSolutionTimer);
       this.armedSolutionTimer = null;
     }
+    this.armedClearAllSolved = false;
+    if (this.armedClearAllTimer !== null) {
+      clearTimeout(this.armedClearAllTimer);
+      this.armedClearAllTimer = null;
+    }
   }
 
   private updateThemeToggleUi(): void {
@@ -239,12 +297,31 @@ class ExercisesApp {
 
   private navigateToProblem(id: string | null): void {
     this.viewGeneration++;
-    this.problemId = id && getProblemById(id) ? id : null;
+    const resolved = id && getProblemById(id) ? id : null;
+    this.problemId = resolved;
+    this.viewMode = resolved ? "workspace" : "index";
+    this.problemTab = "problem";
+    this.pendingHash = null;
     this.clearArmingState();
     this.lastReport = null;
-    this.pushUrl(this.problemId);
+    this.pushUrl();
     void this.render();
     window.scrollTo({ top: 0 });
+  }
+
+  private navigateToGuide(hash: string = ""): void {
+    this.viewGeneration++;
+    this.viewMode = "guide";
+    this.problemId = null;
+    this.problemTab = "problem";
+    this.pendingHash = hash || null;
+    this.clearArmingState();
+    this.lastReport = null;
+    this.pushUrl(false, hash);
+    void this.render();
+    if (!hash) {
+      window.scrollTo({ top: 0 });
+    }
   }
 
   private setLocale(next: Locale): void {
@@ -256,7 +333,8 @@ class ExercisesApp {
     } catch {
       // Ignore storage failures
     }
-    this.pushUrl(this.problemId, true);
+    this.pendingHash = window.location.hash || null;
+    this.pushUrl(true, window.location.hash);
     void this.render();
   }
 
@@ -331,6 +409,63 @@ class ExercisesApp {
     });
   }
 
+  private async switchStatementTab(
+    next: "problem" | "editorial",
+    focusTab: boolean = false
+  ): Promise<void> {
+    if (this.problemTab === next && !focusTab) return;
+    this.problemTab = next;
+
+    const probTabBtn = this.root.querySelector<HTMLButtonElement>("#stmt-tab-problem");
+    const editTabBtn = this.root.querySelector<HTMLButtonElement>("#stmt-tab-editorial");
+    const probPanel = this.root.querySelector<HTMLElement>("#stmt-panel-problem");
+    const editPanel = this.root.querySelector<HTMLElement>("#stmt-panel-editorial");
+
+    if (probTabBtn && editTabBtn && probPanel && editPanel) {
+      probTabBtn.setAttribute("aria-selected", next === "problem" ? "true" : "false");
+      probTabBtn.tabIndex = next === "problem" ? 0 : -1;
+      editTabBtn.setAttribute("aria-selected", next === "editorial" ? "true" : "false");
+      editTabBtn.tabIndex = next === "editorial" ? 0 : -1;
+
+      if (next === "problem") {
+        probPanel.removeAttribute("hidden");
+        editPanel.setAttribute("hidden", "");
+        if (focusTab) probTabBtn.focus();
+      } else {
+        editPanel.removeAttribute("hidden");
+        probPanel.setAttribute("hidden", "");
+        if (focusTab) editTabBtn.focus();
+      }
+    }
+
+    this.pushUrl(true);
+
+    if (next === "editorial") {
+      const prob = this.getInteractiveProblem();
+      if (prob?.loadEditorial) {
+        const locale = this.locale;
+        const originGen = this.viewGeneration;
+        const edKey = `${prob.meta.id}:${locale}`;
+        let md = this.editorialCache.get(edKey);
+        if (md === undefined) {
+          try {
+            md = await prob.loadEditorial(locale);
+            if (originGen !== this.viewGeneration || this.locale !== locale) return;
+            this.editorialCache.set(edKey, md);
+          } catch (err) {
+            if (originGen !== this.viewGeneration || this.locale !== locale) return;
+            const msg = err instanceof Error ? err.message : String(err);
+            md = `Failed to load editorial (${msg}).`;
+          }
+        }
+        const edContainer = this.root.querySelector<HTMLElement>("#editorial-content");
+        if (edContainer && this.renderedProblemId === prob.meta.id) {
+          edContainer.innerHTML = renderSafeMarkdown(md);
+        }
+      }
+    }
+  }
+
   private getInteractiveProblem(): ProblemDefinition | null {
     if (!this.renderedProblemId || this.renderedProblemId !== this.problemId) {
       return null;
@@ -371,6 +506,17 @@ class ExercisesApp {
       return;
     }
 
+    const guideAnchor = target.closest<HTMLAnchorElement>(
+      '[data-action="guide"], a[href^="?view=guide"]'
+    );
+    if (guideAnchor && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const href = guideAnchor.getAttribute("href") ?? "?view=guide";
+      const parsed = new URL(href, window.location.href);
+      this.navigateToGuide(parsed.hash);
+      return;
+    }
+
     if (target.closest("#toc-drawer-toggle")) {
       const shell = this.root.querySelector<HTMLElement>(".book-shell.is-workspace");
       this.setTocDrawerOpen(!shell?.classList.contains("is-toc-open"));
@@ -395,10 +541,57 @@ class ExercisesApp {
       return;
     }
 
+    const stmtTabBtn = target.closest<HTMLButtonElement>('[role="tab"][data-stmt-tab]');
+    if (stmtTabBtn) {
+      const nextTab = stmtTabBtn.dataset.stmtTab as "problem" | "editorial";
+      await this.switchStatementTab(nextTab);
+      return;
+    }
+
     const tabBtn = target.closest<HTMLButtonElement>('[role="tab"][data-runtime]');
     if (tabBtn) {
       const rt = tabBtn.dataset.runtime as RuntimeId;
       this.switchRuntimeTab(rt);
+      return;
+    }
+
+    const clearAllBtn = target.closest<HTMLButtonElement>('[data-action="clear-all-solved"]');
+    if (clearAllBtn) {
+      const clearBtns = this.root.querySelectorAll<HTMLButtonElement>(
+        '[data-action="clear-all-solved"]'
+      );
+      if (!this.armedClearAllSolved) {
+        this.armedClearAllSolved = true;
+        clearBtns.forEach((b) => {
+          b.textContent = this.strings.confirmClearSolved;
+          b.classList.add("ex-btn-warning");
+        });
+        if (this.armedClearAllTimer !== null) clearTimeout(this.armedClearAllTimer);
+        this.armedClearAllTimer = setTimeout(() => {
+          this.armedClearAllSolved = false;
+          this.root
+            .querySelectorAll<HTMLButtonElement>('[data-action="clear-all-solved"]')
+            .forEach((b) => {
+              b.textContent = this.strings.clearSolvedBtn;
+              b.classList.remove("ex-btn-warning");
+            });
+        }, 5000);
+        return;
+      }
+      this.progress = clearAllSolved(this.progress);
+      saveProgress(this.progress);
+      this.clearArmingState();
+      void this.render();
+      return;
+    }
+
+    const clearProbBtn = target.closest<HTMLButtonElement>('[data-action="clear-problem-solved"]');
+    if (clearProbBtn) {
+      const prob = this.getInteractiveProblem();
+      if (!prob) return;
+      this.progress = clearSolvedProblem(this.progress, prob.meta.id);
+      saveProgress(this.progress);
+      this.refreshWorkspaceRuntimeStatus(prob.meta.id);
       return;
     }
 
@@ -495,7 +688,29 @@ class ExercisesApp {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    const tabBtn = target.closest<HTMLButtonElement>('[role="tab"]');
+    const stmtTabBtn = target.closest<HTMLButtonElement>('[role="tab"][data-stmt-tab]');
+    if (stmtTabBtn) {
+      if (
+        e.key === "ArrowLeft" ||
+        e.key === "ArrowRight" ||
+        e.key === "Home" ||
+        e.key === "End"
+      ) {
+        e.preventDefault();
+        const next: "problem" | "editorial" =
+          e.key === "Home"
+            ? "problem"
+            : e.key === "End"
+              ? "editorial"
+              : this.problemTab === "problem"
+                ? "editorial"
+                : "problem";
+        void this.switchStatementTab(next, true);
+      }
+      return;
+    }
+
+    const tabBtn = target.closest<HTMLButtonElement>('[role="tab"][data-runtime]');
     if (tabBtn) {
       if (
         e.key === "ArrowLeft" ||
@@ -616,6 +831,8 @@ class ExercisesApp {
           originGeneration,
           {
             error: runRes.error,
+            metrics: runRes.metrics,
+            failedSolverStatus: runRes.failedSolverStatus,
           }
         );
       }
@@ -645,6 +862,7 @@ class ExercisesApp {
     originGeneration: number,
     extra: {
       error?: string;
+      failedSolverStatus?: string;
       lpPreview?: string | null;
       metrics?: Array<{
         varCount: number;
@@ -663,11 +881,20 @@ class ExercisesApp {
 
     if (!ok) {
       const errText = extra.error || "Unknown execution error";
-      const looksInfeasible = /\b(?:Infeasible|INFEASIBLE|Unsat|UNSAT)\b/i.test(errText);
+      const mapped = extra.failedSolverStatus
+        ? applySolverStatusToVerdict(
+            { status: "RUNTIME_ERROR", ok: false, message: errText },
+            extra.failedSolverStatus,
+            this.strings.results.solverStatus
+          )
+        : null;
+      const looksInfeasible =
+        mapped?.status === "INFEASIBLE" ||
+        /\b(?:Infeasible|INFEASIBLE|Unsat|UNSAT)\b/i.test(errText);
       report = {
         overallStatus: looksInfeasible ? "INFEASIBLE" : "RUNTIME_ERROR",
         cases: [],
-        error: errText,
+        error: mapped ? mapped.message : errText,
         logs,
         lpPreview: extra.lpPreview ?? null,
         runTimeMs,
@@ -772,24 +999,50 @@ class ExercisesApp {
 
     const statusContainer = this.root.querySelector("#ws-solve-status");
     if (statusContainer) {
-      statusContainer.innerHTML = renderSolvedStatusBadgeHtml(solvedAny, this.strings);
+      statusContainer.innerHTML = renderWorkspaceSolvedControlHtml(solvedAny, this.strings);
+    }
+    const edPanel = this.root.querySelector<HTMLElement>("#stmt-panel-editorial");
+    if (edPanel) {
+      const existingNotice = edPanel.querySelector(".editorial-notice");
+      if (!solvedAny && !existingNotice) {
+        const notice = document.createElement("p");
+        notice.className = "editorial-notice";
+        notice.textContent = this.strings.sections.editorialNotice;
+        edPanel.prepend(notice);
+      } else if (solvedAny && existingNotice) {
+        existingNotice.remove();
+      }
     }
     const washiCheck = this.root.querySelector("#tab-washi .runtime-tab-check");
     if (washiCheck) washiCheck.textContent = washiSolved ? "✓" : "";
     const highspyCheck = this.root.querySelector("#tab-highspy .runtime-tab-check");
     if (highspyCheck) highspyCheck.textContent = highspySolved ? "✓" : "";
 
-    // Also update sidebar solved marker and progress label
+    // Also update sidebar solved marker, progress label, and clear-all-solved controls
     const sidebarLinks = this.root.querySelectorAll<HTMLElement>(
       `[data-sidebar-id="${problemId}"]`
     );
     sidebarLinks.forEach((link) => {
-      if (solvedAny) {
-        link.classList.add("is-solved");
-        const check = link.querySelector(".book-sidebar-check");
-        if (check) check.textContent = "✓";
+      link.classList.toggle("is-solved", solvedAny);
+      const check = link.querySelector(".book-sidebar-check");
+      if (check) check.textContent = solvedAny ? "✓" : "";
+    });
+
+    const hasAnySolved = Object.keys(this.progress.solved).length > 0;
+    this.root.querySelectorAll<HTMLElement>(".book-sidebar-progress-row").forEach((row) => {
+      const existingBtn = row.querySelector<HTMLButtonElement>('[data-action="clear-all-solved"]');
+      if (hasAnySolved && !existingBtn) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "clear-solved-link";
+        btn.dataset.action = "clear-all-solved";
+        btn.textContent = this.strings.clearSolvedBtn;
+        row.appendChild(btn);
+      } else if (!hasAnySolved && existingBtn) {
+        existingBtn.remove();
       }
     });
+
     const mainSolved = countMainSolved(
       this.progress,
       PROBLEMS.map((p) => p.meta)
@@ -818,7 +1071,7 @@ class ExercisesApp {
 
     let nextRenderedProblemId: string | null = null;
 
-    if (problemId) {
+    if (this.viewMode === "workspace" && problemId) {
       const idx = PROBLEMS.findIndex((p) => p.meta.id === problemId);
       const prob = idx >= 0 ? PROBLEMS[idx] : PROBLEMS[0];
       nextRenderedProblemId = prob.meta.id;
@@ -826,8 +1079,15 @@ class ExercisesApp {
       const nextProb = idx >= 0 && idx + 1 < PROBLEMS.length ? PROBLEMS[idx + 1] : null;
       const cacheKey = `${prob.meta.id}:${locale}`;
       let problemMarkdown = this.markdownCache.get(cacheKey);
+      let editorialMarkdown: string | null = null;
+      if (this.problemTab === "editorial" && prob.loadEditorial) {
+        editorialMarkdown = this.editorialCache.get(cacheKey) ?? null;
+      }
 
-      if (problemMarkdown === undefined) {
+      if (
+        problemMarkdown === undefined ||
+        (this.problemTab === "editorial" && prob.loadEditorial && editorialMarkdown === null)
+      ) {
         // Disable stale workspace controls while loading the next statement so edits/actions
         // cannot be applied to the newly selected route before its DOM renders.
         const staleSplit = this.root.querySelector<HTMLElement>(".ws-split");
@@ -838,15 +1098,41 @@ class ExercisesApp {
         this.root.querySelectorAll<HTMLTextAreaElement>("textarea.code-editor").forEach((ta) => {
           ta.readOnly = true;
         });
-        try {
-          problemMarkdown = await prob.loadMarkdown(locale);
-          if (seq !== this.renderSeq) return;
-          this.markdownCache.set(cacheKey, problemMarkdown);
-        } catch (err) {
-          if (seq !== this.renderSeq) return;
-          const msg = err instanceof Error ? err.message : String(err);
-          problemMarkdown = `# ${prob.meta.title[locale]}\n\n<!-- section:scenario -->\nFailed to load problem statement (${msg}). Please reload to retry.\n`;
+
+        const tasks: Array<Promise<void>> = [];
+        if (problemMarkdown === undefined) {
+          tasks.push(
+            prob
+              .loadMarkdown(locale)
+              .then((md) => {
+                if (seq === this.renderSeq) {
+                  this.markdownCache.set(cacheKey, md);
+                }
+                problemMarkdown = md;
+              })
+              .catch((err) => {
+                const msg = err instanceof Error ? err.message : String(err);
+                problemMarkdown = `# ${prob.meta.title[locale]}\n\n<!-- section:scenario -->\nFailed to load problem statement (${msg}). Please reload to retry.\n`;
+              })
+          );
         }
+        if (this.problemTab === "editorial" && prob.loadEditorial && editorialMarkdown === null) {
+          tasks.push(
+            prob
+              .loadEditorial(locale)
+              .then((md) => {
+                if (seq === this.renderSeq) {
+                  this.editorialCache.set(cacheKey, md);
+                }
+                editorialMarkdown = md;
+              })
+              .catch((err) => {
+                const msg = err instanceof Error ? err.message : String(err);
+                editorialMarkdown = `Failed to load editorial (${msg}).`;
+              })
+          );
+        }
+        await Promise.all(tasks);
       }
 
       if (seq !== this.renderSeq) return;
@@ -858,13 +1144,38 @@ class ExercisesApp {
         chapters: CHAPTERS,
         problems: PROBLEMS,
         problem: prob,
-        problemMarkdown,
+        problemMarkdown: problemMarkdown ?? "",
+        editorialMarkdown,
+        problemTab: this.problemTab,
         prevProblem: prevProb,
         nextProblem: nextProb,
         progress: this.progress,
         activeRuntime: this.activeRuntime,
         washiCode: this.getDraftCode(prob, "washi"),
         highspyCode: this.getDraftCode(prob, "highspy"),
+      });
+    } else if (this.viewMode === "guide") {
+      let guideMarkdown = this.guideCache.get(locale);
+      if (guideMarkdown === undefined) {
+        try {
+          guideMarkdown = await loadGuideMarkdown(locale);
+          if (seq !== this.renderSeq) return;
+          this.guideCache.set(locale, guideMarkdown);
+        } catch (err) {
+          if (seq !== this.renderSeq) return;
+          const msg = err instanceof Error ? err.message : String(err);
+          guideMarkdown = `# ${strings.guideTitle}\n\nFailed to load guide (${msg}).`;
+        }
+      }
+      if (seq !== this.renderSeq) return;
+      document.title = `${strings.guideTitle} — ${strings.brandTitle}`;
+      bodyHtml = renderGuidePageHtml({
+        locale,
+        strings,
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
+        progress: this.progress,
+        guideMarkdown,
       });
     } else {
       document.title = `${strings.brandTitle} | WaSHI`;
@@ -881,7 +1192,15 @@ class ExercisesApp {
     this.root.innerHTML = `${headerHtml}${bodyHtml}`;
     this.renderedProblemId = nextRenderedProblemId;
 
-    if (problemId && this.lastReport) {
+    if (this.pendingHash) {
+      const targetId = this.pendingHash.replace(/^#/, "");
+      this.pendingHash = null;
+      if (targetId) {
+        document.getElementById(targetId)?.scrollIntoView();
+      }
+    }
+
+    if (this.viewMode === "workspace" && problemId && this.lastReport) {
       const resultsEl = this.root.querySelector<HTMLElement>("#judge-results");
       if (resultsEl) {
         resultsEl.innerHTML = renderResultsHtml(locale, strings, this.lastReport);

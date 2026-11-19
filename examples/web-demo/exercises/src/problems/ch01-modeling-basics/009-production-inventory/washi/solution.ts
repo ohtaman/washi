@@ -29,7 +29,7 @@ export async function solve(input: P009Input): Promise<P009Output> {
   const overtime = input.otCap.map((ub, t) =>
     m.continuous({ lb: 0, ub, name: `ot_${t}` })
   );
-  const inventory = Array.from({ length: T }, (_, t) =>
+  const inventory = input.demands.map((_, t) =>
     m.continuous({
       lb: t === T - 1 ? input.minFinalInventory : 0,
       ub: input.invCap,
@@ -37,24 +37,19 @@ export async function solve(input: P009Input): Promise<P009Output> {
     })
   );
 
-  for (let t = 0; t < T; t++) {
-    const prev = t === 0 ? input.initialInventory : inventory[t - 1];
-    m.constraint(
-      expr`${prev} + ${regular[t]} + ${overtime[t]} - ${inventory[t]} == ${input.demands[t]}`,
-      `balance_${t}`
-    );
-  }
+  m.constraint(
+    input.demands.map((demand, t) => {
+      const prev = t === 0 ? input.initialInventory : inventory[t - 1];
+      return expr`${prev} + ${regular[t]} + ${overtime[t]} - ${inventory[t]} == ${demand}`;
+    })
+  );
 
   m.objective(
     minimize(
       expr`${input.regCost} * ${sum(regular)} + ${input.otCost} * ${sum(overtime)} + ${input.holdCost} * ${sum(inventory)}`
     )
   );
-
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
     regular: regular.map((v) => v.value!),

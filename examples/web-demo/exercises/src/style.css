@@ -355,11 +355,43 @@ button {
   color: var(--text);
 }
 
-.book-sidebar-progress {
+.book-sidebar-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  flex-wrap: wrap;
   padding: 0 0.55rem;
+}
+
+.book-sidebar-progress {
   font-family: var(--font-mono);
   font-size: 0.76rem;
   color: var(--text-muted);
+}
+
+.clear-solved-link,
+.ws-clear-solved-btn {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.clear-solved-link:hover,
+.ws-clear-solved-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.ws-solve-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .book-sidebar-nav {
@@ -903,11 +935,64 @@ button {
 }
 
 .ws-provenance {
-  margin: 0 0 1.35rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid var(--border);
+  margin: 0 0 0.75rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.ws-stmt-tablist {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 1.1rem;
+}
+
+.ws-stmt-tab {
+  min-height: 40px;
+  padding: 0.45rem 0.85rem;
+}
+
+.editorial-notice {
+  margin: 0 0 1.1rem;
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid var(--border-strong);
+  border-radius: 0 6px 6px 0;
+  background: var(--surface-alt);
+  color: var(--text-sub);
+  font-size: 0.86rem;
+}
+
+.editorial-body h2,
+.guide-sheet h2 {
+  margin: 1.45rem 0 0.6rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--accent);
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.guide-topbar {
+  margin-bottom: 0.85rem;
+}
+
+.guide-sheet {
+  max-width: 780px;
+  padding-bottom: 3rem;
+}
+
+.guide-sheet h1 {
+  margin: 0 0 0.85rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.chapter-tutorial {
+  margin-bottom: 1.75rem;
 }
 
 .md-section {
@@ -1182,7 +1267,7 @@ details.hint-accordion[open] summary::after {
   display: none;
 }
 
-[role="tabpanel"]:not([hidden]) {
+.answer-workbench > [role="tabpanel"]:not([hidden]) {
   flex: 1 1 0;
   min-height: 0;
   display: flex;

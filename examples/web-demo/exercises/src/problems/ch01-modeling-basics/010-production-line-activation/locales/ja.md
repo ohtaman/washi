@@ -48,23 +48,3 @@
 ```
 
 ライン 0 は単位利益が 50 と最も高いものの、材料効率（50/2 = 25）が低く固定費 600 も重いため稼働を見送り、ライン 1・2 を稼働させて `[0, 30, 25]` と生産すると純利益 **1,525** が最大になります。
-
-<!-- section:hint1 -->
-0-1 配列 `open` と連続配列 `quantities` は宣言済みです。各ライン $i$ について次の上限制約で「稼働と生産量」を結びつけます：
-$$\text{quantities}[i] \le \text{capacities}[i] \cdot \text{open}[i]$$
-`open[i] = 0` のとき右辺が `0` になるため、生産量も強制的に `0` に抑えられます。
-
-<!-- section:hint2 -->
-共有原料制約 `dot(input.materialUsages, quantities) <= input.materialCap` を追加し、目的関数 `dot(input.margins, quantities) - dot(input.fixedCosts, open)` を最大化してください。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} m_i q_i - \sum_{i=0}^{n-1} F_i y_i \\
-\text{s.t.} \quad & 0 \le q_i \le C_i y_i && \forall i \in \{0, \dots, n-1\} \\
-& \sum_{i=0}^{n-1} a_i q_i \le M_{\text{cap}} \\
-& y_i \in \{0, 1\} && \forall i
-\end{aligned}
-$$
-
-連続変数と 0-1 変数を「$q_i \le C_i y_i$」でつなぐ構造は、第1章で学んだ LP と 0-1 計画の融合であり、第2章の Big-M 法・固定費ネットワークの基礎になります。

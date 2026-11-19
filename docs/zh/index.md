@@ -9,6 +9,9 @@ hero:
       text: 快速入门
       link: /zh/getting-started/
     - theme: alt
+      text: 百题训练
+      link: /exercises/?lang=zh
+    - theme: alt
       text: 案例展示
       link: /zh/showcase/
 

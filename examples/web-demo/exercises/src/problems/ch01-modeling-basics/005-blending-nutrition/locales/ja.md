@@ -52,23 +52,3 @@
 ```
 
 最も安価な原料 0 だけでは元素 0 の割合が 20% にとどまり下限 35% を満たせません。原料 0 を 62.5 kg、原料 1 を 37.5 kg 配合すると、元素 0 が 35%・元素 1 が 38.75%・元素 2 が 21.25% となり、最小コスト **37,500** で規格を満たします。
-
-<!-- section:hint1 -->
-「$\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$」は一見すると割り算を含む非線形制約に見えます。しかしこの問題では総重量 $\sum_i x_i$ が定数 `targetBatch` に固定されているため、両辺に `targetBatch` を掛けることで純粋な線形制約になります。
-
-<!-- section:hint2 -->
-変数 `amounts`（在庫上界つき）の宣言は用意済みです。合計重量の等式 `sum(amounts) == targetBatch` と、各元素 $k$ に対して次の 2 本の制約を追加してください：
-- `elemWeight_k >= minRatios[k] * targetBatch`
-- `elemWeight_k <= maxRatios[k] * targetBatch`
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min \quad & \sum_{i=0}^{n-1} c_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} x_i = B \\
-& L_k B \le \sum_{i=0}^{n-1} p_{i,k} x_i \le U_k B && \forall k \\
-& 0 \le x_i \le A_i && \forall i
-\end{aligned}
-$$
-
-割合制約の分母がバッチ総量 $B$ として固定されている間は分母を払うだけで LP に落ちます。（分母も変数になる分数計画の扱いは第 2 章で詳しく扱います。）

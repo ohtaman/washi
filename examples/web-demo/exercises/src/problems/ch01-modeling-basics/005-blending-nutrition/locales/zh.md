@@ -52,23 +52,3 @@
 ```
 
 单用最便宜的原料 0 时元素 0 含量只有 20%（低于 35%）；按 62.5 kg 原料 0 与 37.5 kg 原料 1 混合可使元素 0 达到 35%、元素 1 达到 38.75%、元素 2 为 21.25%，以最低总成本 **37,500** 达标。
-
-<!-- section:hint1 -->
-占比约束 $\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$ 看上去是非线性的分式；但由于本题要求总重量 $\sum_i x_i$ 严格等于常数 `targetBatch`，两边同乘 `targetBatch` 即可直接线性化！
-
-<!-- section:hint2 -->
-初始代码中已按库存上界创建了变量 `amounts`。只需补充总量等式 `sum(amounts) == targetBatch`，并对每种元素 $k$ 添加：
-- `elemWeight_k >= minRatios[k] * targetBatch`
-- `elemWeight_k <= maxRatios[k] * targetBatch`
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\min \quad & \sum_{i=0}^{n-1} c_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} x_i = B \\
-& L_k B \le \sum_{i=0}^{n-1} p_{i,k} x_i \le U_k B && \forall k \\
-& 0 \le x_i \le A_i && \forall i
-\end{aligned}
-$$
-
-只要百分比分母是固定的批次重量 $B$，消除分母就能保持纯线性规划（LP）。当分母也是变量时的处理技巧将在第 2 章探讨。

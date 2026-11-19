@@ -48,23 +48,3 @@
 ```
 
 产线 0 虽单品毛利最高（50），但单位原材料收益仅 25 且固定成本高达 600。关闭产线 0 并在产线 1、2 分别生产 30 与 25，取得最大净利润 **1,525**。
-
-<!-- section:hint1 -->
-初始代码中已声明二进制数组 `open` 与连续数组 `quantities`。请对每条产线 $i$ 添加线性产能关联约束：
-$$\text{quantities}[i] \le \text{capacities}[i] \cdot \text{open}[i]$$
-当 `open[i] = 0` 时右端变为 `0`，从而强制关闭产线零产出。
-
-<!-- section:hint2 -->
-别忘了添加共享原材料总约束 `dot(input.materialUsages, quantities) <= input.materialCap`，并最大化净利润 `dot(input.margins, quantities) - dot(input.fixedCosts, open)`。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} m_i q_i - \sum_{i=0}^{n-1} F_i y_i \\
-\text{s.t.} \quad & 0 \le q_i \le C_i y_i && \forall i \in \{0, \dots, n-1\} \\
-& \sum_{i=0}^{n-1} a_i q_i \le M_{\text{cap}} \\
-& y_i \in \{0, 1\} && \forall i
-\end{aligned}
-$$
-
-这种“连续流量 $\le$ 产能 $\times$ 0-1开关”的混合建模模式，把第一章学到的连续 LP 与 0-1 决策结合到了一起，也为第 2 章的 Big-M 与固定费用网络选址打下基础。

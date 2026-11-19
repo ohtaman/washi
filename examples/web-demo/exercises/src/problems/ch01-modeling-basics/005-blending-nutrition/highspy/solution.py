@@ -29,10 +29,6 @@ def solve(input_data: dict) -> dict:
 
     h.minimize(h.qsum(costs[i] * amounts[i] for i in range(n_raw)))
 
-    status = h.modelStatusToString(h.getModelStatus())
-    if status != "Optimal":
-        raise RuntimeError(f"Expected Optimal, got {status}")
-
     return {
         "amounts": [float(h.val(v)) for v in amounts],
         "totalCost": float(h.getObjectiveValue()),

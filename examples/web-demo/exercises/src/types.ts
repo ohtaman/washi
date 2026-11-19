@@ -68,6 +68,7 @@ export interface ChapterInfo {
 export interface ProblemDefinition<TInput = any, TOutput = any> {
   meta: ProblemMeta;
   loadMarkdown: (locale: Locale) => Promise<string>;
+  loadEditorial?: (locale: Locale) => Promise<string>;
   cases: ProblemCase<TInput>[];
   washiStarter: string;
   washiSolution: string;

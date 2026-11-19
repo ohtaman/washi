@@ -42,18 +42,3 @@
 ```
 
 若按性价比贪心选择会剩余 3 单位无法利用的预算（收益仅 30）；改为立项项目 1、2、3 恰好用完 $5 + 7 + 3 = 15$ 预算，取得最大收益 **36**。
-
-<!-- section:hint1 -->
-初始代码中已声明二进制变量数组 `selected`（WaSHI 为 `m.binary(...)`，Python 为 `h.addBinary(...)`）。只需添加预算约束 `dot(costs, selected) <= budget` 并最大化 `dot(values, selected)`。
-
-<!-- section:hint2 -->
-构造返回值数组时请用 `Math.round(v.value!)`（Python 中用 `round(h.val(v))`），避免 `0.999999999` 或 `-0` 等浮点精度尾巴。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} v_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} c_i x_i \le B \\
-& x_i \in \{0, 1\} && \forall i \in \{0, \dots, n-1\}
-\end{aligned}
-$$

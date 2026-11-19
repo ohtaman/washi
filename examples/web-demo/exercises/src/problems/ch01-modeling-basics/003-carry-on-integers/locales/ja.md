@@ -44,19 +44,3 @@
 ```
 
 アイテム 0 を 2 個・アイテム 1 を 1 個選ぶと総重量が $2 \times 3 + 1 \times 4 = 10$ となり、整数解としての最大価値 **135** を達成します。
-
-<!-- section:hint1 -->
-- **WaSHI**: `m.integer(...)` で整数変数を宣言し、`` m.constraint(expr`dot(${input.weights}, ${counts}) <= ${input.maxWeight}`) `` で重量上限を追加します。
-- **highspy**: `h.addIntegral(lb=0, ub=cap, name=f"item_{i}")` で整数変数を作り、`h.addConstr(h.qsum(...) <= input_data["maxWeight"])` を追加します。
-
-<!-- section:hint2 -->
-整数変数であっても、内部の浮動小数点計算により返ってくる値が `1.999999999` や `-0` になることがあります。返り値を作るときに `Math.round(v.value!)`（Python なら `round(h.val(x))`）で整数に丸めるクセをつけておくと安全です。
-
-<!-- section:formulation -->
-$$
-\begin{aligned}
-\max \quad & \sum_{i=0}^{n-1} v_i x_i \\
-\text{s.t.} \quad & \sum_{i=0}^{n-1} w_i x_i \le W_{\max} \\
-& x_i \in \{0, 1, \dots, u_i\} \quad \forall i
-\end{aligned}
-$$

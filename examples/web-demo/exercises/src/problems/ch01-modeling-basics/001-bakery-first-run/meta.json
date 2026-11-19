@@ -4,7 +4,7 @@
   "chapter": 1,
   "order": 1,
   "role": "intro",
-  "scaffold": "fix-one-line",
+  "scaffold": "fill-in",
   "difficulty": 1,
   "estimatedMinutes": 2,
   "paradigms": [

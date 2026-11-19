@@ -28,7 +28,7 @@ export async function solve(input: P003Input): Promise<P003Output> {
   await m.solve();
 
   return {
-    counts: counts.map((v) => Math.round(v.value!)),
-    totalValue: Math.round(m.objectiveValue!),
+    counts: counts.map((v) => Math.round(v.value!) || 0),
+    totalValue: Math.round(m.objectiveValue!) || 0,
   };
 }

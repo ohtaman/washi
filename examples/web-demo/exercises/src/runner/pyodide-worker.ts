@@ -83,28 +83,98 @@ def __washi_to_jsonable(obj):
         return [__washi_to_jsonable(v) for v in obj]
     raise TypeError(f"Unsupported output type: {type(obj).__name__}")
 
+_washi_tracked_models = []
+_washi_orig_highs = highspy.Highs
+try:
+    class _WashiTrackedHighs(_washi_orig_highs):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            _washi_tracked_models.append(self)
+    highspy.Highs = _WashiTrackedHighs
+except TypeError:
+    def _washi_make_highs(*args, **kwargs):
+        inst = _washi_orig_highs(*args, **kwargs)
+        _washi_tracked_models.append(inst)
+        return inst
+    highspy.Highs = _washi_make_highs
+
+def _washi_normalize_status(model, status_enum):
+    ms = highspy.HighsModelStatus
+    if status_enum == ms.kOptimal:
+        return "Optimal"
+    if status_enum == ms.kInfeasible:
+        return "Infeasible"
+    if status_enum == ms.kUnbounded:
+        return "Unbounded"
+    if status_enum == ms.kUnboundedOrInfeasible:
+        return "InfeasibleOrUnbounded"
+    if status_enum == ms.kNotset:
+        return "NotSolved"
+    return str(model.modelStatusToString(status_enum))
+
 def __washi_run_batch(code_str, inputs_json):
     inputs = json.loads(inputs_json)
     stdout_buf = io.StringIO()
     ns = {}
     try:
+        _washi_tracked_models.clear()
         with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stdout_buf):
             exec(compile(code_str, "solution.py", "exec"), ns)
             fn = ns.get("solve")
             if not callable(fn):
                 raise RuntimeError("Could not find Python function solve(input_data).")
-            outputs = [__washi_to_jsonable(fn(inp)) for inp in inputs]
+            outputs = []
+            metrics = []
+            for inp in inputs:
+                _washi_tracked_models.clear()
+                raw_out = fn(inp)
+                if _washi_tracked_models:
+                    primary = _washi_tracked_models[-1]
+                    st_norm = _washi_normalize_status(primary, primary.getModelStatus())
+                    rt_sec = primary.getRunTime() if hasattr(primary, "getRunTime") else None
+                    metric = {
+                        "varCount": int(primary.getNumCol()),
+                        "constraintCount": int(primary.getNumRow()),
+                        "solveTimeMs": (
+                            float(rt_sec) * 1000.0
+                            if isinstance(rt_sec, (int, float)) and math.isfinite(rt_sec)
+                            else None
+                        ),
+                        "solverStatus": st_norm,
+                    }
+                else:
+                    st_norm = None
+                    metric = {
+                        "varCount": 0,
+                        "constraintCount": 0,
+                        "solveTimeMs": None,
+                        "solverStatus": None,
+                    }
+                outputs.append(__washi_to_jsonable(raw_out))
+                metrics.append(metric)
         return json.dumps({
             "ok": True,
             "outputs": outputs,
+            "metrics": metrics,
             "logs": stdout_buf.getvalue().splitlines(),
         })
     except Exception as exc:
+        failed_status = None
+        if _washi_tracked_models:
+            try:
+                primary = _washi_tracked_models[-1]
+                st_norm = _washi_normalize_status(primary, primary.getModelStatus())
+                if st_norm in ("Infeasible", "InfeasibleOrUnbounded", "Unbounded"):
+                    failed_status = st_norm
+            except Exception:
+                failed_status = None
         return json.dumps({
             "ok": False,
             "outputs": [],
+            "metrics": [],
             "logs": stdout_buf.getvalue().splitlines(),
             "error": str(exc) + "\\n" + traceback.format_exc(),
+            **({"failedSolverStatus": failed_status} if failed_status else {}),
         })
 `);
       initialized = true;
@@ -142,6 +212,8 @@ self.onmessage = async (event: MessageEvent<{ requestId: number; code: string; i
     const parsed = JSON.parse(rawJson) as {
       ok: boolean;
       outputs: unknown[];
+      metrics?: unknown[];
+      failedSolverStatus?: string;
       logs: string[];
       error?: string;
     };

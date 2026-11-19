@@ -18,14 +18,10 @@ export async function solve(input: P006Input): Promise<P006Output> {
 
   m.constraint(expr`dot(${input.costs}, ${selected}) <= ${input.budget}`, "budget");
   m.objective(maximize(expr`dot(${input.values}, ${selected})`));
-
-  const status = await m.solve();
-  if (status !== "Optimal") {
-    throw new Error(`Expected Optimal, got ${status}`);
-  }
+  await m.solve();
 
   return {
-    selected: selected.map((v) => Math.round(v.value!)),
+    selected: selected.map((v) => Math.round(v.value!) || 0),
     totalValue: m.objectiveValue!,
   };
 }

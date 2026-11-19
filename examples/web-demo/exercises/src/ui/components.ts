@@ -52,6 +52,22 @@ export function renderSolvedStatusBadgeHtml(
   )}</span>`;
 }
 
+export function renderWorkspaceSolvedControlHtml(
+  solved: boolean,
+  strings: ExercisesUiStrings
+): string {
+  const badge = renderSolvedStatusBadgeHtml(solved, strings);
+  if (!solved) return badge;
+  return `${badge}<button
+    type="button"
+    id="clear-problem-solved-btn"
+    class="ws-clear-solved-btn"
+    data-action="clear-problem-solved"
+    aria-label="${escapeHtml(strings.clearThisSolvedLabel)}"
+    title="${escapeHtml(strings.clearThisSolvedLabel)}"
+  >${escapeHtml(strings.clearThisSolvedBtn)}</button>`;
+}
+
 export function renderProvenanceText(
   meta: ProblemMeta,
   strings: ExercisesUiStrings
@@ -160,13 +176,41 @@ function renderBookSidebarHtml(params: {
   problems: ProblemDefinition[];
   progress: ProgressState;
   activeProblemId: string | null;
+  activePage?: "overview" | "guide" | "problem";
   isDrawer?: boolean;
 }): string {
-  const { locale, strings, chapters, problems, progress, activeProblemId, isDrawer = false } = params;
+  const {
+    locale,
+    strings,
+    chapters,
+    problems,
+    progress,
+    activeProblemId,
+    activePage = activeProblemId !== null ? "problem" : "overview",
+    isDrawer = false,
+  } = params;
   const summaries = problems.map((p) => p.meta);
   const mainSolved = countMainSolved(progress, summaries);
+  const hasAnySolved = Object.keys(progress.solved).length > 0;
+  const tutorialProblems = problems.filter((p) => p.meta.chapter === 0);
   const availableChapters = chapters.filter((ch) => ch.available);
   const upcomingChapters = chapters.filter((ch) => !ch.available);
+
+  const tutorialBlockHtml =
+    tutorialProblems.length > 0
+      ? `
+        <div class="book-sidebar-group">
+          <div class="book-sidebar-chapter-title">
+            ${escapeHtml(strings.tutorialGroupTitle)}
+          </div>
+          <ol class="book-sidebar-items">
+            ${tutorialProblems
+              .map((p) => renderSidebarProblemItemHtml(p, locale, progress, activeProblemId))
+              .join("")}
+          </ol>
+        </div>
+      `
+      : "";
 
   const chapterBlocksHtml = availableChapters
     .map((ch) => {
@@ -218,9 +262,14 @@ function renderBookSidebarHtml(params: {
       <div class="mobile-toc-body">
         <a
           href="?lang=${locale}"
-          class="book-sidebar-overview${activeProblemId === null ? " is-active" : ""}"
+          class="book-sidebar-overview${activePage === "overview" ? " is-active" : ""}"
           data-action="home"
         >${escapeHtml(strings.overviewLink)}</a>
+        <a
+          href="?view=guide&lang=${locale}"
+          class="book-sidebar-overview${activePage === "guide" ? " is-active" : ""}"
+          data-action="guide"
+        >${escapeHtml(strings.guideLink)}</a>
         <ol class="book-sidebar-items">
           ${mobileLinksHtml}
         </ol>
@@ -248,16 +297,31 @@ function renderBookSidebarHtml(params: {
         <div class="book-sidebar-head-row">
           <a
             href="?lang=${locale}"
-            class="book-sidebar-overview${activeProblemId === null ? " is-active" : ""}"
+            class="book-sidebar-overview${activePage === "overview" ? " is-active" : ""}"
             data-action="home"
           >${escapeHtml(strings.overviewLink)}</a>
           ${closeBtnHtml}
         </div>
-        <div class="book-sidebar-progress" id="sidebar-progress-text">
-          ${escapeHtml(strings.progressLabel(mainSolved, 100))}
+        <a
+          href="?view=guide&lang=${locale}"
+          class="book-sidebar-overview${activePage === "guide" ? " is-active" : ""}"
+          data-action="guide"
+        >${escapeHtml(strings.guideLink)}</a>
+        <div class="book-sidebar-progress-row">
+          <div class="book-sidebar-progress" id="sidebar-progress-text">
+            ${escapeHtml(strings.progressLabel(mainSolved, 100))}
+          </div>
+          ${
+            hasAnySolved
+              ? `<button type="button" class="clear-solved-link" data-action="clear-all-solved">${escapeHtml(
+                  strings.clearSolvedBtn
+                )}</button>`
+              : ""
+          }
         </div>
       </div>
       <nav class="book-sidebar-nav" aria-label="${escapeHtml(strings.sidebarTocLabel)}">
+        ${tutorialBlockHtml}
         ${chapterBlocksHtml}
         ${upcomingHtml}
       </nav>
@@ -284,6 +348,14 @@ function renderTocRowHtml(
     .filter(Boolean)
     .join(" ");
 
+  const metaParts = [
+    ...meta.paradigms,
+    strings.difficultyLabel(meta.difficulty),
+    strings.estimatedMinutesLabel(meta.estimatedMinutes),
+  ]
+    .map((part) => escapeHtml(part))
+    .join(" · ");
+
   return `
     <li class="${rowClasses}" data-problem-id="${escapeHtml(meta.id)}">
       <span class="toc-num">#${escapeHtml(meta.id)}</span>
@@ -296,9 +368,7 @@ function renderTocRowHtml(
         <p class="toc-row-sub">${escapeHtml(meta.subtitle[locale])}</p>
       </div>
       <div class="toc-row-meta">
-        <span class="toc-meta-tags"><span class="toc-role${isCapstone ? " is-capstone" : ""}">${escapeHtml(roleLabel)}</span> · ${meta.paradigms.map((p) => escapeHtml(p)).join(" · ")} · ${escapeHtml(
-          strings.difficultyLabel(meta.difficulty)
-        )} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
+        <span class="toc-meta-tags"><span class="toc-role${isCapstone ? " is-capstone" : ""}">${escapeHtml(roleLabel)}</span> · ${metaParts}</span>
         ${renderSolvedStatusBadgeHtml(solved, strings)}
       </div>
     </li>
@@ -315,10 +385,12 @@ export function renderExerciseIndexHtml(params: {
   const { locale, strings, chapters, problems, progress } = params;
   const summaries = problems.map((p) => p.meta);
   const mainSolved = countMainSolved(progress, summaries);
+  const hasAnySolved = Object.keys(progress.solved).length > 0;
   const nextId = getNextRecommendedProblemId(progress, summaries);
   const ctaLabel =
     mainSolved === 0 ? strings.startFirstBtn : strings.resumeBtn(nextId);
 
+  const tutorialProblems = problems.filter((p) => p.meta.chapter === 0);
   const ch1Problems = problems.filter((p) => p.meta.chapter === 1);
   const ch1Info = chapters.find((c) => c.chapter === 1);
   const upcomingChapters = chapters.filter((c) => !c.available);
@@ -333,6 +405,7 @@ export function renderExerciseIndexHtml(params: {
         problems,
         progress,
         activeProblemId: null,
+        activePage: "overview",
       })}
       <main class="book-main">
         <section class="ex-hero">
@@ -345,14 +418,44 @@ export function renderExerciseIndexHtml(params: {
               data-nav-id="${escapeHtml(nextId)}"
               id="hero-primary-cta"
             >${escapeHtml(ctaLabel)}</a>
+            <a
+              href="?view=guide&lang=${locale}"
+              class="ex-btn-ghost"
+              data-action="guide"
+              id="hero-guide-link"
+            >${escapeHtml(strings.guideLink)}</a>
             <div class="ex-progress-inline">
               <span class="ex-stat-main" id="main-progress-text">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
               <div class="progress-track" aria-hidden="true">
                 <div class="progress-fill" style="width: ${pct}%"></div>
               </div>
+              ${
+                hasAnySolved
+                  ? `<button type="button" id="clear-all-solved-btn" class="clear-solved-link" data-action="clear-all-solved">${escapeHtml(
+                      strings.clearSolvedBtn
+                    )}</button>`
+                  : ""
+              }
             </div>
           </div>
         </section>
+
+        ${
+          tutorialProblems.length > 0
+            ? `
+          <section class="chapter-section chapter-tutorial" aria-labelledby="ch0-heading">
+            <div class="chapter-head">
+              <div class="chapter-title-wrap">
+                <h2 id="ch0-heading" class="chapter-title">${escapeHtml(strings.tutorialGroupTitle)}</h2>
+              </div>
+            </div>
+            <ol class="toc-list">
+              ${tutorialProblems.map((p) => renderTocRowHtml(p, locale, strings, progress)).join("")}
+            </ol>
+          </section>
+        `
+            : ""
+        }
 
         ${
           ch1Info
@@ -401,6 +504,40 @@ export function renderExerciseIndexHtml(params: {
   `;
 }
 
+export function renderGuidePageHtml(params: {
+  locale: Locale;
+  strings: ExercisesUiStrings;
+  chapters: ChapterInfo[];
+  problems: ProblemDefinition[];
+  progress: ProgressState;
+  guideMarkdown: string;
+}): string {
+  const { locale, strings, chapters, problems, progress, guideMarkdown } = params;
+  return `
+    <div class="book-shell">
+      ${renderBookSidebarHtml({
+        locale,
+        strings,
+        chapters,
+        problems,
+        progress,
+        activeProblemId: null,
+        activePage: "guide",
+      })}
+      <main class="book-main">
+        <div class="guide-topbar">
+          <a href="?lang=${locale}" class="ws-back-link" data-action="home" id="guide-back-to-map-btn">
+            ${escapeHtml(strings.backToMap)}
+          </a>
+        </div>
+        <article class="guide-sheet md-body" id="guide-content">
+          ${renderSafeMarkdown(guideMarkdown)}
+        </article>
+      </main>
+    </div>
+  `;
+}
+
 export function renderWorkspaceHtml(params: {
   locale: Locale;
   strings: ExercisesUiStrings;
@@ -408,6 +545,8 @@ export function renderWorkspaceHtml(params: {
   problems: ProblemDefinition[];
   problem: ProblemDefinition;
   problemMarkdown: string;
+  editorialMarkdown?: string | null;
+  problemTab?: "problem" | "editorial";
   prevProblem: ProblemDefinition | null;
   nextProblem: ProblemDefinition | null;
   progress: ProgressState;
@@ -422,6 +561,8 @@ export function renderWorkspaceHtml(params: {
     problems,
     problem,
     problemMarkdown,
+    editorialMarkdown = null,
+    problemTab = "problem",
     prevProblem,
     nextProblem,
     progress,
@@ -442,6 +583,35 @@ export function renderWorkspaceHtml(params: {
     strings.difficultyLabel(meta.difficulty),
     strings.estimatedMinutesLabel(meta.estimatedMinutes),
   ];
+
+  const hasExternalEditorial = Boolean(problem.loadEditorial);
+  const hintItemsHtml = [
+    sections.hint1
+      ? `<details class="hint-accordion"><summary>${escapeHtml(strings.sections.hint1)}</summary><div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint1)}</div></details>`
+      : "",
+    sections.hint2
+      ? `<details class="hint-accordion"><summary>${escapeHtml(strings.sections.hint2)}</summary><div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint2)}</div></details>`
+      : "",
+    !hasExternalEditorial && sections.formulation
+      ? `<details class="hint-accordion"><summary>${escapeHtml(strings.sections.formulation)}</summary><div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.formulation)}</div></details>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const hintsGroupHtml = hintItemsHtml
+    ? `
+      <div class="hints-group">
+        <h2 class="hints-heading">${escapeHtml(strings.sections.hintsTitle)}</h2>
+        ${hintItemsHtml}
+      </div>
+    `
+    : "";
+
+  const editorialSource = editorialMarkdown ?? (sections.formulation || "");
+  const editorialBodyHtml = editorialSource
+    ? renderSafeMarkdown(editorialSource)
+    : `<p class="editorial-loading">Loading…</p>`;
 
   const renderToolbarAndEditor = (runtime: RuntimeId, code: string) => {
     const lang = runtime === "washi" ? "ts" : "py";
@@ -545,8 +715,8 @@ export function renderWorkspaceHtml(params: {
             <button type="button" id="jump-to-editor-btn" class="ex-btn-ghost ws-mobile-jump-btn">
               ${escapeHtml(strings.workspace.jumpToEditorBtn)}
             </button>
-            <div id="ws-solve-status">
-              ${renderSolvedStatusBadgeHtml(solvedAny, strings)}
+            <div id="ws-solve-status" class="ws-solve-status">
+              ${renderWorkspaceSolvedControlHtml(solvedAny, strings)}
             </div>
           </div>
         </div>
@@ -561,35 +731,70 @@ export function renderWorkspaceHtml(params: {
 
               <p class="ws-provenance">${escapeHtml(renderProvenanceText(meta, strings))}</p>
 
-              <div class="md-section">
-                <h2 class="md-section-label">${escapeHtml(strings.sections.scenario)}</h2>
-                <div class="md-body">${renderSafeMarkdown(sections.scenario)}</div>
+              <div
+                role="tablist"
+                class="ws-stmt-tablist"
+                focusgroup="tablist nomemory"
+                aria-label="${escapeHtml(strings.workspace.statementTablistLabel)}"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id="stmt-tab-problem"
+                  class="runtime-tab ws-stmt-tab"
+                  data-stmt-tab="problem"
+                  aria-selected="${problemTab === "problem" ? "true" : "false"}"
+                  tabindex="${problemTab === "problem" ? "0" : "-1"}"
+                >${escapeHtml(strings.workspace.problemTab)}</button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="stmt-tab-editorial"
+                  class="runtime-tab ws-stmt-tab"
+                  data-stmt-tab="editorial"
+                  aria-selected="${problemTab === "editorial" ? "true" : "false"}"
+                  tabindex="${problemTab === "editorial" ? "0" : "-1"}"
+                >${escapeHtml(strings.workspace.editorialTab)}</button>
               </div>
 
-              <div class="md-section">
-                <h2 class="md-section-label">${escapeHtml(strings.sections.io)}</h2>
-                <div class="md-body">${renderSafeMarkdown(sections.ioSpec)}</div>
+              <div
+                role="tabpanel"
+                id="stmt-panel-problem"
+                class="ws-stmt-panel"
+                aria-labelledby="stmt-tab-problem"
+                ${problemTab !== "problem" ? "hidden" : ""}
+              >
+                <div class="md-section">
+                  <h2 class="md-section-label">${escapeHtml(strings.sections.scenario)}</h2>
+                  <div class="md-body">${renderSafeMarkdown(sections.scenario)}</div>
+                </div>
+
+                <div class="md-section">
+                  <h2 class="md-section-label">${escapeHtml(strings.sections.io)}</h2>
+                  <div class="md-body">${renderSafeMarkdown(sections.ioSpec)}</div>
+                </div>
+
+                <div class="md-section">
+                  <h2 class="md-section-label">${escapeHtml(strings.sections.example)}</h2>
+                  <div class="md-body">${renderSafeMarkdown(sections.example)}</div>
+                </div>
+
+                ${hintsGroupHtml}
               </div>
 
-              <div class="md-section">
-                <h2 class="md-section-label">${escapeHtml(strings.sections.example)}</h2>
-                <div class="md-body">${renderSafeMarkdown(sections.example)}</div>
-              </div>
-
-              <div class="hints-group">
-                <h2 class="hints-heading">${escapeHtml(strings.sections.hintsTitle)}</h2>
-                <details class="hint-accordion">
-                  <summary>${escapeHtml(strings.sections.hint1)}</summary>
-                  <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint1)}</div>
-                </details>
-                <details class="hint-accordion">
-                  <summary>${escapeHtml(strings.sections.hint2)}</summary>
-                  <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.hint2)}</div>
-                </details>
-                <details class="hint-accordion">
-                  <summary>${escapeHtml(strings.sections.formulation)}</summary>
-                  <div class="hint-accordion-body md-body">${renderSafeMarkdown(sections.formulation)}</div>
-                </details>
+              <div
+                role="tabpanel"
+                id="stmt-panel-editorial"
+                class="ws-stmt-panel"
+                aria-labelledby="stmt-tab-editorial"
+                ${problemTab !== "editorial" ? "hidden" : ""}
+              >
+                ${
+                  !solvedAny
+                    ? `<p class="editorial-notice">${escapeHtml(strings.sections.editorialNotice)}</p>`
+                    : ""
+                }
+                <div id="editorial-content" class="md-body editorial-body">${editorialBodyHtml}</div>
               </div>
             </article>
           </div>
@@ -751,7 +956,9 @@ export function renderResultsHtml(
                 : ""
             }
             ${
-              c.varCount !== undefined && c.constraintCount !== undefined
+              c.varCount !== undefined &&
+              c.constraintCount !== undefined &&
+              (c.varCount > 0 || c.constraintCount > 0 || c.solveTimeMs !== null)
                 ? `<p class="case-meta">${escapeHtml(
                     strings.results.metricsLine(c.varCount, c.constraintCount, c.solveTimeMs ?? null)
                   )}</p>`

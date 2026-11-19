@@ -9,6 +9,9 @@ hero:
       text: はじめに
       link: /ja/getting-started/
     - theme: alt
+      text: 100本ノック
+      link: /exercises/?lang=ja
+    - theme: alt
       text: ショーケース
       link: /ja/showcase/
 

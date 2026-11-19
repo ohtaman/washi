@@ -1,0 +1,16 @@
+[
+  {
+    "input": {
+      "a": 2,
+      "b": 3
+    },
+    "expectedOptimal": 5
+  },
+  {
+    "input": {
+      "a": 17,
+      "b": 25
+    },
+    "expectedOptimal": 42
+  }
+]
