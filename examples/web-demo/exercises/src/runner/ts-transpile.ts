@@ -704,6 +704,14 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
   return paren === 0 && brace === 0 && bracket === 0 && angle === 0 && ternaryDepth === 0;
 }
 
+function isStatementBoundary(out: string, s: string, i: number): boolean {
+  if (i === 0 || s[i - 1] === "\n") return true;
+  const trimmed = out.trimEnd();
+  if (!trimmed) return true;
+  const last = trimmed[trimmed.length - 1];
+  return last === ";" || last === "{" || last === "}";
+}
+
 function stripTopLevelDeclarations(s: string): string {
   let out = "";
   let i = 0;
@@ -712,11 +720,13 @@ function stripTopLevelDeclarations(s: string): string {
   while (i < s.length) {
     const ch = s[i];
     const atLineStart = i === 0 || s[i - 1] === "\n";
+    const atBoundary = isStatementBoundary(out, s, i);
 
-    if (atLineStart) {
-      // Skip leading horizontal whitespace on the line
+    if (atBoundary) {
       let wsEnd = i;
-      while (wsEnd < s.length && (s[wsEnd] === " " || s[wsEnd] === "\t")) wsEnd++;
+      if (atLineStart) {
+        while (wsEnd < s.length && (s[wsEnd] === " " || s[wsEnd] === "\t")) wsEnd++;
+      }
 
       // Top-level `import ... ;` (excluding dynamic `import(...)` calls)
       if (depth === 0 && s.startsWith("import", wsEnd) && !isIdentChar(s[wsEnd + 6] ?? "")) {
@@ -739,16 +749,13 @@ function stripTopLevelDeclarations(s: string): string {
         }
       }
 
-      // `export interface / export type / interface / type` at module or local block scope
+      // `export interface / export type / interface / type` at module or inline statement boundary
       let declStart = wsEnd;
-      if (s.startsWith("export", declStart) && /\s/.test(s[declStart + 6] ?? "")) {
-        let afterExport = declStart + 6;
-        while (afterExport < s.length && (s[afterExport] === " " || s[afterExport] === "\t")) {
-          afterExport++;
-        }
+      if (s.startsWith("export", declStart) && (s[declStart + 6] === " " || s[declStart + 6] === "\t")) {
+        const afterExport = skipWsHorizontal(s, declStart + 6);
         if (
-          (s.startsWith("interface", afterExport) && /\s/.test(s[afterExport + 9] ?? "")) ||
-          (s.startsWith("type", afterExport) && /\s/.test(s[afterExport + 4] ?? ""))
+          (s.startsWith("interface", afterExport) && (s[afterExport + 9] === " " || s[afterExport + 9] === "\t")) ||
+          (s.startsWith("type", afterExport) && (s[afterExport + 4] === " " || s[afterExport + 4] === "\t"))
         ) {
           declStart = afterExport;
         }
@@ -758,12 +765,14 @@ function stripTopLevelDeclarations(s: string): string {
         const nameStart = skipWsHorizontal(s, declStart + 9);
         if (isIdentStart(s[nameStart] ?? "")) {
           let j = nameStart;
-          while (j < s.length && s[j] !== "{") j++;
-          if (s[j] === "{") j = skipBalanced(s, j, "{", "}");
-          while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
-          if (s[j] === "\n") j++;
-          i = j;
-          continue;
+          while (j < s.length && s[j] !== "{" && s[j] !== ";") j++;
+          if (s[j] === "{") {
+            j = skipBalanced(s, j, "{", "}");
+            while (j < s.length && (s[j] === " " || s[j] === "\t" || s[j] === ";")) j++;
+            if (s[j] === "\n") j++;
+            i = j;
+            continue;
+          }
         }
       }
 
@@ -790,7 +799,10 @@ function stripTopLevelDeclarations(s: string): string {
               }
               if (c === "{") b++;
               else if (c === "}" && b > 0) b--;
-              else if (c === "(") p++;
+              else if (c === "}" && b === 0 && p === 0 && sq === 0 && a === 0) {
+                // Stop before an enclosing block's closing `}` on inline type aliases
+                break;
+              } else if (c === "(") p++;
               else if (c === ")" && p > 0) p--;
               else if (c === "[") sq++;
               else if (c === "]" && sq > 0) sq--;
@@ -848,11 +860,148 @@ const TRAILING_CONTINUATION_WORDS = new Set([
   "instanceof",
   "new",
   "as",
+  "satisfies",
   "of",
 ]);
 
-const LEADING_CONTINUATION_WORDS = new Set(["as", "instanceof", "in"]);
+const LEADING_CONTINUATION_WORDS = new Set(["instanceof", "in"]);
 const PARAM_MODIFIERS = /^(?:public|private|protected|readonly|override)\b/;
+
+const NON_ASSERTION_OPERAND_WORDS = new Set([
+  "function",
+  "class",
+  "const",
+  "let",
+  "var",
+  "import",
+  "export",
+  "default",
+  "return",
+  "throw",
+  "case",
+  "delete",
+  "void",
+  "typeof",
+  "await",
+  "yield",
+  "in",
+  "instanceof",
+  "new",
+  "else",
+  "do",
+  "if",
+  "while",
+  "for",
+  "switch",
+  "catch",
+  "try",
+  "finally",
+  "break",
+  "continue",
+  "debugger",
+  "extends",
+]);
+
+const OBJECT_LITERAL_PREFIX_WORDS = new Set([
+  "return",
+  "throw",
+  "yield",
+  "await",
+  "case",
+  "default",
+  "typeof",
+  "void",
+  "delete",
+  "in",
+  "instanceof",
+  "new",
+  "of",
+  "as",
+  "satisfies",
+]);
+
+function isObjectLiteralBrace(text: string): boolean {
+  let depth = 0;
+  let openIdx = -1;
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] === "}") depth++;
+    else if (text[i] === "{") {
+      depth--;
+      if (depth === 0) {
+        openIdx = i;
+        break;
+      }
+    }
+  }
+  if (openIdx < 0) return false;
+  const before = text.slice(0, openIdx).trimEnd();
+  if (!before) return true;
+  if (before.endsWith("=>")) return false;
+  const ch = before[before.length - 1];
+  if ("=([,:?!~+-*/%&|^".includes(ch)) return true;
+  if (isIdentChar(ch)) {
+    return OBJECT_LITERAL_PREFIX_WORDS.has(readPrevWord(before));
+  }
+  return false;
+}
+
+function isForOfSeparator(beforeOf: string): boolean {
+  if (!beforeOf.trim()) return false;
+  let paren = 0;
+  let brace = 0;
+  let bracket = 0;
+
+  for (let k = beforeOf.length - 1; k >= 0; k--) {
+    const ch = beforeOf[k];
+    if (ch === ")") paren++;
+    else if (ch === "}") brace++;
+    else if (ch === "]") bracket++;
+    else if (ch === "(") {
+      if (paren > 0) {
+        paren--;
+      } else if (brace === 0 && bracket === 0) {
+        if (!beforeOf.slice(k + 1).trim()) return false;
+        const prefix = beforeOf.slice(0, k).trimEnd();
+        const pWord = readPrevWord(prefix);
+        if (pWord === "for" && !isPropertyAccessWord(prefix, "for")) return true;
+        if (pWord === "await" && !isPropertyAccessWord(prefix, "await")) {
+          const beforeAwait = prefix.slice(0, prefix.length - 5).trimEnd();
+          return readPrevWord(beforeAwait) === "for" && !isPropertyAccessWord(beforeAwait, "for");
+        }
+        return false;
+      } else {
+        return false;
+      }
+    } else if (ch === "{") {
+      if (brace > 0) brace--;
+      else return false;
+    } else if (ch === "[") {
+      if (bracket > 0) bracket--;
+      else return false;
+    } else if ((ch === ";" || ch === "=") && paren === 0 && brace === 0 && bracket === 0) {
+      return false;
+    }
+  }
+  return false;
+}
+
+function canPrecedeTypeAssertion(out: string): boolean {
+  const prevTrim = out.trimEnd();
+  if (!prevTrim) return false;
+  // TypeScript forbids a newline before `as` or `satisfies` assertions
+  if (out.slice(prevTrim.length).includes("\n")) return false;
+  const prevC = prevTrim[prevTrim.length - 1];
+  if (prevC === "}") return isObjectLiteralBrace(prevTrim);
+  if (isIdentChar(prevC)) {
+    const word = readPrevWord(prevTrim);
+    if (isPropertyAccessWord(prevTrim, word)) return true;
+    if (word === "of") {
+      return !isForOfSeparator(prevTrim.slice(0, prevTrim.length - 2));
+    }
+    return !NON_ASSERTION_OPERAND_WORDS.has(word);
+  }
+  return prevC === ")" || prevC === "]" || prevC === "\uE001";
+}
 
 function readWordAt(s: string, start: number): string {
   let end = start;
@@ -963,8 +1112,8 @@ function isBindingStart(ch: string): boolean {
 
 function stripExportKeywords(s: string): string {
   return s.replace(
-    /^([ \t]*)export\s+(?:default\s+)?(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm,
-    "$1",
+    /(^|[;\n{}])([ \t]*)export\s+(?:default\s+)?(?=(?:async\s+)?function\b|const\b|let\b|var\b|class\b)/gm,
+    "$1$2",
   );
 }
 
@@ -979,7 +1128,7 @@ function stripVariableTypeAnnotations(s: string): string {
     const isAsConstFollow =
       readPrevWord(prevTrim) === "as" &&
       !isPropertyAccessWord(prevTrim, "as") &&
-      !out.slice(prevTrim.length).includes("\n");
+      canPrecedeTypeAssertion(prevTrim.slice(0, prevTrim.length - 2));
     if (
       declMatch &&
       !isIdentChar(prevCh) &&
@@ -1221,7 +1370,7 @@ function stripParameterAndReturnTypes(s: string): string {
       const isAssertCast =
         (prevWord === "as" || prevWord === "satisfies") &&
         !isPropertyAccessWord(prevTrim, prevWord) &&
-        !out.slice(prevTrim.length).includes("\n");
+        canPrecedeTypeAssertion(prevTrim.slice(0, prevTrim.length - prevWord.length));
       if (!isAssertCast) {
         const arrow = matchArrowHeader(s, i);
         if (arrow) {
@@ -1328,108 +1477,6 @@ function stripParamList(parenText: string): string {
   return `(${out})`;
 }
 
-const NON_ASSERTION_OPERAND_WORDS = new Set([
-  "function",
-  "class",
-  "const",
-  "let",
-  "var",
-  "import",
-  "export",
-  "default",
-  "return",
-  "throw",
-  "case",
-  "delete",
-  "void",
-  "typeof",
-  "await",
-  "yield",
-  "in",
-  "instanceof",
-  "new",
-  "else",
-  "do",
-  "if",
-  "while",
-  "for",
-  "switch",
-  "catch",
-  "try",
-  "finally",
-  "break",
-  "continue",
-  "debugger",
-  "extends",
-]);
-
-const OBJECT_LITERAL_PREFIX_WORDS = new Set([
-  "return",
-  "throw",
-  "yield",
-  "await",
-  "case",
-  "default",
-  "typeof",
-  "void",
-  "delete",
-  "in",
-  "instanceof",
-  "new",
-  "of",
-  "as",
-  "satisfies",
-]);
-
-function isObjectLiteralBrace(text: string): boolean {
-  let depth = 0;
-  let openIdx = -1;
-  for (let i = text.length - 1; i >= 0; i--) {
-    if (text[i] === "}") depth++;
-    else if (text[i] === "{") {
-      depth--;
-      if (depth === 0) {
-        openIdx = i;
-        break;
-      }
-    }
-  }
-  if (openIdx < 0) return false;
-  const before = text.slice(0, openIdx).trimEnd();
-  if (!before) return true;
-  if (before.endsWith("=>")) return false;
-  const ch = before[before.length - 1];
-  if ("=([,:?!~+-*/%&|^".includes(ch)) return true;
-  if (isIdentChar(ch)) {
-    return OBJECT_LITERAL_PREFIX_WORDS.has(readPrevWord(before));
-  }
-  return false;
-}
-
-function canPrecedeTypeAssertion(out: string): boolean {
-  const prevTrim = out.trimEnd();
-  if (!prevTrim) return false;
-  // TypeScript forbids a newline before `as` or `satisfies` assertions
-  if (out.slice(prevTrim.length).includes("\n")) return false;
-  const prevC = prevTrim[prevTrim.length - 1];
-  if (prevC === "}") return isObjectLiteralBrace(prevTrim);
-  if (isIdentChar(prevC)) {
-    const word = readPrevWord(prevTrim);
-    if (isPropertyAccessWord(prevTrim, word)) return true;
-    if (word === "of") {
-      const beforeOf = prevTrim.slice(0, prevTrim.length - 2).trimEnd();
-      const beforeLast = beforeOf[beforeOf.length - 1] ?? "";
-      if (beforeLast === "}" || beforeLast === "]") return false;
-      if (isIdentChar(beforeLast) && !OBJECT_LITERAL_PREFIX_WORDS.has(readPrevWord(beforeOf))) {
-        return false;
-      }
-      return true;
-    }
-    return !NON_ASSERTION_OPERAND_WORDS.has(word);
-  }
-  return prevC === ")" || prevC === "]" || prevC === "\uE001";
-}
-
 function stripGenericsAsAndNonNull(s: string): string {
   let out = "";
   let i = 0;
@@ -1448,19 +1495,18 @@ function stripGenericsAsAndNonNull(s: string): string {
 
     // 2. `as const`, `as Type`, or `satisfies Type` assertions
     const assertKw =
-      s.startsWith("as", i) && (s[i + 2] === " " || s[i + 2] === "\t")
+      s.startsWith("as", i) && /\s/.test(s[i + 2] ?? "")
         ? "as"
-        : s.startsWith("satisfies", i) && (s[i + 9] === " " || s[i + 9] === "\t")
+        : s.startsWith("satisfies", i) && /\s/.test(s[i + 9] ?? "")
           ? "satisfies"
           : null;
     if (assertKw && (i === 0 || !isIdentChar(s[i - 1])) && canPrecedeTypeAssertion(out)) {
-      let j = i + assertKw.length;
-      while (j < s.length && (s[j] === " " || s[j] === "\t")) j++;
+      const j = skipWs(s, i + assertKw.length);
       if (assertKw === "as" && s.startsWith("const", j) && !isIdentChar(s[j + 5] ?? "")) {
         i = j + 5;
         continue;
       }
-      const typeEnd = readTypeEnd(s, j);
+      const typeEnd = readTypeEnd(s, j, true, true);
       if (typeEnd > j && s[skipWsHorizontal(s, typeEnd)] !== "{") {
         if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
           out = out.slice(0, -1);

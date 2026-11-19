@@ -447,6 +447,71 @@ export function solve(input: { default: number; in: number; as: number }) {
     // for item of [2, 3] => +5 => 59
     expect(solve({ default: 4, in: 6, as: 10 })).toBe(59);
   });
+
+  it("strips inline type/interface declarations beyond line start while preserving property keys", () => {
+    const basic = transpileExerciseTsToJs(
+      "function solve(input: number) { type Value = number; const value: Value = input; return value; }",
+    );
+    const basicFn = new Function(`${basic}; return solve;`)() as (n: number) => number;
+    expect(basicFn(42)).toBe(42);
+
+    const sample = `
+function solve(input: number) { type A = number; type B = { v: A }; interface Box { b: B } const x: Box = { b: { v: input } }; const ok = (() => { type Local = number })(); const meta = { type: 1, interface: 2 }; meta.type = 3; return x.b.v + (ok === undefined ? 1 : 0) + meta.type + meta.interface; }
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (n: number) => number;
+    expect(solve(5)).toBe(5 + 1 + 3 + 2);
+  });
+
+  it("recognizes for-of separators after keyword-named properties and allows newlines after as/satisfies", () => {
+    const forOfProp = transpileExerciseTsToJs(
+      "function satisfies(arr: number[]) { return arr; }\nexport function solve(input: { default: number }) { let total = 0; for (input.default of satisfies ([1, 2])) total += input.default; return total; }",
+    );
+    const forOfPropFn = new Function(`${forOfProp}; return solve;`)() as (inp: {
+      default: number;
+    }) => number;
+    expect(forOfPropFn({ default: 0 })).toBe(3);
+
+    const asNl = transpileExerciseTsToJs(
+      "export function solve(input: number) { return input as\n number; }",
+    );
+    const asNlFn = new Function(`${asNl}; return solve;`)() as (n: number) => number;
+    expect(asNlFn(9)).toBe(9);
+
+    const sample = `
+function satisfies(arr: { a?: number }[]) {
+  return arr;
+}
+export function solve(input: { default: number }) {
+  let total = 0;
+  for (const { a = 1 } of satisfies ([{ a: 4 }])) {
+    total += a;
+  }
+  const of = input.default;
+  let loopInit = 0;
+  for (let i = of as number; i < 3; i++) {
+    loopInit += 1;
+  }
+  const x = (of as number) satisfies
+    number;
+  const arr = [1, 2] as
+    const
+  const y: number = 3;
+  const fn = ((v: number) => v + 1) as
+    (v: number) => number;
+  const bad = () => {
+    const obj = { a: 1 }
+    satisfies ([{ a: 2 }]);
+    return obj.a;
+  };
+  return total + loopInit + fn(x) + arr[0] + y + bad();
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as (inp: { default: number }) => number;
+    // input.default = 2 => total=4, loopInit=1 (i=2), fn(2)=3, arr[0]=1, y=3, bad()=1 => 13
+    expect(solve({ default: 2 })).toBe(13);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {
@@ -506,6 +571,27 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     expect(() => importProgressJson("not json")).toThrow();
     expect(() => importProgressJson('{"version": 999}')).toThrow();
     expect(() => importProgressJson('{"version": 1, "solved": {"bad": {"runtimes": ["invalid"]}}}')).toThrow();
+  });
+
+  it("handles SecurityError thrown by window.localStorage property getter without crashing", () => {
+    const prevWindow = (globalThis as { window?: unknown }).window;
+    const lockedWindow = {};
+    Object.defineProperty(lockedWindow, "localStorage", {
+      get() {
+        throw new DOMException("Access denied", "SecurityError");
+      },
+    });
+    (globalThis as { window?: unknown }).window = lockedWindow;
+    try {
+      expect(loadProgress()).toEqual(createEmptyProgress());
+      expect(() => saveProgress(createEmptyProgress())).not.toThrow();
+    } finally {
+      if (prevWindow === undefined) {
+        delete (globalThis as { window?: unknown }).window;
+      } else {
+        (globalThis as { window?: unknown }).window = prevWindow;
+      }
+    }
   });
 });
 

@@ -103,10 +103,10 @@ function validateAndNormalizeProgress(raw: unknown): ProgressState {
 }
 
 export function loadProgress(storage?: Pick<Storage, "getItem"> | null): ProgressState {
-  const targetStorage =
-    storage ?? (typeof window !== "undefined" ? window.localStorage : null);
-  if (!targetStorage) return createEmptyProgress();
   try {
+    const targetStorage =
+      storage !== undefined ? storage : typeof window !== "undefined" ? window.localStorage : null;
+    if (!targetStorage) return createEmptyProgress();
     const raw = targetStorage.getItem(PROGRESS_STORAGE_KEY);
     if (!raw) return createEmptyProgress();
     return validateAndNormalizeProgress(JSON.parse(raw));
@@ -119,10 +119,10 @@ export function saveProgress(
   state: ProgressState,
   storage?: Pick<Storage, "setItem"> | null
 ): void {
-  const targetStorage =
-    storage ?? (typeof window !== "undefined" ? window.localStorage : null);
-  if (!targetStorage) return;
   try {
+    const targetStorage =
+      storage !== undefined ? storage : typeof window !== "undefined" ? window.localStorage : null;
+    if (!targetStorage) return;
     targetStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Ignore storage quota or private browsing write errors cleanly.
