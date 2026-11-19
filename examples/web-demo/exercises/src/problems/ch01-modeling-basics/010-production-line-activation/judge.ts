@@ -8,6 +8,7 @@ import {
   formatTemplate,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -38,7 +39,7 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(JMSG[locale].m0);
+    return runtimeError(JMSG[locale].m0);
   }
 
   const n = input.margins.length;
@@ -48,7 +49,7 @@ export function judge(
     { en: "open", ja: "open", zh: "open" },
     locale
   );
-  if (typeof openRaw === "string") return violation(openRaw);
+  if (typeof openRaw === "string") return runtimeError(openRaw);
 
   const quantities = expectNumericArray(
     output.quantities,
@@ -56,14 +57,14 @@ export function judge(
     { en: "quantities", ja: "quantities", zh: "quantities" },
     locale
   );
-  if (typeof quantities === "string") return violation(quantities);
+  if (typeof quantities === "string") return runtimeError(quantities);
 
   const profitCheck = expectFiniteNumber(
     output.netProfit,
     { en: "netProfit", ja: "netProfit", zh: "netProfit" },
     locale
   );
-  if (typeof profitCheck === "string") return violation(profitCheck);
+  if (typeof profitCheck === "string") return runtimeError(profitCheck);
 
   const openClean: number[] = [];
   let materialUsed = 0;

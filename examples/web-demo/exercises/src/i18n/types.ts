@@ -22,13 +22,13 @@ export interface ExercisesUiStrings {
   chapterPrefix: (n: number) => string;
   roleLabels: Record<ProblemRole, string>;
   provenance: {
-    aiDrafted: string;
-    solverVerified: string;
+    generatedBy: string;
     reviewedBy: (handles: string[]) => string;
-    feedbackHint: string;
   };
   workspace: {
     jumpToEditorBtn: string;
+    tocDrawerBtn: string;
+    tocDrawerClose: string;
   };
   tabs: {
     washi: string;
@@ -63,6 +63,12 @@ export interface ExercisesUiStrings {
     title: string;
     placeholder: string;
     verdicts: Record<VerdictStatus, string>;
+    solverStatus: {
+      infeasible: string;
+      unbounded: string;
+      notSolved: string;
+      solverError: (status: string) => string;
+    };
     caseLabel: (idx: number, name: string) => string;
     objectiveDiff: (yours: number, optimal: number) => string;
     metricsLine: (vars: number, constrs: number, ms: number | null) => string;
@@ -70,21 +76,6 @@ export interface ExercisesUiStrings {
     lpPreviewLabel: string;
     consoleLabel: string;
     nextProblemBtn: (nextId: string) => string;
-  };
-  backup: {
-    openBtn: string;
-    title: string;
-    desc: string;
-    exportBtn: string;
-    copyBtn: string;
-    copied: string;
-    importBtn: string;
-    importPlaceholder: string;
-    importSuccess: string;
-    importError: (msg: string) => string;
-    resetAllBtn: string;
-    resetAllConfirm: string;
-    closeBtn: string;
   };
   theme: {
     toggleLabel: string;

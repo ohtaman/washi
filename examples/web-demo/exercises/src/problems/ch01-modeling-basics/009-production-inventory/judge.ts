@@ -7,6 +7,7 @@ import {
   expectNumericArray,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -42,7 +43,7 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(
+    return runtimeError(
       JMSG[locale].m0
     );
   }
@@ -54,7 +55,7 @@ export function judge(
     { en: "regular", ja: "regular", zh: "regular" },
     locale
   );
-  if (typeof reg === "string") return violation(reg);
+  if (typeof reg === "string") return runtimeError(reg);
 
   const ot = expectNumericArray(
     output.overtime,
@@ -62,7 +63,7 @@ export function judge(
     { en: "overtime", ja: "overtime", zh: "overtime" },
     locale
   );
-  if (typeof ot === "string") return violation(ot);
+  if (typeof ot === "string") return runtimeError(ot);
 
   const inv = expectNumericArray(
     output.inventory,
@@ -70,14 +71,14 @@ export function judge(
     { en: "inventory", ja: "inventory", zh: "inventory" },
     locale
   );
-  if (typeof inv === "string") return violation(inv);
+  if (typeof inv === "string") return runtimeError(inv);
 
   const costCheck = expectFiniteNumber(
     output.totalCost,
     { en: "totalCost", ja: "totalCost", zh: "totalCost" },
     locale
   );
-  if (typeof costCheck === "string") return violation(costCheck);
+  if (typeof costCheck === "string") return runtimeError(costCheck);
 
   let prevInv = input.initialInventory;
   let trueCost = 0;

@@ -28,13 +28,11 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
     chapterPrefix: (n) => formatTemplate(catalog.chapterPrefix, { n }),
     roleLabels: catalog.roleLabels,
     provenance: {
-      aiDrafted: catalog.provenance.aiDrafted,
-      solverVerified: catalog.provenance.solverVerified,
+      generatedBy: catalog.provenance.generatedBy,
       reviewedBy: (handles) =>
         formatTemplate(catalog.provenance.reviewedBy, {
           handles: handles.map((h) => `@${h}`).join(", "),
         }),
-      feedbackHint: catalog.provenance.feedbackHint,
     },
     workspace: catalog.workspace,
     tabs: catalog.tabs,
@@ -44,6 +42,12 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
       title: catalog.results.title,
       placeholder: catalog.results.placeholder,
       verdicts: catalog.results.verdicts,
+      solverStatus: {
+        infeasible: catalog.results.solverStatus.infeasible,
+        unbounded: catalog.results.solverStatus.unbounded,
+        notSolved: catalog.results.solverStatus.notSolved,
+        solverError: (status) => formatTemplate(catalog.results.solverStatus.solverError, { status }),
+      },
       caseLabel: (idx, name) => formatTemplate(catalog.results.caseLabel, { num: idx + 1, name }),
       objectiveDiff: (yours, optimal) =>
         formatTemplate(catalog.results.objectiveDiff, { yours, optimal }),
@@ -59,10 +63,6 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
       lpPreviewLabel: catalog.results.lpPreviewLabel,
       consoleLabel: catalog.results.consoleLabel,
       nextProblemBtn: (nextId) => formatTemplate(catalog.results.nextProblemBtn, { nextId }),
-    },
-    backup: {
-      ...catalog.backup,
-      importError: (msg) => formatTemplate(catalog.backup.importError, { msg }),
     },
     theme: catalog.theme,
     localeNames: catalog.localeNames,

@@ -41,6 +41,56 @@ export function violation(message: string, preview?: string): JudgeResult {
   };
 }
 
+export function runtimeError(message: string): JudgeResult {
+  return {
+    status: "RUNTIME_ERROR",
+    ok: false,
+    message,
+  };
+}
+
+export function infeasible(message: string): JudgeResult {
+  return {
+    status: "INFEASIBLE",
+    ok: false,
+    message,
+  };
+}
+
+export interface SolverStatusMessages {
+  infeasible: string;
+  unbounded: string;
+  notSolved: string;
+  solverError: (status: string) => string;
+}
+
+export function applySolverStatusToVerdict(
+  verdict: JudgeResult,
+  solverStatus: string | null | undefined,
+  messages: SolverStatusMessages
+): JudgeResult {
+  if (!solverStatus) return verdict;
+  if (
+    solverStatus === "Infeasible" ||
+    solverStatus === "Unsat" ||
+    solverStatus === "InfeasibleOrUnbounded"
+  ) {
+    return infeasible(messages.infeasible);
+  }
+  if (solverStatus === "Unbounded") {
+    return runtimeError(messages.unbounded);
+  }
+  if (verdict.status === "RUNTIME_ERROR") {
+    if (solverStatus === "NotSolved") {
+      return runtimeError(messages.notSolved);
+    }
+    if (solverStatus !== "Optimal" && solverStatus !== "Feasible" && solverStatus !== "Sat") {
+      return runtimeError(messages.solverError(solverStatus));
+    }
+  }
+  return verdict;
+}
+
 export function suboptimal(
   yourObjective: number,
   optimalObjective: number,

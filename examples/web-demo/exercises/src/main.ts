@@ -2,15 +2,13 @@ import "katex/dist/katex.min.css";
 import "./style.css";
 
 import { UI_STRINGS } from "./i18n/ui-strings.js";
+import { applySolverStatusToVerdict } from "./problems/judge-helpers.js";
 import { CHAPTERS, PROBLEMS, getProblemById } from "./problems/registry.js";
 import { runHighspyExerciseCode, type PyodideRunPhase } from "./runner/pyodide-runner.js";
 import { runWashiExerciseCode } from "./runner/washi-runner.js";
 import {
   clearDraft,
   countMainSolved,
-  createEmptyProgress,
-  exportProgressJson,
-  importProgressJson,
   isProblemSolved,
   loadProgress,
   recordSolvedProblem,
@@ -22,7 +20,6 @@ import type { JudgeResult, Locale, ProblemDefinition, RuntimeId, VerdictStatus }
 import { highlightCode, renderLineNumbers } from "./ui/code-editor.js";
 import {
   escapeHtml,
-  renderBackupDialogHtml,
   renderExerciseIndexHtml,
   renderHeaderHtml,
   renderResultsHtml,
@@ -32,6 +29,8 @@ import {
 } from "./ui/components.js";
 
 const LOCALE_STORAGE_KEY = "washi_exercises_locale";
+const SHARED_LOCALE_STORAGE_KEY = "washi_locale";
+const THEME_STORAGE_KEY = "vitepress-theme-appearance";
 const VALID_LOCALES: ReadonlyArray<Locale> = ["en", "ja", "zh"];
 
 function normalizeLocale(raw: string | null | undefined): Locale | null {
@@ -50,7 +49,9 @@ function detectInitialLocale(): Locale {
   if (fromQuery) return fromQuery;
 
   try {
-    const saved = normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
+    const saved =
+      normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY)) ??
+      normalizeLocale(window.localStorage.getItem(SHARED_LOCALE_STORAGE_KEY));
     if (saved) return saved;
   } catch {
     // Ignore storage access errors
@@ -92,7 +93,7 @@ function syncThemeMetaFromStorage(): void {
   const meta = document.querySelector('meta[name="color-scheme"]');
   if (!meta) return;
   try {
-    const stored = window.localStorage.getItem("theme");
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     meta.setAttribute("content", stored === "light" || stored === "dark" ? stored : "light dark");
   } catch {
     meta.setAttribute("content", "light dark");
@@ -106,11 +107,11 @@ class ExercisesApp {
   private problemId: string | null;
   private activeRuntime: RuntimeId = "washi";
   private viewGeneration = 0;
+  private renderSeq = 0;
+  private markdownCache = new Map<string, string>();
   private runningGeneration: number | null = null;
   private armedSolutionRuntime: RuntimeId | null = null;
   private armedSolutionTimer: ReturnType<typeof setTimeout> | null = null;
-  private armedResetAll = false;
-  private armedResetAllTimer: ReturnType<typeof setTimeout> | null = null;
   private lastReport: RenderedRunReport | null = null;
 
   constructor(root: HTMLElement) {
@@ -120,7 +121,7 @@ class ExercisesApp {
     this.problemId = parseRouteProblemId();
 
     this.attachGlobalEvents();
-    this.render();
+    void this.render();
   }
 
   private get strings() {
@@ -149,21 +150,33 @@ class ExercisesApp {
       this.problemId = parseRouteProblemId();
       this.clearArmingState();
       this.lastReport = null;
-      this.render();
+      void this.render();
     });
 
     window.addEventListener("storage", (e: StorageEvent) => {
-      if (e.key === "theme") {
+      if (e.key === THEME_STORAGE_KEY) {
         syncThemeMetaFromStorage();
         this.updateThemeToggleUi();
+      } else if (e.key === LOCALE_STORAGE_KEY || e.key === SHARED_LOCALE_STORAGE_KEY) {
+        const synced = normalizeLocale(e.newValue);
+        if (synced && synced !== this.locale) {
+          this.locale = synced;
+          this.pushUrl(this.problemId, true);
+          void this.render();
+        }
       } else if (e.key === "washi_exercises_progress_v1") {
         this.progress = loadProgress();
-        this.render();
+        void this.render();
       }
     });
 
+    if (typeof window.matchMedia === "function") {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        this.updateThemeToggleUi();
+      });
+    }
+
     this.root.addEventListener("click", (e) => void this.handleClick(e));
-    this.root.addEventListener("change", (e) => this.handleChange(e));
     this.root.addEventListener("input", (e) => this.handleInput(e));
     this.root.addEventListener("keydown", (e) => this.handleKeyDown(e));
     // Scroll events do not bubble, so capture scroll events from any textarea.code-editor
@@ -188,11 +201,6 @@ class ExercisesApp {
       clearTimeout(this.armedSolutionTimer);
       this.armedSolutionTimer = null;
     }
-    this.armedResetAll = false;
-    if (this.armedResetAllTimer !== null) {
-      clearTimeout(this.armedResetAllTimer);
-      this.armedResetAllTimer = null;
-    }
   }
 
   private updateThemeToggleUi(): void {
@@ -215,10 +223,10 @@ class ExercisesApp {
 
     try {
       if (next === osTheme) {
-        window.localStorage.removeItem("theme");
+        window.localStorage.removeItem(THEME_STORAGE_KEY);
         meta?.setAttribute("content", "light dark");
       } else {
-        window.localStorage.setItem("theme", next);
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
         meta?.setAttribute("content", next);
       }
     } catch {
@@ -234,7 +242,7 @@ class ExercisesApp {
     this.clearArmingState();
     this.lastReport = null;
     this.pushUrl(this.problemId);
-    this.render();
+    void this.render();
     window.scrollTo({ top: 0 });
   }
 
@@ -243,11 +251,12 @@ class ExercisesApp {
     this.locale = next;
     try {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
+      window.localStorage.setItem(SHARED_LOCALE_STORAGE_KEY, next);
     } catch {
       // Ignore storage failures
     }
     this.pushUrl(this.problemId, true);
-    this.render();
+    void this.render();
   }
 
   private getDraftCode(prob: ProblemDefinition, runtime: RuntimeId): string {
@@ -325,18 +334,13 @@ class ExercisesApp {
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
-    const dialog = this.root.querySelector<HTMLDialogElement>("#backup-dialog");
-    if (dialog && target === dialog && !("closedBy" in HTMLDialogElement.prototype)) {
-      const rect = dialog.getBoundingClientRect();
-      const inside =
-        rect.top <= e.clientY &&
-        e.clientY <= rect.top + rect.height &&
-        rect.left <= e.clientX &&
-        e.clientX <= rect.left + rect.width;
-      if (!inside) {
-        dialog.close();
-        return;
+    const langBtn = target.closest<HTMLButtonElement>("[data-lang-btn]");
+    if (langBtn) {
+      const nextLocale = langBtn.dataset.langBtn as Locale | undefined;
+      if (nextLocale) {
+        this.setLocale(nextLocale);
       }
+      return;
     }
 
     const navEl = target.closest<HTMLElement>("[data-nav-id]");
@@ -353,6 +357,17 @@ class ExercisesApp {
     if (homeLink && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       this.navigateToProblem(null);
+      return;
+    }
+
+    if (target.closest("#toc-drawer-toggle")) {
+      const shell = this.root.querySelector<HTMLElement>(".book-shell.is-workspace");
+      this.setTocDrawerOpen(!shell?.classList.contains("is-toc-open"));
+      return;
+    }
+
+    if (target.closest('[data-action="close-toc"]')) {
+      this.setTocDrawerOpen(false);
       return;
     }
 
@@ -373,90 +388,6 @@ class ExercisesApp {
     if (tabBtn) {
       const rt = tabBtn.dataset.runtime as RuntimeId;
       this.switchRuntimeTab(rt);
-      return;
-    }
-
-    if (target.closest("#backup-open-btn")) {
-      this.openBackupDialog();
-      return;
-    }
-
-    if (target.closest("#backup-close-btn")) {
-      this.root.querySelector<HTMLDialogElement>("#backup-dialog")?.close();
-      return;
-    }
-
-    if (target.closest("#backup-copy-btn")) {
-      const box = this.root.querySelector<HTMLTextAreaElement>("#backup-export-text");
-      const btn = this.root.querySelector<HTMLButtonElement>("#backup-copy-btn");
-      if (box && btn) {
-        try {
-          await navigator.clipboard.writeText(box.value);
-          btn.textContent = this.strings.backup.copied;
-          setTimeout(() => {
-            btn.textContent = this.strings.backup.copyBtn;
-          }, 2000);
-        } catch {
-          box.select();
-        }
-      }
-      return;
-    }
-
-    if (target.closest("#backup-download-btn")) {
-      const json = exportProgressJson(this.progress);
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "washi-exercises-progress.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-
-    if (target.closest("#backup-import-btn")) {
-      const importBox = this.root.querySelector<HTMLTextAreaElement>("#backup-import-text");
-      const statusEl = this.root.querySelector<HTMLElement>("#backup-status");
-      if (!importBox || !statusEl) return;
-      try {
-        const parsed = importProgressJson(importBox.value);
-        this.progress = parsed;
-        saveProgress(this.progress);
-        this.render();
-        this.openBackupDialog();
-        const freshStatusEl = this.root.querySelector<HTMLElement>("#backup-status");
-        if (freshStatusEl) {
-          freshStatusEl.textContent = this.strings.backup.importSuccess;
-          freshStatusEl.style.color = "var(--success)";
-        }
-      } catch (err) {
-        const msgText = err instanceof Error ? err.message : String(err);
-        statusEl.textContent = this.strings.backup.importError(msgText);
-        statusEl.style.color = "var(--danger)";
-      }
-      return;
-    }
-
-    if (target.closest("#backup-reset-all-btn")) {
-      const btn = this.root.querySelector<HTMLButtonElement>("#backup-reset-all-btn");
-      if (!btn) return;
-      if (!this.armedResetAll) {
-        this.armedResetAll = true;
-        btn.textContent = this.strings.backup.resetAllConfirm;
-        btn.classList.add("ex-btn-warning");
-        this.armedResetAllTimer = setTimeout(() => {
-          this.armedResetAll = false;
-          btn.textContent = this.strings.backup.resetAllBtn;
-          btn.classList.remove("ex-btn-warning");
-        }, 5000);
-        return;
-      }
-      this.progress = createEmptyProgress();
-      saveProgress(this.progress);
-      this.clearArmingState();
-      this.root.querySelector<HTMLDialogElement>("#backup-dialog")?.close();
-      this.render();
       return;
     }
 
@@ -505,14 +436,6 @@ class ExercisesApp {
     }
   }
 
-  private handleChange(e: Event): void {
-    const target = e.target as HTMLElement | null;
-    if (target?.id === "locale-select") {
-      const sel = target as HTMLSelectElement;
-      this.setLocale(sel.value as Locale);
-    }
-  }
-
   private handleInput(e: Event): void {
     const target = e.target as HTMLElement | null;
     if (!(target instanceof HTMLTextAreaElement) || !target.classList.contains("code-editor")) {
@@ -525,7 +448,24 @@ class ExercisesApp {
     saveProgress(this.progress);
   }
 
+  private setTocDrawerOpen(open: boolean): void {
+    const shell = this.root.querySelector<HTMLElement>(".book-shell.is-workspace");
+    const toggleBtn = this.root.querySelector<HTMLButtonElement>("#toc-drawer-toggle");
+    if (!shell) return;
+    shell.classList.toggle("is-toc-open", open);
+    toggleBtn?.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
   private handleKeyDown(e: KeyboardEvent): void {
+    if (e.key === "Escape") {
+      const shell = this.root.querySelector<HTMLElement>(".book-shell.is-workspace.is-toc-open");
+      if (shell) {
+        this.setTocDrawerOpen(false);
+        this.root.querySelector<HTMLButtonElement>("#toc-drawer-toggle")?.focus();
+        return;
+      }
+    }
+
     const target = e.target as HTMLElement | null;
     if (!target) return;
 
@@ -579,19 +519,6 @@ class ExercisesApp {
     }
   }
 
-  private openBackupDialog(): void {
-    const dialog = this.root.querySelector<HTMLDialogElement>("#backup-dialog");
-    const exportBox = this.root.querySelector<HTMLTextAreaElement>("#backup-export-text");
-    const importBox = this.root.querySelector<HTMLTextAreaElement>("#backup-import-text");
-    const statusEl = this.root.querySelector<HTMLElement>("#backup-status");
-    if (!dialog || !exportBox) return;
-
-    exportBox.value = exportProgressJson(this.progress);
-    if (importBox) importBox.value = "";
-    if (statusEl) statusEl.textContent = "";
-    dialog.showModal();
-  }
-
   private async runProblem(prob: ProblemDefinition, runtime: RuntimeId): Promise<void> {
     const originGeneration = this.viewGeneration;
     if (this.runningGeneration === originGeneration) return;
@@ -622,6 +549,7 @@ class ExercisesApp {
         liveResults.innerHTML = `<div class="results-head"><h2 class="results-title">${escapeHtml(
           this.strings.results.title
         )}</h2></div><p class="results-placeholder">${escapeHtml(label)}</p>`;
+        liveResults.scrollTop = 0;
       }
     };
 
@@ -694,7 +622,12 @@ class ExercisesApp {
     extra: {
       error?: string;
       lpPreview?: string | null;
-      metrics?: Array<{ varCount: number; constraintCount: number; solveTimeMs: number | null }>;
+      metrics?: Array<{
+        varCount: number;
+        constraintCount: number;
+        solveTimeMs: number | null;
+        solverStatus?: string | null;
+      }>;
     }
   ): void {
     const idx = PROBLEMS.findIndex((p) => p.meta.id === prob.meta.id);
@@ -719,22 +652,39 @@ class ExercisesApp {
     } else {
       const caseReports: RenderedRunReport["cases"] = [];
       let allAc = true;
-      let firstFailureStatus: VerdictStatus = "VIOLATION";
+      let hasRuntimeError = false;
+      let hasInfeasible = false;
       let hasViolation = false;
       let hasSuboptimal = false;
 
       for (let i = 0; i < prob.cases.length; i++) {
         const c = prob.cases[i];
-        const verdict: JudgeResult = prob.judge(c.input, outputs[i], c.expectedOptimal, this.locale);
+        const mInfo = extra.metrics?.[i];
+        const baseVerdict: JudgeResult = prob.judge(
+          c.input,
+          outputs[i],
+          c.expectedOptimal,
+          this.locale
+        );
+        const verdict = applySolverStatusToVerdict(
+          baseVerdict,
+          mInfo?.solverStatus,
+          this.strings.results.solverStatus
+        );
+
         if (!verdict.ok) {
           allAc = false;
-          if (verdict.status === "VIOLATION" || verdict.status === "INFEASIBLE") {
+          if (verdict.status === "RUNTIME_ERROR") {
+            hasRuntimeError = true;
+          } else if (verdict.status === "INFEASIBLE") {
+            hasInfeasible = true;
+          } else if (verdict.status === "VIOLATION") {
             hasViolation = true;
           } else if (verdict.status === "SUBOPTIMAL") {
             hasSuboptimal = true;
           }
         }
-        const mInfo = extra.metrics?.[i];
+
         caseReports.push({
           name: c.name[this.locale],
           verdict,
@@ -748,13 +698,17 @@ class ExercisesApp {
         });
       }
 
-      if (hasViolation) {
-        firstFailureStatus = "VIOLATION";
-      } else if (hasSuboptimal) {
-        firstFailureStatus = "SUBOPTIMAL";
-      }
-
-      const overallStatus: VerdictStatus = allAc ? "AC" : firstFailureStatus;
+      const overallStatus: VerdictStatus = allAc
+        ? "AC"
+        : hasRuntimeError
+          ? "RUNTIME_ERROR"
+          : hasInfeasible
+            ? "INFEASIBLE"
+            : hasViolation
+              ? "VIOLATION"
+              : hasSuboptimal
+                ? "SUBOPTIMAL"
+                : "VIOLATION";
 
       if (allAc) {
         this.progress = recordSolvedProblem(this.progress, prob.meta.id, runtime, runTimeMs);
@@ -782,6 +736,7 @@ class ExercisesApp {
     const resultsEl = this.root.querySelector<HTMLElement>("#judge-results");
     if (resultsEl) {
       resultsEl.innerHTML = renderResultsHtml(this.locale, this.strings, report);
+      resultsEl.scrollTop = 0;
     }
   }
 
@@ -807,8 +762,8 @@ class ExercisesApp {
     sidebarLinks.forEach((link) => {
       if (solvedAny) {
         link.classList.add("is-solved");
-        const num = link.querySelector(".book-sidebar-num");
-        if (num) num.textContent = "✓";
+        const check = link.querySelector(".book-sidebar-check");
+        if (check) check.textContent = "✓";
       }
     });
     const mainSolved = countMainSolved(
@@ -822,30 +777,51 @@ class ExercisesApp {
     if (mobProg) mobProg.textContent = label;
   }
 
-  private render(): void {
+  private async render(): Promise<void> {
+    const seq = ++this.renderSeq;
+    const locale = this.locale;
+    const problemId = this.problemId;
+    const strings = this.strings;
     const effective = getEffectiveTheme();
     const themeLabel =
-      effective === "dark" ? this.strings.theme.switchToLight : this.strings.theme.switchToDark;
+      effective === "dark" ? strings.theme.switchToLight : strings.theme.switchToDark;
     const themeIcon = effective === "dark" ? "☀️" : "🌙";
 
-    document.documentElement.lang = this.locale;
+    document.documentElement.lang = locale;
 
-    const headerHtml = renderHeaderHtml(this.locale, this.strings, themeLabel, themeIcon);
+    const headerHtml = renderHeaderHtml(locale, strings, themeLabel, themeIcon);
     let bodyHtml = "";
 
-    if (this.problemId) {
-      const idx = PROBLEMS.findIndex((p) => p.meta.id === this.problemId);
+    if (problemId) {
+      const idx = PROBLEMS.findIndex((p) => p.meta.id === problemId);
       const prob = idx >= 0 ? PROBLEMS[idx] : PROBLEMS[0];
       const prevProb = idx > 0 ? PROBLEMS[idx - 1] : null;
       const nextProb = idx >= 0 && idx + 1 < PROBLEMS.length ? PROBLEMS[idx + 1] : null;
+      const cacheKey = `${prob.meta.id}:${locale}`;
+      let problemMarkdown = this.markdownCache.get(cacheKey);
 
-      document.title = `${prob.meta.title[this.locale]} — ${this.strings.brandTitle}`;
+      if (problemMarkdown === undefined) {
+        try {
+          problemMarkdown = await prob.loadMarkdown(locale);
+          if (seq !== this.renderSeq) return;
+          this.markdownCache.set(cacheKey, problemMarkdown);
+        } catch (err) {
+          if (seq !== this.renderSeq) return;
+          const msg = err instanceof Error ? err.message : String(err);
+          problemMarkdown = `# ${prob.meta.title[locale]}\n\n<!-- section:scenario -->\nFailed to load problem statement (${msg}). Please reload to retry.\n`;
+        }
+      }
+
+      if (seq !== this.renderSeq) return;
+
+      document.title = `${prob.meta.title[locale]} — ${strings.brandTitle}`;
       bodyHtml = renderWorkspaceHtml({
-        locale: this.locale,
-        strings: this.strings,
+        locale,
+        strings,
         chapters: CHAPTERS,
         problems: PROBLEMS,
         problem: prob,
+        problemMarkdown,
         prevProblem: prevProb,
         nextProblem: nextProb,
         progress: this.progress,
@@ -854,22 +830,24 @@ class ExercisesApp {
         highspyCode: this.getDraftCode(prob, "highspy"),
       });
     } else {
-      document.title = `${this.strings.brandTitle} | WaSHI`;
+      document.title = `${strings.brandTitle} | WaSHI`;
       bodyHtml = renderExerciseIndexHtml({
-        locale: this.locale,
-        strings: this.strings,
+        locale,
+        strings,
         chapters: CHAPTERS,
         problems: PROBLEMS,
         progress: this.progress,
       });
     }
 
-    this.root.innerHTML = `${headerHtml}${bodyHtml}${renderBackupDialogHtml(this.strings)}`;
+    if (seq !== this.renderSeq) return;
+    this.root.innerHTML = `${headerHtml}${bodyHtml}`;
 
-    if (this.problemId && this.lastReport) {
+    if (problemId && this.lastReport) {
       const resultsEl = this.root.querySelector<HTMLElement>("#judge-results");
       if (resultsEl) {
-        resultsEl.innerHTML = renderResultsHtml(this.locale, this.strings, this.lastReport);
+        resultsEl.innerHTML = renderResultsHtml(locale, strings, this.lastReport);
+        resultsEl.scrollTop = 0;
       }
     }
   }

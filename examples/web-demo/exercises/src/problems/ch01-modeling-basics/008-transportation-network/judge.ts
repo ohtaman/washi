@@ -7,6 +7,7 @@ import {
   formatTemplate,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -34,14 +35,14 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(JMSG[locale].m0);
+    return runtimeError(JMSG[locale].m0);
   }
 
   const nS = input.supplies.length;
   const nD = input.demands.length;
 
   if (!Array.isArray(output.shipments) || output.shipments.length !== nS) {
-    return violation(formatTemplate(JMSG[locale].m1, { p0: nS }));
+    return runtimeError(formatTemplate(JMSG[locale].m1, { p0: nS }));
   }
 
   const cleanMatrix: number[][] = [];
@@ -52,7 +53,7 @@ export function judge(
       { en: `shipments[${i}]`, ja: `shipments[${i}]`, zh: `shipments[${i}]` },
       locale
     );
-    if (typeof row === "string") return violation(row);
+    if (typeof row === "string") return runtimeError(row);
     for (let j = 0; j < nD; j++) {
       if (row[j] < -1e-6) {
         return violation(
@@ -68,7 +69,7 @@ export function judge(
     { en: "totalCost", ja: "totalCost", zh: "totalCost" },
     locale
   );
-  if (typeof costCheck === "string") return violation(costCheck);
+  if (typeof costCheck === "string") return runtimeError(costCheck);
 
   for (let i = 0; i < nS; i++) {
     const rowSum = cleanMatrix[i].reduce((acc, v) => acc + v, 0);

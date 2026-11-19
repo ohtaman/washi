@@ -8,6 +8,7 @@ import {
   formatTemplate,
   isRecord,
   roundNice,
+  runtimeError,
   suboptimal,
   violation,
 } from "../../judge-helpers.js";
@@ -33,7 +34,7 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return violation(JMSG[locale].m0);
+    return runtimeError(JMSG[locale].m0);
   }
 
   const n = input.costs.length;
@@ -43,14 +44,14 @@ export function judge(
     { en: "assignment", ja: "assignment", zh: "assignment" },
     locale
   );
-  if (typeof assignment === "string") return violation(assignment);
+  if (typeof assignment === "string") return runtimeError(assignment);
 
   const costCheck = expectFiniteNumber(
     output.totalCost,
     { en: "totalCost", ja: "totalCost", zh: "totalCost" },
     locale
   );
-  if (typeof costCheck === "string") return violation(costCheck);
+  if (typeof costCheck === "string") return runtimeError(costCheck);
 
   const usedTasks = new Set<number>();
   const cleanAssign: number[] = [];

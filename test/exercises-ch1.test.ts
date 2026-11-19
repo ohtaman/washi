@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { parseProblemMarkdown } from "../examples/web-demo/exercises/src/ui/markdown.js";
+import { UI_STRINGS } from "../examples/web-demo/exercises/src/i18n/ui-strings.js";
+import { applySolverStatusToVerdict } from "../examples/web-demo/exercises/src/problems/judge-helpers.js";
+import { parseProblemMarkdown, renderSafeMarkdown } from "../examples/web-demo/exercises/src/ui/markdown.js";
 import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
 import { CHAPTERS, PROBLEMS } from "../examples/web-demo/exercises/src/problems/registry.js";
 
@@ -87,7 +89,7 @@ print(json.dumps(results))
 }
 
 describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
-  it("registers all 10 chapters in the roadmap and all 10 Chapter 1 problems with complete metadata", () => {
+  it("registers all 10 chapters in the roadmap and all 10 Chapter 1 problems with complete metadata", async () => {
     expect(CHAPTERS.map((c) => c.chapter)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     for (const ch of CHAPTERS) {
       expect(ch.title.en.trim().length).toBeGreaterThan(0);
@@ -124,13 +126,32 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(prob.meta.title[locale]).not.toMatch(GAMEY_COPY_RE);
         expect(prob.meta.subtitle[locale]).not.toMatch(GAMEY_COPY_RE);
         expect(prob.meta.tags[locale].join(" ")).not.toMatch(GAMEY_COPY_RE);
-        expect(prob.markdown[locale]).not.toMatch(GAMEY_COPY_RE);
 
-        const sections = parseProblemMarkdown(prob.markdown[locale]);
+        const md = await prob.loadMarkdown(locale);
+        const mdCached = await prob.loadMarkdown(locale);
+        expect(mdCached).toBe(md);
+        expect(md).not.toMatch(GAMEY_COPY_RE);
+
+        const sections = parseProblemMarkdown(md);
         expect(sections.title.trim().length, `${prob.meta.id} (${locale}) title`).toBeGreaterThan(0);
         expect(sections.scenario.trim().length, `${prob.meta.id} (${locale}) scenario`).toBeGreaterThan(0);
+        expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has backticks`).not.toContain("`");
         expect(sections.ioSpec.trim().length, `${prob.meta.id} (${locale}) ioSpec`).toBeGreaterThan(0);
+        expect(renderSafeMarkdown(sections.ioSpec), `${prob.meta.id} (${locale}) ioSpec table`).toContain("<table>");
         expect(sections.example.trim().length, `${prob.meta.id} (${locale}) example`).toBeGreaterThan(0);
+        const jsonBlocks = [...sections.example.matchAll(/```json\n([\s\S]*?)```/g)].map((m) =>
+          JSON.parse(m[1])
+        );
+        expect(jsonBlocks.length, `${prob.meta.id} (${locale}) example JSON blocks`).toBeGreaterThanOrEqual(2);
+        expect(jsonBlocks[0], `${prob.meta.id} (${locale}) example input`).toEqual(prob.cases[0].input);
+        const exVerdict = prob.judge(
+          jsonBlocks[0],
+          jsonBlocks[1],
+          prob.cases[0].expectedOptimal,
+          locale
+        );
+        expect(exVerdict.ok, `${prob.meta.id} (${locale}) example verdict: ${exVerdict.message}`).toBe(true);
+        expect(exVerdict.status, `${prob.meta.id} (${locale}) example status`).toBe("AC");
         expect(sections.hint1.trim().length, `${prob.meta.id} (${locale}) hint1`).toBeGreaterThan(0);
         expect(sections.hint2.trim().length, `${prob.meta.id} (${locale}) hint2`).toBeGreaterThan(0);
         expect(sections.formulation.trim().length, `${prob.meta.id} (${locale}) formulation`).toBeGreaterThan(0);
@@ -142,17 +163,28 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       }
     }
 
-    // Verify localized judge strings in every problem JSON are free of contrived gamey terms
+    // Verify localized judge strings in JSON and standalone Markdown files (30 files) cleanly
     const problemsRoot = path.resolve(import.meta.dirname, "../examples/web-demo/exercises/src/problems");
-    const walk = (dir: string): string[] =>
-      fs.readdirSync(dir, { withFileTypes: true }).flatMap((ent) => {
-        const full = path.join(dir, ent.name);
-        if (ent.isDirectory()) return walk(full);
-        return ent.name.endsWith(".json") ? [full] : [];
-      });
-    for (const jsonPath of walk(problemsRoot)) {
-      const text = fs.readFileSync(jsonPath, "utf-8");
-      expect(text, jsonPath).not.toMatch(GAMEY_COPY_RE);
+    const ch1Dirs = fs
+      .readdirSync(path.join(problemsRoot, "ch01-modeling-basics"), { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+    expect(ch1Dirs).toHaveLength(10);
+    for (const dir of ch1Dirs) {
+      for (const lang of ["en", "ja", "zh"] as const) {
+        const mdPath = path.join(problemsRoot, "ch01-modeling-basics", dir, "locales", `${lang}.md`);
+        const jsonPath = path.join(problemsRoot, "ch01-modeling-basics", dir, "locales", `${lang}.json`);
+        expect(fs.existsSync(mdPath), `Missing ${mdPath}`).toBe(true);
+        const mdText = fs.readFileSync(mdPath, "utf-8");
+        expect(mdText.trim().length, `Empty ${mdPath}`).toBeGreaterThan(0);
+        expect(mdText, mdPath).not.toMatch(GAMEY_COPY_RE);
+
+        const jsonText = fs.readFileSync(jsonPath, "utf-8");
+        expect(jsonText, jsonPath).not.toMatch(GAMEY_COPY_RE);
+        const parsedJson = JSON.parse(jsonText) as Record<string, unknown>;
+        expect("markdown" in parsedJson, `Unexpected markdown field in ${jsonPath}`).toBe(false);
+      }
     }
   });
 
@@ -175,10 +207,15 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(verdict.status, `${prob.meta.id} case[${i}]`).toBe("AC");
       }
 
-      // Malformed / invalid empty object output must never accidentally pass
+      // Malformed / invalid empty object output must be classified as RUNTIME_ERROR, not VIOLAITON
       const badVerdict = prob.judge(prob.cases[0].input, {}, prob.cases[0].expectedOptimal, "ja");
       expect(badVerdict.ok, `${prob.meta.id} accepted empty output`).toBe(false);
-      expect(badVerdict.status).toBe("VIOLATION");
+      expect(badVerdict.status).toBe("RUNTIME_ERROR");
+
+      // Non-object / NaN outputs must also report RUNTIME_ERROR instead of constraint VIOLATION
+      const nullVerdict = prob.judge(prob.cases[0].input, null, prob.cases[0].expectedOptimal, "en");
+      expect(nullVerdict.ok).toBe(false);
+      expect(nullVerdict.status).toBe("RUNTIME_ERROR");
 
       // #010 (Production line activation) must reject exceeding capacity when line is closed
       if (prob.meta.id === "010") {
@@ -208,6 +245,55 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(starterRun.ok).toBe(false);
       }
     }
+
+    // Verify solverStatus telemetry and honest verdict refinement for NotSolved, Infeasible, and Unbounded on #001
+    const p1 = PROBLEMS[0];
+    const p1In = structuredClone(p1.cases[0].input);
+    const statusMsgs = UI_STRINGS.en.results.solverStatus;
+
+    const omittedSolveRun = await runWashiExerciseCode(
+      p1.washiSolution.replace("await m.solve();", ""),
+      [p1In]
+    );
+    expect(omittedSolveRun.ok).toBe(true);
+    expect(omittedSolveRun.metrics[0]?.solverStatus).toBe("NotSolved");
+    const omittedVerdict = applySolverStatusToVerdict(
+      p1.judge(p1In, omittedSolveRun.outputs[0], p1.cases[0].expectedOptimal, "en"),
+      omittedSolveRun.metrics[0]?.solverStatus,
+      statusMsgs
+    );
+    expect(omittedVerdict.status).toBe("RUNTIME_ERROR");
+    expect(omittedVerdict.message).toContain("solve()");
+
+    const infeasibleRun = await runWashiExerciseCode(
+      p1.washiSolution.replace(
+        "await m.solve();",
+        "m.constraint(expr`${c} >= 999`); await m.solve();"
+      ),
+      [p1In]
+    );
+    expect(infeasibleRun.ok).toBe(true);
+    expect(infeasibleRun.metrics[0]?.solverStatus).toBe("Infeasible");
+    const infeasibleVerdict = applySolverStatusToVerdict(
+      p1.judge(p1In, infeasibleRun.outputs[0], p1.cases[0].expectedOptimal, "en"),
+      infeasibleRun.metrics[0]?.solverStatus,
+      statusMsgs
+    );
+    expect(infeasibleVerdict.status).toBe("INFEASIBLE");
+
+    const unboundedRun = await runWashiExerciseCode(
+      p1.washiSolution.replace(/m\.constraint\([\s\S]*?\);/g, ""),
+      [p1In]
+    );
+    expect(unboundedRun.ok).toBe(true);
+    expect(unboundedRun.metrics[0]?.solverStatus).toBe("Unbounded");
+    const unboundedVerdict = applySolverStatusToVerdict(
+      p1.judge(p1In, unboundedRun.outputs[0], p1.cases[0].expectedOptimal, "en"),
+      unboundedRun.metrics[0]?.solverStatus,
+      statusMsgs
+    );
+    expect(unboundedVerdict.status).toBe("RUNTIME_ERROR");
+    expect(unboundedVerdict.message).toContain("Unbounded");
   }, 60_000);
 
   itHighspy("cross-verifies every highspy Python solution.py against identical cases.json and shared judge()", () => {
