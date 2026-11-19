@@ -2766,7 +2766,7 @@ async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null>
           `### ✅ 整合性\u30C1\u30A7\u30C3\u30AF完了（矛盾\u30FB違反 0件）\n` +
           `- **前月末7日間\u306E引\u304D継\u304E**（深夜明\u3051\u30FB準夜明\u3051遷移\u30FB連勤上限）: **\u30AF\u30EA\u30A2**\n` +
           `- **日別必要人数\u30FB\u30EA\u30FC\u30C0\u30FC配置\u30FBNG\u30DA\u30A2回避**: **\u30AF\u30EA\u30A2**\n` +
-          `- **WaSHI \`validateSolution()\` 数理検証**: **全制約\u30AF\u30EA\u30A2 (最大誤差 0)**`,
+          `- **WaSHI \`verify()\` 数理検証**: **全制約\u30AF\u30EA\u30A2 (最大誤差 0)**`,
       });
     }
     return diagOutcome;

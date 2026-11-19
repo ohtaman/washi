@@ -152,7 +152,7 @@ Bundled `pumpkin.wasm` and `runtime.js` / `runtime.d.ts` artifacts are tracked a
 - **Progress Monitoring & Cancellation (Supported)**:
   During `solve()`, Pumpkin emits real-time incumbent progress callbacks (`onProgress`, providing `elapsedTime` and `objectiveValue`) and honors `AbortSignal`: browser Web Worker execution supports preemptive mid-solve Worker termination and queue cancellation, while main-thread and Node.js runs poll cooperative `should_abort` checkpoints across branching and termination hooks.
 - **Exact Discrete Optimality**:
-  As an exact LCG solver over finite integer domains, Pumpkin proves optimality via nogood clause learning and objective-bound strengthening (`LinearSatUnsat`) rather than LP relaxation tolerances (`mipGap`, `relGap`, `absGap`, or `presolve`).
+  As an exact LCG solver over finite integer domains, Pumpkin proves optimality via nogood clause learning and objective-bound strengthening (`LinearSatUnsat`) rather than LP relaxation tolerances (`relativeGap`, `absoluteGap`, or `presolve`).
 
 ---
 

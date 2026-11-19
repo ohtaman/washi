@@ -61,7 +61,7 @@ m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
 // 3. 求解（標準搭載の HiGHS WebAssembly）と解の検証
 const status = await m.solve();
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution();
+  const report = m.verify();
   console.log(status, report.valid); // "Optimal", true
   console.log(`利益: ${m.objectiveValue} (机=${desks.value}, 椅子=${chairs.value})`); // 1100 (机=20, 椅子=10)
 }
@@ -69,7 +69,7 @@ if (m.hasPrimalSolution) {
 
 1. **決定変数を定義する（`lb`, `ub`）**: `m.continuous()`・`m.integer()`・`m.binary()` で変数を定義します。上限・下限が分かっている場合は有限の `lb`・`ub` を指定しておきます。
 2. **`expr` で目的関数と制約を記述する**: `` expr`...` `` で数式をそのまま書けます。制約に名前を付けておくと、解なし（`Infeasible`）になったときの原因特定に役立ちます。
-3. **求解して結果を確認・検証する（`solve`, `validateSolution`）**: `await m.solve()` で同梱の HiGHS ソルバーを実行します。`m.hasPrimalSolution` で解の有無を確認してから `.value` を読み取り、必要に応じて `m.validateSolution()` で境界や制約を満たしているか検証します。
+3. **求解して結果を確認・検証する（`solve`, `verify`）**: `await m.solve()` で同梱の HiGHS ソルバーを実行します。`m.hasPrimalSolution` で解の有無を確認してから `.value` を読み取り、必要に応じて `m.verify()` で境界や制約を満たしているか検証します。
 
 ---
 

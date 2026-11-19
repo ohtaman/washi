@@ -55,7 +55,7 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     m.constraint(rule2, "rule2");
     m.constraint(rule3, "rule3");
 
-    expect(m.logicalConstraints.length).toBe(3);
+    expect(m.constraints.size).toBe(3);
   });
 
   it("supports m.check() with linear constraints using HiGHS/GLPK", async () => {

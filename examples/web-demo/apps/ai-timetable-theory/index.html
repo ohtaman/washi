@@ -194,7 +194,7 @@
               <strong>Chrome Built-in AI (Gemini Nano / <code>LanguageModel</code> API)</strong>: Parses unstructured faculty requests into schema-validated tool calls via <code>responseConstraint</code>.
             </li>
             <li>
-              <strong>WaSHI + HiGHS (WASM MILP Solver)</strong>: Solves the 4,420-variable, 1,601-constraint MILP to optimality in ~250 ms and verifies zero constraint violations via <code>model.validateSolution()</code>.
+              <strong>WaSHI + HiGHS (WASM MILP Solver)</strong>: Solves the 4,420-variable, 1,601-constraint MILP to optimality in ~250 ms and verifies zero constraint violations via <code>model.verify()</code>.
             </li>
             <li>
               <strong>Two-Pass Elastic Conflict Diagnosis</strong>: When user rules conflict (<code>Infeasible</code>), WaSHI relaxes every hard constraint with non-negative slacks under two complementary weight profiles (<code>prefer_structural</code> and <code>prefer_user</code>) to isolate the exact colliding constraints.

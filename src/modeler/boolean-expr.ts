@@ -93,6 +93,7 @@ export abstract class BoolExpr {
  */
 export class BoolVar extends BoolExpr {
   public readonly id: number;
+  public readonly type = "Boolean" as const;
   public readonly name: string;
   public value: boolean | null = null;
 

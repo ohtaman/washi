@@ -4,12 +4,12 @@ import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "./boolean-expr.js";
 import type { ComparisonSense } from "./types.js";
-import type { Model } from "./model.js";
+import type { Model, LogicalConstraint } from "./model.js";
 
-export interface SolutionValidationOptions {
+export interface VerifyOptions {
   /**
-   * Optional map of variable and Boolean variable values (keyed by variable name) to validate.
-   * When omitted, `validateSolution()` inspects the current `.value` properties on the model's variables.
+   * Optional map of variable and Boolean variable values (keyed by variable name) to verify.
+   * When omitted, `verify()` inspects the current `.value` properties on the model's variables.
    */
   values?: Record<string, number | boolean | null | undefined>;
   /**
@@ -39,7 +39,7 @@ export type ViolationType =
   | "logical_constraint"
   | "unchecked_constraint";
 
-export interface SolutionViolation {
+export interface VerificationViolation {
   type: ViolationType;
   target: "variable" | "bool_variable" | "constraint" | "logical_constraint";
   name: string;
@@ -56,7 +56,7 @@ export interface SolutionViolation {
   message: string;
 }
 
-export interface SolutionValidationSummary {
+export interface VerificationSummary {
   checkedVariables: number;
   totalVariables: number;
   checkedBoolVariables: number;
@@ -67,10 +67,10 @@ export interface SolutionValidationSummary {
   totalLogicalConstraints: number;
 }
 
-export interface SolutionValidationReport {
+export interface VerificationReport {
   /**
    * True if and only if `complete === true`, `uncheckedConstraints.length === 0`, and `violations.length === 0`.
-   * Note: Validates satisfaction of modeled mathematical constraints only; does not verify natural-language specification coverage.
+   * Note: Verifies satisfaction of modeled mathematical constraints only; does not verify natural-language specification coverage.
    */
   valid: boolean;
   /**
@@ -80,11 +80,11 @@ export interface SolutionValidationReport {
   /**
    * Flat list of all violations found.
    */
-  violations: SolutionViolation[];
+  violations: VerificationViolation[];
   /**
    * Violations grouped by variable or constraint name.
    */
-  violationsByName: Record<string, SolutionViolation[]>;
+  violationsByName: Record<string, VerificationViolation[]>;
   /**
    * Names of constraints (linear or logical) that could not be evaluated (e.g. due to missing variable values
    * or `evaluateLogicalConstraints: false`). Never implicitly treated as satisfied.
@@ -101,7 +101,7 @@ export interface SolutionValidationReport {
   /**
    * Coverage summary counts.
    */
-  summary: SolutionValidationSummary;
+  summary: VerificationSummary;
 }
 
 function validateTolerance(value: unknown, optionName: string): number {
@@ -115,14 +115,14 @@ function validateTolerance(value: unknown, optionName: string): number {
 }
 
 /**
- * Validates supplied or last-solved variable values against a Model's variable bounds,
+ * Verifies supplied or last-solved variable values against a Model's variable bounds,
  * integrality requirements, linear constraints, and logical constraints.
  * Runs purely in JavaScript/TypeScript without requiring any WASM solver runtime.
  */
-export function validateModelSolution(
+export function verifyModel(
   model: Model,
-  options: SolutionValidationOptions = {}
-): SolutionValidationReport {
+  options: VerifyOptions = {}
+): VerificationReport {
   const feasibilityTolerance = validateTolerance(
     options.feasibilityTolerance,
     "feasibilityTolerance"
@@ -147,8 +147,8 @@ export function validateModelSolution(
   }
   const explicitValues = options.values;
 
-  const violations: SolutionViolation[] = [];
-  const violationsByName: Record<string, SolutionViolation[]> = Object.create(null);
+  const violations: VerificationViolation[] = [];
+  const violationsByName: Record<string, VerificationViolation[]> = Object.create(null);
   const uncheckedConstraints: string[] = [];
   const missingVariables: string[] = [];
   let maxViolation = 0;
@@ -159,7 +159,7 @@ export function validateModelSolution(
     }
   };
 
-  const recordViolation = (v: SolutionViolation) => {
+  const recordViolation = (v: VerificationViolation) => {
     violations.push(v);
     if (!Object.prototype.hasOwnProperty.call(violationsByName, v.name)) {
       violationsByName[v.name] = [];
@@ -170,6 +170,26 @@ export function validateModelSolution(
     }
   };
 
+  const numericVars: Var[] = [];
+  const boolVars: BoolVar[] = [];
+  for (const v of model.variables.values()) {
+    if (v.type === "Boolean") {
+      boolVars.push(v);
+    } else {
+      numericVars.push(v);
+    }
+  }
+
+  const linearConstraints: Constraint[] = [];
+  const logicalConstraints: LogicalConstraint[] = [];
+  for (const c of model.constraints.values()) {
+    if (c instanceof Constraint) {
+      linearConstraints.push(c);
+    } else {
+      logicalConstraints.push(c);
+    }
+  }
+
   const numericValues = new Map<Var, number>();
   const booleanValues = new Map<BoolVar, boolean>();
 
@@ -179,7 +199,7 @@ export function validateModelSolution(
   let checkedLogicalConstraints = 0;
 
   // 1. Validate numeric variables (presence, finiteness, bounds, integrality)
-  for (const v of model.variables) {
+  for (const v of numericVars) {
     const rawVal = hasExplicitValues
       ? Object.prototype.hasOwnProperty.call(explicitValues, v.name)
         ? explicitValues![v.name]
@@ -321,7 +341,7 @@ export function validateModelSolution(
   }
 
   // 2. Validate Boolean variables
-  for (const bv of model.boolVars) {
+  for (const bv of boolVars) {
     const rawVal = hasExplicitValues
       ? Object.prototype.hasOwnProperty.call(explicitValues, bv.name)
         ? explicitValues![bv.name]
@@ -627,12 +647,13 @@ export function validateModelSolution(
   };
 
   // Validate any at() atoms embedded in objective expression (e.g., minimize(at(costs, idx)))
+  const objectiveExpr = model.objective();
   if (
-    (model.objectiveExpr instanceof QuadExpr || model.objectiveExpr instanceof LinExpr) &&
-    model.objectiveExpr.nonlinearTerms.length > 0
+    (objectiveExpr instanceof QuadExpr || objectiveExpr instanceof LinExpr) &&
+    objectiveExpr.nonlinearTerms.length > 0
   ) {
     const objDomRes = checkExprAtDomains(
-      new LinExpr(new Map(), 0, model.objectiveExpr.nonlinearTerms)
+      new LinExpr(new Map(), 0, objectiveExpr.nonlinearTerms)
     );
     if (objDomRes.ok) {
       for (const err of objDomRes.errors) {
@@ -648,7 +669,7 @@ export function validateModelSolution(
   }
 
   // 3. Validate linear constraints
-  for (const c of model.constraints) {
+  for (const c of linearConstraints) {
     const res = checkLinearConstraint(c);
     if (res.status === "unchecked") {
       uncheckedConstraints.push(c.name);
@@ -890,8 +911,8 @@ export function validateModelSolution(
     return { ok: false, reason: "unsupported logical expression node" };
   };
 
-  for (let i = 0; i < model.logicalConstraints.length; i++) {
-    const lc = model.logicalConstraints[i];
+  for (let i = 0; i < logicalConstraints.length; i++) {
+    const lc = logicalConstraints[i];
     const lcName = lc.name || `lc_${i + 1}`;
     if (!evaluateLogical) {
       uncheckedConstraints.push(lcName);
@@ -963,10 +984,10 @@ export function validateModelSolution(
   }
 
   const complete =
-    checkedVariables === model.variables.length &&
-    checkedBoolVariables === model.boolVars.length &&
-    checkedLinearConstraints === model.constraints.length &&
-    checkedLogicalConstraints === model.logicalConstraints.length &&
+    checkedVariables === numericVars.length &&
+    checkedBoolVariables === boolVars.length &&
+    checkedLinearConstraints === linearConstraints.length &&
+    checkedLogicalConstraints === logicalConstraints.length &&
     uncheckedConstraints.length === 0 &&
     missingVariables.length === 0;
 
@@ -982,13 +1003,13 @@ export function validateModelSolution(
     maxViolation,
     summary: {
       checkedVariables,
-      totalVariables: model.variables.length,
+      totalVariables: numericVars.length,
       checkedBoolVariables,
-      totalBoolVariables: model.boolVars.length,
+      totalBoolVariables: boolVars.length,
       checkedLinearConstraints,
-      totalLinearConstraints: model.constraints.length,
+      totalLinearConstraints: linearConstraints.length,
       checkedLogicalConstraints,
-      totalLogicalConstraints: model.logicalConstraints.length,
+      totalLogicalConstraints: logicalConstraints.length,
     },
   };
 }

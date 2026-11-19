@@ -70,7 +70,7 @@ export interface Solver {
    * LP, MIP, QP, SMT 最適化モデルの主求解メソッド。
    *
    * @param modelData メモリ上の型付きモデル構造 (variables, constraints, objective, sense, boolVars, logicalConstraints)
-   * @param options 実行時オプション (timeLimit, mipGap, verbose, signal, onProgress 等)
+   * @param options 実行時オプション (timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress 等)
    */
   solve(
     modelData: SolveModelData,
@@ -120,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 カスタムソルバーは対応機能を `capabilities` で宣言します。`Model` は `solve()` または `check()` をディスパッチする前に以下の条件を検証します：
 - 目的関数に2次項（`QuadExpr`）が含まれる場合：`supportsQP === false` でないか
-- モデルに論理制約（`m.logicalConstraints`）が含まれ、ソルバーがネイティブ論理制約（`supportsLogicalConstraints !== true`）と SMT（`supportsSMT !== true`）のどちらにも対応しない場合：`linearizeModelForMip` を通じて 0-1 MIP バイナリ変数と線形制約へ自動線形化されます。
+- モデルに論理制約（`m.constraint(...)` で登録され、`m.constraints` には `kind: "logical"` として格納され、ソルバーには `modelData.logicalConstraints` として渡される）が含まれ、ソルバーがネイティブ論理制約（`supportsLogicalConstraints !== true`）と SMT（`supportsSMT !== true`）のどちらにも対応しない場合：`linearizeModelForMip` を通じて 0-1 MIP 二元変数と線形制約へ自動線形化されます。
 - いずれかの変数に初期値ヒント（`initialValue`）が設定されている場合：`supportsWarmStart !== true` でないか
 
 ```typescript
@@ -157,8 +157,11 @@ export interface SolverOptions {
   /** 制限時間（秒） */
   timeLimit?: number;
 
-  /** 相対 MIP ギャップ許容値 */
-  mipGap?: number;
+  /** 相対 MIP ギャップ許容値（例: 1% なら 0.01） */
+  relativeGap?: number;
+
+  /** 絶対 MIP ギャップ許容値 */
+  absoluteGap?: number;
 
   /** ソルバーのコンソールログ出力を有効化 */
   verbose?: boolean;
@@ -219,13 +222,10 @@ export interface SolverResult {
   objectiveBound?: number;
 
   /** ソルバーが提供する相対 MIP ギャップ */
-  relGap?: number;
-
-  /** relGap の別名：ソルバーが提供する相対 MIP ギャップ */
-  mipGap?: number;
+  relativeGap?: number;
 
   /** 絶対 MIP ギャップ |objectiveValue - objectiveBound|（両方が有限値のとき自動計算） */
-  absGap?: number;
+  absoluteGap?: number;
 
   /** 元の変数名をキーとする主問題解のマップ（非有限値は無視されます） */
   values: Record<string, number>;
@@ -321,7 +321,8 @@ export class CloudSolver implements Solver {
         body: JSON.stringify({
           lp: lpString,
           timeLimit: options.timeLimit,
-          mipGap: options.mipGap,
+          relativeGap: options.relativeGap,
+          absoluteGap: options.absoluteGap,
         }),
         signal: options.signal,
       });
@@ -519,7 +520,7 @@ describe("Custom Solver Integration", () => {
       const status = await model.solve();
       expect(status).toBe("Optimal");
       expect(x.value).toBe(2);
-      const c1 = model.getConstraintByName("budget");
+      const c1 = model.constraints.get("budget");
       expect(c1?.dual).toBe(2);
     } finally {
       fetchSpy.mockRestore();

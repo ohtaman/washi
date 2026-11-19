@@ -58,10 +58,10 @@ m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
 m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
 
-// 3. Solve (built-in HiGHS WebAssembly) and validate the solution
+// 3. Solve (built-in HiGHS WebAssembly) and verify the solution
 const status = await m.solve();
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution();
+  const report = m.verify();
   console.log(status, report.valid); // "Optimal", true
   console.log(`Profit: ${m.objectiveValue} (desks=${desks.value}, chairs=${chairs.value})`); // 1100 (desks=20, chairs=10)
 }
@@ -69,7 +69,7 @@ if (m.hasPrimalSolution) {
 
 1. **Define decision variables (`lb`, `ub`)**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`, providing finite `lb` and `ub` bounds when known.
 2. **Describe the objective and constraints (`expr`)**: Formulate equations naturally with `` expr`...` ``, and pass constraint names to make infeasibility debugging straightforward.
-3. **Solve and verify (`solve`, `validateSolution`)**: `await m.solve()` runs the bundled HiGHS WebAssembly solver. Check `m.hasPrimalSolution` before reading `.value`, and call `m.validateSolution()` to independently verify that bounds, integrality, and constraints hold.
+3. **Solve and verify (`solve`, `verify`)**: `await m.solve()` runs the bundled HiGHS WebAssembly solver. Check `m.hasPrimalSolution` before reading `.value`, and call `m.verify()` to independently verify that bounds, integrality, and constraints hold.
 
 ---
 

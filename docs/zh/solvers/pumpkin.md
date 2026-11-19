@@ -152,7 +152,7 @@ WaSHI 通过 Rust WebAssembly 包装箱（`wasm/pumpkin`，链接 `pumpkin-core`
 - **进度监控与取消控制（已支持）**：
   在 `solve()` 期间，Pumpkin 支持实时最优解进度回调（`onProgress`，传递 `elapsedTime` 与 `objectiveValue`）以及 `AbortSignal` 取消控制：在浏览器 Web Worker 中支持抢占式终止正在运行的 Worker 并取消排队请求，在主线程与 Node.js 中则在分支和终止钩子处轮询协作式 `should_abort` 检查点。
 - **离散最优性证明**：
-  作为有限整数域上的精确 LCG 求解器，Pumpkin 通过子句学习与目标边界收紧（`LinearSatUnsat`）来严格证明最优性，而非依赖浮点 LP 容差选项（`mipGap`、`relGap`、`absGap` 或 `presolve`）。
+  作为有限整数域上的精确 LCG 求解器，Pumpkin 通过子句学习与目标边界收紧（`LinearSatUnsat`）来严格证明最优性，而非依赖浮点 LP 容差选项（`relativeGap`、`absoluteGap` 或 `presolve`）。
 
 ---
 

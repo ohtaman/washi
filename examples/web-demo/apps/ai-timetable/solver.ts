@@ -1435,7 +1435,7 @@ for (const c of courses) {
 }
 
 /**
- * Solves the University Course Timetabling Problem using WaSHI (HiGHS), verifies with `validateSolution()`,
+ * Solves the University Course Timetabling Problem using WaSHI (HiGHS), verifies with `verify()`,
  * and automatically diagnoses conflicts using HiGHS Elastic Constraint Relaxation if `Infeasible`.
  */
 export async function solveTimetableWithWashi(
@@ -1481,7 +1481,6 @@ export async function solveTimetableWithWashi(
     referenceTimetable: useRef ? options?.referenceTimetable : null,
   });
 
-  model.validateIntegrity();
   const lpFull = model.toLpString();
   const lpLines = lpFull.split("\n");
   const lpPreview =
@@ -1492,8 +1491,8 @@ export async function solveTimetableWithWashi(
       : lpFull;
 
   const buildTimeMs = Math.max(1, Math.round(performance.now() - t0));
-  const numVariables = model.variables.length;
-  const numConstraints = model.constraints.length;
+  const numVariables = model.variables.size;
+  const numConstraints = model.constraints.size;
   const modelCodePreview = generateTimetableWashiCodePreview(state);
 
   const tSolve0 = performance.now();
@@ -1501,7 +1500,7 @@ export async function solveTimetableWithWashi(
   try {
     status = await model.solve({
       timeLimit: options?.timeLimit ?? 4.0,
-      relGap: 0.001,
+      relativeGap: 0.001,
       signal: options?.signal,
     });
   } catch (err: unknown) {
@@ -1568,7 +1567,7 @@ export async function solveTimetableWithWashi(
       byCourse,
     };
 
-    const report = model.validateSolution();
+    const report = model.verify();
     const evaluation = evaluateTimetableSolution(state, timetable);
     const diffFromPrevious = options?.referenceTimetable
       ? computeTimetableDiff(state, options.referenceTimetable, timetable)

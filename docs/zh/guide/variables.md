@@ -170,7 +170,7 @@ console.log(`isAdmin: ${isAdmin.value}`);
 const packedItems = items.filter((it) => selected[it].value === 1);
 console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 
-// 按变量名从 Map 查询 (Map<string, number | boolean>)
+// 按变量名从 ReadonlyMap 查询 (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 缩减成本（LP 灵敏度分析）
@@ -181,10 +181,16 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## 按名称查找变量
 
-您可以按名称检索已注册的决策变量，或查看模型中的数值变量总数：
+所有已注册的数值决策变量（`Var`）和命题布尔变量（`BoolVar`）均统一存储在 `m.variables`（`ReadonlyMap<string, Var | BoolVar>`）中：
 
 ```typescript
-const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
-console.log("Total numeric variables:", m.numVars);
+const v = m.variables.get("trucks");   // Var | BoolVar | undefined
+const b = m.variables.get("isAdmin");  // Var | BoolVar | undefined
+console.log("是否包含 trucks:", m.variables.has("trucks"));
+console.log("总变量数:", m.variables.size);
+
+// 可通过 v.type ("Continuous" | "Integer" | "Binary" | "Boolean") 进行类型窄化：
+if (v && v.type !== "Boolean") {
+  console.log("变量上下界:", v.lb, v.ub);
+}
 ```

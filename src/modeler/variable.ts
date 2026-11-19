@@ -2,7 +2,7 @@ import type { VarType } from "./types.js";
 import { LinExpr } from "./expression.js";
 import { Constraint } from "./constraint.js";
 import { QuadExpr } from "./quad-expr.js";
-import { validateVarBounds } from "./validation.js";
+import { validateVarBounds, notifyModelMutation } from "./validation.js";
 
 let varIdCounter = 0;
 
@@ -51,7 +51,7 @@ export class Var {
   private _name: string;
   public readonly prefix: string;
   public hasExplicitName: boolean;
-  public ownerModel: { notifyMutation?: () => void } | null = null;
+  public ownerModel: object | null = null;
   private _type: "Continuous" | "Integer" | "Binary";
   private _lb: number;
   private _ub: number;
@@ -103,7 +103,7 @@ export class Var {
     const normalized = normalizeVarType(val);
     if (this._type !== normalized) {
       this._type = normalized;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -114,7 +114,7 @@ export class Var {
   set lb(val: number) {
     if (!Object.is(this._lb, val)) {
       this._lb = val;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -125,7 +125,7 @@ export class Var {
   set ub(val: number) {
     if (!Object.is(this._ub, val)) {
       this._ub = val;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 
@@ -141,7 +141,7 @@ export class Var {
     const normalized = val !== undefined && Object.is(val, -0) ? 0 : val;
     if (!Object.is(this._initialValue, normalized)) {
       this._initialValue = normalized;
-      this.ownerModel?.notifyMutation?.();
+      notifyModelMutation(this.ownerModel);
     }
   }
 

@@ -44,7 +44,7 @@ import {
 } from "../examples/web-demo/apps/ai-timetable/main.js";
 
 describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
-  it("solves the default 25-course (30-session) 7-room 10-professor timetable to Optimal and passes validateSolution()", async () => {
+  it("solves the default 25-course (30-session) 7-room 10-professor timetable to Optimal and passes verify()", async () => {
     const state = generateTimetableState();
     expect(state.courses.length).toBe(25);
     expect(state.rooms.length).toBe(7);
@@ -494,7 +494,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
   it("handles room-type forbids, collision-free rule IDs, soft professor unavailability, reverse consecutive pairs, and slot-based diff matching", async () => {
     const baseState = generateTimetableState();
 
-    // 1. Multiple custom rules created in the same synchronous call receive unique IDs and pass validateIntegrity()
+    // 1. Multiple custom rules created in the same synchronous call receive unique IDs and pass automatic integrity validation
     const { updatedState: multiRuleState } = applyTimetableChatOperationsToState(baseState, [
       { op: "forbid_course_slot", courseId: "C16", days: ["Mon"], periods: [1], isHard: true },
       { op: "forbid_course_slot", courseId: "C16", days: ["Fri"], periods: [5], isHard: true },
@@ -504,7 +504,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     const ruleIds = multiRuleState.customRules.map((r) => r.id);
     expect(new Set(ruleIds).size).toBe(ruleIds.length);
     const builtMulti = buildTimetableWashiModel(multiRuleState);
-    expect(() => builtMulti.model.validateIntegrity()).not.toThrow();
+    expect(() => builtMulti.model.toLpString()).not.toThrow();
 
     // 2. Room-type forbid (`forbid_room` with `roomType` only) is enforced by the solver
     // C23 (Optimization Seminar, preferredRoomIds: ["R401"] which is seminar_room) is moved out of seminar_room when forbidden

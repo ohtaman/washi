@@ -58,7 +58,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ### 名前を付けるメリット
 1. **LP 定式化の確認 (`m.toLpString()`)**: エクスポートされる CPLEX LP 文字列に制約名が出力されるため、生成された式の確認が容易になります。
 2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()`（標準 HiGHS の弾性緩和、同梱 Pumpkin の `unsatCore`、または Z3 の `unsatCore`）がどの名前付き制約同士が衝突しているかを返します。
-3. **名前による参照 (`m.getConstraintByName()`)**: 求解後に名前から制約オブジェクトを取得し、潜在価格（`dual`）や余剰（`slack`）を確認できます。
+3. **名前による参照 (`m.constraints.get()`)**: 求解後に名前から制約オブジェクトを取得し、潜在価格（`dual`）や余剰（`slack`）を確認できます。
 
 ---
 
@@ -85,7 +85,7 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## 双対変数（潜在価格）とスラックの取得
 
-連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.getConstraintByName()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
+連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.constraints.get()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -94,7 +94,8 @@ await m.solve();
 
 console.log("潜在価格 (dual):", woodConstraint.dual);
 console.log("余剰 (slack):", woodConstraint.slack);
-console.log("線形制約の総数:", m.numConstrs);
+console.log("名前検索の dual:", m.constraints.get("wood")?.dual); // number | null（MIP / CP / 論理制約は null）
+console.log("登録済み制約の総数:", m.constraints.size);
 ```
 
 ---
@@ -169,7 +170,7 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-名前付きの論理制約は `m.getLogicalConstraintByName(name)` で検索できます。
+名前付きの制約は、線形制約（`Constraint`）と論理/CP制約（`LogicalConstraint`: `{ kind: "logical", name, expr, dual: null, slack: null }`）のどちらも `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）に統一格納されており、`m.constraints.get(name)` で検索できます。
 
 ### `m.indicator()` と `implies()` の使い分け
 

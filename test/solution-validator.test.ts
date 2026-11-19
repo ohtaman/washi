@@ -1,5 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, maximize, minimize, and, or, not, implies, xor, validateModelSolution } from "../src/index.js";
+import {
+  Model,
+  Constraint,
+  expr,
+  maximize,
+  minimize,
+  and,
+  or,
+  not,
+  implies,
+  xor,
+  type VerifyOptions,
+  type VerificationReport,
+} from "../src/index.js";
 
 describe("Post-solve Solution Validation (Issue #54)", () => {
   it("validates feasible LP and MIP solutions within tolerance and returns valid: true, complete: true", async () => {
@@ -16,7 +29,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const status = await m.solve();
     expect(status).toBe("Optimal");
 
-    const report = m.validateSolution();
+    const report: VerificationReport = m.verify();
     expect(report.valid).toBe(true);
     expect(report.complete).toBe(true);
     expect(report.violations).toEqual([]);
@@ -35,7 +48,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     });
 
     // Also accepts slightly perturbed values within feasibilityTolerance / integralityTolerance
-    const nearReport = validateModelSolution(m, {
+    const nearOptions: VerifyOptions = {
       values: {
         x: (x.value as number) - 5e-7,
         y: (y.value as number) + 4e-7,
@@ -43,7 +56,8 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
       },
       feasibilityTolerance: 1e-5,
       integralityTolerance: 1e-6,
-    });
+    };
+    const nearReport = m.verify(nearOptions);
     expect(nearReport.valid).toBe(true);
     expect(nearReport.complete).toBe(true);
   });
@@ -58,7 +72,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     m.constraint(expr`2 * ${x} - ${k} >= 6`, "ge_req");
     m.constraint(expr`${k} + ${b} == 3`, "eq_target");
 
-    const report = m.validateSolution({
+    const report = m.verify({
       values: {
         x: 1.5, // violates lower bound 2 by 0.5; also 2*(1.5) - 4.4 = -1.4 < 6 (violates ge_req by 7.4)
         k: 4.4, // violates integrality by 0.4
@@ -84,7 +98,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(report.violationsByName["eq_target"][0].violation).toBeCloseTo(2.6, 12);
 
     // Also test <= violation
-    const leReport = m.validateSolution({
+    const leReport = m.verify({
       values: { x: 7, k: 3, b: 0 },
     });
     expect(leReport.valid).toBe(false);
@@ -100,21 +114,21 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     m.constraint(expr`${x} + ${y} <= 10`, "sum_le");
 
     // 1. Before solve (all values null)
-    const unsolvedReport = m.validateSolution();
+    const unsolvedReport = m.verify();
     expect(unsolvedReport.valid).toBe(false);
     expect(unsolvedReport.complete).toBe(false);
     expect(unsolvedReport.missingVariables).toEqual(["x", "y"]);
     expect(unsolvedReport.uncheckedConstraints).toEqual(["sum_le"]);
 
     // 2. Partial values map (y missing)
-    const partialReport = m.validateSolution({ values: { x: 4 } });
+    const partialReport = m.verify({ values: { x: 4 } });
     expect(partialReport.valid).toBe(false);
     expect(partialReport.complete).toBe(false);
     expect(partialReport.missingVariables).toEqual(["y"]);
     expect(partialReport.uncheckedConstraints).toEqual(["sum_le"]);
 
     // 3. Non-finite value (NaN / Infinity)
-    const nanReport = m.validateSolution({ values: { x: NaN, y: 3 } });
+    const nanReport = m.verify({ values: { x: NaN, y: 3 } });
     expect(nanReport.valid).toBe(false);
     expect(nanReport.complete).toBe(false);
     expect(nanReport.violationsByName["x"][0].type).toBe("non_finite_value");
@@ -133,7 +147,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     m.constraint(xor(p, not(q)), "equiv_pq");
 
     // Valid assignment: p = true, q = true, x = 12
-    const validRep = m.validateSolution({
+    const validRep = m.verify({
       values: { p: true, q: true, x: 12 },
     });
     expect(validRep.valid).toBe(true);
@@ -141,7 +155,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(validRep.summary.checkedLogicalConstraints).toBe(3);
 
     // Violated assignment: p = true, q = true, x = 5 (violates imp_px)
-    const invalidRep = m.validateSolution({
+    const invalidRep = m.verify({
       values: { p: true, q: true, x: 5 },
     });
     expect(invalidRep.valid).toBe(false);
@@ -153,7 +167,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const u = mPol.continuous("u", { lb: 0, ub: 20 });
     const a = u.le(0);
     mPol.constraint(a.and(a.not()), "contradiction_boundary");
-    const polReport = mPol.validateSolution({
+    const polReport = mPol.verify({
       values: { u: 5e-7 },
       feasibilityTolerance: 1e-6,
     });
@@ -162,7 +176,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(polReport.uncheckedConstraints).toContain("contradiction_boundary");
 
     // And outside the tolerance band (u = 1), A AND NOT A evaluates to false (logical_constraint violation)
-    const polOutsideReport = mPol.validateSolution({
+    const polOutsideReport = mPol.verify({
       values: { u: 1 },
       feasibilityTolerance: 1e-6,
     });
@@ -171,7 +185,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(polOutsideReport.violationsByName["contradiction_boundary"][0].type).toBe("logical_constraint");
 
     // When evaluateLogicalConstraints is false, logical constraints are marked unchecked and valid/complete are false
-    const skippedRep = m.validateSolution({
+    const skippedRep = m.verify({
       values: { p: true, q: true, x: 12 },
       evaluateLogicalConstraints: false,
     });
@@ -187,14 +201,14 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
 
     m.indicator(z, expr`${x} <= 0`, { name: "ind_x0" });
 
-    const reportInactive = m.validateSolution({
+    const reportInactive = m.verify({
       values: { x: 80, z: 0 },
     });
     expect(reportInactive.valid).toBe(true);
     expect(reportInactive.complete).toBe(true);
 
     // Active indicator (z = 1, x = 5) violates x <= 0
-    const reportActiveViolated = m.validateSolution({
+    const reportActiveViolated = m.verify({
       values: { x: 5, z: 1 },
     });
     expect(reportActiveViolated.valid).toBe(false);
@@ -205,10 +219,10 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
   it("rejects invalid tolerance options", () => {
     const m = new Model();
     m.continuous("x", { lb: 0, ub: 1 });
-    expect(() => m.validateSolution({ feasibilityTolerance: -1e-6 })).toThrow(
+    expect(() => m.verify({ feasibilityTolerance: -1e-6 })).toThrow(
       /Invalid feasibilityTolerance/
     );
-    expect(() => m.validateSolution({ integralityTolerance: NaN })).toThrow(
+    expect(() => m.verify({ integralityTolerance: NaN })).toThrow(
       /Invalid integralityTolerance/
     );
   });
@@ -218,7 +232,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const mProto = new Model("ProtoKeys");
     mProto.continuous("constructor", { lb: 0, ub: 1 });
     mProto.continuous("toString", { lb: 0, ub: 1 });
-    const repProto = mProto.validateSolution();
+    const repProto = mProto.verify();
     expect(repProto.valid).toBe(false);
     expect(repProto.violationsByName["constructor"][0].type).toBe("missing_value");
     expect(repProto.violationsByName["toString"][0].type).toBe("missing_value");
@@ -229,14 +243,14 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const b = mXor.bool("b");
     const d = mXor.bool("d");
     mXor.constraint(xor(a, b, d), "xor3");
-    expect(mXor.validateSolution({ values: { a: true, b: true, d: true } }).valid).toBe(true);
-    expect(mXor.validateSolution({ values: { a: true, b: true, d: false } }).valid).toBe(false);
+    expect(mXor.verify({ values: { a: true, b: true, d: true } }).valid).toBe(true);
+    expect(mXor.verify({ values: { a: true, b: true, d: false } }).valid).toBe(false);
 
     // 3. Includes tolerated residuals in maxViolation
     const mTol = new Model("ToleratedResidual");
     const xTol = mTol.continuous("xTol", { lb: 0, ub: 1 });
     mTol.constraint(expr`${xTol} == 0`, "eq0");
-    const repTol = mTol.validateSolution({
+    const repTol = mTol.verify({
       values: { xTol: 5e-7 },
       feasibilityTolerance: 1e-6,
     });
@@ -247,7 +261,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const mFalseAtom = new Model("FalseAtomPolarity");
     const xPol = mFalseAtom.continuous("xPol", { lb: 0, ub: 200 });
     mFalseAtom.constraint(not(xPol.le(0)), "neg_le");
-    const repFalseAtom = mFalseAtom.validateSolution({
+    const repFalseAtom = mFalseAtom.verify({
       values: { xPol: 100 },
     });
     expect(repFalseAtom.valid).toBe(true);
@@ -256,12 +270,12 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     // 5. Excludes missing_value and unchecked_constraint from maxViolation
     const mUnsolved = new Model("UnsolvedMaxViolation");
     mUnsolved.continuous("xUnsolved", { lb: 0, ub: 10 });
-    const repUnsolved = mUnsolved.validateSolution();
+    const repUnsolved = mUnsolved.verify();
     expect(repUnsolved.valid).toBe(false);
     expect(repUnsolved.complete).toBe(false);
     expect(repUnsolved.maxViolation).toBe(0);
 
-    // 6. Aligns variadic XOR (>2 children) between Z3 translation and validateSolution
+    // 6. Aligns variadic XOR (>2 children) between Z3 translation and verify
     const mXorZ3 = new Model({ name: "VariadicXorZ3", solver: "z3" });
     const pA = mXorZ3.bool("pA");
     const pB = mXorZ3.bool("pB");
@@ -272,13 +286,13 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     mXorZ3.constraint(pC, "force_c");
     const z3XorRes = await mXorZ3.check("z3");
     expect(z3XorRes.status).toBe("Sat");
-    expect(mXorZ3.validateSolution().valid).toBe(true);
+    expect(mXorZ3.verify().valid).toBe(true);
 
     // 7. Rejects NaN/inverted variable bounds and non-finite constraint RHS/coefficients/constants
     const mBadBounds = new Model("BadBoundsModel");
     const xNanLb = mBadBounds.continuous("xNanLb", { lb: 0, ub: 10 });
     xNanLb.lb = NaN;
-    const repNanLb = mBadBounds.validateSolution({ values: { xNanLb: 5 } });
+    const repNanLb = mBadBounds.verify({ values: { xNanLb: 5 } });
     expect(repNanLb.valid).toBe(false);
     expect(repNanLb.violationsByName["xNanLb"][0].type).toBe("lower_bound");
 
@@ -286,7 +300,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const xInv = mInvBounds.continuous("xInv", { lb: 0, ub: 10 });
     xInv.lb = 5 + 1e-7;
     xInv.ub = 5;
-    const repInv = mInvBounds.validateSolution({
+    const repInv = mInvBounds.verify({
       values: { xInv: 5 },
       feasibilityTolerance: 1e-6,
     });
@@ -296,10 +310,10 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const mBadConstr = new Model("BadConstraintDataModel");
     const xGood = mBadConstr.continuous("xGood", { lb: 0, ub: 10 });
     mBadConstr.constraint(xGood.le(5), "nan_rhs");
-    mBadConstr.getConstraintByName("nan_rhs")!.rhs = NaN;
+    (mBadConstr.constraints.get("nan_rhs") as Constraint).rhs = NaN;
     mBadConstr.constraint(xGood.le(5), "nan_coeff");
-    mBadConstr.getConstraintByName("nan_coeff")!.lhs.terms.set(xGood, NaN);
-    const repBadConstr = mBadConstr.validateSolution({ values: { xGood: 2 } });
+    (mBadConstr.constraints.get("nan_coeff") as Constraint).lhs.terms.set(xGood, NaN);
+    const repBadConstr = mBadConstr.verify({ values: { xGood: 2 } });
     expect(repBadConstr.valid).toBe(false);
     expect(repBadConstr.complete).toBe(false);
     expect(repBadConstr.uncheckedConstraints).toEqual(["nan_rhs", "nan_coeff"]);

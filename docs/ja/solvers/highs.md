@@ -62,8 +62,8 @@ const controller = new AbortController();
 
 await model.solve({
   timeLimit: 60.0,       // 最大実行時間（秒）
-  mipGap: 0.001,         // 相対 MIP ギャップが 0.1% 以内になったら終了 (別名: relGap)
-  absGap: 1.0,           // 絶対 MIP ギャップ許容値
+  relativeGap: 0.001,    // 相対 MIP ギャップが 0.1% 以内になったら終了
+  absoluteGap: 1.0,      // 絶対 MIP ギャップ許容値
   presolve: "on",        // 前処理 ("on" | "off" | "choose")
   outputFlag: true,      // シンプレックス / 分枝限定法の内部ログを出力 (output_flag)
   signal: controller.signal,
@@ -76,7 +76,7 @@ await model.solve({
 if (model.hasPrimalSolution) {
   console.log(
     `利用可能な解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
-    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+    `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
 ```

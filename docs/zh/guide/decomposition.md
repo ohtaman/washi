@@ -231,11 +231,11 @@ const status = await m.relax();
 console.log("LP 松弛目标界:", m.objectiveValue);
 ```
 
-### 3. 动态列注入 (`m.addColumn()`)
+### 3. 动态列注入 (`m.column()`)
 在单次调用中创建新决策变量、设置其目标函数系数，并将非零系数注入既有命名约束中：
 
 ```typescript
-const col = m.addColumn({
+const col = m.column({
   name: "pattern_1",
   type: "Integer", // 或 "Continuous" / "Binary"
   lb: 0,

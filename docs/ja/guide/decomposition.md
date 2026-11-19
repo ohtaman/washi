@@ -231,11 +231,11 @@ const status = await m.relax();
 console.log("LP 緩和の目的関数値:", m.objectiveValue);
 ```
 
-### 3. 動的な列追加 (`m.addColumn()`)
+### 3. 動的な列追加 (`m.column()`)
 新しい決定変数の作成、目的関数係数の設定、および既存の名前付き制約への係数追加を 1 回の呼び出しで行います：
 
 ```typescript
-const col = m.addColumn({
+const col = m.column({
   name: "pattern_1",
   type: "Integer", // または "Continuous" / "Binary"
   lb: 0,

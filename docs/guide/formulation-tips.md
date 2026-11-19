@@ -195,8 +195,8 @@ await m.solve();
 In combinatorial MIP problems, solvers often find a near-optimal feasible solution within seconds, then spend most of the remaining runtime closing the final fraction of a percent in the branch-and-bound tree (**tail-off**).
 
 In interactive UIs and batch pipelines, combine `timeLimit` with business-meaningful tolerances in [`m.solve(options)`](./objectives.md#solve-options-solveoptions):
-- **`relGap: 0.01`**: Stop immediately once the incumbent is proven within **1%** of the theoretical dual bound.
-- **`absGap: 100`**: Stop immediately once `|objectiveValue - objectiveBound| <= 100` in the objective's native units.
+- **`relativeGap: 0.01`**: Stop immediately once the incumbent is proven within **1%** of the theoretical dual bound.
+- **`absoluteGap: 100`**: Stop immediately once `|objectiveValue - objectiveBound| <= 100` in the objective's native units.
 
 ---
 

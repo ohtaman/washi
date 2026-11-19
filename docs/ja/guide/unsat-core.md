@@ -4,7 +4,7 @@
 
 WaSHI はこれらに対応するため、以下の診断・検証・デバッグツールを標準で備えています：
 - **矛盾診断（`m.check()`）**: 標準 HiGHS の弾性スラック緩和、同梱 Pumpkin の `unsatCore`、または Z3 の `unsatCore` により衝突している制約を特定します。
-- **解の検証と LP 定式化出力（`m.validateSolution()`, `m.toLpString()`）**: 変数境界・整数条件・制約の充足を独立検証し、生成された CPLEX `.lp` 文字列を目視確認できます。
+- **解の検証と LP 定式化出力（`m.verify()`, `m.toLpString()`）**: 変数境界・整数条件・制約の充足を独立検証し、生成された CPLEX `.lp` 文字列を目視確認できます。
 - **高速な単体テスト（`MockSolver`）**: WebAssembly をロードせずにアプリ側のモデル構築・結果処理ロジックを CI で高速テストできます。
 
 ---
@@ -85,7 +85,7 @@ if (status === "Infeasible") {
 
 ---
 
-## 解の独立検証 (`m.validateSolution()`)
+## 解の独立検証 (`m.verify()`)
 
 求解後（または `values` オプションでカスタム解を渡して）、得られた解が元のモデルの変数上下限・整数条件・線形制約・論理制約を許容誤差内で満たしているかを独立して検証できます：
 
@@ -93,7 +93,7 @@ if (status === "Infeasible") {
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution({
+  const report = m.verify({
     feasibilityTolerance: 1e-6,     // 変数上下限および線形制約の最大許容違反量
     integralityTolerance: 1e-6,     // Integer / Binary 変数の整数からの最大許容誤差
     evaluateLogicalConstraints: true,
@@ -110,18 +110,18 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-### `SolutionValidationReport` の主なプロパティ
+### `VerificationReport` の主なプロパティ
 
 | プロパティ | 型 | 説明 |
 | :--- | :--- | :--- |
 | `valid` | `boolean` | `complete === true` かつ `uncheckedConstraints.length === 0` かつ `violations.length === 0` のとき `true`。 |
 | `complete` | `boolean` | すべての変数・論理変数・線形制約・論理制約が評価完了したとき `true`。 |
 | `maxViolation` | `number` | 評価されたすべての境界・整数性・制約における違反量の最大値。 |
-| `violations` | `SolutionViolation[]` | 検出された違反のリスト（`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`）。 |
-| `violationsByName` | `Record<string, SolutionViolation[]>` | 変数名または制約名ごとにグループ化された違反マップ。 |
+| `violations` | `VerificationViolation[]` | 検出された違反のリスト（`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`）。 |
+| `violationsByName` | `Record<string, VerificationViolation[]>` | 変数名または制約名ごとにグループ化された違反マップ。 |
 | `uncheckedConstraints` | `string[]` | 変数値の欠落等により評価できなかった制約名のリスト。 |
 | `missingVariables` | `string[]` | 値が `null` または `undefined` だった変数名のリスト。 |
-| `summary` | `SolutionValidationSummary` | 評価済み／全体の変数数・論理変数数・線形制約数・論理制約数の集計。 |
+| `summary` | `VerificationSummary` | 評価済み／全体の変数数・論理変数数・線形制約数・論理制約数の集計。 |
 
 ---
 

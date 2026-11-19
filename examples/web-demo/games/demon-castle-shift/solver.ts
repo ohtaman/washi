@@ -795,15 +795,14 @@ export function buildScheduleWashiModel(
 }
 
 /**
- * Solves the stage to global optimality using WaSHI (HiGHS) and verifies the solution with validateSolution().
+ * Solves the stage to global optimality using WaSHI (HiGHS) and verifies the solution with verify().
  */
 export async function solveOptimalSchedule(stage: StageScenario): Promise<OptimalSolveResult> {
   const days = getStageDays(stage);
   const startTime = performance.now();
   const { model, dayVars, nightVars } = buildScheduleWashiModel(stage, { solver: "highs" });
 
-  // Pre-solve integrity & LP export
-  model.validateIntegrity();
+  // Export LP formulation (validates model integrity automatically)
   const lpString = model.toLpString();
 
   // Solve with HiGHS (use presolve: "off" to avoid HiGHS WASM MIP presolver false-infeasible bug on small binary models)
@@ -821,8 +820,8 @@ export async function solveOptimalSchedule(stage: StageScenario): Promise<Optima
     }
   }
 
-  // Mandatory independent verification via validateSolution()
-  const report = model.validateSolution();
+  // Mandatory independent verification via verify()
+  const report = model.verify();
 
   return {
     status,

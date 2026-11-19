@@ -66,8 +66,8 @@ const controller = new AbortController();
 
 await model.solve({
   timeLimit: 60.0,       // 最大求解时间（秒）
-  mipGap: 0.001,         // 当相对 MIP 间隙达到 0.1% 以内时终止（别名：relGap）
-  absGap: 1.0,           // 绝对 MIP 最优间隙容差
+  relativeGap: 0.001,    // 当相对 MIP 间隙达到 0.1% 以内时终止
+  absoluteGap: 1.0,      // 绝对 MIP 最优间隙容差
   presolve: "on",        // 预处理控制（"on" | "off" | "choose"）
   outputFlag: true,      // 输出内部单纯形法 / 分支定界法日志 (output_flag)
   signal: controller.signal,
@@ -80,7 +80,7 @@ await model.solve({
 if (model.hasPrimalSolution) {
   console.log(
     `可用解 (${model.status}, 终止原因: ${model.terminationStatus}):`,
-    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+    `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
 ```

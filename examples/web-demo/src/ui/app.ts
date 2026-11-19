@@ -408,7 +408,7 @@ export function initApp() {
       metricTime.textContent = result.runTime
         ? `${(result.runTime * 1000).toFixed(1)} ms`
         : "--";
-      const totalVars = (currentModel?.numVars ?? 0) + (currentModel?.boolVars.length ?? 0);
+      const totalVars = currentModel?.variables.size ?? 0;
       metricVars.textContent = String(totalVars);
 
       // Render Conflicts / Unsat Core if conflicting constraints detected
@@ -489,18 +489,17 @@ export function initApp() {
     }
 
     const onlyNonZero = filterNonZero.checked;
-    let vars = currentModel.variables;
+    let vars = [...currentModel.variables.values()];
 
     if (onlyNonZero) {
-      vars = vars.filter((v) => Math.abs(v.value ?? 0) > 1e-6);
+      vars = vars.filter((v) =>
+        v.type === "Boolean"
+          ? currentModel!.values.get(v.name) === true
+          : Math.abs(v.value ?? 0) > 1e-6
+      );
     }
 
-    let bVars = currentModel.boolVars || [];
-    if (onlyNonZero) {
-      bVars = bVars.filter((bv) => currentModel!.values.get(bv.name) === true);
-    }
-
-    if (vars.length === 0 && bVars.length === 0) {
+    if (vars.length === 0) {
       varsTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No matching variables.</td></tr>`;
       return;
     }
@@ -511,6 +510,20 @@ export function initApp() {
 
     let rowsHtml = displayVars
       .map((v) => {
+        if (v.type === "Boolean") {
+          const val = currentModel!.values.get(v.name);
+          return `
+          <tr>
+            <td><strong>${v.name}</strong></td>
+            <td>Boolean</td>
+            <td class="font-mono font-semibold" style="color: ${val ? "var(--color-seiji)" : "var(--text-muted)"};">
+              ${val ? "true (1)" : "false (0)"}
+            </td>
+            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">[0, 1]</td>
+            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">--</td>
+          </tr>
+        `;
+        }
         const valStr =
           v.value !== null && v.value !== undefined
             ? v.value.toFixed(4).replace(/\.?0+$/, "")
@@ -534,25 +547,6 @@ export function initApp() {
       })
       .join("");
 
-    if (bVars.length > 0) {
-      rowsHtml += bVars
-        .map((bv) => {
-          const val = currentModel!.values.get(bv.name);
-          return `
-          <tr>
-            <td><strong>${bv.name}</strong></td>
-            <td>Boolean</td>
-            <td class="font-mono font-semibold" style="color: ${val ? "var(--color-seiji)" : "var(--text-muted)"};">
-              ${val ? "true (1)" : "false (0)"}
-            </td>
-            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">[0, 1]</td>
-            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">--</td>
-          </tr>
-        `;
-        })
-        .join("");
-    }
-
     if (isTruncated) {
       rowsHtml += `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">... Showing first 500 variables (${vars.length} total) ...</td></tr>`;
     }
@@ -569,7 +563,7 @@ export function initApp() {
     }
 
     // Default clean Decision Variables Summary cards
-    const vars = currentModel.variables || [];
+    const vars = [...currentModel.variables.values()].filter((v) => v.type !== "Boolean");
     const nonZeroVars = vars.filter((v) => (v.value ?? 0) > 1e-5);
 
     if (nonZeroVars.length === 0) {

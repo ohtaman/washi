@@ -16,7 +16,7 @@ const source = `
     const m = new Model("Distribution", { sense: "Maximize" });
     const x = integer ? m.integer("x", { lb: 0 }) : m.continuous("x", { lb: 0 });
     const y = integer ? m.integer("y", { lb: 0 }) : m.continuous("y", { lb: 0 });
-    m.objectiveExpr = x.mul(30).add(y.mul(50));
+    m.objective(maximize(x.mul(30).add(y.mul(50))));
     m.constraint(x.add(y.mul(2)).le(40));
     m.constraint(x.mul(2).add(y).le(50));
     const status = await m.solve({ useWorker });
@@ -138,10 +138,14 @@ async function runtime(root, entry, esm, base = "/factory/") {
     const namespace = await context.loadModule(entryUrl);
     api = namespace;
     if (namespace.Model) context.Model = namespace.Model;
+    if (namespace.maximize) context.maximize = namespace.maximize;
   } else {
     vm.runInContext(await readFile(resolveFile(entryUrl), "utf8"), context);
     api = context.Washi;
-    if (context.Washi) context.Model = context.Washi.Model;
+    if (context.Washi) {
+      context.Model = context.Washi.Model;
+      context.maximize = context.Washi.maximize;
+    }
   }
   if (!context.runPlan) vm.runInContext(source, context);
   check(await timeout(context.runPlan(true, false)));
@@ -154,6 +158,8 @@ async function runtime(root, entry, esm, base = "/factory/") {
     assert.equal(api.isValidWasmHeader, undefined);
     assert.equal(api.probeWasmUrl, undefined);
     assert.equal(api.resolveBrowserWasmUrl, undefined);
+    assert.equal(api.validateModelSolution, undefined);
+    assert.equal(api.validateModelIntegrity, undefined);
     const expModel = new api.Model("ExpCheck");
     const expVar = expModel.continuous("x");
     const expTerm = api.expr`${1e-7} * ${expVar} + 2.5e-6`;
@@ -478,7 +484,7 @@ try {
   await writeFile(path.join(fixture, "index.html"), '<script type="module" src="./main.js"></script>');
   await writeFile(
     path.join(fixture, "main.js"),
-    `import { Model } from '@ohtaman/washi';\nimport '@ohtaman/washi/solvers/glpk';\nimport '@ohtaman/washi/solvers/z3';\nimport '@ohtaman/washi/solvers/pumpkin';\n${source}`
+    `import { Model, maximize } from '@ohtaman/washi';\nimport '@ohtaman/washi/solvers/glpk';\nimport '@ohtaman/washi/solvers/z3';\nimport '@ohtaman/washi/solvers/pumpkin';\n${source}`
   );
   const viteRoot = path.join(fixture, "vite-output");
   await build({ root: fixture, configFile: false, base: "./", logLevel: "warn", build: { outDir: viteRoot } });
@@ -554,8 +560,8 @@ try {
       await mkdir(path.join(fixture, "pages"));
       const cases = [
         ["vite", viteRoot, null], ["webpack", webpackRoot, null],
-        ["esm", path.join(fixture, "pages"), `<script type="module">import {Model} from '${cdn}/factory/washi.js';${source}</script>`],
-        ["iife", path.join(fixture, "pages"), `<script src="${cdn}/factory/washi.min.js"></script><script>const {Model}=Washi;${source}</script>`],
+        ["esm", path.join(fixture, "pages"), `<script type="module">import {Model, maximize} from '${cdn}/factory/washi.js';${source}</script>`],
+        ["iife", path.join(fixture, "pages"), `<script src="${cdn}/factory/washi.min.js"></script><script>const {Model, maximize}=Washi;${source}</script>`],
       ];
       await writeFile(path.join(webpackRoot, "index.html"), '<script src="./app.js"></script>');
       for (const [name, root, content] of cases) {
@@ -617,7 +623,7 @@ try {
             m.constraint(expr\`\${x} + 2 * \${y} <= 40\`, "wood");
             m.constraint(expr\`2 * \${x} + \${y} <= 50\`, "labor");
             const status = await m.solve();
-            if (!m.validateSolution().valid) {
+            if (!m.verify().valid) {
               throw new Error("Expected valid primal solution");
             }
             const diag = new Model("EffectiveOriginConflicts");

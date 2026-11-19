@@ -5,7 +5,7 @@ import type {
   PricingContext,
 } from "./types.js";
 import type { Constraint } from "../modeler/constraint.js";
-import type { Var } from "../modeler/variable.js";
+import { Var } from "../modeler/variable.js";
 import type { Model } from "../modeler/model.js";
 
 /**
@@ -173,7 +173,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
 
     // 5. Inject new columns into the master model
     for (const proposal of improvingProposals) {
-      const colVar = master.addColumn({
+      const colVar = master.column({
         name: proposal.name,
         type: proposal.type || "Continuous",
         lb: proposal.lb,
@@ -194,8 +194,8 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
   }
 
   const values: Record<string, number> = {};
-  for (const v of master.variables) {
-    if (v.value !== null) {
+  for (const v of master.variables.values()) {
+    if (v instanceof Var && v.value !== null) {
       values[v.name] = v.value;
     }
   }

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   Model,
   Var,
+  BoolVar,
   BoolExpr,
   Constraint,
   expr,
@@ -57,7 +58,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         expect(m.objectiveValue).toBeCloseTo(8, 5);
         expect(rankA.value!).toBeLessThan(rankB.value!);
         expect(roomA.value).not.toBe(roomB.value);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -75,12 +76,13 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
       expect(() => i1.lt(2.5)).toThrow(/integer/i);
       expect(() => expr`0.5 * ${i1} != 1`).toThrow(/integer/i);
 
-      // Post-construction mutation from Integer to Continuous must fail validateIntegrity()
+      // Post-construction mutation from Integer to Continuous must fail automatic integrity validation
       const mMut = new Model("MutateType");
       const dyn = mMut.integer("dyn", { lb: 0, ub: 5 });
       mMut.constraint(expr`${dyn} != 3`, "neq3");
       dyn.type = "Continuous";
-      expect(() => mMut.validateIntegrity()).toThrow(/Continuous|integer/i);
+      expect(() => mMut.toLpString()).toThrow(/Continuous|integer/i);
+      await expect(mMut.solve()).rejects.toThrow(/Continuous|integer/i);
 
       // Direct Constraint construction or mutating sense/rhs to discrete != on Continuous/fractional must reject (even on Z3)
       const mDirect = new Model("DirectNeq");
@@ -93,7 +95,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
       const sc = mSense.continuous("sc", { lb: 0, ub: 5 });
       const eqRow = mSense.constraint(expr`${sc} == 2`, "eq_row");
       eqRow.sense = "!=";
-      expect(() => mSense.validateIntegrity()).toThrow(/Continuous|integer/i);
+      expect(() => mSense.toLpString()).toThrow(/Continuous|integer/i);
       await expect(mSense.solve({ solver: "z3" })).rejects.toThrow(/Continuous|integer/i);
 
       const mRhs = new Model("RhsMutate");
@@ -125,7 +127,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         expect(x.a.value).toBe(3);
         expect(x.b.value).toBe(1);
         expect(x.c.value).toBe(2);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -148,7 +150,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(7, 5);
         expect(v[0].value).toBe(v[2].value);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -191,11 +193,11 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(12, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
-    it("keeps zero-duration task semantics aligned across Pumpkin, Z3, HiGHS, GLPK, and validateSolution()", async () => {
+    it("keeps zero-duration task semantics aligned across Pumpkin, Z3, HiGHS, GLPK, and verify()", async () => {
       // Pumpkin's disjunctive_strict allows a duration-0 task at s=0 or s=5 (boundary of [0, 5]),
       // and forbids placing it strictly inside (0, 5), i.e., 0 < s0 < 5.
       const m = new Model("ZeroDurationDisjoint");
@@ -228,7 +230,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
       for (const solver of ["highs", "pumpkin", "z3"] as const) {
         const res = await mSat.check({ solver });
         expect(res.status, `solver=${solver}`).toBe("Sat");
-        expect(mSat.validateSolution().valid).toBe(true);
+        expect(mSat.verify().valid).toBe(true);
       }
     });
 
@@ -257,7 +259,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(3, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
   });
@@ -289,7 +291,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(7, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -316,7 +318,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(4, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -341,7 +343,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
       const status = await m.solve({ solver: "pumpkin" });
       expect(status).toBe("Optimal");
       expect(m.objectiveValue).toBeCloseTo(100, 5);
-      expect(m.validateSolution().valid).toBe(true);
+      expect(m.verify().valid).toBe(true);
     });
   });
 
@@ -375,7 +377,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(4, 5);
         expect(shiftNext.value).toBe(0);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -394,7 +396,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(6, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
 
       // Empty allowed tuples => Unsat
@@ -432,7 +434,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(x.value).toBe(500_000_000);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
 
       // Strictly prove Pumpkin bypasses Big-M: with ub = 1_000_000_000, the Big-M linear row
@@ -449,7 +451,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await mNoBigM.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(x2.value).toBe(1_000_000_000);
-        expect(mNoBigM.validateSolution().valid).toBe(true);
+        expect(mNoBigM.verify().valid).toBe(true);
       }
     });
 
@@ -483,25 +485,43 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         expect(xm.value).toBe(10);
       }
 
-      // Mutating indicator binVar to non-binary after m.indicator() must fail validateIntegrity()
+      // Mutating indicator binVar to non-binary after m.indicator() must fail automatic integrity validation
       const mBinMut = new Model("IndicatorBinMutate");
       const bb = mBinMut.binary("bb");
       const xb = mBinMut.integer("xb", { lb: 0, ub: 10 });
       mBinMut.indicator(bb, expr`${xb} <= 5`, { name: "ind_bin_mut" });
       bb.type = "Continuous";
-      expect(() => mBinMut.validateIntegrity()).toThrow(/Binary|Continuous|invalid type/i);
+      expect(() => mBinMut.toLpString()).toThrow(/Binary|Continuous|invalid type/i);
+      await expect(mBinMut.solve()).rejects.toThrow(/Binary|Continuous|invalid type/i);
     });
   });
 
   describe("Codex review regressions (#266)", () => {
+    function partitionModelForLinearizer(model: Model) {
+      const vars: Var[] = [];
+      const boolVars: BoolVar[] = [];
+      for (const v of model.variables.values()) {
+        if (v.type === "Boolean") boolVars.push(v);
+        else vars.push(v);
+      }
+      const constrs: Constraint[] = [];
+      const logicals: Array<{ name: string; expr: BoolExpr | Constraint }> = [];
+      for (const c of model.constraints.values()) {
+        if (c instanceof Constraint) constrs.push(c);
+        else logicals.push({ name: c.name, expr: c.expr });
+      }
+      return { vars, boolVars, constrs, logicals };
+    }
+
     it("rejects unsafe cumulative time bounds (1e20 and task end overflow near MAX_SAFE_INTEGER) without hanging", async () => {
       const m = new Model("UnsafeCumulative1e20");
       const s = m.integer("s", { lb: 1e20, ub: 1e20 });
       m.constraint(cumulative([{ start: s, duration: 1, demand: 1 }], 1), "cum_huge");
       await expect(m.solve({ solver: "highs" })).rejects.toThrow(/safe integer/i);
       await expect(m.check({ solver: "highs" })).rejects.toThrow(/safe integer/i);
+      const p1 = partitionModelForLinearizer(m);
       expect(() =>
-        linearizeModelForMip(m.variables, m.boolVars, m.constraints, m.logicalConstraints)
+        linearizeModelForMip(p1.vars, p1.boolVars, p1.constrs, p1.logicals as any)
       ).toThrow(/safe integer/i);
 
       const mEnd = new Model("UnsafeCumulativeEnd");
@@ -510,8 +530,9 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         ub: Number.MAX_SAFE_INTEGER - 1,
       });
       mEnd.constraint(cumulative([{ start: sEnd, duration: 5, demand: 1 }], 1), "cum_end_ovf");
+      const p2 = partitionModelForLinearizer(mEnd);
       expect(() =>
-        linearizeModelForMip(mEnd.variables, mEnd.boolVars, mEnd.constraints, mEnd.logicalConstraints)
+        linearizeModelForMip(p2.vars, p2.boolVars, p2.constrs, p2.logicals as any)
       ).toThrow(/safe integer/i);
     });
 
@@ -526,7 +547,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
           const status = await mFrac.solve({ solver });
           expect(status, `sense=${sense}, solver=${solver}`).toBe("Optimal");
           expect(x.value, `sense=${sense}, solver=${solver}`).toBe(sense === "min" ? 1 : 2);
-          expect(mFrac.validateSolution().valid).toBe(true);
+          expect(mFrac.verify().valid).toBe(true);
         }
       }
 
@@ -575,7 +596,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m1.solve({ solver });
         expect(status, `setTerm solver=${solver}`).toBe("Optimal");
         expect(x1.value, `setTerm solver=${solver}`).toBe(2);
-        expect(m1.validateSolution().valid, `setTerm solver=${solver}`).toBe(true);
+        expect(m1.verify().valid, `setTerm solver=${solver}`).toBe(true);
       }
 
       // 2. row.lhs.terms.set(x, 3) direct Map mutation
@@ -590,7 +611,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m2.solve({ solver });
         expect(status, `terms.set solver=${solver}`).toBe("Optimal");
         expect(x2.value, `terms.set solver=${solver}`).toBe(1);
-        expect(m2.validateSolution().valid, `terms.set solver=${solver}`).toBe(true);
+        expect(m2.verify().valid, `terms.set solver=${solver}`).toBe(true);
       }
 
       // 3. row.lhs.constant = 3 direct constant edit
@@ -606,7 +627,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m3.solve({ solver });
         expect(status, `constant solver=${solver}`).toBe("Optimal");
         expect(x3.value, `constant solver=${solver}`).toBe(2);
-        expect(m3.validateSolution().valid, `constant solver=${solver}`).toBe(true);
+        expect(m3.verify().valid, `constant solver=${solver}`).toBe(true);
       }
 
       // 4. Widening x.ub after m.indicator() invalidates stale derivedM metadata
@@ -621,7 +642,7 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         const status = await m4.solve({ solver });
         expect(status, `bound widening solver=${solver}`).toBe("Optimal");
         expect(x4.value, `bound widening solver=${solver}`).toBe(10);
-        expect(m4.validateSolution().valid, `bound widening solver=${solver}`).toBe(true);
+        expect(m4.verify().valid, `bound widening solver=${solver}`).toBe(true);
       }
     });
   });

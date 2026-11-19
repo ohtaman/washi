@@ -195,8 +195,8 @@ await m.solve();
 在组合 MIP 问题中，求解器通常能在前几秒内找到高质量的可行解（Incumbent），但往往会耗费大量剩余时间在分支定界树中证明最后不到 0.5% 的间隙（**Tail-Off 现象**）。
 
 在交互式应用或生产流水线中，建议在 [`m.solve(options)`](./objectives.md#求解选项-solveoptions) 中结合 `timeLimit` 设置符合业务精度的容差：
-- **`relGap: 0.01`**：一旦证明当前可行解与理论对偶界的相对差距在 **1% 以内**即停止。
-- **`absGap: 100`**：一旦 `|objectiveValue - objectiveBound| <= 100`（按目标函数单位计）即停止。
+- **`relativeGap: 0.01`**：一旦证明当前可行解与理论对偶界的相对差距在 **1% 以内**即停止。
+- **`absoluteGap: 100`**：一旦 `|objectiveValue - objectiveBound| <= 100`（按目标函数单位计）即停止。
 
 ---
 

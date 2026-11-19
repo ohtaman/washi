@@ -68,7 +68,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(m.objectiveValue).toBeCloseTo(24, 5);
         expect(loadB.value).toBeCloseTo(8, 5);
         expect(nextStart.value).toBeGreaterThanOrEqual(10 - 1e-5);
-        const report = m.validateSolution();
+        const report = m.verify();
         expect(report.valid).toBe(true);
       }
     });
@@ -91,7 +91,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(status).toBe("Optimal");
         // x = y = z = 9 => min = 9
         expect(m.objectiveValue).toBeCloseTo(9, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -106,7 +106,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
       expect(status).toBe("Optimal");
       expect(m.objectiveValue).toBeCloseTo(3.5, 5);
       expect(x.value).toBeCloseTo(4.5, 5);
-      expect(m.validateSolution().valid).toBe(true);
+      expect(m.verify().valid).toBe(true);
     });
   });
 
@@ -140,7 +140,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(10, 5);
         expect(exprMaxAbs.value).toBeCloseTo(2, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -165,7 +165,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
       expect(m.objectiveValue).toBeCloseTo(0.75, 5);
       expect(x.value).toBeCloseTo(0.5, 4);
       expect(y.value).toBeCloseTo(3.5, 4);
-      expect(m.validateSolution().valid).toBe(true);
+      expect(m.verify().valid).toBe(true);
     });
 
     it("supports nested piecewise expressions inside abs(max(...) - c)", async () => {
@@ -181,7 +181,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(status, `solver=${solver}`).toBe("Optimal");
         // max(x, y) <= 6 => x = 6, y = 6 => obj = 12
         expect(m.objectiveValue).toBeCloseTo(12, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
   });
@@ -209,7 +209,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(m.objectiveValue, `solver=${solver}`).toBeCloseTo(16, 5);
         expect(x.value, `solver=${solver}`).toBe(-3);
         expect(y.value, `solver=${solver}`).toBe(6);
-        expect(m.validateSolution().valid, `solver=${solver}`).toBe(true);
+        expect(m.verify().valid, `solver=${solver}`).toBe(true);
       }
     });
 
@@ -229,7 +229,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         const status = await m.solve({ solver });
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(5, 5);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -272,7 +272,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(m.objectiveValue).toBeCloseTo(21, 5);
         expect(selectedRoute.value).toBeGreaterThanOrEqual(0);
         expect(selectedRoute.value).toBeLessThan(routeCosts.length);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -287,7 +287,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         expect(status, `solver=${solver}`).toBe("Optimal");
         expect(m.objectiveValue).toBeCloseTo(10, 5);
         expect(idx.value).toBe(1);
-        expect(m.validateSolution().valid).toBe(true);
+        expect(m.verify().valid).toBe(true);
       }
     });
 
@@ -309,11 +309,11 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
         }
       }
 
-      // Out-of-bounds manual assignment in validateSolution() must report invalid
+      // Out-of-bounds manual assignment in verify() must report invalid
       const mVal = new Model("ValidateAtOOB");
       const idxV = mVal.integer("idxV", { lb: 0, ub: 5 });
       mVal.constraint(expr`at(${[10, 10]}, ${idxV}) == 10`, "lookup_c");
-      const badReport = mVal.validateSolution({ values: { idxV: 3 } });
+      const badReport = mVal.verify({ values: { idxV: 3 } });
       expect(badReport.valid).toBe(false);
     });
 
@@ -336,13 +336,13 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
       mLogic.constraint(implies(flag, expr`at(${[10, 20]}, ${idx}) <= 15`), "cond_at");
 
       // Both flag=true and flag=false with out-of-range idx=4 must be complete=true, valid=false, logical_constraint violation
-      const rTrue = mLogic.validateSolution({ values: { flag: true, idx: 4 } });
+      const rTrue = mLogic.verify({ values: { flag: true, idx: 4 } });
       expect(rTrue.complete).toBe(true);
       expect(rTrue.valid).toBe(false);
       expect(rTrue.uncheckedConstraints).toEqual([]);
       expect(rTrue.violations.some((v) => v.type === "logical_constraint" && v.name === "cond_at")).toBe(true);
 
-      const rFalse = mLogic.validateSolution({ values: { flag: false, idx: 4 } });
+      const rFalse = mLogic.verify({ values: { flag: false, idx: 4 } });
       expect(rFalse.complete).toBe(true);
       expect(rFalse.valid).toBe(false);
       expect(rFalse.uncheckedConstraints).toEqual([]);
@@ -363,7 +363,7 @@ describe("Piecewise-Linear (max, min, abs) & Element (at) Primitives (Issue #262
       const mObj = new Model("NestedObjAt");
       const idxO = mObj.integer("idxO", { lb: 0, ub: 5 });
       mObj.objective(minimize(at([at([10, 20], idxO), 30], 0)));
-      const rObj = mObj.validateSolution({ values: { idxO: 4 } });
+      const rObj = mObj.verify({ values: { idxO: 4 } });
       expect(rObj.complete).toBe(true);
       expect(rObj.valid).toBe(false);
       expect(rObj.violations).toHaveLength(1);

@@ -26,7 +26,7 @@ function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): vo
  * - `status` and `terminationStatus`: `"Optimal" | "Feasible" | "Infeasible" | "Unbounded" | "Unknown" | "Error"`
  * - `hasPrimalSolution`: `true` when `status` is `"Optimal"` or `"Feasible"` (`GLP_OPT` or `GLP_FEAS`) with a valid primal payload, `false` otherwise.
  * - `objectiveValue`: Primal objective value (including constant offset) when `hasPrimalSolution` is `true`, otherwise `null`.
- * - `objectiveBound`, `relGap` (`mipGap`), `absGap`: GLPK's JS/WASM wrapper (`glpk.js`) does not expose the MIP best dual bound or relative/absolute gap in its result payload, so these fields are intentionally left `undefined` rather than returning invented defaults.
+ * - `objectiveBound`, `relativeGap`, `absoluteGap`: GLPK's JS/WASM wrapper (`glpk.js`) does not expose the MIP best dual bound or relative/absolute gap in its result payload, so these fields are intentionally left `undefined` rather than returning invented defaults.
  */
 export class GLPKSolver implements Solver {
   public static readonly capabilities = {
@@ -221,14 +221,8 @@ export class GLPKSolver implements Solver {
     if (typeof mergedOptions.timeLimit === "number") {
       glpkOptions.tmlim = mergedOptions.timeLimit;
     }
-    const relGapOpt =
-      typeof mergedOptions.mipGap === "number"
-        ? mergedOptions.mipGap
-        : typeof mergedOptions.relGap === "number"
-          ? mergedOptions.relGap
-          : undefined;
-    if (relGapOpt !== undefined) {
-      glpkOptions.mipgap = relGapOpt;
+    if (typeof mergedOptions.relativeGap === "number") {
+      glpkOptions.mipgap = mergedOptions.relativeGap;
     }
 
     const objConstant =

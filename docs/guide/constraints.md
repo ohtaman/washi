@@ -58,7 +58,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ### Why Name Constraints?
 1. **Model Inspection (`m.toLpString()`)**: Exported CPLEX LP strings retain these descriptive names (sanitized if needed) so you can inspect the generated formulation.
 2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, `m.check()` returns the conflicting constraint names (via built-in HiGHS elastic relaxation, bundled Pumpkin `unsatCore`, or Z3 `unsatCore`).
-3. **Direct Lookup (`m.getConstraintByName()`)**: Retrieve a constraint by name after solving to inspect its `dual` or `slack` value.
+3. **Direct Lookup (`m.constraints.get()`)**: Retrieve any registered constraint by name after solving to inspect its `dual` or `slack` value.
 
 ---
 
@@ -85,7 +85,7 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## Dual Values, Shadow Prices & Lookups
 
-For continuous Linear Programming (LP) problems, query the shadow price (`dual`) and surplus (`slack`) on each constraint (returned by `m.constraint()` or looked up via `m.getConstraintByName()`):
+For continuous Linear Programming (LP) problems, query the shadow price (`dual`) and surplus (`slack`) on each constraint (returned by `m.constraint()` or looked up via `m.constraints.get()`):
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -94,7 +94,8 @@ await m.solve();
 
 console.log("Shadow price (dual):", woodConstraint.dual);
 console.log("Slack surplus:", woodConstraint.slack);
-console.log("Total linear constraints:", m.numConstrs);
+console.log("Looked-up dual:", m.constraints.get("wood")?.dual); // number | null (null for MIP, CP, or logical constraints)
+console.log("Total constraints:", m.constraints.size);
 ```
 
 ---
@@ -169,7 +170,7 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-For named logical constraints, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.
+All named constraints—both linear `Constraint`s and logical/CP `LogicalConstraint`s (`{ kind: "logical", name, expr, dual: null, slack: null }`)—are stored uniformly in `m.constraints` (`ReadonlyMap<string, Constraint | LogicalConstraint>`) and can be looked up by name via `m.constraints.get(name)`.
 
 ### Choosing Between `m.indicator()` and `implies()`
 

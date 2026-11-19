@@ -61,7 +61,7 @@ m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
 // 3. 求解（默认内置 HiGHS WebAssembly）并验证结果
 const status = await m.solve();
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution();
+  const report = m.verify();
   console.log(status, report.valid); // "Optimal", true
   console.log(`利润: ${m.objectiveValue} (书桌=${desks.value}, 椅子=${chairs.value})`); // 1100 (书桌=20, 椅子=10)
 }
@@ -69,7 +69,7 @@ if (m.hasPrimalSolution) {
 
 1. **定义决策变量（`lb`, `ub`）**：使用 `m.continuous()`、`m.integer()` 或 `m.binary()` 定义变量，并在已知范围时指定有限上下界。
 2. **用 `expr` 编写目标函数与约束**：使用 `` expr`...` `` 直观书写代数公式；为约束命名可在模型不可行（`Infeasible`）时快速定位冲突原因。
-3. **求解并校验结果（`solve`, `validateSolution`）**：调用 `await m.solve()` 使用内置 HiGHS 求解器求解。先检查 `m.hasPrimalSolution` 再读取变量的 `.value`，并可调用 `m.validateSolution()` 独立校验边界、整数性与约束满足情况。
+3. **求解并校验结果（`solve`, `verify`）**：调用 `await m.solve()` 使用内置 HiGHS 求解器求解。先检查 `m.hasPrimalSolution` 再读取变量的 `.value`，并可调用 `m.verify()` 独立校验边界、整数性与约束满足情况。
 
 ---
 

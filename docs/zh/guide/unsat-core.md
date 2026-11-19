@@ -4,7 +4,7 @@
 
 WaSHI 为此提供了一体化的诊断、验证与调试工具链：
 - **冲突约束诊断（`m.check()`）**：通过内置 HiGHS 弹性松弛、内置 Pumpkin `unsatCore` 或 Z3 `unsatCore` 精准定位相互矛盾的约束规则。
-- **独立解验证与 LP 公式检查（`m.validateSolution()`, `m.toLpString()`）**：独立校验变量边界、整数性与约束残差，并导出标准 CPLEX `.lp` 公式文本以便核对。
+- **独立解验证与 LP 公式检查（`m.verify()`, `m.toLpString()`）**：独立校验变量边界、整数性与约束残差，并导出标准 CPLEX `.lp` 公式文本以便核对。
 - **快速单元测试（`MockSolver`）**：无需加载 WebAssembly 即可在 CI 中快速测试业务层的建模与结果解析逻辑。
 
 ---
@@ -85,7 +85,7 @@ if (status === "Infeasible") {
 
 ---
 
-## 独立解验证 (`m.validateSolution()`)
+## 独立解验证 (`m.verify()`)
 
 求解完成后（或通过 `values` 选项传入自定义候选解后），您可以对照原始模型定义，独立验证所有变量边界、整数/二元定义域、线性约束以及 SMT 逻辑公式是否在容差范围内成立：
 
@@ -93,7 +93,7 @@ if (status === "Infeasible") {
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
-  const report = m.validateSolution({
+  const report = m.verify({
     feasibilityTolerance: 1e-6,     // 变量边界与线性约束的最大允许违反量
     integralityTolerance: 1e-6,     // Integer/Binary 变量距离最近整数的最大允许偏差
     evaluateLogicalConstraints: true,
@@ -110,18 +110,18 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-### `SolutionValidationReport` 属性一览
+### `VerificationReport` 属性一览
 
 | 属性 | 类型 | 说明 |
 | :--- | :--- | :--- |
 | `valid` | `boolean` | 当且仅当 `complete === true`、`uncheckedConstraints.length === 0` 且 `violations.length === 0` 时为 `true`。 |
 | `complete` | `boolean` | 当所有变量、布尔变量、线性约束和逻辑约束均已完成评估时为 `true`。 |
 | `maxViolation` | `number` | 所有已评估边界、整数性检查和约束中的最大数值违反量。 |
-| `violations` | `SolutionViolation[]` | 检测到的违规详情列表（`"missing_value"`、`"non_finite_value"`、`"invalid_boolean_value"`、`"lower_bound"`、`"upper_bound"`、`"integrality"`、`"linear_constraint"`、`"logical_constraint"`、`"unchecked_constraint"`）。 |
-| `violationsByName` | `Record<string, SolutionViolation[]>` | 按变量名或约束名分组的违规列表。 |
+| `violations` | `VerificationViolation[]` | 检测到的违规详情列表（`"missing_value"`、`"non_finite_value"`、`"invalid_boolean_value"`、`"lower_bound"`、`"upper_bound"`、`"integrality"`、`"linear_constraint"`、`"logical_constraint"`、`"unchecked_constraint"`）。 |
+| `violationsByName` | `Record<string, VerificationViolation[]>` | 按变量名或约束名分组的违规列表。 |
 | `uncheckedConstraints` | `string[]` | 因缺失变量值等原因未能评估的约束名称列表。 |
 | `missingVariables` | `string[]` | 取值为 `null` 或 `undefined` 的数值或布尔变量名称列表。 |
-| `summary` | `SolutionValidationSummary` | 已检查与总计的变量、布尔变量、线性约束及逻辑约束数量统计。 |
+| `summary` | `VerificationSummary` | 已检查与总计的变量、布尔变量、线性约束及逻辑约束数量统计。 |
 
 ---
 

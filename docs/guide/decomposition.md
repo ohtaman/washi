@@ -231,11 +231,11 @@ const status = await m.relax();
 console.log("LP relaxation bound:", m.objectiveValue);
 ```
 
-### 3. Dynamic Column Injection (`m.addColumn()`)
+### 3. Dynamic Column Injection (`m.column()`)
 Create a new decision variable, set its objective coefficient, and attach its non-zero coefficients to existing named constraints in a single call:
 
 ```typescript
-const col = m.addColumn({
+const col = m.column({
   name: "pattern_1",
   type: "Integer", // or "Continuous" / "Binary"
   lb: 0,
