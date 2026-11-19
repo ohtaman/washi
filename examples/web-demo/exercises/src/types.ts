@@ -4,7 +4,7 @@ export type RuntimeId = "washi" | "highspy";
 
 export type ParadigmId = "LP" | "QP" | "MIP" | "CP" | "SMT";
 
-export type ProblemRole = "tutorial" | "intro" | "core" | "twist" | "boss";
+export type ProblemRole = "tutorial" | "intro" | "core" | "applied" | "capstone";
 
 export type ScaffoldLevel = "fix-one-line" | "fill-in" | "scratch";
 

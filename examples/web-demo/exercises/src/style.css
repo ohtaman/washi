@@ -1,26 +1,37 @@
 :root {
   color-scheme: light dark;
-  --bg: light-dark(#f8fafc, #090e1a);
-  --surface: light-dark(#ffffff, #111827);
-  --surface-alt: light-dark(#f1f5f9, #172033);
-  --surface-elevated: light-dark(#ffffff, #1e293b);
-  --text: light-dark(#0f172a, #f1f5f9);
-  --text-muted: light-dark(#475569, #94a3b8);
-  --border: light-dark(#e2e8f0, rgba(148, 163, 184, 0.22));
-  --accent: light-dark(#0284c7, #38bdf8);
-  --accent-contrast: light-dark(#ffffff, #082f49);
-  --accent-soft: light-dark(#e0f2fe, rgba(56, 189, 248, 0.14));
+  --bg: light-dark(#f7f6f4, #141416);
+  --surface: light-dark(#ffffff, #1b1b1f);
+  --surface-alt: light-dark(#f3f1ed, #232329);
+  --surface-elevated: light-dark(#ffffff, #282830);
+  --text: light-dark(#1f1d1b, #f1f1f3);
+  --text-muted: light-dark(#57534e, #a1a1aa);
+  --border: light-dark(#e2ded8, rgba(255, 255, 255, 0.12));
+  --border-strong: light-dark(#cdc7be, rgba(255, 255, 255, 0.22));
+  --accent: light-dark(#c23b22, #e05338);
+  --accent-hover: light-dark(#a62c16, #ef684e);
+  --accent-contrast: #ffffff;
+  --accent-soft: light-dark(#fdf3f0, rgba(224, 83, 56, 0.14));
+  --indigo: light-dark(#1e3a5f, #7aa2f7);
+  --indigo-soft: light-dark(#eff4fb, rgba(122, 162, 247, 0.14));
   --success: light-dark(#15803d, #4ade80);
-  --success-soft: light-dark(#dcfce7, rgba(74, 222, 128, 0.16));
+  --success-soft: light-dark(#f0fdf4, rgba(74, 222, 128, 0.14));
   --warning: light-dark(#b45309, #fbbf24);
-  --warning-soft: light-dark(#fef3c7, rgba(251, 191, 36, 0.16));
-  --danger: light-dark(#b91c1c, #f87171);
-  --danger-soft: light-dark(#fee2e2, rgba(248, 113, 113, 0.15));
-  --boss: light-dark(#7c3aed, #c084fc);
-  --boss-soft: light-dark(#f3e8ff, rgba(192, 132, 252, 0.18));
-  --code-bg: light-dark(#f8fafc, #0b1220);
-  --shadow-sm: light-dark(0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(0, 0, 0, 0.35));
-  --shadow-md: light-dark(0 6px 20px rgba(15, 23, 42, 0.08), 0 8px 28px rgba(0, 0, 0, 0.45));
+  --warning-soft: light-dark(#fffbeb, rgba(251, 191, 36, 0.14));
+  --danger: light-dark(#be123c, #fb7185);
+  --danger-soft: light-dark(#fff1f2, rgba(251, 113, 133, 0.14));
+  --capstone: light-dark(#9a3412, #fdba74);
+  --capstone-soft: light-dark(#fff7ed, rgba(253, 186, 116, 0.14));
+  --code-bg: light-dark(#faf9f7, #16161a);
+  --math-bg: light-dark(#f8f7f4, #202026);
+  --shadow-sm: light-dark(
+    0 1px 2px rgba(31, 29, 27, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.35)
+  );
+  --shadow-md: light-dark(
+    0 6px 20px rgba(31, 29, 27, 0.08),
+    0 8px 28px rgba(0, 0, 0, 0.45)
+  );
   --font-sans: "Inter", "Noto Sans JP", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -46,8 +57,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  line-height: 1.6;
+  line-height: 1.65;
   overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
@@ -55,7 +67,7 @@ body {
 }
 
 a {
-  color: var(--accent);
+  color: var(--indigo);
   text-decoration: none;
 }
 
@@ -85,7 +97,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -93,7 +105,7 @@ button {
 .ex-header-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0.65rem 1.25rem;
+  padding: 0.55rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -107,7 +119,7 @@ button {
   gap: 0.65rem;
   color: var(--text);
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   min-height: 44px;
   text-decoration: none;
 }
@@ -138,7 +150,7 @@ button {
 .ex-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
@@ -150,7 +162,7 @@ button {
   justify-content: center;
   gap: 0.35rem;
   min-height: 44px;
-  padding: 0.45rem 0.78rem;
+  padding: 0.45rem 0.8rem;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -163,7 +175,7 @@ button {
 .ex-nav-link:hover,
 .ex-btn-ghost:hover {
   background: var(--surface-alt);
-  border-color: var(--accent);
+  border-color: var(--border-strong);
   text-decoration: none;
 }
 
@@ -183,36 +195,38 @@ button {
 .ex-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem;
+  padding: 1.05rem 1.25rem;
 }
 
 /* Hero & Progress */
-.quest-hero {
+.ex-hero {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 1.75rem;
+  border-top: 3px solid var(--accent);
+  border-radius: 14px;
+  padding: 1.1rem 1.4rem;
   box-shadow: var(--shadow-sm);
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 1.5rem;
+  gap: 1.15rem;
   align-items: center;
 }
 
-.quest-hero-title {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1.45rem, 2.5vw, 2.05rem);
+.ex-hero-title {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
   font-weight: 800;
   letter-spacing: -0.02em;
+  color: var(--text);
 }
 
-.quest-hero-sub {
-  margin: 0 0 1.25rem;
+.ex-hero-sub {
+  margin: 0 0 0.85rem;
   color: var(--text-muted);
-  font-size: 0.98rem;
+  font-size: 0.94rem;
 }
 
-.quest-hero-actions {
+.ex-hero-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -225,18 +239,18 @@ button {
   justify-content: center;
   gap: 0.45rem;
   min-height: 44px;
-  padding: 0.65rem 1.25rem;
-  border-radius: 10px;
+  padding: 0.6rem 1.2rem;
+  border-radius: 9px;
   border: 1px solid transparent;
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   text-decoration: none;
 }
 
 .ex-btn-primary:hover {
-  filter: brightness(1.06);
+  background: var(--accent-hover);
   text-decoration: none;
 }
 
@@ -245,17 +259,17 @@ button {
   cursor: wait;
 }
 
-.quest-stats-box {
+.ex-stats-box {
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 1.15rem 1.25rem;
+  padding: 1rem 1.15rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
-.quest-stats-row {
+.ex-stats-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -263,20 +277,21 @@ button {
   flex-wrap: wrap;
 }
 
-.quest-stat-main {
-  font-size: 1.25rem;
+.ex-stat-main {
+  font-size: 1.15rem;
   font-weight: 800;
+  color: var(--text);
 }
 
-.quest-stat-stars {
-  font-size: 0.95rem;
+.ex-stat-secondary {
+  font-size: 0.88rem;
   font-weight: 700;
-  color: var(--warning);
+  color: var(--indigo);
 }
 
 .progress-track {
   width: 100%;
-  height: 10px;
+  height: 9px;
   border-radius: 999px;
   background: var(--border);
   overflow: hidden;
@@ -290,51 +305,53 @@ button {
   transition: width 240ms ease;
 }
 
-/* Tutorial Strip */
+/* Tutorial Strip (Calm Academic Callout) */
 .tutorial-strip {
-  margin-top: 1.5rem;
-  background: var(--accent-soft);
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
-  border-radius: 14px;
-  padding: 1.2rem 1.35rem;
+  margin-top: 1.15rem;
+  background: var(--indigo-soft);
+  border: 1px solid color-mix(in srgb, var(--indigo) 22%, var(--border));
+  border-left: 4px solid var(--indigo);
+  border-radius: 12px;
+  padding: 0.95rem 1.15rem;
 }
 
 .tutorial-strip-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.7rem;
 }
 
 .tutorial-strip-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.05rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.98rem;
   font-weight: 700;
+  color: var(--indigo);
 }
 
 .tutorial-strip-desc {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .tutorial-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .tutorial-restore-bar {
-  margin-top: 1.1rem;
+  margin-top: 0.95rem;
   display: flex;
   justify-content: flex-end;
 }
 
 /* Chapters */
 .chapter-section {
-  margin-top: 2rem;
+  margin-top: 1.75rem;
 }
 
 .chapter-head {
@@ -343,7 +360,9 @@ button {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.9rem;
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .chapter-title-wrap {
@@ -355,52 +374,58 @@ button {
 
 .chapter-kicker {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
+  padding: 0.18rem 0.6rem;
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 700;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--indigo-soft);
+  color: var(--indigo);
 }
 
 .chapter-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 800;
+  color: var(--text);
 }
 
 .chapter-desc {
   margin: 0.25rem 0 1rem;
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: 0.91rem;
 }
 
 .problem-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  gap: 0.95rem;
 }
 
 .problem-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.15rem;
+  border-radius: 12px;
+  padding: 1.05rem 1.15rem;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 0.85rem;
-  transition: border-color 140ms ease, transform 140ms ease;
+  gap: 0.75rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.problem-card.is-compact {
+  padding: 0.85rem 1rem;
+  gap: 0.55rem;
 }
 
 .problem-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
-.problem-card.is-boss {
-  border-color: color-mix(in srgb, var(--boss) 45%, var(--border));
+.problem-card.is-capstone {
+  border-color: color-mix(in srgb, var(--capstone) 38%, var(--border));
 }
 
 .problem-card.is-solved {
@@ -418,7 +443,7 @@ button {
 .problem-badges {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   flex-wrap: wrap;
 }
 
@@ -428,15 +453,15 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.16rem 0.52rem;
+  padding: 0.14rem 0.5rem;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
 }
 
 .role-pill.role-tutorial {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--indigo-soft);
+  color: var(--indigo);
 }
 
 .role-pill.role-intro,
@@ -445,14 +470,14 @@ button {
   color: var(--text-muted);
 }
 
-.role-pill.role-twist {
+.role-pill.role-applied {
   background: var(--warning-soft);
   color: var(--warning);
 }
 
-.role-pill.role-boss {
-  background: var(--boss-soft);
-  color: var(--boss);
+.role-pill.role-capstone {
+  background: var(--capstone-soft);
+  color: var(--capstone);
 }
 
 .paradigm-pill {
@@ -472,22 +497,43 @@ button {
 }
 
 .prov-badge.prov-reviewed {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--indigo-soft);
+  color: var(--indigo);
 }
 
-.star-display {
-  font-size: 0.95rem;
+/* Runtime pass indicators (replacing game stars) */
+.runtime-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+.runtime-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.16rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
   font-weight: 700;
-  color: var(--warning);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
+.runtime-chip.is-pass {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+
 .problem-card-title {
-  margin: 0.45rem 0 0.35rem;
-  font-size: 1.02rem;
+  margin: 0.42rem 0 0.3rem;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.38;
 }
 
 .problem-card-title a {
@@ -501,14 +547,14 @@ button {
 
 .problem-card-sub {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
 .problem-card-foot {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.48rem;
 }
 
 .problem-meta-line {
@@ -522,7 +568,7 @@ button {
 
 /* Roadmap upcoming chapters */
 .roadmap-grid {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 0.9rem;
@@ -530,10 +576,10 @@ button {
 
 .roadmap-card {
   background: var(--surface);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-strong);
   border-radius: 12px;
-  padding: 1rem 1.1rem;
-  opacity: 0.88;
+  padding: 0.95rem 1.05rem;
+  opacity: 0.9;
 }
 
 .roadmap-card-head {
@@ -560,19 +606,19 @@ button {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 0.95rem;
 }
 
 .ws-nav-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
 
 .ws-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.08fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
   gap: 1.25rem;
   align-items: start;
 }
@@ -580,23 +626,24 @@ button {
 .ws-panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.3rem;
+  border-radius: 12px;
+  padding: 1.35rem 1.4rem;
   box-shadow: var(--shadow-sm);
   min-width: 0;
 }
 
 .ws-title {
-  margin: 0.5rem 0 0.4rem;
-  font-size: 1.38rem;
+  margin: 0.55rem 0 0.35rem;
+  font-size: 1.35rem;
   font-weight: 800;
-  line-height: 1.3;
+  line-height: 1.32;
+  color: var(--text);
 }
 
 .ws-subtitle {
-  margin: 0 0 1rem;
+  margin: 0 0 0.95rem;
   color: var(--text-muted);
-  font-size: 0.94rem;
+  font-size: 0.93rem;
 }
 
 .ws-provenance-row {
@@ -604,7 +651,7 @@ button {
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 1.05rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--border);
 }
@@ -616,16 +663,17 @@ button {
 }
 
 .md-section {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.15rem;
 }
 
 .md-section-label {
-  margin: 0 0 0.45rem;
-  font-size: 0.84rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--accent);
+  margin: 0 0 0.5rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--indigo);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--indigo);
 }
 
 .md-body {
@@ -694,17 +742,28 @@ button {
 
 .katex-display,
 .math-block {
+  background: var(--math-bg);
+  border-left: 3px solid var(--indigo);
+  border-radius: 0 8px 8px 0;
+  padding: 0.65rem 1rem;
+  margin: 0.65rem 0;
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
-  padding: 0.35rem 0;
+}
+
+.math-block > .katex-display {
+  margin: 0;
+  padding: 0;
+  border-left: 0;
+  background: transparent;
 }
 
 /* Accordion Hints (Modern Web Guidance) */
 .hints-group {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.55rem;
   margin-top: 1.15rem;
 }
 
@@ -730,9 +789,9 @@ details.hint-accordion summary {
   justify-content: space-between;
   gap: 0.5rem;
   min-height: 44px;
-  padding: 0.65rem 0.9rem;
+  padding: 0.6rem 0.9rem;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   cursor: pointer;
 }
 
@@ -757,7 +816,7 @@ details.hint-accordion[open] summary::after {
 }
 
 .hint-accordion-body {
-  padding: 0.15rem 0.95rem 0.85rem;
+  padding: 0.4rem 0.95rem 0.85rem;
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
@@ -766,7 +825,7 @@ details.hint-accordion[open] summary::after {
 .ws-ide-panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 12px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   min-width: 0;
@@ -815,8 +874,9 @@ details.hint-accordion[open] summary::after {
   border-radius: 2px 2px 0 0;
 }
 
-.runtime-tab-star {
-  color: var(--warning);
+.runtime-tab-check {
+  color: var(--success);
+  font-weight: 800;
 }
 
 /* ZERO padding/margin/border on [role="tabpanel"] directly per modern-web-guidance */
@@ -831,10 +891,10 @@ details.hint-accordion[open] summary::after {
 }
 
 .tab-panel-inner {
-  padding: 1rem 1.15rem;
+  padding: 0.85rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .python-lazy-note {
@@ -843,8 +903,8 @@ details.hint-accordion[open] summary::after {
   border-radius: 8px;
   font-size: 0.8rem;
   color: var(--text-muted);
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
+  background: var(--indigo-soft);
+  border: 1px solid color-mix(in srgb, var(--indigo) 18%, var(--border));
 }
 
 .editor-header-row {
@@ -858,9 +918,9 @@ details.hint-accordion[open] summary::after {
 
 .code-editor {
   width: 100%;
-  min-height: 310px;
-  padding: 0.85rem;
-  border: 1px solid var(--border);
+  min-height: 252px;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--code-bg);
   color: var(--text);
@@ -869,6 +929,12 @@ details.hint-accordion[open] summary::after {
   line-height: 1.55;
   tab-size: 2;
   resize: vertical;
+}
+
+.code-editor:focus {
+  border-color: var(--indigo);
+  outline: 2px solid color-mix(in srgb, var(--indigo) 24%, transparent);
+  outline-offset: 0;
 }
 
 .editor-toolbar {
@@ -896,7 +962,7 @@ details.hint-accordion[open] summary::after {
 /* Judge Results Panel */
 .results-section {
   border-top: 1px solid var(--border);
-  padding: 1.1rem 1.15rem;
+  padding: 1rem 1.15rem;
   background: var(--surface-alt);
 }
 
@@ -906,7 +972,7 @@ details.hint-accordion[open] summary::after {
   justify-content: space-between;
   gap: 0.6rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.7rem;
 }
 
 .results-title {
@@ -918,7 +984,7 @@ details.hint-accordion[open] summary::after {
 .verdict-pill {
   display: inline-flex;
   align-items: center;
-  padding: 0.24rem 0.7rem;
+  padding: 0.22rem 0.7rem;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 800;
@@ -953,24 +1019,25 @@ details.hint-accordion[open] summary::after {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding: 0.8rem 0.95rem;
+  padding: 0.75rem 0.95rem;
   border-radius: 10px;
   background: var(--success-soft);
   border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
-  margin-bottom: 0.85rem;
+  color: var(--success);
+  margin-bottom: 0.8rem;
 }
 
 .case-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .case-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 0.85rem 0.95rem;
+  padding: 0.8rem 0.95rem;
 }
 
 .case-card-top {
@@ -979,7 +1046,7 @@ details.hint-accordion[open] summary::after {
   justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .case-name {
@@ -993,7 +1060,7 @@ details.hint-accordion[open] summary::after {
 }
 
 .case-meta {
-  margin: 0.4rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.78rem;
   font-family: var(--font-mono);
   color: var(--text-muted);
@@ -1026,7 +1093,7 @@ details.hint-accordion[open] summary::after {
 dialog.backup-dialog {
   width: min(560px, calc(100vw - 2rem));
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 0;
   background: var(--surface);
   color: var(--text);
@@ -1034,7 +1101,7 @@ dialog.backup-dialog {
 }
 
 dialog.backup-dialog::backdrop {
-  background: rgb(0 0 0 / 0.48);
+  background: rgb(0 0 0 / 0.42);
   backdrop-filter: blur(3px);
 }
 
@@ -1084,9 +1151,9 @@ dialog.backup-dialog::backdrop {
 
 /* Responsive Breakpoints */
 @media (max-width: 960px) {
-  .quest-hero {
+  .ex-hero {
     grid-template-columns: minmax(0, 1fr);
-    padding: 1.25rem;
+    padding: 1.15rem;
   }
 
   .ws-layout {
@@ -1094,13 +1161,13 @@ dialog.backup-dialog::backdrop {
   }
 
   .code-editor {
-    min-height: 260px;
+    min-height: 235px;
   }
 }
 
 @media (max-width: 600px) {
   .ex-header-inner {
-    padding: 0.55rem 0.85rem;
+    padding: 0.5rem 0.85rem;
   }
 
   .ex-container {

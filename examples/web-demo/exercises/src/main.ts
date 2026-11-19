@@ -21,9 +21,10 @@ import type { JudgeResult, Locale, ProblemDefinition, RuntimeId, VerdictStatus }
 import {
   escapeHtml,
   renderBackupDialogHtml,
+  renderExerciseIndexHtml,
   renderHeaderHtml,
-  renderQuestMapHtml,
   renderResultsHtml,
+  renderRuntimeChipsHtml,
   renderWorkspaceHtml,
   type RenderedRunReport,
 } from "./ui/components.js";
@@ -716,7 +717,7 @@ class ExercisesApp {
         this.progress = recordSolvedProblem(this.progress, prob.meta.id, runtime, runTimeMs);
         saveProgress(this.progress);
         if (isStillCurrent) {
-          this.refreshWorkspaceStars(prob.meta.id);
+          this.refreshWorkspaceRuntimeStatus(prob.meta.id);
         }
       }
 
@@ -741,19 +742,19 @@ class ExercisesApp {
     }
   }
 
-  private refreshWorkspaceStars(problemId: string): void {
+  private refreshWorkspaceRuntimeStatus(problemId: string): void {
     const solvedRuntimes = this.progress.solved[problemId]?.runtimes ?? [];
     const washiSolved = solvedRuntimes.includes("washi");
     const highspySolved = solvedRuntimes.includes("highspy");
 
-    const starSummary = this.root.querySelector("#ws-star-summary .star-display");
-    if (starSummary) {
-      starSummary.textContent = `WaSHI ${washiSolved ? "★" : "☆"} · highspy ${highspySolved ? "★" : "☆"}`;
+    const statusContainer = this.root.querySelector("#ws-runtime-status");
+    if (statusContainer) {
+      statusContainer.innerHTML = renderRuntimeChipsHtml(solvedRuntimes, "full");
     }
-    const washiStar = this.root.querySelector("#tab-washi .runtime-tab-star");
-    if (washiStar) washiStar.textContent = washiSolved ? "★" : "";
-    const highspyStar = this.root.querySelector("#tab-highspy .runtime-tab-star");
-    if (highspyStar) highspyStar.textContent = highspySolved ? "★" : "";
+    const washiCheck = this.root.querySelector("#tab-washi .runtime-tab-check");
+    if (washiCheck) washiCheck.textContent = washiSolved ? "✓" : "";
+    const highspyCheck = this.root.querySelector("#tab-highspy .runtime-tab-check");
+    if (highspyCheck) highspyCheck.textContent = highspySolved ? "✓" : "";
   }
 
   private render(): void {
@@ -787,7 +788,7 @@ class ExercisesApp {
       });
     } else {
       document.title = `${this.strings.brandTitle} | WaSHI`;
-      bodyHtml = renderQuestMapHtml({
+      bodyHtml = renderExerciseIndexHtml({
         locale: this.locale,
         strings: this.strings,
         chapters: CHAPTERS,

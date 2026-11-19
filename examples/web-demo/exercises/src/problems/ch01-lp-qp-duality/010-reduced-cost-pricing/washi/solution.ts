@@ -11,7 +11,7 @@ export async function solve(input: P010Input) {
   const B = input.baseMargins.length;
   const C = input.candidateMargins.length;
   const allMargins = [...input.baseMargins, ...input.candidateMargins];
-  const m = new Model("ReducedCostBoss");
+  const m = new Model("ReducedCostPricing");
 
   const quantities = m.continuous(B + C, { lb: 0, prefix: "x" });
   const constrs = input.capacities.map((cap, k) =>

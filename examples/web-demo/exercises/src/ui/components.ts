@@ -4,8 +4,8 @@ import {
   countChapterSolved,
   countMainSolved,
   getNextRecommendedProblemId,
-  getStarLevel,
-  totalStarsEarned,
+  getSolvedRuntimeCount,
+  totalRuntimePasses,
 } from "../store/progress.js";
 import type {
   ChapterInfo,
@@ -39,16 +39,30 @@ function getShowcaseUrl(locale: Locale): string {
   return "/showcase/";
 }
 
-function renderStars(level: 0 | 1 | 2): string {
-  if (level === 2) return "★★";
-  if (level === 1) return "★☆";
-  return "☆☆";
-}
-
-function renderDifficultyStars(difficulty: number): string {
-  const filled = "★".repeat(Math.max(1, Math.min(5, difficulty)));
-  const empty = "☆".repeat(Math.max(0, 5 - difficulty));
-  return `${filled}${empty}`;
+export function renderRuntimeChipsHtml(
+  solvedRuntimes: ReadonlyArray<RuntimeId>,
+  mode: "compact" | "full"
+): string {
+  const specs: ReadonlyArray<{ id: RuntimeId; short: string; full: string }> = [
+    { id: "washi", short: "TS", full: "WaSHI" },
+    { id: "highspy", short: "Py", full: "highspy" },
+  ];
+  const chips = specs
+    .map((spec) => {
+      const passed = solvedRuntimes.includes(spec.id);
+      const label =
+        mode === "compact"
+          ? passed
+            ? `✓ ${spec.short}`
+            : spec.short
+          : passed
+            ? `${spec.full} ✓`
+            : spec.full;
+      const titleAttr = mode === "compact" ? ` title="${spec.full}"` : "";
+      return `<span class="runtime-chip${passed ? " is-pass" : ""}"${titleAttr}>${label}</span>`;
+    })
+    .join("");
+  return `<span class="runtime-chip-group"${mode === "compact" ? ' aria-label="WaSHI / highspy"' : ""}>${chips}</span>`;
 }
 
 export function renderProvenanceBadges(
@@ -118,19 +132,21 @@ function renderProblemCardHtml(
   prob: ProblemDefinition,
   locale: Locale,
   strings: ExercisesUiStrings,
-  progress: ProgressState
+  progress: ProgressState,
+  compact: boolean = false
 ): string {
   const { meta } = prob;
-  const starLevel = getStarLevel(progress, meta.id);
+  const solvedCount = getSolvedRuntimeCount(progress, meta.id);
   const solvedEntry = progress.solved[meta.id];
-  const isBoss = meta.role === "boss";
+  const isCapstone = meta.role === "capstone";
   const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
   const solvedRuntimes = solvedEntry?.runtimes ?? [];
 
   const cardClasses = [
     "problem-card",
-    isBoss ? "is-boss" : "",
-    starLevel > 0 ? "is-solved" : "",
+    compact ? "is-compact" : "",
+    isCapstone ? "is-capstone" : "",
+    solvedCount > 0 ? "is-solved" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -145,7 +161,7 @@ function renderProblemCardHtml(
               .map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`)
               .join("")}
           </div>
-          <span class="star-display" title="WaSHI / highspy">${renderStars(starLevel)}</span>
+          ${renderRuntimeChipsHtml(solvedRuntimes, "compact")}
         </div>
         <h3 class="problem-card-title">
           <a href="?id=${encodeURIComponent(meta.id)}&lang=${locale}" data-nav-id="${escapeHtml(meta.id)}">
@@ -155,11 +171,13 @@ function renderProblemCardHtml(
         <p class="problem-card-sub">${escapeHtml(meta.subtitle[locale])}</p>
       </div>
       <div class="problem-card-foot">
-        <div class="problem-badges">
-          ${renderProvenanceBadges(meta, strings)}
-        </div>
+        ${
+          compact
+            ? ""
+            : `<div class="problem-badges">${renderProvenanceBadges(meta, strings)}</div>`
+        }
         <div class="problem-meta-line">
-          <span>${renderDifficultyStars(meta.difficulty)} · ~${meta.estimatedMinutes}m</span>
+          <span>${escapeHtml(strings.difficultyLabel(meta.difficulty))} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
           <span>${solvedRuntimes.length > 0 ? solvedRuntimes.join(" + ") : "—"}</span>
         </div>
       </div>
@@ -167,7 +185,7 @@ function renderProblemCardHtml(
   `;
 }
 
-export function renderQuestMapHtml(params: {
+export function renderExerciseIndexHtml(params: {
   locale: Locale;
   strings: ExercisesUiStrings;
   chapters: ChapterInfo[];
@@ -177,7 +195,7 @@ export function renderQuestMapHtml(params: {
   const { locale, strings, chapters, problems, progress } = params;
   const summaries = problems.map((p) => p.meta);
   const mainSolved = countMainSolved(progress, summaries);
-  const stars = totalStarsEarned(progress, summaries);
+  const runtimePasses = totalRuntimePasses(progress, summaries);
   const nextId = getNextRecommendedProblemId(progress, summaries);
   const ctaLabel =
     mainSolved === 0 ? strings.startFirstBtn : strings.resumeBtn(nextId);
@@ -208,18 +226,18 @@ export function renderQuestMapHtml(params: {
           </button>
         </div>
         <div class="tutorial-cards">
-          ${tutorialProblems.map((p) => renderProblemCardHtml(p, locale, strings, progress)).join("")}
+          ${tutorialProblems.map((p) => renderProblemCardHtml(p, locale, strings, progress, true)).join("")}
         </div>
       </section>
     `;
 
   return `
     <main class="ex-container">
-      <section class="quest-hero">
+      <section class="ex-hero">
         <div>
-          <h1 class="quest-hero-title">${escapeHtml(strings.brandTitle)}</h1>
-          <p class="quest-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
-          <div class="quest-hero-actions">
+          <h1 class="ex-hero-title">${escapeHtml(strings.brandTitle)}</h1>
+          <p class="ex-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
+          <div class="ex-hero-actions">
             <a
               href="?id=${encodeURIComponent(nextId)}&lang=${locale}"
               class="ex-btn-primary"
@@ -228,10 +246,10 @@ export function renderQuestMapHtml(params: {
             >${escapeHtml(ctaLabel)}</a>
           </div>
         </div>
-        <div class="quest-stats-box">
-          <div class="quest-stats-row">
-            <span class="quest-stat-main" id="main-progress-text">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
-            <span class="quest-stat-stars" id="stars-progress-text">${escapeHtml(strings.starsLabel(stars, 200))}</span>
+        <div class="ex-stats-box">
+          <div class="ex-stats-row">
+            <span class="ex-stat-main" id="main-progress-text">${escapeHtml(strings.progressLabel(mainSolved, 100))}</span>
+            <span class="ex-stat-secondary" id="runtime-progress-text">${escapeHtml(strings.runtimeProgressLabel(runtimePasses, 200))}</span>
           </div>
           <div class="progress-track" aria-hidden="true">
             <div class="progress-fill" style="width: ${pct}%"></div>
@@ -384,10 +402,8 @@ export function renderWorkspaceHtml(params: {
               : ""
           }
         </div>
-        <div class="ws-nav-group" id="ws-star-summary">
-          <span class="star-display">
-            WaSHI ${washiSolved ? "★" : "☆"} · highspy ${highspySolved ? "★" : "☆"}
-          </span>
+        <div class="ws-nav-group" id="ws-runtime-status">
+          ${renderRuntimeChipsHtml(solvedRuntimes, "full")}
         </div>
       </div>
 
@@ -398,7 +414,7 @@ export function renderWorkspaceHtml(params: {
             ${meta.paradigms
               .map((p) => `<span class="paradigm-pill">${escapeHtml(p)}</span>`)
               .join("")}
-            <span class="paradigm-pill">${renderDifficultyStars(meta.difficulty)} · ~${meta.estimatedMinutes}m</span>
+            <span class="paradigm-pill">${escapeHtml(strings.difficultyLabel(meta.difficulty))} · ${escapeHtml(strings.estimatedMinutesLabel(meta.estimatedMinutes))}</span>
           </div>
 
           <h1 id="ws-problem-title" class="ws-title">${escapeHtml(meta.title[locale])}</h1>
@@ -463,7 +479,7 @@ export function renderWorkspaceHtml(params: {
               tabindex="${activeRuntime === "washi" ? "0" : "-1"}"
             >
               <span>${escapeHtml(strings.tabs.washi)}</span>
-              <span class="runtime-tab-star">${washiSolved ? "★" : ""}</span>
+              <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
             </button>
             <button
               type="button"
@@ -475,7 +491,7 @@ export function renderWorkspaceHtml(params: {
               tabindex="${activeRuntime === "highspy" ? "0" : "-1"}"
             >
               <span>${escapeHtml(strings.tabs.highspy)}</span>
-              <span class="runtime-tab-star">${highspySolved ? "★" : ""}</span>
+              <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
             </button>
           </div>
 
@@ -541,11 +557,11 @@ export function renderResultsHtml(
     report.overallStatus === "AC"
       ? `
       <div class="ac-celebration">
-        <strong>★ ${escapeHtml(pillLabel)} (${Math.round(report.runTimeMs)} ms)</strong>
+        <strong>✓ ${escapeHtml(pillLabel)} (${Math.round(report.runTimeMs)} ms)</strong>
         ${
           report.nextProblemId
             ? `<a href="?id=${encodeURIComponent(report.nextProblemId)}&lang=${locale}" class="ex-btn-primary" data-nav-id="${escapeHtml(report.nextProblemId)}">${escapeHtml(
-                strings.results.nextQuestBtn(report.nextProblemId)
+                strings.results.nextProblemBtn(report.nextProblemId)
               )}</a>`
             : `<a href="?lang=${locale}" class="ex-btn-primary" data-action="home">${escapeHtml(
                 strings.backToMap

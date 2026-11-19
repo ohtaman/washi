@@ -232,23 +232,23 @@ export function countChapterSolved(
   return count;
 }
 
-export function getStarLevel(state: ProgressState, problemId: string): 0 | 1 | 2 {
+export function getSolvedRuntimeCount(state: ProgressState, problemId: string): 0 | 1 | 2 {
   const count = state.solved[problemId]?.runtimes.length ?? 0;
   if (count >= 2) return 2;
   if (count === 1) return 1;
   return 0;
 }
 
-export function totalStarsEarned(
+export function totalRuntimePasses(
   state: ProgressState,
   problems: ReadonlyArray<{ id: string; chapter: number }>
 ): number {
-  let stars = 0;
+  let total = 0;
   for (const p of problems) {
     if (p.chapter <= 0) continue;
-    stars += getStarLevel(state, p.id);
+    total += getSolvedRuntimeCount(state, p.id);
   }
-  return stars;
+  return total;
 }
 
 export function getNextRecommendedProblemId(

@@ -20,7 +20,10 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
     tutorialDismissBtn: catalog.tutorialDismissBtn,
     tutorialRestoreBtn: catalog.tutorialRestoreBtn,
     progressLabel: (solved, total) => formatTemplate(catalog.progressLabel, { solved, total }),
-    starsLabel: (stars, maxStars) => formatTemplate(catalog.starsLabel, { stars, maxStars }),
+    runtimeProgressLabel: (solved, total) =>
+      formatTemplate(catalog.runtimeProgressLabel, { solved, total }),
+    difficultyLabel: (level) => formatTemplate(catalog.difficultyLabel, { level }),
+    estimatedMinutesLabel: (mins) => formatTemplate(catalog.estimatedMinutesLabel, { mins }),
     comingSoonBadge: catalog.comingSoonBadge,
     chapterPrefix: (n) => formatTemplate(catalog.chapterPrefix, { n }),
     roleLabels: catalog.roleLabels,
@@ -54,7 +57,7 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
       previewLabel: catalog.results.previewLabel,
       lpPreviewLabel: catalog.results.lpPreviewLabel,
       consoleLabel: catalog.results.consoleLabel,
-      nextQuestBtn: (nextId) => formatTemplate(catalog.results.nextQuestBtn, { nextId }),
+      nextProblemBtn: (nextId) => formatTemplate(catalog.results.nextProblemBtn, { nextId }),
     },
     backup: {
       ...catalog.backup,

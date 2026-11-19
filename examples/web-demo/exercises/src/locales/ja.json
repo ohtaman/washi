@@ -1,27 +1,29 @@
 {
   "ui": {
     "brandTitle": "数理最適化100本ノック",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習道場 (WaSHI & highspy)",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習問題集 (WaSHI & highspy)",
     "navDocs": "ドキュメント",
     "navShowcase": "ショーケース",
     "navPlayground": "Playground",
-    "backToMap": "← クエスト一覧へ",
-    "startFirstBtn": "▶ #001 から始める",
-    "resumeBtn": "▶ 続きから（#{id}）",
+    "backToMap": "← 問題一覧へ",
+    "startFirstBtn": "#001 から始める →",
+    "resumeBtn": "続きから（#{id}）→",
     "tutorialBannerTitle": "はじめての方へ：3分チュートリアル（T1〜T2・スキップ可）",
     "tutorialBannerDesc": "採点画面の見方や変数・制約の基本APIを2問で確認できます。100問の進捗カウント外なので経験者はスキップできます。",
     "tutorialDismissBtn": "スキップする",
     "tutorialRestoreBtn": "チュートリアルを表示（T1〜T2）",
-    "progressLabel": "{solved} / {total} クリア",
-    "starsLabel": "★ {stars} / {maxStars} 習熟度",
+    "progressLabel": "{solved} / {total} 解答済",
+    "runtimeProgressLabel": "両ランタイム解答: {solved} / {total}",
+    "difficultyLabel": "難易度 {level}/5",
+    "estimatedMinutesLabel": "約{mins}分",
     "comingSoonBadge": "順次公開予定",
     "chapterPrefix": "第{n}章",
     "roleLabels": {
       "tutorial": "チュートリアル",
       "intro": "導入",
-      "core": "定番",
-      "twist": "ひねり・罠",
-      "boss": "章末ボス 👑"
+      "core": "基礎",
+      "applied": "応用",
+      "capstone": "章末総合"
     },
     "provenance": {
       "aiDrafted": "AI-Drafted",
@@ -46,7 +48,7 @@
     },
     "editor": {
       "label": "あなたの solve() 実装",
-      "runBtn": "▶ 実行して採点",
+      "runBtn": "実行して採点",
       "runningBtn": "実行中…",
       "loadingPyodide": "Pyodide v0.29 WebAssembly 読込中…",
       "loadingHighspy": "highspy パッケージ読込中…",
@@ -60,8 +62,8 @@
       "title": "採点結果",
       "placeholder": "上の solve() を編集して「実行して採点」を押すと、全テストケースを自動検証します。",
       "verdicts": {
-        "AC": "AC — 最適解！",
-        "SUBOPTIMAL": "SUBOPTIMAL — 惜しい！実行可能ですが最適ではありません",
+        "AC": "AC — 最適解",
+        "SUBOPTIMAL": "SUBOPTIMAL — 実行可能ですが最適ではありません",
         "VIOLATION": "VIOLATION — ルール違反があります",
         "INFEASIBLE": "INFEASIBLE — 解が見つかりませんでした",
         "RUNTIME_ERROR": "ERROR — 実行時エラー"
@@ -73,12 +75,12 @@
       "previewLabel": "出力解サマリー",
       "lpPreviewLabel": "生成された LP 数式を見る (toLpString)",
       "consoleLabel": "コンソール出力",
-      "nextQuestBtn": "次のクエストへ (#{nextId}) →"
+      "nextProblemBtn": "次の問題へ (#{nextId}) →"
     },
     "backup": {
       "openBtn": "進捗保存",
       "title": "進捗のバックアップ（localStorage）",
-      "desc": "クリアした星とタブ別の書きかけコードはこのブラウザに保存されます。別端末へ移す場合は JSON を書き出してインポートしてください。",
+      "desc": "解答進捗とタブ別の書きかけコードはこのブラウザに保存されます。別端末へ移す場合は JSON を書き出してインポートしてください。",
       "exportBtn": "JSON ダウンロード",
       "copyBtn": "JSON コピー",
       "copied": "コピーしました",
@@ -87,7 +89,7 @@
       "importSuccess": "進捗を復元しました。",
       "importError": "読み込み失敗: {msg}",
       "resetAllBtn": "全進捗を消去",
-      "resetAllConfirm": "ブラウザに保存されたすべての星とコードを消去しますか？",
+      "resetAllConfirm": "ブラウザに保存されたすべての解答進捗とコードを消去しますか？",
       "closeBtn": "閉じる"
     },
     "theme": {
@@ -107,7 +109,7 @@
       "description": "文章を数理モデルに翻訳し、比率・平準化・目的関数の圧力・凸QP・潜在価格（Shadow Price）と被約費用までを体得します。"
     },
     "2": {
-      "title": "混合整数計画（MIP）の定式化イディオム道場",
+      "title": "混合整数計画（MIP）の定式化パターン",
       "description": "固定費・半連続変数、インジケータの向きとチェイン結合、SOS2近似、McCormick緩和、パターン列挙への発想転換。"
     },
     "3": {
@@ -116,7 +118,7 @@
     },
     "4": {
       "title": "制約プログラミング（CP / LCG）とグローバル制約",
-      "description": "distinct・at・allowed・disjoint・cumulative の各グローバル制約、対称性除去、第1回 MIP vs CP vs SMT 対決。"
+      "description": "distinct・at・allowed・disjoint・cumulative の各グローバル制約、対称性除去、MIP・CP・SMT の解法比較。"
     },
     "5": {
       "title": "ネットワーク・全単模性・連結性・配送計画 (VRP)",
@@ -128,7 +130,7 @@
     },
     "7": {
       "title": "スケジューリング・シフト・時間割・収益管理",
-      "description": "ジョブショップ対決、RCPSP、連勤・夜勤インターバル、大学時間割、手術室スケジュール、座席在庫制御。"
+      "description": "ジョブショップ比較（MIP vs CP）、RCPSP、連勤・夜勤インターバル、大学時間割、手術室スケジュール、座席在庫制御。"
     },
     "8": {
       "title": "要件監査・モデルデバッグ・高速化の技術",

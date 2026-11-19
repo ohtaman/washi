@@ -8,7 +8,7 @@ export interface P010Input {
 }
 
 export async function solve(input: P010Input) {
-  const m = new Model("ReducedCostBoss");
+  const m = new Model("ReducedCostPricing");
 
   // TODO: Jointly optimize base + candidate products, extract shadowPrices (c.dual),
   // compute candidate reduced costs (v.reducedCost) and break-even margin increases,

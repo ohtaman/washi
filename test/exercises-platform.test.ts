@@ -8,7 +8,8 @@ import {
   recordSolvedProblem,
   saveDraft,
   countMainSolved,
-  getStarLevel,
+  getSolvedRuntimeCount,
+  totalRuntimePasses,
   getNextRecommendedProblemId,
   exportProgressJson,
   importProgressJson,
@@ -17,6 +18,13 @@ import {
   renderSafeMarkdown,
   parseProblemMarkdown,
 } from "../examples/web-demo/exercises/src/ui/markdown.js";
+import {
+  renderExerciseIndexHtml,
+  renderWorkspaceHtml,
+  renderResultsHtml,
+} from "../examples/web-demo/exercises/src/ui/components.js";
+import { UI_STRINGS } from "../examples/web-demo/exercises/src/i18n/ui-strings.js";
+import { CHAPTERS, PROBLEMS } from "../examples/web-demo/exercises/src/problems/registry.js";
 
 describe("Exercises Platform — TypeScript Transpiler", () => {
   it("strips TS syntax while preserving strings, template literals, != comparisons, ternaries, and object literals", () => {
@@ -824,26 +832,30 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     { id: "003", chapter: 1 },
   ];
 
-  it("excludes tutorial problems (T1, T2) from main problem count and tracks 1-star vs 2-star mastery", () => {
+  it("excludes tutorial problems (T1, T2) from main problem count and tracks single vs dual runtime passes", () => {
     let state = createEmptyProgress();
     expect(countMainSolved(state, sampleProblems)).toBe(0);
-    expect(getStarLevel(state, "T1")).toBe(0);
+    expect(getSolvedRuntimeCount(state, "T1")).toBe(0);
+    expect(totalRuntimePasses(state, sampleProblems)).toBe(0);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("001");
 
     state = recordSolvedProblem(state, "T1", "washi", 12, "2026-11-19T00:00:00Z");
     state = recordSolvedProblem(state, "T2", "highspy", 45, "2026-11-19T00:01:00Z");
     expect(countMainSolved(state, sampleProblems)).toBe(0);
-    expect(getStarLevel(state, "T1")).toBe(1);
+    expect(getSolvedRuntimeCount(state, "T1")).toBe(1);
+    expect(totalRuntimePasses(state, sampleProblems)).toBe(0);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("001");
 
     state = recordSolvedProblem(state, "001", "washi", 15, "2026-11-19T00:02:00Z");
     expect(countMainSolved(state, sampleProblems)).toBe(1);
-    expect(getStarLevel(state, "001")).toBe(1);
+    expect(getSolvedRuntimeCount(state, "001")).toBe(1);
+    expect(totalRuntimePasses(state, sampleProblems)).toBe(1);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("002");
 
     state = recordSolvedProblem(state, "001", "highspy", 10, "2026-11-19T00:03:00Z");
     expect(countMainSolved(state, sampleProblems)).toBe(1);
-    expect(getStarLevel(state, "001")).toBe(2);
+    expect(getSolvedRuntimeCount(state, "001")).toBe(2);
+    expect(totalRuntimePasses(state, sampleProblems)).toBe(2);
     expect(state.solved["001"].bestMs).toBe(10);
   });
 
@@ -960,5 +972,90 @@ Formulation body.
     expect(parsed.hint1).toContain("Hint 1 body.");
     expect(parsed.hint2).toContain("Hint 2 pitfall body.");
     expect(parsed.formulation).toContain("Formulation body.");
+  });
+});
+
+describe("Exercises Platform — Educational UI Rendering", () => {
+  const GAMEY_UI_RE =
+    /\bBoss\b|\u30dc\u30b9|\bQuest\b|\u30af\u30a8\u30b9\u30c8|\u{1f451}|\u2605|\u2606|\u9053\u5834|\u9053\u573a|\u901a\u5173|\u5173\u5361/ui;
+  const CAPSTONE_LABELS = {
+    en: "Synthesis",
+    ja: "\u7ae0\u672b\u7dcf\u5408",
+    zh: "\u7ae0\u672b\u7efc\u5408",
+  } as const;
+
+  it("renders the exercise index without contrived gamey copy or star markers across en/ja/zh", () => {
+    let state = createEmptyProgress();
+    state = recordSolvedProblem(state, "001", "washi", 12, "2026-11-19T00:00:00Z");
+    state = recordSolvedProblem(state, "002", "washi", 15, "2026-11-19T00:01:00Z");
+    state = recordSolvedProblem(state, "002", "highspy", 40, "2026-11-19T00:02:00Z");
+
+    for (const locale of ["en", "ja", "zh"] as const) {
+      const html = renderExerciseIndexHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
+        progress: state,
+      });
+
+      expect(html, `index (${locale})`).not.toMatch(GAMEY_UI_RE);
+      expect(html).toContain(CAPSTONE_LABELS[locale]);
+      expect(html).toContain("is-capstone");
+
+      // Check runtime completion chips for #003 (unsolved), #001 (washi only), #002 (both)
+      expect(html).toMatch(/data-problem-id="003"[\s\S]*?>TS<\/span>[\s\S]*?>Py<\/span>/);
+      expect(html).toMatch(
+        /data-problem-id="001"[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ TS<\/span>[\s\S]*?class="runtime-chip"[^>]*>Py<\/span>/
+      );
+      expect(html).toMatch(
+        /data-problem-id="002"[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ TS<\/span>[\s\S]*?class="runtime-chip is-pass"[^>]*>✓ Py<\/span>/
+      );
+    }
+  });
+
+  it("renders workspace runtime checks, difficulty labels, and AC results without stars or Quest labels", () => {
+    const p010 = PROBLEMS.find((p) => p.meta.id === "010")!;
+    let state = createEmptyProgress();
+    state = recordSolvedProblem(state, "010", "washi", 18, "2026-11-19T00:00:00Z");
+
+    for (const locale of ["en", "ja", "zh"] as const) {
+      const wsHtml = renderWorkspaceHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        problem: p010,
+        prevProblem: PROBLEMS.find((p) => p.meta.id === "009") ?? null,
+        nextProblem: null,
+        progress: state,
+        activeRuntime: "washi",
+        washiCode: p010.washiStarter,
+        highspyCode: p010.highspyStarter,
+      });
+
+      expect(wsHtml, `workspace (${locale})`).not.toMatch(GAMEY_UI_RE);
+      expect(wsHtml).toContain("4/5");
+      expect(wsHtml).toContain("WaSHI ✓");
+      expect(wsHtml).not.toContain("highspy ✓");
+
+      const resHtml = renderResultsHtml(locale, UI_STRINGS[locale], {
+        overallStatus: "AC",
+        cases: [
+          {
+            name: "Case 1",
+            verdict: { status: "AC", ok: true, message: "Verified" },
+            varCount: 4,
+            constraintCount: 3,
+            solveTimeMs: 5.2,
+          },
+        ],
+        logs: [],
+        runTimeMs: 12,
+        nextProblemId: "010",
+      });
+
+      expect(resHtml, `results (${locale})`).not.toMatch(GAMEY_UI_RE);
+      expect(resHtml).toContain("✓ ");
+      expect(resHtml).toContain(UI_STRINGS[locale].results.nextProblemBtn("010"));
+    }
   });
 });

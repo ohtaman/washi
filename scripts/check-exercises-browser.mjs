@@ -58,6 +58,9 @@ function startStaticServer(root) {
   });
 }
 
+const GAMEY_TEXT_RE =
+  /\bBoss\b|\u30dc\u30b9|\bQuest\b|\u30af\u30a8\u30b9\u30c8|\u{1f451}|\u2605|\u2606|\u9053\u5834|\u9053\u573a|\u901a\u5173|\u5173\u5361/ui;
+
 function assert(cond, msg) {
   if (!cond) {
     throw new Error(`Assertion failed: ${msg}`);
@@ -117,7 +120,7 @@ async function run() {
       await navLink.waitFor({ state: "visible" });
       await Promise.all([page.waitForURL(/\/exercises\//), navLink.click()]);
       await page.waitForSelector("#hero-primary-cta");
-      const heroTitle = await page.locator(".quest-hero-title").textContent();
+      const heroTitle = await page.locator(".ex-hero-title").textContent();
       assert(
         heroTitle?.includes(navCase.expectedBrand),
         `Expected hero title '${navCase.expectedBrand}' from ${navCase.docsPath}, got '${heroTitle}'`
@@ -131,12 +134,16 @@ async function run() {
     await Promise.all([page.waitForURL(/\/exercises\//), showcaseCardLink.click()]);
     await page.waitForSelector("#main-progress-text");
 
-    // 2. Quest Map checks (0/100, Provenance badges, Tutorial Skip & Restore, Theme Toggle)
+    // 2. Exercise Index checks (0/100, Provenance badges, Tutorial Skip & Restore, Theme Toggle)
     const bodyText = await page.locator("body").innerText();
     assert(bodyText.includes("0 / 100"), `Expected 0 / 100 progress initially, got: ${bodyText}`);
-    assert(bodyText.includes("AI-Drafted"), "Expected AI-Drafted badge on Quest Map");
-    assert(bodyText.includes("Solver-Verified"), "Expected Solver-Verified badge on Quest Map");
+    assert(bodyText.includes("AI-Drafted"), "Expected AI-Drafted badge on Exercise Index");
+    assert(bodyText.includes("Solver-Verified"), "Expected Solver-Verified badge on Exercise Index");
     assert(!/Reviewed by/.test(bodyText), "Reviewed by must NOT appear when empty");
+    assert(
+      !GAMEY_TEXT_RE.test(bodyText),
+      `Unexpected gamey/star copy on Exercise Index: ${bodyText}`
+    );
 
     // Tutorial skip & persist across reload
     await page.click("#dismiss-tutorial-btn");
@@ -222,8 +229,11 @@ async function run() {
       await page.click('button[data-action="run"][data-runtime="highspy"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
 
-      const starText = await page.locator("#ws-star-summary").innerText();
-      assert(starText.includes("WaSHI ★") && starText.includes("highspy ★"), `${id} missing dual ★ mastery`);
+      const runtimeStatusText = await page.locator("#ws-runtime-status").innerText();
+      assert(
+        runtimeStatusText.includes("WaSHI ✓") && runtimeStatusText.includes("highspy ✓"),
+        `${id} missing dual runtime pass badges: ${runtimeStatusText}`
+      );
 
       // Confirm tutorial (T1, T2) stays excluded from /100 main score
       if (id === "T2") {
@@ -243,8 +253,8 @@ async function run() {
       "Expected 10 / 100 after solving #001-#010"
     );
     assert(
-      (await page.locator("#stars-progress-text").textContent())?.includes("20 / 200"),
-      "Expected 20 / 200 stars after dual-runtime mastery on #001-#010"
+      (await page.locator("#runtime-progress-text").textContent())?.includes("20 / 200"),
+      "Expected 20 / 200 runtime passes after dual-runtime completion on #001-#010"
     );
     await page.reload({ waitUntil: "networkidle" });
     assert(
@@ -290,19 +300,54 @@ async function run() {
       // Wait long enough for Pyodide T1 background run to settle in the same SPA session
       await racePage.waitForTimeout(4500);
       const p002Placeholder = await racePage.locator("#judge-results").innerText();
-      const p002Stars = await racePage.locator("#ws-star-summary").innerText();
+      const p002Status = await racePage.locator("#ws-runtime-status").innerText();
       assert(
         !p002Placeholder.includes("2600") && !p002Placeholder.includes("AC —"),
         `Stale T1 result leaked into #002 workspace: ${p002Placeholder}`
       );
       assert(
-        p002Stars.includes("highspy ☆"),
-        `Stale T1 star leaked into #002 workspace: ${p002Stars}`
+        !p002Status.includes("highspy ✓"),
+        `Stale T1 runtime badge leaked into #002 workspace: ${p002Status}`
       );
       await raceCtx.close();
     }
 
-    // 5. Mobile Audit (360x800 and 390x844) on Quest Map & Math-heavy Workspace
+    // 4c. Explicit light-mode aesthetic & de-gamification check
+    {
+      const lightCtx = await browser.newContext({
+        viewport: { width: 1280, height: 720 },
+        colorScheme: "light",
+      });
+      const lightPage = await lightCtx.newPage();
+      lightPage.on("pageerror", (e) => pageErrors.push(`light: ${e.message}`));
+      for (const checkUrl of [
+        `${baseUrl}/exercises/?lang=en`,
+        `${baseUrl}/exercises/?lang=ja`,
+        `${baseUrl}/exercises/?lang=zh`,
+        `${baseUrl}/exercises/?id=010&lang=en`,
+        `${baseUrl}/exercises/?id=010&lang=ja`,
+        `${baseUrl}/exercises/?id=010&lang=zh`,
+      ]) {
+        await lightPage.goto(checkUrl, { waitUntil: "networkidle" });
+        const bgInfo = await lightPage.evaluate(() => {
+          const rgb = getComputedStyle(document.body).backgroundColor;
+          const m = rgb.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
+          const lum = (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255;
+          return { rgb, lum, text: document.body.innerText };
+        });
+        assert(
+          bgInfo.lum > 0.85,
+          `Expected bright light-mode background on ${checkUrl}, got ${bgInfo.rgb} (lum=${bgInfo.lum.toFixed(2)})`
+        );
+        assert(
+          !GAMEY_TEXT_RE.test(bgInfo.text),
+          `Unexpected gamey wording on ${checkUrl}`
+        );
+      }
+      await lightCtx.close();
+    }
+
+    // 5. Mobile Audit (360x800 and 390x844) on Exercise Index & Math-heavy Workspace
     for (const vp of [
       { width: 360, height: 800 },
       { width: 390, height: 844 },

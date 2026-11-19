@@ -1,9 +1,9 @@
 {
-  "title": "#010. Boss：检验数（Reduced Cost）与新产品盈亏平衡分析",
+  "title": "#010. 检验数（Reduced Cost）与新产品盈亏平衡分析（第 1 章综合）",
   "subtitle": "综合运用原问题、影子价格与检验数（Reduced Cost），精确测算研发候选产品的利润提价门槛。",
   "tags": [
     "LP",
-    "Boss 综合题",
+    "章末综合",
     "检验数",
     "灵敏度分析",
     "对偶理论"
@@ -12,7 +12,7 @@
     "两款候选新品均未能越过资源机会成本门槛（检验数 -50 与 -15）",
     "候选产品 0 成功入选（RC=0），候选产品 1 需提价 +45.83 方可入局"
   ],
-  "markdown": "# #010. Boss：检验数（Reduced Cost）与新产品盈亏平衡分析\n\n<!-- section:scenario -->\n欢迎来到第一章的 **Boss 综合关 👑**！工厂目前利用 $M$ 种共享资源（上限 `capacities`）生产 $B$ 种已有产品（利润 `baseMargins`）。现研发部提出 $C$ 款**候选新品**（利润 `candidateMargins`），它们共用同一批设备：`usages` 为 $M$ 行 × $(B + C)$ 列的联合消耗矩阵（前 $B$ 列为已有产品，后 $C$ 列为候选新品）。\n\n请联合求解并回答以下三个核心决策问题：\n1. 将所有 $B + C$ 种产品放入同一联合 LP 最大化总利润，最优产量（`baseQuantities`、`candidateQuantities`）与最大利润（`optimalProfit`）是多少？\n2. 联合最优解处的各资源 **影子价格** `shadowPrices` ($y_k \\ge 0$) 是多少？\n3. 每款候选新品 $c$ 的 **检验数（Reduced Cost）** $r_c = \\text{candidateMargins}[c] - \\sum_k \\text{usages}[k][B+c] \\, y_k \\le 0$ 是多少，以及至少需要提价/降本多少（`minMarginIncreaseNeeded[c] = max(0, -r_c)`）才值得投产？\n\n<!-- section:io -->\n- **输入 (`P010Input`)**：\n  - `baseMargins: number[]`（长 $B$）、`candidateMargins: number[]`（长 $C$）\n  - `usages: number[][]` — $M \\times (B + C)$ 联合消耗矩阵\n  - `capacities: number[]` — 长 $M$ 的资源容量上限\n- **输出 (`P010Output`)**：\n  - `baseQuantities: number[]`、`candidateQuantities: number[]` — 联合最优产量\n  - `optimalProfit: number` — 联合最大利润\n  - `shadowPrices: number[]` — 联合 LP 的对偶影子价格 $y_k$\n  - `candidateReducedCosts: number[]` — 候选产品的检验数 $r_c \\le 0$\n  - `minMarginIncreaseNeeded: number[]` — 盈亏平衡所需最小利润提升幅度 `max(0, -r_c)`\n\n<!-- section:example -->\n- **算例 1**：老产品单独就已将瓶颈影子价格推至 `[20, 10, 0]`、利润 `2,800`。候选新品 0 单位利润为 `20`，却占用 `2*20 + 3*10 = 70` 的资源机会成本，故 `reducedCost = -50`（落选，至少需增利 **`+50`**）。\n- **算例 2**：候选新品 0 利润达 `75`，一举挤进联合最优生产方案中！因此其产量 `> 0`，检验数 **`r_0 = 0`**，所需提价幅度为 **`0`**。\n\n<!-- section:hint1 -->\n切忌“先只用老产品求一次影子价格，再事后评估新品”——如算例 2 所示，有竞争力的新品一旦投产就会改变有效瓶颈基！必须将全部 $B + C$ 个非负变量纳入同一个联合 LP 模型求解。\n\n<!-- section:hint2 -->\n求解联合 LP 后可直接提取检验数或用对偶价格计算：\n- **WaSHI**：读取变量属性 **`v.reducedCost`**（或计算 `candMargin - sum_k usages[k][B+c] * shadowPrices[k]`）。\n- **highspy**：**`sol.col_dual[v.index]`** 正是最大化问题下的检验数 $c_j - A_{\\cdot j}^\\top y \\le 0$；随后 **`minMarginIncreaseNeeded[c] = max(0, -rc)`**。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max_{x \\ge 0} \\quad & c_{\\text{base}}^\\top x_{\\text{base}} + c_{\\text{cand}}^\\top x_{\\text{cand}} \\quad \\text{s.t.} \\; A x \\le b \\\\\nr_c &= c_{\\text{cand}, c} - \\sum_{k=0}^{M-1} a_{k, B+c} \\, y_k^* \\le 0 \\\\\n\\Delta_{\\text{break-even}, c} &= \\max(0, -r_c)\n\\end{aligned}\n$$\n\n利用对偶影子价格对新变量进行“机会成本定价（Pricing）”正是单纯形法入基判别准则及第 8 章**列生成算法（Column Generation）**的数学引擎！\n",
+  "markdown": "# #010. 检验数（Reduced Cost）与新产品盈亏平衡分析（第 1 章综合）\n\n<!-- section:scenario -->\n本题综合运用第 1 章的线性规划与对偶理论。工厂目前利用 $M$ 种共享资源（上限 `capacities`）生产 $B$ 种已有产品（利润 `baseMargins`）。现研发部提出 $C$ 款**候选新品**（利润 `candidateMargins`），它们共用同一批设备：`usages` 为 $M$ 行 × $(B + C)$ 列的联合消耗矩阵（前 $B$ 列为已有产品，后 $C$ 列为候选新品）。\n\n请联合求解并回答以下三个核心决策问题：\n1. 将所有 $B + C$ 种产品放入同一联合 LP 最大化总利润，最优产量（`baseQuantities`、`candidateQuantities`）与最大利润（`optimalProfit`）是多少？\n2. 联合最优解处的各资源 **影子价格** `shadowPrices` ($y_k \\ge 0$) 是多少？\n3. 每款候选新品 $c$ 的 **检验数（Reduced Cost）** $r_c = \\text{candidateMargins}[c] - \\sum_k \\text{usages}[k][B+c] \\, y_k \\le 0$ 是多少，以及至少需要提价/降本多少（`minMarginIncreaseNeeded[c] = max(0, -r_c)`）才值得投产？\n\n<!-- section:io -->\n- **输入 (`P010Input`)**：\n  - `baseMargins: number[]`（长 $B$）、`candidateMargins: number[]`（长 $C$）\n  - `usages: number[][]` — $M \\times (B + C)$ 联合消耗矩阵\n  - `capacities: number[]` — 长 $M$ 的资源容量上限\n- **输出 (`P010Output`)**：\n  - `baseQuantities: number[]`、`candidateQuantities: number[]` — 联合最优产量\n  - `optimalProfit: number` — 联合最大利润\n  - `shadowPrices: number[]` — 联合 LP 的对偶影子价格 $y_k$\n  - `candidateReducedCosts: number[]` — 候选产品的检验数 $r_c \\le 0$\n  - `minMarginIncreaseNeeded: number[]` — 盈亏平衡所需最小利润提升幅度 `max(0, -r_c)`\n\n<!-- section:example -->\n- **算例 1**：老产品单独就已将瓶颈影子价格推至 `[20, 10, 0]`、利润 `2,800`。候选新品 0 单位利润为 `20`，却占用 `2*20 + 3*10 = 70` 的资源机会成本，故 `reducedCost = -50`（落选，至少需增利 **`+50`**）。\n- **算例 2**：候选新品 0 利润达 `75`，一举挤进联合最优生产方案中！因此其产量 `> 0`，检验数 **`r_0 = 0`**，所需提价幅度为 **`0`**。\n\n<!-- section:hint1 -->\n切忌“先只用老产品求一次影子价格，再事后评估新品”——如算例 2 所示，有竞争力的新品一旦投产就会改变有效瓶颈基！必须将全部 $B + C$ 个非负变量纳入同一个联合 LP 模型求解。\n\n<!-- section:hint2 -->\n求解联合 LP 后可直接提取检验数或用对偶价格计算：\n- **WaSHI**：读取变量属性 **`v.reducedCost`**（或计算 `candMargin - sum_k usages[k][B+c] * shadowPrices[k]`）。\n- **highspy**：**`sol.col_dual[v.index]`** 正是最大化问题下的检验数 $c_j - A_{\\cdot j}^\\top y \\le 0$；随后 **`minMarginIncreaseNeeded[c] = max(0, -rc)`**。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max_{x \\ge 0} \\quad & c_{\\text{base}}^\\top x_{\\text{base}} + c_{\\text{cand}}^\\top x_{\\text{cand}} \\quad \\text{s.t.} \\; A x \\le b \\\\\nr_c &= c_{\\text{cand}, c} - \\sum_{k=0}^{M-1} a_{k, B+c} \\, y_k^* \\le 0 \\\\\n\\Delta_{\\text{break-even}, c} &= \\max(0, -r_c)\n\\end{aligned}\n$$\n\n利用对偶影子价格对新变量进行“机会成本定价（Pricing）”正是单纯形法入基判别准则及第 8 章**列生成算法（Column Generation）**的数学引擎！\n",
   "judge": {
     "m0": "返回值必须是包含 { baseQuantities, candidateQuantities, optimalProfit, shadowPrices, candidateReducedCosts, minMarginIncreaseNeeded } 的对象。",
     "m1": "产品 {p0} 产量不能为负数（实际为 {p1}）。",
@@ -24,7 +24,7 @@
     "m7": "影子价格强对偶检验未通过（b^T y = {p0} 与 {p1} 不符）。",
     "m8": "candidateReducedCosts[{p0}] ({p1}) 与检验数定义 c - A^T y ({p2}) 不符，请检查最大化下的符号。",
     "m9": "minMarginIncreaseNeeded[{p0}] ({p1}) 应等于 max(0, -reducedCost) = {p2}。",
-    "m10": "第一章 Boss 通关！联合最优利润、对偶影子价格与新品盈亏平衡提价门槛全部精确通过！",
+    "m10": "已通过全部检验：联合最优利润、对偶影子价格与新品盈亏平衡提价门槛均准确无误。",
     "m11": "产品 {p0} 不满足对偶可行性：资源影子成本之和 ({p1}) 低于利润 ({p2})。"
   }
 }

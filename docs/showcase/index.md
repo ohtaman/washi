@@ -47,18 +47,18 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
-          <span class="washi-showcase-icon">🏋️</span>
+          <span class="washi-showcase-icon">📘</span>
           <span class="washi-showcase-badge">WaSHI TS × Python highspy</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/exercises/" target="_self" class="washi-showcase-title-link">Optimization 100</a>
         </div>
         <p class="washi-showcase-desc">
-          Interactive 100-problem mathematical optimization workout running locally in your browser with side-by-side TypeScript (WaSHI) and Python (<code>highspy</code> via Pyodide) tabs, automated judging, and progressive hints.
+          Interactive 100-problem mathematical optimization exercise workbook running locally in your browser with side-by-side TypeScript (WaSHI) and Python (<code>highspy</code> via Pyodide) tabs, automated judging, and progressive hints.
         </p>
       </div>
       <div class="washi-showcase-actions">
-        <a href="/exercises/" target="_self" class="washi-showcase-cta">Start Training →</a>
+        <a href="/exercises/" target="_self" class="washi-showcase-cta">Open Exercises →</a>
       </div>
     </div>
   </div>

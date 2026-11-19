@@ -3,7 +3,7 @@
   "slug": "positive-part-ramp",
   "chapter": 1,
   "order": 5,
-  "role": "twist",
+  "role": "applied",
   "scaffold": "fill-in",
   "difficulty": 2,
   "estimatedMinutes": 10,

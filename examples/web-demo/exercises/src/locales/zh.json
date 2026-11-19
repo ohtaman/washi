@@ -1,27 +1,29 @@
 {
   "ui": {
     "brandTitle": "数理优化百题训练",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 浏览器实战道场 (WaSHI & highspy)",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 浏览器交互式习题集 (WaSHI & highspy)",
     "navDocs": "文档",
     "navShowcase": "案例展示",
     "navPlayground": "Playground",
-    "backToMap": "← 返回关卡地图",
-    "startFirstBtn": "▶ 从 #001 开始",
-    "resumeBtn": "▶ 继续挑战 (#{id})",
+    "backToMap": "← 返回题目列表",
+    "startFirstBtn": "从 #001 开始 →",
+    "resumeBtn": "继续练习 (#{id}) →",
     "tutorialBannerTitle": "初次使用？可以先体验 3 分钟引导教程（T1–T2 · 可跳过）",
-    "tutorialBannerDesc": "通过 2 道微型练习熟悉自动判题反馈与变量/约束 API。教程不计入 0/100 主线进度，有经验者可直接跳过。",
+    "tutorialBannerDesc": "通过 2 道微型练习熟悉自动判题反馈与变量/约束 API。教程不计入 0/100 完成统计，有经验者可直接跳过。",
     "tutorialDismissBtn": "跳过教程",
     "tutorialRestoreBtn": "显示教程 (T1–T2)",
-    "progressLabel": "{solved} / {total} 已通关",
-    "starsLabel": "★ {stars} / {maxStars} 掌握度",
+    "progressLabel": "{solved} / {total} 已完成",
+    "runtimeProgressLabel": "双运行时通过: {solved} / {total}",
+    "difficultyLabel": "难度 {level}/5",
+    "estimatedMinutesLabel": "约 {mins} 分钟",
     "comingSoonBadge": "即将上线",
     "chapterPrefix": "第 {n} 章",
     "roleLabels": {
-      "tutorial": "引导",
+      "tutorial": "引导教程",
       "intro": "入门",
       "core": "核心",
-      "twist": "进阶陷阱",
-      "boss": "章节 Boss 👑"
+      "applied": "进阶",
+      "capstone": "章末综合"
     },
     "provenance": {
       "aiDrafted": "AI-Drafted",
@@ -46,7 +48,7 @@
     },
     "editor": {
       "label": "编写 solve() 实现",
-      "runBtn": "▶ 运行并判题",
+      "runBtn": "运行并判题",
       "runningBtn": "运行中…",
       "loadingPyodide": "正在加载 Pyodide v0.29 WebAssembly…",
       "loadingHighspy": "正在加载 highspy 求解器包…",
@@ -60,7 +62,7 @@
       "title": "判题结果",
       "placeholder": "在上方编辑 solve() 后点击「运行并判题」，系统将自动校验所有测试用例。",
       "verdicts": {
-        "AC": "AC — 最优解！",
+        "AC": "AC — 最优解",
         "SUBOPTIMAL": "SUBOPTIMAL — 可行但非最优",
         "VIOLATION": "VIOLATION — 违反约束规则",
         "INFEASIBLE": "INFEASIBLE — 无可行解",
@@ -73,12 +75,12 @@
       "previewLabel": "解摘要预览",
       "lpPreviewLabel": "查看生成的 LP 模型 (toLpString)",
       "consoleLabel": "控制台日志",
-      "nextQuestBtn": "下一题 (#{nextId}) →"
+      "nextProblemBtn": "下一题 (#{nextId}) →"
     },
     "backup": {
       "openBtn": "备份进度",
       "title": "进度备份（localStorage）",
-      "desc": "通关星级与各标签页代码草稿均保存在本地浏览器中。导出 JSON 即可跨设备迁移或恢复进度。",
+      "desc": "解题进度与各标签页代码草稿均保存在本地浏览器中。导出 JSON 即可跨设备迁移或恢复进度。",
       "exportBtn": "下载 JSON",
       "copyBtn": "复制 JSON",
       "copied": "已复制",
@@ -87,7 +89,7 @@
       "importSuccess": "进度已成功恢复。",
       "importError": "导入失败: {msg}",
       "resetAllBtn": "清空全部进度",
-      "resetAllConfirm": "确定删除本地保存的所有通关星级与代码草稿吗？",
+      "resetAllConfirm": "确定删除本地保存的所有解题进度与代码草稿吗？",
       "closeBtn": "关闭"
     },
     "theme": {
@@ -116,7 +118,7 @@
     },
     "4": {
       "title": "约束规划 (CP / LCG) 与全局约束",
-      "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束与多范式对决。"
+      "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束与多范式对比。"
     },
     "5": {
       "title": "网络流、全幺模性、连通性与车辆路径规划 (VRP)",

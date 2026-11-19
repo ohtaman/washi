@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { parseProblemMarkdown } from "../examples/web-demo/exercises/src/ui/markdown.js";
 import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
 import { CHAPTERS, PROBLEMS } from "../examples/web-demo/exercises/src/problems/registry.js";
+
+const GAMEY_COPY_RE =
+  /\bBoss\b|\u30dc\u30b9|\u{1f451}|\u30af\u30a8\u30b9\u30c8|\u6483\u7834|\u901a\u5173|\u5173\u5361|\u9053\u5834|\u9053\u573a|\u6311\u6226/ui;
 
 const EXPECTED_IDS = [
   "T1",
@@ -98,6 +103,9 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
     expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
 
     for (const prob of PROBLEMS) {
+      expect(["tutorial", "intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
+      expect(prob.washiStarter).not.toContain("ReducedCostBoss");
+      expect(prob.washiSolution).not.toContain("ReducedCostBoss");
       expect(prob.meta.runtimes).toEqual(["washi", "highspy"]);
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
@@ -108,6 +116,10 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
         expect(prob.meta.title[locale].trim().length).toBeGreaterThan(0);
         expect(prob.meta.subtitle[locale].trim().length).toBeGreaterThan(0);
         expect(prob.meta.tags[locale].length).toBeGreaterThan(0);
+        expect(prob.meta.title[locale]).not.toMatch(GAMEY_COPY_RE);
+        expect(prob.meta.subtitle[locale]).not.toMatch(GAMEY_COPY_RE);
+        expect(prob.meta.tags[locale].join(" ")).not.toMatch(GAMEY_COPY_RE);
+        expect(prob.markdown[locale]).not.toMatch(GAMEY_COPY_RE);
 
         const sections = parseProblemMarkdown(prob.markdown[locale]);
         expect(sections.title.trim().length, `${prob.meta.id} (${locale}) title`).toBeGreaterThan(0);
@@ -120,8 +132,22 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
 
         for (const c of prob.cases) {
           expect(c.name[locale].trim().length).toBeGreaterThan(0);
+          expect(c.name[locale]).not.toMatch(GAMEY_COPY_RE);
         }
       }
+    }
+
+    // Verify localized judge strings in every problem JSON are free of contrived gamey terms
+    const problemsRoot = path.resolve(import.meta.dirname, "../examples/web-demo/exercises/src/problems");
+    const walk = (dir: string): string[] =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((ent) => {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) return walk(full);
+        return ent.name.endsWith(".json") ? [full] : [];
+      });
+    for (const jsonPath of walk(problemsRoot)) {
+      const text = fs.readFileSync(jsonPath, "utf-8");
+      expect(text, jsonPath).not.toMatch(GAMEY_COPY_RE);
     }
   });
 

@@ -14,7 +14,9 @@ export interface ExercisesUiStrings {
   tutorialDismissBtn: string;
   tutorialRestoreBtn: string;
   progressLabel: (solved: number, total: number) => string;
-  starsLabel: (stars: number, maxStars: number) => string;
+  runtimeProgressLabel: (solved: number, total: number) => string;
+  difficultyLabel: (level: number) => string;
+  estimatedMinutesLabel: (mins: number) => string;
   comingSoonBadge: string;
   chapterPrefix: (n: number) => string;
   roleLabels: Record<ProblemRole, string>;
@@ -61,7 +63,7 @@ export interface ExercisesUiStrings {
     previewLabel: string;
     lpPreviewLabel: string;
     consoleLabel: string;
-    nextQuestBtn: (nextId: string) => string;
+    nextProblemBtn: (nextId: string) => string;
   };
   backup: {
     openBtn: string;
