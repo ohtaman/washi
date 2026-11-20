@@ -208,7 +208,7 @@ export function renderSafeMarkdown(md: string): string {
         )
         .join("");
       blocks.push(
-        `<div class="md-table-wrap"><table><thead><tr>${thHtml}</tr></thead><tbody>${trHtml}</tbody></table></div>`
+        `<div class="md-table-wrap" tabindex="0"><table><thead><tr>${thHtml}</tr></thead><tbody>${trHtml}</tbody></table></div>`
       );
       continue;
     }
