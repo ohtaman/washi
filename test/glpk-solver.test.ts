@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Model, maximize, minimize } from "../src/modeler/index.js";
+import { LinExpr, Model, maximize, minimize } from "../src/modeler/index.js";
 import { GLPKSolver, mapGlpkStatus } from "../src/modeler/solvers/glpk.js";
 import * as glpkLoader from "../src/modeler/solvers/glpk/loader.js";
 import { getSolver, setDefaultSolver } from "../src/modeler/solvers/registry.js";
@@ -419,6 +419,111 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
 
         spy.mockRestore();
       }
+    });
+  });
+
+  describe("Strict validation & authoritative symbol maps", () => {
+    it("rejects QuadExpr with quadratic terms directly in GLPKSolver.solve()", async () => {
+      const glpk = new GLPKSolver();
+      const m = new Model("DirectQP");
+      const x = m.continuous("x", { lb: 0, ub: 5 });
+      const quad = x.mul(x);
+
+      await expect(
+        glpk.solve({
+          name: "DirectQP",
+          sense: "Minimize",
+          objective: quad,
+          constraints: [],
+          variables: [x],
+        })
+      ).rejects.toThrow(/quadratic/i);
+    });
+
+    it("rejects invalid sense via normalizeSense and non-finite objective.constant", async () => {
+      const glpk = new GLPKSolver();
+      const m = new Model("GlpkBadInputs");
+      const x = m.continuous("x", { lb: 0, ub: 5 });
+
+      await expect(
+        glpk.solve({
+          name: "BadSense",
+          sense: "bogus" as any,
+          objective: x.mul(1),
+          constraints: [],
+          variables: [x],
+        })
+      ).rejects.toThrow(/Invalid optimization sense/);
+
+      await expect(
+        glpk.solve({
+          name: "NaNConst",
+          sense: "Minimize",
+          objective: new LinExpr(new Map([[x, 1]]), Number.NaN),
+          constraints: [],
+          variables: [x],
+        })
+      ).rejects.toThrow(/non-finite/i);
+    });
+
+    it("rejects unsupported SolveOptions in GLPK instead of ignoring them", async () => {
+      const m = new Model({ name: "GlpkOptions", solver: "glpk" });
+      const x = m.integer("x", { lb: 0, ub: 5 });
+      m.objective(maximize(x));
+
+      await expect(m.solve({ absoluteGap: 1 } as any)).rejects.toThrow(/GLPK.*absoluteGap/i);
+      await expect(m.solve({ threads: 2 } as any)).rejects.toThrow(/GLPK.*threads/i);
+      await expect(m.solve({ useWorker: true } as any)).rejects.toThrow(/GLPK.*useWorker/i);
+      await expect(m.solve({ outputFlag: true } as any)).rejects.toThrow(/GLPK.*outputFlag/i);
+      await expect(m.solve({ unknownOpt: true } as any)).rejects.toThrow(/GLPK.*unknownOpt/i);
+      await expect(m.solve({ presolve: "bogus" as any })).rejects.toThrow(/presolve/i);
+      await expect(m.solve({ timeLimit: -1 })).rejects.toThrow(/timeLimit/i);
+      await expect(m.solve({ relativeGap: -0.1 })).rejects.toThrow(/relativeGap/i);
+
+      // Supported options continue to work cleanly
+      expect(await m.solve({ verbose: false, presolve: "on", timeLimit: 5, relativeGap: 0, useWorker: false })).toBe(
+        "Optimal"
+      );
+    });
+
+    it("uses buildLpSymbolMaps / lpResult authoritatively without || v.name / || c.name fallback", async () => {
+      const glpk = new GLPKSolver();
+      const m = new Model("CollisionPayload");
+      const xDash = m.continuous("x-1", { lb: 0, ub: 10 });
+      const xUnder = m.continuous("x_1", { lb: 0, ub: 10 });
+      m.objective(maximize(xDash.add(xUnder)));
+
+      // Missing variable in explicit lpResult must throw
+      await expect(
+        glpk.solve(
+          {
+            name: m.name,
+            sense: "Maximize",
+            objective: m.objective(),
+            constraints: [],
+            variables: [xDash, xUnder],
+          },
+          {
+            lpString: "",
+            nameToVar: new Map([["x_1", xDash]]),
+            nameToConstraint: new Map(),
+          }
+        )
+      ).rejects.toThrow(/symbol map.*missing.*"x_1"/i);
+
+      // If GLPK payload omits sanitized "x_1_1" (corresponding to "x_1"), adapter must NOT fall back to rawVars["x_1"]
+      const mockGlpkInstance = {
+        ...MOCK_GLPK_CONSTANTS,
+        solve: vi.fn(async () => ({
+          time: 0.002,
+          result: { status: 5, z: 3, vars: { x_1: 3 } },
+        })),
+      };
+      vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
+      const status = await m.solve({ solver: glpk });
+      expect(status).toBe("Error");
+      expect(m.hasPrimalSolution).toBe(false);
     });
   });
 });

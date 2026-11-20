@@ -51,11 +51,15 @@ export function setPumpkinWasmUrl(url: string | null): void {
   if (url !== null && typeof url !== "string") {
     throw new Error(`Invalid pumpkin.wasm URL: expected string or null, got ${typeof url}.`);
   }
-  const normalized = url === "" ? null : url;
-  if (normalized === customWasmUrl) {
+  if (url === "") {
+    throw new Error(
+      'Invalid pumpkin.wasm URL: expected non-empty string or null (received empty string "").'
+    );
+  }
+  if (url === customWasmUrl) {
     return;
   }
-  customWasmUrl = normalized;
+  customWasmUrl = url;
   resetPumpkinLoader();
 }
 
@@ -165,12 +169,17 @@ function normalizeCustomWasmUrl(overrideWasmUrl?: string | null): string | null 
       `Invalid pumpkin.wasm URL: expected string or null, got ${typeof overrideWasmUrl}.`
     );
   }
-  return overrideWasmUrl === "" ? null : overrideWasmUrl;
+  if (overrideWasmUrl === "") {
+    throw new Error(
+      'Invalid pumpkin.wasm URL: expected non-empty string or null (received empty string "").'
+    );
+  }
+  return overrideWasmUrl;
 }
 
 async function loadWasmBytes(targetCustomUrl: string | null): Promise<Uint8Array> {
   if (targetCustomUrl !== null) {
-    if (isNodeEnvironment() && targetCustomUrl.startsWith("file://") && typeof fetch !== "function") {
+    if (isNodeEnvironment() && targetCustomUrl.startsWith("file://")) {
       const { readPumpkinWasmFileUrl } = await import("./node-runtime.js");
       const bytes = await readPumpkinWasmFileUrl(new URL(targetCustomUrl));
       if (!isValidWasmHeader(bytes)) {
@@ -179,20 +188,6 @@ async function loadWasmBytes(targetCustomUrl: string | null): Promise<Uint8Array
         );
       }
       return bytes;
-    }
-    if (isNodeEnvironment() && targetCustomUrl.startsWith("file://")) {
-      try {
-        return await fetchValidatedWasmBytes(targetCustomUrl);
-      } catch {
-        const { readPumpkinWasmFileUrl } = await import("./node-runtime.js");
-        const bytes = await readPumpkinWasmFileUrl(new URL(targetCustomUrl));
-        if (!isValidWasmHeader(bytes)) {
-          throw new Error(
-            `[WaSHI] Invalid WebAssembly binary at "${targetCustomUrl}": expected \\0asm magic header.`
-          );
-        }
-        return bytes;
-      }
     }
     return fetchValidatedWasmBytes(targetCustomUrl);
   }

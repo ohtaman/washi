@@ -269,9 +269,40 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
       expect(mapHighsStatus(errStatus)).toBe("Error");
     }
 
-    for (const raw of ["Unknown", "Empty", "SomeUnexpectedStatus", "", "   ", undefined, null, 123]) {
+    for (const raw of [
+      "Unknown",
+      "Empty",
+      "SomeUnexpectedStatus",
+      "Not Optimal",
+      "Non-Infeasible",
+      "Mock error message",
+      "",
+      "   ",
+      undefined,
+      null,
+      123,
+    ]) {
       expect(mapHighsStatus(raw)).toBe("Unknown");
     }
+
+    // Legacy heuristic HasPrimalSolution fallback is removed: missing boolean HasPrimalSolution must not claim a primal solution
+    vi.spyOn(workerClient, "solveLp").mockResolvedValueOnce({
+      result: {
+        Status: "Optimal",
+        StatusCode: 7,
+        ObjectiveValue: 5,
+        Columns: { x: { Index: 0, Primal: 5, Name: "x" } },
+        Rows: [],
+      } as highsLoader.RawHighsSolveResult,
+      runTime: 0.01,
+    });
+    const mNoBool = new Model("NoHasPrimalBool");
+    const xNoBool = mNoBool.continuous("x", { lb: 0, ub: 5 });
+    mNoBool.objective(maximize(xNoBool));
+    await mNoBool.solve();
+    expect(mNoBool.hasPrimalSolution).toBe(false);
+    expect(mNoBool.objectiveValue).toBeNull();
+    expect(xNoBool.value).toBeNull();
 
     const malformedResult: highsLoader.RawHighsSolveResult = {
       // @ts-expect-error simulating malformed external WASM payload with missing Status

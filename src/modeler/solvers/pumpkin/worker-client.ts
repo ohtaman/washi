@@ -77,6 +77,19 @@ interface CheckQueuedTask extends BaseQueuedTask {
   resolve: (value: PumpkinCheckResponsePayload) => void;
 }
 
+function validateOptionalWasmUrl(wasmUrl?: string | null): void {
+  if (wasmUrl === "") {
+    throw new Error(
+      'Invalid pumpkin.wasm URL: expected non-empty string or null (received empty string "").'
+    );
+  }
+  if (wasmUrl !== undefined && wasmUrl !== null && typeof wasmUrl !== "string") {
+    throw new Error(
+      `Invalid pumpkin.wasm URL: expected string or null, got ${typeof wasmUrl}.`
+    );
+  }
+}
+
 interface SolveQueuedTask extends BaseQueuedTask {
   type: "solve";
   onProgress?: (event: SolveProgressEvent) => void;
@@ -90,21 +103,18 @@ type PumpkinWorkerIncomingMessage =
       id: number;
       type: "SOLVE_PROGRESS";
       payloadJson?: string;
-      incumbent?: PumpkinIncumbentMessagePayload;
       elapsedTime?: number;
     }
   | {
       id: number;
       type: "CHECK_SUCCESS";
       responseJson?: string;
-      result?: PumpkinCheckResponsePayload;
       runTime?: number;
     }
   | {
       id: number;
       type: "SOLVE_SUCCESS";
       responseJson?: string;
-      result?: PumpkinSolveResponsePayload;
       runTime?: number;
     }
   | {
@@ -163,8 +173,12 @@ export function createPumpkinWorkerClient(
   const warmedWasmKeys = new Set<string>();
   let disposed = false;
 
-  const toWasmCacheKey = (wasmUrl?: string | null): string =>
-    typeof wasmUrl === "string" && wasmUrl !== "" ? wasmUrl : "__bundled__";
+  validateOptionalWasmUrl(clientOptions.wasmUrl);
+
+  const toWasmCacheKey = (wasmUrl?: string | null): string => {
+    validateOptionalWasmUrl(wasmUrl);
+    return typeof wasmUrl === "string" ? wasmUrl : "__bundled__";
+  };
 
   const recordWarmedKey = (wasmUrl: string | null) => {
     const key = toWasmCacheKey(wasmUrl);
@@ -223,12 +237,13 @@ export function createPumpkinWorkerClient(
 
   const parseSuccessPayload = <T extends PumpkinCheckResponsePayload | PumpkinSolveResponsePayload>(
     responseJson: string | undefined,
-    fallbackResult: T | undefined,
     rawRunTime: number | undefined,
     startTimeMs: number
   ): T => {
-    const payload =
-      typeof responseJson === "string" ? (JSON.parse(responseJson) as T) : fallbackResult;
+    if (typeof responseJson !== "string") {
+      throw new Error("Pumpkin worker response is missing canonical responseJson string.");
+    }
+    const payload = JSON.parse(responseJson) as T;
     if (!payload) {
       throw new Error("Pumpkin worker returned an empty success payload.");
     }
@@ -261,12 +276,14 @@ export function createPumpkinWorkerClient(
           return;
         }
         try {
-          const parsed =
-            typeof data.payloadJson === "string"
-              ? (JSON.parse(data.payloadJson) as PumpkinIncumbentMessagePayload)
-              : data.incumbent;
+          if (typeof data.payloadJson !== "string") {
+            throw new Error(
+              "Pumpkin worker SOLVE_PROGRESS is missing canonical payloadJson string."
+            );
+          }
+          const parsed = JSON.parse(data.payloadJson) as PumpkinIncumbentMessagePayload;
           if (!parsed) {
-            return;
+            throw new Error("Pumpkin worker SOLVE_PROGRESS returned an empty incumbent payload.");
           }
           task.lastIncumbent = parsed;
 
@@ -308,7 +325,6 @@ export function createPumpkinWorkerClient(
         try {
           const payload = parseSuccessPayload<PumpkinCheckResponsePayload>(
             data.responseJson,
-            data.result,
             data.runTime,
             task.startTimeMs
           );
@@ -332,7 +348,6 @@ export function createPumpkinWorkerClient(
         try {
           const payload = parseSuccessPayload<PumpkinSolveResponsePayload>(
             data.responseJson,
-            data.result,
             data.runTime,
             task.startTimeMs
           );
@@ -429,12 +444,16 @@ export function createPumpkinWorkerClient(
     }
   };
 
-  const resolveWasmUrl = (paramUrl?: string | null): string | null =>
-    paramUrl !== undefined
-      ? paramUrl
-      : clientOptions.wasmUrl !== undefined
-        ? clientOptions.wasmUrl
-        : getPumpkinWasmUrl();
+  const resolveWasmUrl = (paramUrl?: string | null): string | null => {
+    const selected =
+      paramUrl !== undefined
+        ? paramUrl
+        : clientOptions.wasmUrl !== undefined
+          ? clientOptions.wasmUrl
+          : getPumpkinWasmUrl();
+    validateOptionalWasmUrl(selected);
+    return selected ?? null;
+  };
 
   const enqueueTask = <T>(
     buildTask: (resolve: (value: T) => void, reject: (reason: unknown) => void) => QueuedTask
@@ -539,6 +558,7 @@ export function disposeSharedPumpkinWorkerClient(): void {
 export function isPumpkinWarmed(
   options: { useWorker?: boolean; wasmUrl?: string | null } = {}
 ): boolean {
+  validateOptionalWasmUrl(options.wasmUrl);
   const useWorker = Boolean(options.useWorker ?? shouldUseWorker());
   if (useWorker) {
     return sharedWorkerClient !== null && sharedWorkerClient.isWarmed(options.wasmUrl);
@@ -554,6 +574,7 @@ export async function warmupPumpkin(
   options: { useWorker?: boolean; wasmUrl?: string | null; signal?: AbortSignal } = {}
 ): Promise<{ cached: boolean }> {
   const { signal } = options;
+  validateOptionalWasmUrl(options.wasmUrl);
   if (signal?.aborted) {
     return { cached: false };
   }
@@ -562,10 +583,7 @@ export async function warmupPumpkin(
   }
 
   const useWorker = Boolean(options.useWorker ?? shouldUseWorker());
-  const effectiveUrl =
-    typeof options.wasmUrl === "string" && options.wasmUrl !== ""
-      ? options.wasmUrl
-      : getPumpkinWasmUrl();
+  const effectiveUrl = options.wasmUrl !== undefined ? options.wasmUrl : getPumpkinWasmUrl();
 
   if (useWorker) {
     await getSharedPumpkinWorkerClient().check(

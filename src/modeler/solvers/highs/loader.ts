@@ -9,11 +9,110 @@ import {
   HighsUnsupportedOptionError,
 } from "./driver.js";
 
-export const OFFICIAL_HIGHS_CDN_WASM_URL =
-  "https://cdn.jsdelivr.net/npm/highs@1.15.1/build/highs.wasm";
-
 export type HighsInstance = Highs;
 export { HIGHS_STATUS_NAMES, HIGHS_CONSTANTS, HighsUnsupportedOptionError, Highs };
+
+const HIGHS_PASSTHROUGH_KEYS = [
+  "mip_max_nodes",
+  "mip_max_improving_sols",
+  "mip_max_leaves",
+  "simplex_iteration_limit",
+  "ipm_iteration_limit",
+] as const;
+
+const HIGHS_ALLOWED_OPTION_KEYS = new Set<string>([
+  "timeLimit",
+  "outputFlag",
+  "presolve",
+  "solver",
+  "relativeGap",
+  "absoluteGap",
+  "wasmUrl",
+  "signal",
+  "onProgress",
+  "onIncumbent",
+  "relax",
+  "useWorker",
+  "objectiveOffset",
+  "initialValues",
+  ...HIGHS_PASSTHROUGH_KEYS,
+]);
+
+/**
+ * Validates SolveOptions passed to HiGHS so unsupported keys or invalid option types fail loudly.
+ */
+export function validateHighsOptions(options: SolveOptions & Record<string, any> = {}): void {
+  if (options.threads !== undefined) {
+    throw new Error(
+      'Solver "HiGHS" does not support option "threads" (HiGHS WebAssembly runs single-threaded).'
+    );
+  }
+  if (options.verbose !== undefined) {
+    throw new Error(
+      'Solver "HiGHS" does not support option "verbose"; use "outputFlag" instead.'
+    );
+  }
+  for (const [key, val] of Object.entries(options)) {
+    if (val === undefined) continue;
+    if (!HIGHS_ALLOWED_OPTION_KEYS.has(key)) {
+      throw new Error(`Solver "HiGHS" does not support option "${key}".`);
+    }
+  }
+  if (options.useWorker !== undefined && typeof options.useWorker !== "boolean") {
+    throw new Error(`Invalid HiGHS option "useWorker": expected boolean, got ${typeof options.useWorker}.`);
+  }
+  if (options.outputFlag !== undefined && typeof options.outputFlag !== "boolean") {
+    throw new Error(`Invalid HiGHS option "outputFlag": expected boolean, got ${typeof options.outputFlag}.`);
+  }
+  if (options.relax !== undefined && typeof options.relax !== "boolean") {
+    throw new Error(`Invalid HiGHS option "relax": expected boolean, got ${typeof options.relax}.`);
+  }
+  if (
+    options.presolve !== undefined &&
+    options.presolve !== "on" &&
+    options.presolve !== "off" &&
+    options.presolve !== "choose"
+  ) {
+    throw new Error(
+      `Invalid HiGHS option "presolve" (${String(options.presolve)}): expected "on", "off", or "choose".`
+    );
+  }
+  if (options.timeLimit !== undefined) {
+    if (typeof options.timeLimit !== "number" || !Number.isFinite(options.timeLimit) || options.timeLimit < 0) {
+      throw new Error(
+        `Invalid HiGHS option "timeLimit" (${String(options.timeLimit)}): expected a finite non-negative number of seconds.`
+      );
+    }
+  }
+  if (options.relativeGap !== undefined) {
+    if (typeof options.relativeGap !== "number" || !Number.isFinite(options.relativeGap) || options.relativeGap < 0) {
+      throw new Error(
+        `Invalid HiGHS option "relativeGap" (${String(options.relativeGap)}): expected a finite non-negative number.`
+      );
+    }
+  }
+  if (options.absoluteGap !== undefined) {
+    if (typeof options.absoluteGap !== "number" || !Number.isFinite(options.absoluteGap) || options.absoluteGap < 0) {
+      throw new Error(
+        `Invalid HiGHS option "absoluteGap" (${String(options.absoluteGap)}): expected a finite non-negative number.`
+      );
+    }
+  }
+  if (options.objectiveOffset !== undefined) {
+    if (typeof options.objectiveOffset !== "number" || !Number.isFinite(options.objectiveOffset)) {
+      throw new Error(
+        `Invalid HiGHS option "objectiveOffset" (${String(options.objectiveOffset)}): expected a finite number.`
+      );
+    }
+  }
+  if (options.wasmUrl !== undefined && options.wasmUrl !== null) {
+    if (typeof options.wasmUrl !== "string" || options.wasmUrl === "") {
+      throw new Error(
+        `Invalid HiGHS option "wasmUrl": expected a non-empty string or null.`
+      );
+    }
+  }
+}
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
 let cachedWasmKey: string | null = null;
@@ -43,44 +142,6 @@ export function isValidWasmHeader(bytes: Uint8Array): boolean {
     bytes[2] === 0x73 &&
     bytes[3] === 0x6d
   );
-}
-
-/**
- * Probe a URL to determine whether it serves a valid WebAssembly binary
- * without downloading the entire file. Cancels the stream after checking the first chunk.
- */
-export async function probeWasmUrl(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, {
-      headers: { Range: "bytes=0-3" },
-    });
-
-    if (!res.ok) {
-      return false;
-    }
-
-    const contentType = res.headers.get("content-type") || "";
-    // If the server returned an HTML page (e.g. 404 SPA fallback to index.html), it's not valid WASM
-    if (contentType.includes("text/html")) {
-      return false;
-    }
-
-    if (!res.body) {
-      return true;
-    }
-
-    const reader = res.body.getReader();
-    const { value, done } = await reader.read();
-    await reader.cancel();
-
-    if (done || !value || value.length < 4) {
-      return false;
-    }
-
-    return isValidWasmHeader(value);
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -233,6 +294,8 @@ export async function solveLpWithHighs(
     onIncumbent?: (incumbent: HighsIncumbentSnapshot) => void;
   } = {}
 ): Promise<{ result: RawHighsSolveResult; runTime: number }> {
+  validateHighsOptions(options);
+
   if (options.signal?.aborted) {
     return {
       result: {
@@ -284,23 +347,13 @@ export async function solveLpWithHighs(
     highsOptions.mip_abs_gap = options.absoluteGap;
   }
 
-  const passthroughKeys = [
-    "mip_max_nodes",
-    "mip_max_improving_sols",
-    "mip_max_leaves",
-    "simplex_iteration_limit",
-    "ipm_iteration_limit",
-  ] as const;
-  for (const key of passthroughKeys) {
+  for (const key of HIGHS_PASSTHROUGH_KEYS) {
     if (options[key] !== undefined) {
       highsOptions[key] = options[key];
     }
   }
 
-  const objectiveOffset =
-    typeof options.objectiveOffset === "number" && Number.isFinite(options.objectiveOffset)
-      ? options.objectiveOffset
-      : 0;
+  const objectiveOffset = options.objectiveOffset ?? 0;
 
   const initialValues = options.initialValues;
   let hasInitialValues = false;
@@ -317,29 +370,29 @@ export async function solveLpWithHighs(
     }
   }
 
-  if (typeof highs.withModel === "function") {
-    const result = highs.withModel(
-      { format: "lp", data: lpString },
-      (m: HighsPersistentModel): RawHighsSolveResult => {
-        if (objectiveOffset !== 0 && typeof m.changeObjectiveOffset === "function") {
-          const baseOffset = typeof m.getObjectiveOffset === "function" ? m.getObjectiveOffset() : 0;
-          m.changeObjectiveOffset(baseOffset + objectiveOffset);
+  if (typeof highs.withModel !== "function") {
+    throw new Error(
+      "[WaSHI] HiGHS runtime is missing required withModel() API (legacy highs.solve fallback has been removed)."
+    );
+  }
+
+  const result = highs.withModel(
+    { format: "lp", data: lpString },
+    (m: HighsPersistentModel): RawHighsSolveResult => {
+      let objectiveOffsetApplied = false;
+      if (objectiveOffset !== 0) {
+        if (typeof m.changeObjectiveOffset !== "function") {
+          throw new Error(
+            "[WaSHI] HiGHS runtime does not support changeObjectiveOffset() for non-zero objectiveOffset."
+          );
         }
-        for (const [optName, optVal] of Object.entries(highsOptions)) {
-          try {
-            m.options.set(optName, optVal as any);
-          } catch (err: any) {
-            if (
-              err?.name !== "HighsUnsupportedOptionError" &&
-              !(
-                highs.errors?.HighsUnsupportedOptionError &&
-                err instanceof highs.errors.HighsUnsupportedOptionError
-              )
-            ) {
-              throw err;
-            }
-          }
-        }
+        const baseOffset = typeof m.getObjectiveOffset === "function" ? m.getObjectiveOffset() : 0;
+        m.changeObjectiveOffset(baseOffset + objectiveOffset);
+        objectiveOffsetApplied = true;
+      }
+      for (const [optName, optVal] of Object.entries(highsOptions)) {
+        m.options.set(optName, optVal as any);
+      }
 
         const dims = m.getDimensions();
         const colMeta: Array<{ name: string; type: string }> = [];
@@ -667,7 +720,7 @@ export async function solveLpWithHighs(
           HasPrimalSolution: hasPrimalSolution,
           IsMip: isMip,
           ObjectiveValue: objectiveValue,
-          ObjectiveOffsetApplied: objectiveOffset !== 0,
+          ObjectiveOffsetApplied: objectiveOffsetApplied,
           MipDualBound: mipDualBound,
           MipGap: mipGap,
           Columns,
@@ -675,19 +728,7 @@ export async function solveLpWithHighs(
         };
       }
     );
-    const endTime = performance.now();
-    const runTime = (endTime - startTime) / 1000;
-    return { result, runTime };
-  }
-
-  if (hasInitialValues) {
-    throw new Error(
-      "HiGHS runtime does not support setting primal initial values (withModel/setSolution is unavailable)."
-    );
-  }
-  const result = highs.solve(lpString, highsOptions);
   const endTime = performance.now();
   const runTime = (endTime - startTime) / 1000;
-
   return { result, runTime };
 }

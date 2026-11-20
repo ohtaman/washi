@@ -359,7 +359,12 @@ export class HighsModel {
     let cbPtr = 0;
     const activeTypes: number[] = [];
 
-    if (callbacks && typeof this.module.addFunction === "function") {
+    if (callbacks) {
+      if (typeof this.module.addFunction !== "function") {
+        throw new HighsError(
+          "HiGHS WebAssembly runtime does not support module.addFunction; progress and interrupt callbacks are unavailable."
+        );
+      }
       cbPtr = this.module.addFunction((type: number, msgPtr: number, dataOutPtr: number, dataInPtr: number) => {
         const handler = callbacks[type];
         if (!handler) return;
@@ -557,11 +562,7 @@ export class Highs {
   solve(lpString: string, options: Record<string, any> = {}): HighsSolutionResult {
     return this.withModel({ format: "lp", data: lpString }, (m) => {
       for (const [key, val] of Object.entries(options)) {
-        try {
-          m.options.set(key, val);
-        } catch {
-          // ignore unsupported options
-        }
+        m.options.set(key, val);
       }
       m.run();
       const status = m.getModelStatus();

@@ -65,8 +65,11 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           m.indicator(active, x.le(7), { name: "conditional_capacity" });
           m.objective(maximize(expr`3 * ${x} + 5`));
           const progress = [];
-          require(await m.solve({ solver: solverName, useWorker: true,
-            onProgress: (event) => progress.push(event) }) === "Optimal", "Expected Optimal");
+          require(await m.solve({
+            solver: solverName,
+            ...(solverName === "highs" || solverName === "pumpkin" ? { useWorker: true } : {}),
+            onProgress: (event) => progress.push(event),
+          }) === "Optimal", "Expected Optimal");
           require(x.value === 7 && m.objectiveValue === 26, "Wrong primal or objective offset");
           require(m.hasPrimalSolution && m.terminationStatus === "Optimal", "Wrong solution metrics");
           require(progress.length > 0, "No progress callback received");

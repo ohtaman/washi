@@ -190,4 +190,126 @@ describe("HiGHS worker failures", () => {
     await expect(queuedSolve).resolves.toMatchObject({ result: { Status: "Optimal" } });
     await expect(isHighsWarmed()).resolves.toBe(true);
   });
+
+  it("propagates synchronous Worker creation errors instead of falling back to main-thread WASM", async () => {
+    vi.resetModules();
+    vi.stubGlobal("window", {
+      origin: "https://example.com",
+      location: { origin: "https://example.com", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", class ThrowingWorker {
+      constructor() {
+        throw new Error("Worker blocked by CSP");
+      }
+    });
+
+    const loader = await import("../src/modeler/solvers/highs/loader.js");
+    vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+    const mainThreadSpy = vi.spyOn(loader, "solveLpWithHighs");
+    const getHighsSpy = vi.spyOn(loader, "getHighs");
+
+    const { solveLp, warmupHighs } = await import("../src/modeler/solvers/highs/worker-client.js");
+
+    await expect(solveLp("Maximize\n obj: x\nEnd")).rejects.toThrow("Worker blocked by CSP");
+    await expect(warmupHighs()).rejects.toThrow("Worker blocked by CSP");
+    expect(mainThreadSpy).not.toHaveBeenCalled();
+    expect(getHighsSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects explicitly when useWorker: true is requested and browser Web Workers are unavailable", async () => {
+    // 1. Node.js / Worker undefined
+    vi.resetModules();
+    vi.stubGlobal("window", undefined);
+    vi.stubGlobal("Worker", undefined);
+
+    let loader = await import("../src/modeler/solvers/highs/loader.js");
+    let mainThreadSpy = vi.spyOn(loader, "solveLpWithHighs");
+    let getHighsSpy = vi.spyOn(loader, "getHighs");
+    let workerClient = await import("../src/modeler/solvers/highs/worker-client.js");
+
+    await expect(
+      workerClient.solveLp("Maximize\n obj: x\nEnd", { useWorker: true })
+    ).rejects.toThrow(/Web Worker.*unavailable|useWorker/i);
+    await expect(workerClient.warmupHighs({ useWorker: true })).rejects.toThrow(
+      /Web Worker.*unavailable|useWorker/i
+    );
+    expect(mainThreadSpy).not.toHaveBeenCalled();
+    expect(getHighsSpy).not.toHaveBeenCalled();
+
+    // 2. Browser opaque origin with Node-style polyfilled Worker (unref on prototype)
+    vi.resetModules();
+    vi.stubGlobal("window", { origin: "null", location: { origin: "file://", protocol: "file:" } });
+    vi.stubGlobal(
+      "Worker",
+      class NodePolyfillWorker {
+        unref() {}
+      }
+    );
+
+    loader = await import("../src/modeler/solvers/highs/loader.js");
+    mainThreadSpy = vi.spyOn(loader, "solveLpWithHighs");
+    workerClient = await import("../src/modeler/solvers/highs/worker-client.js");
+
+    await expect(
+      workerClient.solveLp("Maximize\n obj: x\nEnd", { useWorker: true })
+    ).rejects.toThrow(/Web Worker.*unavailable|useWorker/i);
+    expect(mainThreadSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown function options in worker serialization instead of silently dropping them", async () => {
+    vi.resetModules();
+    FakeWorker.instances = [];
+    vi.stubGlobal("window", {
+      origin: "https://example.com",
+      location: { origin: "https://example.com", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", FakeWorker);
+
+    const loader = await import("../src/modeler/solvers/highs/loader.js");
+    vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+
+    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
+
+    await expect(
+      solveLp("Maximize\n obj: x\nEnd", {
+        useWorker: true,
+        customCallback: () => {},
+      } as any)
+    ).rejects.toThrow(/customCallback|function/i);
+    expect(FakeWorker.instances).toHaveLength(0);
+  });
+
+  it("rejects queued worker requests cleanly if worker recreation throws after abort", async () => {
+    vi.resetModules();
+    let creations = 0;
+    class FailOnSecondWorker extends FakeWorker {
+      constructor() {
+        super();
+        creations++;
+        if (creations === 2) {
+          throw new Error("Recreation failed");
+        }
+      }
+    }
+    FakeWorker.instances = [];
+    vi.stubGlobal("window", {
+      origin: "https://example.com",
+      location: { origin: "https://example.com", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", FailOnSecondWorker);
+
+    const loader = await import("../src/modeler/solvers/highs/loader.js");
+    vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+
+    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
+    const ac = new AbortController();
+    const first = solveLp("Maximize\n obj: x\nEnd", { signal: ac.signal });
+    const queued = solveLp("Maximize\n obj: x\nEnd");
+
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+    ac.abort();
+
+    await expect(first).resolves.toMatchObject({ result: { Status: "Interrupted" } });
+    await expect(queued).rejects.toThrow("Recreation failed");
+  });
 });

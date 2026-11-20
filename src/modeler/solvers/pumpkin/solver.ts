@@ -762,15 +762,75 @@ function tuplesToCheckValues(
   return values;
 }
 
+const PUMPKIN_UNSUPPORTED_OPTIONS = new Set<string>([
+  "presolve",
+  "relativeGap",
+  "absoluteGap",
+  "threads",
+  "verbose",
+  "outputFlag",
+]);
+
+const PUMPKIN_ALLOWED_OPTIONS = new Set<string>([
+  "timeLimit",
+  "wasmUrl",
+  "useWorker",
+  "signal",
+  "onProgress",
+  "relax",
+]);
+
+function validatePumpkinOptions(options: SolverOptions & Record<string, any> = {}): void {
+  if (options.relax !== undefined) {
+    if (typeof options.relax !== "boolean") {
+      throw new Error(
+        `Invalid Pumpkin option "relax": expected boolean, got ${typeof options.relax}.`
+      );
+    }
+    if (options.relax === true) {
+      throw new Error(
+        "PumpkinSolver does not support LP relaxation (relax: true). Use a simplex/IPM solver such as HiGHS or GLPK."
+      );
+    }
+  }
+  for (const key of PUMPKIN_UNSUPPORTED_OPTIONS) {
+    if (options[key] !== undefined) {
+      throw new Error(`PumpkinSolver does not support option "${key}".`);
+    }
+  }
+  for (const [key, val] of Object.entries(options)) {
+    if (val === undefined) continue;
+    if (!PUMPKIN_ALLOWED_OPTIONS.has(key)) {
+      throw new Error(`PumpkinSolver does not support option "${key}".`);
+    }
+  }
+  if (options.useWorker !== undefined && typeof options.useWorker !== "boolean") {
+    throw new Error(
+      `Invalid Pumpkin option "useWorker": expected boolean, got ${typeof options.useWorker}.`
+    );
+  }
+  if (options.onProgress !== undefined && typeof options.onProgress !== "function") {
+    throw new Error(
+      `Invalid Pumpkin option "onProgress": expected function, got ${typeof options.onProgress}.`
+    );
+  }
+}
+
 function resolveEffectiveWasmUrl(options: SolverOptions): string | null {
   if (options.wasmUrl !== undefined && options.wasmUrl !== null && typeof options.wasmUrl !== "string") {
     throw new Error(
-      `Invalid pumpkin.wasm URL: expected string, got ${typeof options.wasmUrl}.`
+      `Invalid pumpkin.wasm URL: expected string or null, got ${typeof options.wasmUrl}.`
     );
   }
-  return typeof options.wasmUrl === "string" && options.wasmUrl !== ""
-    ? options.wasmUrl
-    : getPumpkinWasmUrl();
+  if (options.wasmUrl === "") {
+    throw new Error(
+      'Invalid pumpkin.wasm URL: expected non-empty string or null (received empty string "").'
+    );
+  }
+  if (options.wasmUrl !== undefined) {
+    return options.wasmUrl;
+  }
+  return getPumpkinWasmUrl();
 }
 
 /**
@@ -805,6 +865,7 @@ export class PumpkinSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverCheckResult> {
     const mergedOptions: SolverOptions = { ...this.options, ...options };
+    validatePumpkinOptions(mergedOptions);
     const effectiveWasmUrl = resolveEffectiveWasmUrl(mergedOptions);
     const timeLimitMs = validateTimeLimitMs(mergedOptions.timeLimit);
     const common = serializeCommonModel(modelData);
@@ -896,11 +957,7 @@ export class PumpkinSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const mergedOptions: SolverOptions = { ...this.options, ...options };
-    if (mergedOptions.relax === true) {
-      throw new Error(
-        "PumpkinSolver does not support LP relaxation (relax: true). Use a simplex/IPM solver such as HiGHS or GLPK."
-      );
-    }
+    validatePumpkinOptions(mergedOptions);
 
     const effectiveWasmUrl = resolveEffectiveWasmUrl(mergedOptions);
     const timeLimitMs = validateTimeLimitMs(mergedOptions.timeLimit);
