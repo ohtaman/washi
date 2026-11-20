@@ -1,0 +1,26 @@
+{
+  "title": "#093. Iterative Subtour Elimination Cuts (DFJ TSP)",
+  "subtitle": "Solve symmetric TSP from a 2-matching relaxation by iteratively separating disconnected subtours with Dantzig-Fulkerson-Johnson cuts.",
+  "tags": [
+    "MIP",
+    "TSP",
+    "Lazy Cuts",
+    "Subtour Elimination"
+  ],
+  "caseNames": [
+    "6-city two-cluster network",
+    "5-city connected baseline",
+    "6-city asymmetric bridge network",
+    "7-city 3-plus-4 cluster network",
+    "8-city dual-quad network"
+  ],
+  "judge": {
+    "m0": "Output must be an object { tour, totalDistance, iterations }.",
+    "m1": "iterations must be a positive integer (received {p0}).",
+    "m2": "tour[{p0}] must be an integer city index in 0..{p2} (received {p1}).",
+    "m3": "City {p0} appears more than once in tour (not a valid Hamiltonian cycle).",
+    "m4": "Reported totalDistance ({p0}) does not match computed tour length ({p1}).",
+    "m5": "Valid Hamiltonian tour, but totalDistance ({p0}) exceeds minimum ({p1}).",
+    "m6": "Hamiltonian tour verified (totalDistance = {p0}, iterations = {p1})."
+  }
+}

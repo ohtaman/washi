@@ -1,0 +1,27 @@
+{
+  "id": "098",
+  "slug": "logic-based-benders",
+  "chapter": 10,
+  "order": 8,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 35,
+  "paradigms": [
+    "MIP",
+    "CP",
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

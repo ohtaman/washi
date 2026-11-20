@@ -1,0 +1,42 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "weights": [6, 6, 6, 2],
+      "binCapacity": 10
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "weights": [4, 4, 4, 4, 4],
+      "binCapacity": 10
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "weights": [7, 6, 6, 6, 2, 2],
+      "binCapacity": 11
+    },
+    "expectedOptimal": 4
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "weights": [5, 5, 5, 5, 5, 5, 5],
+      "binCapacity": 12
+    },
+    "expectedOptimal": 4
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "weights": [7, 7, 7, 4, 4, 4, 4],
+      "binCapacity": 12
+    },
+    "expectedOptimal": 4
+  }
+]

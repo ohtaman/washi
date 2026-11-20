@@ -1,0 +1,57 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [2, 3, 4, 3, 2],
+      "shiftCosts": [12, 10, 11, 10, 13],
+      "baseCost": 25,
+      "maxConsecutive": 3,
+      "maxWorkDays": 4
+    },
+    "expectedOptimal": 254
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [4, 5, 3, 6, 4, 2],
+      "shiftCosts": [12, 10, 10, 14, 12, 16],
+      "baseCost": 25,
+      "maxConsecutive": 3,
+      "maxWorkDays": 4
+    },
+    "expectedOptimal": 442
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [2, 3, 5, 5, 4, 3, 2],
+      "shiftCosts": [10, 10, 11, 11, 12, 15, 18],
+      "baseCost": 28,
+      "maxConsecutive": 4,
+      "maxWorkDays": 5
+    },
+    "expectedOptimal": 429
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [4, 5, 5, 6, 4, 3, 3],
+      "shiftCosts": [10, 12, 11, 13, 12, 14, 15],
+      "baseCost": 30,
+      "maxConsecutive": 4,
+      "maxWorkDays": 5
+    },
+    "expectedOptimal": 548
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [4, 6, 6, 5, 5, 3, 3],
+      "shiftCosts": [12, 13, 12, 11, 14, 15, 16],
+      "baseCost": 36,
+      "maxConsecutive": 3,
+      "maxWorkDays": 4
+    },
+    "expectedOptimal": 704
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "id": "093",
+  "slug": "iterative-subtour-cuts",
+  "chapter": 10,
+  "order": 3,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 22,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

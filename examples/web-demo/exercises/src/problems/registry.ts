@@ -9,6 +9,7 @@ import { CH06_PROBLEMS } from "./ch06-networks-routing/index.js";
 import { CH07_PROBLEMS } from "./ch07-supply-chain-energy/index.js";
 import { CH08_PROBLEMS } from "./ch08-scheduling-rostering/index.js";
 import { CH09_PROBLEMS } from "./ch09-multiobjective-uncertainty/index.js";
+import { CH10_PROBLEMS } from "./ch10-decomposition-hybrid/index.js";
 export { CHAPTERS } from "./chapters.js";
 
 export const PROBLEMS: ProblemDefinition[] = [
@@ -22,6 +23,7 @@ export const PROBLEMS: ProblemDefinition[] = [
   ...CH07_PROBLEMS,
   ...CH08_PROBLEMS,
   ...CH09_PROBLEMS,
+  ...CH10_PROBLEMS,
 ];
 
 export function getProblemById(id: string): ProblemDefinition | undefined {
