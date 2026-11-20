@@ -1137,6 +1137,7 @@ button {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  container-type: inline-size;
   margin: 0.45rem 0 0.95rem;
 }
 
@@ -1174,18 +1175,65 @@ button {
   white-space: nowrap;
 }
 
-.guide-sheet table {
-  min-width: 600px;
-}
-
 .guide-sheet th:first-child,
 .guide-sheet td:first-child {
-  min-width: 8.5rem;
+  min-width: 7.5rem;
 }
 
 .guide-sheet th:nth-child(2),
 .guide-sheet td:nth-child(2) {
-  min-width: 12rem;
+  min-width: 10.5rem;
+}
+
+.guide-sheet td code {
+  overflow-wrap: anywhere;
+}
+
+@container (width < 560px) {
+  .guide-sheet table,
+  .guide-sheet thead,
+  .guide-sheet tbody,
+  .guide-sheet tr,
+  .guide-sheet th,
+  .guide-sheet td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .guide-sheet thead {
+    display: none;
+  }
+
+  .guide-sheet tbody tr {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    background: var(--paper);
+  }
+
+  .guide-sheet tbody td {
+    border: 0;
+    border-top: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left !important;
+  }
+
+  .guide-sheet tbody td:first-child {
+    border-top: 0;
+    background: var(--sidebar-bg);
+    font-weight: 700;
+  }
+
+  .guide-sheet tbody td:not(:first-child)::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin-bottom: 0.15rem;
+  }
 }
 
 .katex-display,
@@ -1750,6 +1798,16 @@ details.hint-accordion[open] summary::after {
   .toc-drawer-close {
     min-height: 44px;
     min-width: 44px;
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 961px) {
+  .book-shell:not(.is-workspace) {
+    grid-template-columns: 224px minmax(0, 1fr);
+  }
+
+  .book-main:not(.ws-main) {
+    padding: 1.75rem 1.75rem calc(4rem + env(safe-area-inset-bottom));
   }
 }
 

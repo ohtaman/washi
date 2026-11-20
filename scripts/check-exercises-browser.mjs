@@ -229,6 +229,8 @@ async function run() {
       [...document.querySelectorAll(".guide-sheet table")].map((tbl) => ({
         tableWidth: tbl.getBoundingClientRect().width,
         wrapWidth: tbl.parentElement?.getBoundingClientRect().width ?? 0,
+        wrapScrollWidth: tbl.parentElement?.scrollWidth ?? 0,
+        wrapClientWidth: tbl.parentElement?.clientWidth ?? 0,
         colWidths: [...tbl.querySelectorAll("thead th")].map((th) => th.getBoundingClientRect().width),
         maxBodyHeight: Math.max(
           ...[...tbl.querySelectorAll("tbody tr")].map((tr) => tr.getBoundingClientRect().height)
@@ -238,8 +240,8 @@ async function run() {
     assert(guideTableCheckJa.length >= 2, "Expected at least 2 tables in Guide");
     for (const [idx, tbl] of guideTableCheckJa.entries()) {
       assert(
-        tbl.tableWidth <= tbl.wrapWidth + 1,
-        `Desktop Guide table[${idx}] overflows wrapper (${tbl.tableWidth} > ${tbl.wrapWidth})`
+        tbl.tableWidth <= tbl.wrapWidth + 1 && tbl.wrapScrollWidth <= tbl.wrapClientWidth + 1,
+        `Desktop Guide table[${idx}] overflows wrapper (${tbl.tableWidth} > ${tbl.wrapWidth}, scroll=${tbl.wrapScrollWidth}/${tbl.wrapClientWidth})`
       );
       assert(
         tbl.colWidths[0] >= 120,
@@ -944,7 +946,13 @@ async function run() {
         `${baseUrl}/exercises/?id=010&lang=ja`,
       ]) {
         await mobPage.goto(checkUrl, { waitUntil: "networkidle" });
-        await mobPage.waitForSelector(checkUrl.includes("?id=") ? "#ws-problem-title" : ".book-shell");
+        await mobPage.waitForSelector(
+          checkUrl.includes("?id=")
+            ? "#ws-problem-title"
+            : checkUrl.includes("view=guide")
+              ? ".guide-sheet table"
+              : ".book-shell"
+        );
         const acc = mobPage.locator("details.hint-accordion summary");
         const count = await acc.count();
         for (let i = 0; i < count; i++) await acc.nth(i).click();
@@ -966,8 +974,15 @@ async function run() {
               ? true
               : probPane.getBoundingClientRect().height >= sheet.getBoundingClientRect().height &&
                 probPane.getBoundingClientRect().bottom <= wb.getBoundingClientRect().top + 1;
-          return { docOverflow, smallTargets, stackedClean };
+          const guideTableOverflows = [...document.querySelectorAll(".guide-sheet .md-table-wrap")]
+            .filter((wrap) => wrap.scrollWidth > wrap.clientWidth + 1)
+            .map((wrap) => `${wrap.scrollWidth}/${wrap.clientWidth}`);
+          return { docOverflow, smallTargets, stackedClean, guideTableOverflows };
         });
+        assert(
+          metrics.guideTableOverflows.length === 0,
+          `Mobile Guide table horizontal overflow at ${vp.width}x${vp.height}: ${metrics.guideTableOverflows.join(", ")}`
+        );
         assert(
           metrics.stackedClean,
           `Mobile stacked panes collapsed or overlapped at ${vp.width}x${vp.height} on ${checkUrl}`

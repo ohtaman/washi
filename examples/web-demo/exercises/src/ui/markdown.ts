@@ -180,6 +180,7 @@ export function renderSafeMarkdown(md: string): string {
       isTableSeparatorLine(lines[i + 1])
     ) {
       const headers = parseTableRowCells(line);
+      const headerLabels = headers.map((h) => h.replace(/[`*$]/g, "").trim());
       const alignments = parseTableRowCells(lines[i + 1]).map((sep) => {
         if (sep.startsWith(":") && sep.endsWith(":")) return "center";
         if (sep.endsWith(":")) return "right";
@@ -200,7 +201,9 @@ export function renderSafeMarkdown(md: string): string {
             `<tr>${headers
               .map(
                 (_, idx) =>
-                  `<td style="text-align:${alignments[idx] ?? "left"}">${renderInlineSegments(
+                  `<td style="text-align:${alignments[idx] ?? "left"}" data-label="${escapeHtml(
+                    headerLabels[idx] ?? ""
+                  )}">${renderInlineSegments(
                     row[idx] ?? ""
                   )}</td>`
               )
