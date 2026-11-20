@@ -86,6 +86,7 @@
     "editor": {
       "workbenchTitle": "Answer Workbench",
       "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or PuLP (Python) to complete this exercise.",
+      "washiOnlyHint": "This exercise uses WaSHI-specific modeling features (CP / SMT / QP / Decomposition) and is solved in WaSHI (TypeScript).",
       "label": "Implement solve(input) and return the output",
       "runBtn": "Run & Judge",
       "runningBtn": "Running…",
@@ -139,40 +140,40 @@
       "description": "Learn step by step how to turn plain problem descriptions into decision variables, linear inequalities, 0-1 binary choices, multi-period inventory flow, and mixed-integer linking constraints."
     },
     "2": {
-      "title": "Linearization Idioms, Convex QP & LP Duality",
-      "description": "Charnes-Cooper ratio linearization, minimax epigraphs, positive-part slacks, robust L1/Linf fitting, convex quadratic portfolios, shadow prices, and reduced-cost sensitivity."
+      "title": "MIP Formulation Idioms — Logic, Big-M & Set Covering",
+      "description": "Semi-continuous lots, fixed-charge networks, cardinality and logical Big-M constraints, set covering/partitioning, multidimensional knapsack, piecewise discounts, and facility location."
     },
     "3": {
-      "title": "Mixed-Integer Programming (MIP) Formulation Idioms",
-      "description": "Fixed-charge lot sizing, indicator directions, chained logic, SOS2 piecewise approximation, McCormick envelopes, and pattern enumeration."
+      "title": "Linearization Idioms & LP Duality / Sensitivity",
+      "description": "Minimax epigraphs, L1 deviations, positive-part penalties, Charnes-Cooper ratio linearization, binary product linearization, tight Big-M, shadow prices, and reduced costs."
     },
     "4": {
-      "title": "Propositional Logic & SMT Modeling",
-      "description": "Uniqueness proofs via no-good cuts, logic refutation, policy verification, minimal Unsat Core extraction, MaxSAT repair, and SMT-LIRA."
+      "title": "Constraint Programming (CP / LCG) & Global Constraints",
+      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and MIP vs CP comparison."
     },
     "5": {
-      "title": "Constraint Programming (CP / LCG) & Global Constraints",
-      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and MIP vs CP vs SMT comparison."
+      "title": "Propositional Logic, SMT & Conflict Diagnosis",
+      "description": "Uniqueness proofs via no-good cuts, logic refutation, dependency & policy verification, minimal Unsat Core extraction, MaxSAT repair, historical audits, and SMT-LIRA."
     },
     "6": {
       "title": "Networks, Total Unimodularity, Connectivity & Vehicle Routing",
-      "description": "Exploit total unimodularity, max-flow min-cut, flow-based connectivity without subtours, CVRP, VRPTW, and connected territory design."
+      "description": "Exploit total unimodularity, max-flow min-cut, resource-constrained paths, flow-based connectivity without subtours, TSP, CVRP, VRPTW, and connected territory design."
     },
     "7": {
       "title": "Production, Inventory, Supply Chain & Energy Systems",
-      "description": "Strong lot-sizing reformulations, multi-level BOM/MRP, backorders vs lost sales, facility location (CFLP), Unit Commitment, and battery arbitrage."
+      "description": "Strong lot-sizing reformulations, multi-item CLSP, backorders vs lost sales, multi-level BOM/MRP, cross-docking, Unit Commitment, and battery arbitrage."
     },
     "8": {
-      "title": "Scheduling, Staff Rostering, Timetabling & Revenue Management",
-      "description": "Job-shop comparison (MIP vs CP), RCPSP, rolling night-rest rosters, university timetabling, OR scheduling, and seat allocation."
+      "title": "Scheduling, Staff Rostering, Timetabling & Allocation",
+      "description": "Tardiness & setup-dependent scheduling, job-shop (MIP vs CP), RCPSP, rolling night-rest rosters, skill & pair constraints, university timetabling, and OR slot allocation."
     },
     "9": {
-      "title": "Model Auditing, Multi-Objective Tradeoffs & Uncertainty",
-      "description": "Historical constraint auditing, infeasibility diagnosis, goal/lexicographic tradeoffs, Pareto curves, Hamming-distance rescheduling, CVaR, and robust optimization."
+      "title": "Multi-Objective Tradeoffs, Fairness, Rescheduling & Uncertainty",
+      "description": "Elastic soft hierarchies, lexicographic tradeoffs, Pareto curves, fairness metrics (including quadratic balancing), Hamming-distance rescheduling, stochastic recourse, CVaR, and robust optimization."
     },
     "10": {
-      "title": "Large-Scale Decomposition & Hybrid Solvers",
-      "description": "Lazy cuts, cutting-stock/VRP column generation, Dantzig-Wolfe, classical & logic-based Benders decomposition, Lagrangian relaxation, LNS, and S&OP synthesis."
+      "title": "Strengthening, Decomposition & Hybrid Solver Architecture",
+      "description": "Tighter Big-M & scaling, cover/symmetry cuts, iterative subtour cuts, cutting-stock & routing column generation, Dantzig-Wolfe, classical & logic-based Benders, LNS, and S&OP synthesis."
     }
   },
   "judgeHelpers": {

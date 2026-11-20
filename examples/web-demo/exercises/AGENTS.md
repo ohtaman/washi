@@ -29,7 +29,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 3. **Key Points**: 2–3 bullets explaining *why* the formulation works, common pitfalls, and any newly introduced modeling terms, with anchor link(s) to the built-in Guide (`?view=guide&lang=<locale>#<anchor>`).
 4. **Key Implementation**: Short core snippet only (never paste the full boilerplate). **Always** precede each fenced block with explicit bold labels:
    - `**WaSHI (TypeScript)**` above the `` ```ts `` block
-   - `**PuLP (Python)**` above the `` ```python `` block
+   - `**PuLP (Python)**` above the `` ```python `` block (omit when `meta.runtimes` is `["washi"]` only, such as CP / SMT / QP / Decomposition exercises)
 
 ---
 
@@ -65,6 +65,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 - **Honest Verdict Classification (`judge.ts`)**: Never return `VIOLATION` for missing/non-finite fields or malformed output shapes — use `runtimeError(...)` (`RUNTIME_ERROR`). Reserve `VIOLATION` for broken constraints/bounds and `SUBOPTIMAL` for feasible non-optimal objectives (`sense`-aware).
 - **Source Language Purity**: Keep all `.ts`, `.py`, `cases.json`, `meta.json`, and root/docs English `.md` files free of Japanese Kana; localized content belongs exclusively under `/locales/{en,ja,zh}.{json,md}` (including `editorial/locales/` and `src/guide/locales/`).
 - **Per-Exercise Discussions**: Link each exercise's `meta.json` to its dedicated GitHub Discussions thread via `"discussionNumber"` (`#281`+ under `https://github.com/ohtaman/washi/discussions/<number>`).
+- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "highspy"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); the workbench UI hides `#tab-highspy` and displays `washiOnlyHint`.
 - **Pre-PR Verification**:
   - `REQUIRE_HIGHSPY_PYTHON=1 npx vitest run test/exercises-ch1.test.ts test/exercises-platform.test.ts test/source-language-purity.test.ts`
   - `npm test`

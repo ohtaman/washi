@@ -608,6 +608,10 @@ export function renderWorkspaceHtml(params: {
   const solvedAny = isProblemSolved(progress, meta.id);
   const washiSolved = solvedRuntimes.includes("washi");
   const highspySolved = solvedRuntimes.includes("highspy");
+  const supportsHighspy = meta.runtimes.includes("highspy");
+  const effectiveRuntime: RuntimeId = meta.runtimes.includes(activeRuntime)
+    ? activeRuntime
+    : (meta.runtimes[0] ?? "washi");
   const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
   const kickerItems = [
     roleLabel,
@@ -851,7 +855,9 @@ export function renderWorkspaceHtml(params: {
               <div class="answer-workbench-head">
                 <div>
                   <h2 class="answer-workbench-title">${escapeHtml(strings.editor.workbenchTitle)}</h2>
-                  <p class="answer-workbench-hint">${escapeHtml(strings.editor.eitherRuntimeHint)}</p>
+                  <p class="answer-workbench-hint">${escapeHtml(
+                    supportsHighspy ? strings.editor.eitherRuntimeHint : strings.editor.washiOnlyHint
+                  )}</p>
                 </div>
               </div>
 
@@ -867,39 +873,47 @@ export function renderWorkspaceHtml(params: {
                   id="tab-washi"
                   class="runtime-tab"
                   data-runtime="washi"
-                  aria-selected="${activeRuntime === "washi" ? "true" : "false"}"
-                  tabindex="${activeRuntime === "washi" ? "0" : "-1"}"
+                  aria-selected="${effectiveRuntime === "washi" ? "true" : "false"}"
+                  tabindex="${effectiveRuntime === "washi" ? "0" : "-1"}"
                 >
                   <span>${escapeHtml(strings.tabs.washi)}</span>
                   <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
                 </button>
-                <button
+                ${
+                  supportsHighspy
+                    ? `<button
                   type="button"
                   role="tab"
                   id="tab-highspy"
                   class="runtime-tab"
                   data-runtime="highspy"
-                  aria-selected="${activeRuntime === "highspy" ? "true" : "false"}"
-                  tabindex="${activeRuntime === "highspy" ? "0" : "-1"}"
+                  aria-selected="${effectiveRuntime === "highspy" ? "true" : "false"}"
+                  tabindex="${effectiveRuntime === "highspy" ? "0" : "-1"}"
                 >
                   <span>${escapeHtml(strings.tabs.highspy)}</span>
                   <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
-                </button>
+                </button>`
+                    : ""
+                }
               </div>
 
               <div
                 role="tabpanel"
                 id="panel-washi"
                 aria-labelledby="tab-washi"
-                ${activeRuntime !== "washi" ? "hidden" : ""}
+                ${effectiveRuntime !== "washi" ? "hidden" : ""}
               >${renderToolbarAndEditor("washi", washiCode)}</div>
 
-              <div
+              ${
+                supportsHighspy
+                  ? `<div
                 role="tabpanel"
                 id="panel-highspy"
                 aria-labelledby="tab-highspy"
-                ${activeRuntime !== "highspy" ? "hidden" : ""}
-              >${renderToolbarAndEditor("highspy", highspyCode)}</div>
+                ${effectiveRuntime !== "highspy" ? "hidden" : ""}
+              >${renderToolbarAndEditor("highspy", highspyCode)}</div>`
+                  : ""
+              }
 
               <section id="judge-results" class="results-section" aria-live="polite">
                 <div class="results-head">
