@@ -48,13 +48,13 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">📘</span>
-          <span class="washi-showcase-badge">WaSHI TS × Python PuLP</span>
+          <span class="washi-showcase-badge">WaSHI (TS) × PuLP (Python)</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/exercises/" target="_self" class="washi-showcase-title-link">Optimization 100</a>
         </div>
         <p class="washi-showcase-desc">
-          Interactive 100-problem mathematical optimization exercise drill running locally in your browser with side-by-side TypeScript (WaSHI) and Python (<code>PuLP</code> backed by HiGHS/<code>highspy</code> via Pyodide) tabs, automated judging, and formulation notes.
+          Interactive 100-problem mathematical optimization exercise drill running locally in your browser with side-by-side WaSHI (TypeScript) and PuLP (Python, backed by HiGHS / <code>highspy</code> via Pyodide) tabs, automated judging, and formulation notes.
         </p>
       </div>
       <div class="washi-showcase-actions">

@@ -14,7 +14,7 @@
         "body": "不仅给出参考实现，还说明为何如此设置变量与约束，帮助理清建模意图与常见误区。"
       },
       {
-        "label": "同时提供 Python（PuLP）环境",
+        "label": "同时提供 PuLP（Python）环境",
         "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上一并集成了 PuLP + HiGHS。"
       },
       {
@@ -67,7 +67,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "Python (PuLP)",
+      "highspy": "PuLP (Python)",
       "tablistLabel": "切换求解运行时",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) 仅在首次运行 Python 代码时于后台 Worker 按需加载。"
     },
@@ -83,7 +83,7 @@
     },
     "editor": {
       "workbenchTitle": "答题区（编辑代码并运行判题）",
-      "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 Python (PuLP) 任意一种运行时中通过即可完成本题。",
+      "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 PuLP (Python) 任意一种运行时中通过即可完成本题。",
       "label": "实现 solve(input) 并返回结果对象",
       "runBtn": "运行并判题",
       "runningBtn": "运行中…",

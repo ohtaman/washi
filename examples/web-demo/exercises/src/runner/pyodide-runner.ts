@@ -113,7 +113,7 @@ class LazyPyodideClient {
     return new Promise((resolve) => {
       const timerId = setTimeout(() => {
         this.failAllAndReset(
-          `Python (PuLP) execution timed out after ${Math.round(timeoutMs / 1000)}s.`
+          `PuLP (Python) execution timed out after ${Math.round(timeoutMs / 1000)}s.`
         );
       }, timeoutMs);
 

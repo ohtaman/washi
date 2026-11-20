@@ -14,7 +14,7 @@
         "body": "Each exercise includes the mathematical model and implementation notes explaining why those variables and constraints are chosen."
       },
       {
-        "label": "Python (PuLP) runtime alongside WaSHI",
+        "label": "PuLP (Python) runtime alongside WaSHI",
         "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser so Python practitioners can work through the same exercises and compare idioms side by side."
       },
       {
@@ -67,7 +67,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "Python (PuLP)",
+      "highspy": "PuLP (Python)",
       "tablistLabel": "Solver runtime tabs",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) loads in a background Web Worker on your first Python run."
     },
@@ -83,7 +83,7 @@
     },
     "editor": {
       "workbenchTitle": "Answer Workbench",
-      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or Python (PuLP) to complete this exercise.",
+      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or PuLP (Python) to complete this exercise.",
       "label": "Implement solve(input) and return the output",
       "runBtn": "Run & Judge",
       "runningBtn": "Running…",

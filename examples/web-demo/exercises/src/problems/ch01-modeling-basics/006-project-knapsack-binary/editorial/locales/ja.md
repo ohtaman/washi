@@ -29,7 +29,7 @@ m.constraint(expr`dot(${input.costs}, ${selected}) <= ${input.budget}`, "budget"
 m.objective(maximize(expr`dot(${input.values}, ${selected})`));
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 selected = [pulp.LpVariable(f"sel_{i}", cat=pulp.LpBinary) for i in range(n)]

@@ -33,7 +33,7 @@ m.constraint(
 m.objective(maximize(expr`dot(${input.margins}, ${quantities})`));
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 for k, cap in enumerate(capacities):

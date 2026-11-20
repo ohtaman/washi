@@ -4,8 +4,8 @@
 
 ## 1. 判题机制（`solve(input)`） {#solve-contract}
 
-- 每道题都要求实现一个函数：在 **WaSHI (TypeScript)** 中实现 `solve(input)`，或在 **Python (PuLP)** 中实现 `solve(input_data)`，并返回结果 JSON 对象（Python 为 `dict`）。
-- **WaSHI** 本身是 TypeScript / JavaScript 建模库而非 Python 包；为了让 Python 使用者也能免安装直接在浏览器中刷题并对照写法，系统通过 Pyodide 提供了经典的 **Python (`PuLP` + HiGHS)** 作为并行练习环境。
+- 每道题都要求实现一个函数：在 **WaSHI (TypeScript)** 中实现 `solve(input)`，或在 **PuLP (Python)** 中实现 `solve(input_data)`，并返回结果 JSON 对象（Python 为 `dict`）。
+- **WaSHI** 本身是 TypeScript / JavaScript 建模库而非 Python 包；为了让 Python 使用者也能免安装直接在浏览器中刷题并对照写法，系统通过 Pyodide 提供了经典的 **PuLP (Python)**（后端为 HiGHS）作为并行练习环境。
 - 点击 **「运行并判题」** 后，系统会对每个测试用例传入输入并检查返回值是否满足约束且达到最优目标值。
 - 在**任意一种**运行时下通过（**AC**）即可标记为已完成（`✓`）。`console.log` 或 `print` 仅用于调试查看。
 

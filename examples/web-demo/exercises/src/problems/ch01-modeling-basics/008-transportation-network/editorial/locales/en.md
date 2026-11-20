@@ -33,7 +33,7 @@ m.constraint(
 );
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 for i in range(n_s):

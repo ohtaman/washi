@@ -38,7 +38,7 @@ m.objective(
 );
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 for i in range(n):

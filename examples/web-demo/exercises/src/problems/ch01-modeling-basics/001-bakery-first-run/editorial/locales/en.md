@@ -27,7 +27,7 @@ $$
 m.constraint(expr`${c} + 2 * ${l} <= ${input.butterCap}`, "butter");
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 prob += c + 2 * l <= input_data["butterCap"], "butter"

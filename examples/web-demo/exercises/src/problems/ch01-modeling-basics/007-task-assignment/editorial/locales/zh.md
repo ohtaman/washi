@@ -32,7 +32,7 @@ const assignment = x.map((row) =>
 );
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 for i in range(n):

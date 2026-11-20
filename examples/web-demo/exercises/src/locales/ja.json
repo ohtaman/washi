@@ -14,7 +14,7 @@
         "body": "問題ごとに数式と実装のポイントを添えており、なぜその変数や制約を置くのかを確かめながら進められます。"
       },
       {
-        "label": "Python（PuLP）環境を併設",
+        "label": "PuLP（Python）環境を併設",
         "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、Pyodide 上で PuLP + HiGHS も動かせるようにしています。"
       },
       {
@@ -67,7 +67,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "Python (PuLP)",
+      "highspy": "PuLP (Python)",
       "tablistLabel": "実行ランタイム切り替え",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) は Python タブで初回実行するときだけバックグラウンド読込されます。"
     },
@@ -83,7 +83,7 @@
     },
     "editor": {
       "workbenchTitle": "解答欄（コードを書いて実行）",
-      "eitherRuntimeHint": "WaSHI (TypeScript) と Python (PuLP) のどちらか一方を AC にするとこの問題は完了になります。",
+      "eitherRuntimeHint": "WaSHI (TypeScript) と PuLP (Python) のどちらか一方を AC にするとこの問題は完了になります。",
       "label": "solve(input) を実装して結果を返す",
       "runBtn": "実行して採点",
       "runningBtn": "実行中…",

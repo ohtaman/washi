@@ -37,7 +37,7 @@ m.constraint(
 );
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 prob += pulp.lpSum(amounts) == target

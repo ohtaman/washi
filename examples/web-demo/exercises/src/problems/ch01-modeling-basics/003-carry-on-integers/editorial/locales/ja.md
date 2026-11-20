@@ -32,7 +32,7 @@ m.constraint(
 );
 ```
 
-**Python (PuLP)**
+**PuLP (Python)**
 
 ```python
 counts = [
