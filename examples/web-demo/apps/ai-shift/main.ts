@@ -19,6 +19,7 @@ import {
   type ActiveShiftCode,
   type AiShiftTrajectoryExport,
   type BuiltInShiftCode,
+  type ConstraintMeta,
   type ContractPresetId,
   type CustomConstraintRule,
   type CustomShiftDef,
@@ -27,13 +28,16 @@ import {
   type NurseProfile,
   type NurseScheduleConfig,
   type NurseSchedulingState,
+  type PairRelation,
   type ScheduleEvaluationReport,
+  type ShiftAliasDef,
   type ShiftCode,
+  type ShiftPreference,
+  type ShiftTransitionPolicy,
   type SkillDefinition,
   type TrajectoryTurnRecord,
-  type TransitionRuleType,
   type WashiSolveOutcome,
-} from "./types";
+} from "./types.js";
 import {
   getLocalizedNurseName,
   getLocalizedShiftMeta,
@@ -54,7 +58,7 @@ import {
   MAX_STAFF_COUNT,
   MIN_STAFF_COUNT,
   WEEKDAY_NAMES_JA,
-} from "./generator";
+} from "./generator.js";
 import {
   exportNursesCsv,
   exportRelationsCsv,
@@ -65,21 +69,22 @@ import {
   parseNursesCsv,
   parseRelationsCsv,
   parseRequestsCsv,
+  parseStrictInt,
   validateNurseDataset,
-} from "./csv-handler";
+} from "./csv-handler.js";
 import {
   diagnoseNurseScheduleWithHiGHS,
   evaluateNurseSchedule,
   generateWashiCodePreview,
   getPrevMonthTailWorkStreak,
   solveNurseScheduleWithWashi,
-} from "./solver";
+} from "./solver.js";
 import {
   applyChatOperationsToState,
   checkGeminiNanoAvailability,
   createGeminiNanoManager,
   type GeminiNanoStatus,
-} from "./nano-client";
+} from "./nano-client.js";
 
 let currentLocale: Locale = resolveCurrentLocale();
 
@@ -118,6 +123,13 @@ let lastSolveOutcome: WashiSolveOutcome | null = null;
 let pendingCsvNurses: NurseProfile[] | null = null;
 let pendingCsvRequests: ShiftPreference[] | null = null;
 let pendingCsvRelations: PairRelation[] | null = null;
+let pendingCsvNursesErrors: string[] = [];
+let pendingCsvNursesWarnings: string[] = [];
+let pendingCsvRequestsErrors: string[] = [];
+let pendingCsvRequestsWarnings: string[] = [];
+let pendingCsvRelationsErrors: string[] = [];
+let pendingCsvRelationsWarnings: string[] = [];
+let lastNanoInitError: string | null = null;
 
 // Single-flight solver concurrency & cancellation state
 let isSolving = false;
@@ -530,6 +542,7 @@ function updateNanoStatusUI(status: GeminiNanoStatus | "checking", progressPct?:
 
 async function checkAndInitNano(triggerWarmup = false): Promise<GeminiNanoStatus> {
   updateNanoStatusUI("checking");
+  lastNanoInitError = null;
   const status = await checkGeminiNanoAvailability();
   updateNanoStatusUI(status);
 
@@ -540,9 +553,11 @@ async function checkAndInitNano(triggerWarmup = false): Promise<GeminiNanoStatus
       });
       updateNanoStatusUI(finalStatus);
       return finalStatus;
-    } catch {
-      updateNanoStatusUI(nanoManager.getStatus());
-      return nanoManager.getStatus();
+    } catch (err: unknown) {
+      lastNanoInitError = err instanceof Error ? err.message : String(err);
+      console.error("Failed to initialize Gemini Nano session:", err);
+      updateNanoStatusUI("unavailable");
+      return "unavailable";
     }
   }
   return status;
@@ -609,6 +624,11 @@ function renderStatusAndConflictBar(): void {
       vCount === 0
         ? `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ \u30EB\u30FC\u30EB違反 0件 ｜ 希望達成率 ${softRate}%${diffSuffix}`
         : `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ ⚠️ 手動固定\u306B\u3088\u308B注意 ${vCount}件${diffSuffix}`;
+  } else if (lastSolveOutcome.status === "Sat") {
+    statusBadge.classList.add("status-optimal");
+    statusBadge.textContent = "✅ 制約整合\u30c1\u30a7\u30c3\u30af完了 (未最適化)";
+    summaryTextEl.textContent =
+      `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ 制約矛盾 0件（未最適化）`;
   } else if (lastSolveOutcome.status === "Infeasible") {
     statusBadge.classList.add("status-infeasible");
     statusBadge.textContent = "🚨 \u30B7\u30D5\u30C8作成不可 (矛盾\u3042\u308A)";
@@ -1225,7 +1245,7 @@ function renderShiftTransitionMatrix(): void {
 
     for (const c of cols) {
       const td = document.createElement("td");
-      const rule: TransitionRuleType = matrix[r.key][c.key];
+      const rule: ShiftTransitionPolicy = matrix[r.key][c.key];
       const transKey = `trans_${r.key}_${c.key}`;
       const curW = appState.config.softRuleWeights?.[transKey] ?? 0;
       const isSoft = curW > 0;
@@ -1246,7 +1266,7 @@ function renderShiftTransitionMatrix(): void {
 
       btn.title = `\u30AF\u30EA\u30C3\u30AF\u3067「${r.key} ➔ ${c.key}」\u306E遷移\u30EB\u30FC\u30EB\u3092切\u308A替\u3048（許可 ➔ 必須/禁止(\u30CF\u30FC\u30C9) ➔ 回避(\u30BD\u30D5\u30C8) ➔ 許可）`;
       btn.addEventListener("click", () => {
-        let nextRule: TransitionRuleType = rule;
+        let nextRule: ShiftTransitionPolicy = rule;
         let nextSoftWeight = 0;
 
         if (c.key === "O") {
@@ -1616,19 +1636,48 @@ function handleAddSentenceRule(): void {
     attrLabel = attrLabelMap[rawAttr] ?? rawAttr;
   }
 
-  const minCount =
-    minInput?.value !== "" && minInput?.value !== undefined ? Number(minInput.value) : undefined;
-  const maxCount =
-    maxInput?.value !== "" && maxInput?.value !== undefined ? Number(maxInput.value) : undefined;
+  const rawMinVal = minInput?.value?.trim() ?? "";
+  const rawMaxVal = maxInput?.value?.trim() ?? "";
+  let minCount: number | undefined;
+  let maxCount: number | undefined;
+  if (rawMinVal !== "") {
+    const parsedMin = parseStrictInt(rawMinVal);
+    if (parsedMin === null || parsedMin < 0) {
+      alert("最低人数\u306f0以上\u306e整数\u3067指定\u3057\u3066\u304f\u3060\u3055\u3044。");
+      return;
+    }
+    minCount = parsedMin;
+  }
+  if (rawMaxVal !== "") {
+    const parsedMax = parseStrictInt(rawMaxVal);
+    if (parsedMax === null || parsedMax < 0) {
+      alert("上限人数\u306f0以上\u306e整数\u3067指定\u3057\u3066\u304f\u3060\u3055\u3044。");
+      return;
+    }
+    maxCount = parsedMax;
+  }
 
   if (minCount === undefined && maxCount === undefined) {
     alert("最低人数\u307E\u305F\u306F上限人数\u306E\u3044\u305A\u308C\u304B\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044。");
     return;
   }
+  if (minCount !== undefined && maxCount !== undefined && minCount > maxCount) {
+    alert("最低人数\u304c上限人数\u3092超\u3048\u3066\u3044\u307e\u3059。");
+    return;
+  }
 
   const hardnessVal = hardnessSelect?.value ?? "hard";
   const isHard = hardnessVal === "hard";
-  const penaltyWeight = isHard ? undefined : Number(hardnessVal.split(":")[1]) || 30;
+  let penaltyWeight: number | undefined;
+  if (!isHard) {
+    const rawW = hardnessVal.split(":")[1] ?? "";
+    const parsedW = parseStrictInt(rawW);
+    if (parsedW === null || parsedW <= 0) {
+      alert("\u30bd\u30d5\u30c8制約\u306e重\u307f\u304c不正\u3067\u3059。");
+      return;
+    }
+    penaltyWeight = parsedW;
+  }
 
   const boundsText =
     minCount !== undefined && maxCount !== undefined
@@ -1663,13 +1712,25 @@ function handleAddSentenceRule(): void {
   triggerAutoOptimizationIfNeeded();
 }
 
+export function mergeShiftAliasesPreservingCustom(
+  customShiftDefs: readonly CustomShiftDef[],
+  existingAliases?: readonly ShiftAliasDef[]
+): ShiftAliasDef[] {
+  const builtIn = createDefaultShiftAliases(customShiftDefs);
+  const builtInCodes = new Set(builtIn.map((a) => a.code));
+  const custom = (existingAliases ?? []).filter((a) => !builtInCodes.has(a.code));
+  return [...builtIn, ...custom];
+}
+
 function renderShiftAliasesList(): void {
   const listEl = document.getElementById("shift-aliases-list");
   if (!listEl) return;
   listEl.replaceChildren();
 
-  const aliases = createDefaultShiftAliases(appState.customShiftDefs ?? []);
-  appState.shiftAliases = aliases;
+  const aliases = mergeShiftAliasesPreservingCustom(
+    appState.customShiftDefs ?? [],
+    appState.shiftAliases
+  );
   for (const a of aliases) {
     const row = document.createElement("div");
     row.className = "custom-rule-item";
@@ -1808,24 +1869,150 @@ function renderShiftAliasesList(): void {
   }
 }
 
-function readNumInput(id: string, fallback: number): number {
-  const el = document.getElementById(id) as HTMLInputElement | null;
-  if (!el) return fallback;
-  const raw = el.value.trim();
-  if (raw === "") return fallback;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : fallback;
+export function parseStrictConfigInputs(
+  rawValues: {
+    weekdayDayStaff: string;
+    weekendDayStaff: string;
+    eveningStaff: string;
+    nightStaff: string;
+    maxConsecutiveWorkDays: string;
+    minMonthlyDaysOff: string;
+    minMonthlyWorkDays: string;
+    maxMonthlyNightShifts: string;
+    maxMonthlyOvertimeHours: string;
+    maxAnnualOvertimeHours: string;
+  },
+  baseConfig: NurseScheduleConfig,
+  toggles: {
+    preserveCurrentSchedule: boolean;
+    enforceSkillCoverage: boolean;
+    enforcePreceptorPairs: boolean;
+    enforcePrevMonthCarryover: boolean;
+    enforce36Agreement: boolean;
+    requireWeekendOff: boolean;
+    enforceNgPairs: boolean;
+    enforceHardRequests: boolean;
+  },
+  softRuleWeights: Record<string, number>
+): { ok: true; config: NurseScheduleConfig } | { ok: false; errors: string[] } {
+  const errors: string[] = [];
+  const parseField = (raw: string, label: string, minVal: number): number => {
+    const trimmed = raw.trim();
+    const parsed = parseStrictInt(trimmed);
+    if (parsed === null || parsed < minVal) {
+      errors.push(`${label} "${raw}" \u306f ${minVal} 以上\u306e整数\u3067入力\u3057\u3066\u304f\u3060\u3055\u3044。`);
+      return minVal;
+    }
+    return parsed;
+  };
+
+  const weekdayDayStaff = parseField(rawValues.weekdayDayStaff, "平日\u30fb日勤必要人数", 0);
+  const weekendDayStaff = parseField(rawValues.weekendDayStaff, "土日\u30fb日勤必要人数", 0);
+  const eveningStaff = parseField(rawValues.eveningStaff, "準夜勤必要人数", 0);
+  const nightStaff = parseField(rawValues.nightStaff, "深夜勤必要人数", 0);
+  const maxConsecutiveWorkDays = parseField(rawValues.maxConsecutiveWorkDays, "最大連勤日数", 1);
+  const minMonthlyDaysOff = parseField(rawValues.minMonthlyDaysOff, "月間最低公休日数", 0);
+  const minMonthlyWorkDays = parseField(rawValues.minMonthlyWorkDays, "月間最低勤務日数", 0);
+  const maxMonthlyNightShifts = parseField(rawValues.maxMonthlyNightShifts, "月間夜勤上限回数", 0);
+  const maxMonthlyOvertimeHours = parseField(
+    rawValues.maxMonthlyOvertimeHours,
+    "36協定 月間時間外上限",
+    0
+  );
+  const maxAnnualOvertimeHours = parseField(
+    rawValues.maxAnnualOvertimeHours,
+    "36協定 年間時間外上限",
+    0
+  );
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+
+  return {
+    ok: true,
+    config: {
+      ...baseConfig,
+      ...toggles,
+      weekdayDayStaff,
+      weekendDayStaff,
+      eveningStaff,
+      nightStaff,
+      maxConsecutiveWorkDays,
+      minMonthlyDaysOff,
+      minMonthlyWorkDays,
+      maxMonthlyNightShifts,
+      maxMonthlyOvertimeHours,
+      maxAnnualOvertimeHours,
+      softRuleWeights,
+    },
+  };
+}
+
+export function parseStrictContractInputs(rawFields: {
+  minMonthlyWorkDays: string;
+  maxMonthlyWorkDays: string;
+  minMonthlyDaysOff: string;
+  maxMonthlyNightShifts: string;
+  maxConsecutiveWorkDays: string;
+}):
+  | {
+      ok: true;
+      values: {
+        minMonthlyWorkDays?: number;
+        maxMonthlyWorkDays?: number;
+        minMonthlyDaysOff?: number;
+        maxMonthlyNightShifts?: number;
+        maxConsecutiveWorkDays?: number;
+      };
+    }
+  | { ok: false; errors: string[] } {
+  const errors: string[] = [];
+  const parseOptInt = (raw: string, label: string, minVal: number): number | undefined => {
+    const trimmed = raw.trim();
+    if (trimmed === "") return undefined;
+    const n = parseStrictInt(trimmed);
+    if (n === null || n < minVal) {
+      errors.push(`${label} "${raw}" \u306f ${minVal} 以上\u306e整数\u3067入力\u3057\u3066\u304f\u3060\u3055\u3044。`);
+      return undefined;
+    }
+    return n;
+  };
+
+  const minMonthlyWorkDays = parseOptInt(rawFields.minMonthlyWorkDays, "月間最低勤務日数", 0);
+  const maxMonthlyWorkDays = parseOptInt(rawFields.maxMonthlyWorkDays, "月間最大勤務日数", 0);
+  const minMonthlyDaysOff = parseOptInt(rawFields.minMonthlyDaysOff, "月間最低公休日数", 0);
+  const maxMonthlyNightShifts = parseOptInt(rawFields.maxMonthlyNightShifts, "月間夜勤上限", 0);
+  const maxConsecutiveWorkDays = parseOptInt(rawFields.maxConsecutiveWorkDays, "最大連勤日数", 1);
+
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return {
+    ok: true,
+    values: {
+      minMonthlyWorkDays,
+      maxMonthlyWorkDays,
+      minMonthlyDaysOff,
+      maxMonthlyNightShifts,
+      maxConsecutiveWorkDays,
+    },
+  };
 }
 
 function readWeightSelect(id: string, key: string, targetWeights: Record<string, number>): void {
   const sel = document.getElementById(id) as HTMLSelectElement | null;
   if (!sel) return;
-  const w = Number(sel.value) || 0;
-  if (w > 0) targetWeights[key] = w;
+  const parsed = parseStrictInt(sel.value);
+  if (parsed !== null && parsed > 0) targetWeights[key] = parsed;
   else delete targetWeights[key];
 }
 
-function readConfigInputsToState(): void {
+function readConfigInputsToState(): boolean {
+  const getInputVal = (id: string): string => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    return el ? el.value : "";
+  };
   const preserveEl = document.getElementById("chk-preserve-schedule") as HTMLInputElement | null;
   const isChecked = (id: string, fallback = false): boolean => {
     const el = document.getElementById(id) as HTMLInputElement | null;
@@ -1843,29 +2030,40 @@ function readConfigInputsToState(): void {
   readWeightSelect("sel-weight-requireWeekendOff", "requireWeekendOff", nextWeights);
   readWeightSelect("sel-weight-enforceHardRequests", "enforceHardRequests", nextWeights);
 
-  const c: NurseScheduleConfig = {
-    ...appState.config,
-    preserveCurrentSchedule: preserveEl ? preserveEl.checked : appState.config.preserveCurrentSchedule !== false,
-    weekdayDayStaff: readNumInput("cfg-weekdayDayStaff", appState.config.weekdayDayStaff ?? 10),
-    weekendDayStaff: readNumInput("cfg-weekendDayStaff", appState.config.weekendDayStaff ?? 7),
-    eveningStaff: readNumInput("cfg-eveningStaff", appState.config.eveningStaff ?? 3),
-    nightStaff: readNumInput("cfg-nightStaff", appState.config.nightStaff ?? 3),
-    enforceSkillCoverage: isChecked("cfg-enforceSkillCoverage", true),
-    enforcePreceptorPairs: isChecked("cfg-enforcePreceptorPairs", false),
-    enforcePrevMonthCarryover: isChecked("cfg-enforcePrevMonthCarryover", true),
-    maxConsecutiveWorkDays: readNumInput("cfg-maxConsecutiveWorkDays", 5),
-    minMonthlyDaysOff: readNumInput("cfg-minMonthlyDaysOff", 9),
-    minMonthlyWorkDays: readNumInput("cfg-minMonthlyWorkDays", 14),
-    maxMonthlyNightShifts: readNumInput("cfg-maxMonthlyNightShifts", 8),
-    enforce36Agreement: isChecked("cfg-enforce36Agreement", true),
-    maxMonthlyOvertimeHours: readNumInput("cfg-maxMonthlyOvertimeHours", 45),
-    maxAnnualOvertimeHours: readNumInput("cfg-maxAnnualOvertimeHours", 360),
-    requireWeekendOff: isChecked("cfg-enforceWeekendOff", true),
-    enforceNgPairs: isChecked("cfg-enforceNgPairs", true),
-    enforceHardRequests: isChecked("cfg-enforceHardRequests", true),
-    softRuleWeights: nextWeights,
-  };
-  appState = { ...appState, config: c };
+  const parsed = parseStrictConfigInputs(
+    {
+      weekdayDayStaff: getInputVal("cfg-weekdayDayStaff"),
+      weekendDayStaff: getInputVal("cfg-weekendDayStaff"),
+      eveningStaff: getInputVal("cfg-eveningStaff"),
+      nightStaff: getInputVal("cfg-nightStaff"),
+      maxConsecutiveWorkDays: getInputVal("cfg-maxConsecutiveWorkDays"),
+      minMonthlyDaysOff: getInputVal("cfg-minMonthlyDaysOff"),
+      minMonthlyWorkDays: getInputVal("cfg-minMonthlyWorkDays"),
+      maxMonthlyNightShifts: getInputVal("cfg-maxMonthlyNightShifts"),
+      maxMonthlyOvertimeHours: getInputVal("cfg-maxMonthlyOvertimeHours"),
+      maxAnnualOvertimeHours: getInputVal("cfg-maxAnnualOvertimeHours"),
+    },
+    appState.config,
+    {
+      preserveCurrentSchedule: preserveEl
+        ? preserveEl.checked
+        : appState.config.preserveCurrentSchedule !== false,
+      enforceSkillCoverage: isChecked("cfg-enforceSkillCoverage", true),
+      enforcePreceptorPairs: isChecked("cfg-enforcePreceptorPairs", false),
+      enforcePrevMonthCarryover: isChecked("cfg-enforcePrevMonthCarryover", true),
+      enforce36Agreement: isChecked("cfg-enforce36Agreement", true),
+      requireWeekendOff: isChecked("cfg-enforceWeekendOff", true),
+      enforceNgPairs: isChecked("cfg-enforceNgPairs", true),
+      enforceHardRequests: isChecked("cfg-enforceHardRequests", true),
+    },
+    nextWeights
+  );
+  if (!parsed.ok) {
+    alert(`条件設定\u306e入力\u30a8\u30e9\u30fc:\n${parsed.errors.join("\n")}`);
+    return false;
+  }
+  appState = { ...appState, config: parsed.config };
+  return true;
 }
 
 function renderSkillDefsList(): void {
@@ -1890,7 +2088,7 @@ function renderSkillDefsList(): void {
     info.className = "checkbox-row";
     const badge = document.createElement("span");
     badge.className = "shift-badge shift-custom";
-    badge.textContent = s.shortLabel;
+    badge.textContent = s.shortLabel ?? s.label;
 
     const totalSatisfying = appState.nurses.filter((n) =>
       doesNurseSatisfySkill(n, s.code, skills)
@@ -1899,7 +2097,7 @@ function renderSkillDefsList(): void {
     const catLabel =
       s.category === "role"
         ? "役割"
-        : s.category === "team" || (s.category as string) === "group"
+        : s.category === "group"
           ? "班"
           : "\u30B9\u30AD\u30EB";
     const subTarget = s.substitutesFor ? getSkillMeta(s.substitutesFor, skills) : null;
@@ -2433,12 +2631,6 @@ function renderStaffProfilesTab(): void {
       badge.textContent = sd.badge || sd.shortLabel || sd.label;
       skillsWrap.appendChild(badge);
     }
-    if (nurse.subRoleLabel) {
-      const subBadge = document.createElement("span");
-      subBadge.className = "role-pill";
-      subBadge.textContent = nurse.subRoleLabel;
-      skillsWrap.appendChild(subBadge);
-    }
 
     // 2. Skill toggles (臨床)
     const activeSkillDefs = allSkillDefs.filter(
@@ -2700,6 +2892,48 @@ async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
   return activeSolvePromise;
 }
 
+export function buildDiagnosticCheckOutcome(params: {
+  state: NurseSchedulingState;
+  diag: { status: "Sat" | "Unsat"; conflicts: ConstraintMeta[]; rawNames: string[] };
+  diagTimeMs: number;
+  lastSolveOutcome: WashiSolveOutcome | null;
+  currentSchedule: MonthlyScheduleMap | null;
+  currentEvaluation: ScheduleEvaluationReport | null;
+}): WashiSolveOutcome {
+  const {
+    state,
+    diag,
+    diagTimeMs,
+    lastSolveOutcome: prevOutcome,
+    currentSchedule: prevSched,
+    currentEvaluation: prevEval,
+  } = params;
+  const isUnsat = diag.status === "Unsat";
+  const hasSolvedSchedule =
+    !isUnsat &&
+    prevSched !== null &&
+    (prevOutcome?.status === "Optimal" || prevOutcome?.status === "Feasible");
+
+  return {
+    status: isUnsat ? "Infeasible" : hasSolvedSchedule ? prevOutcome!.status : "Sat",
+    solverUsed: "HiGHS (WASM)",
+    buildTimeMs: prevOutcome?.buildTimeMs ?? 0,
+    solveTimeMs: diagTimeMs,
+    numVariables: prevOutcome?.numVariables ?? 0,
+    numConstraints: prevOutcome?.numConstraints ?? 0,
+    objectiveValue: hasSolvedSchedule ? (prevOutcome?.objectiveValue ?? null) : null,
+    validatedByWashi: hasSolvedSchedule ? Boolean(prevOutcome?.validatedByWashi) : false,
+    maxViolation: hasSolvedSchedule ? (prevOutcome?.maxViolation ?? 0) : 0,
+    schedule: hasSolvedSchedule ? prevSched : null,
+    evaluation: hasSolvedSchedule ? prevEval : null,
+    lpPreview: prevOutcome?.lpPreview ?? "",
+    modelCodePreview: prevOutcome?.modelCodePreview ?? generateWashiCodePreview(state),
+    conflicts: diag.conflicts,
+    rawConflictNames: diag.rawNames,
+    diffFromPrevious: hasSolvedSchedule ? (prevOutcome?.diffFromPrevious ?? null) : null,
+  };
+}
+
 async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null> {
   if (activeSolvePromise) {
     await activeSolvePromise;
@@ -2713,30 +2947,14 @@ async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null>
     const t0 = performance.now();
     const diag = await diagnoseNurseScheduleWithHiGHS(appState);
     const diagTimeMs = Math.max(1, Math.round(performance.now() - t0));
-    const isUnsat = diag.status === "Unsat";
-    const diagOutcome: WashiSolveOutcome = {
-      status: isUnsat
-        ? "Infeasible"
-        : lastSolveOutcome?.status && lastSolveOutcome.status !== "Infeasible"
-          ? lastSolveOutcome.status
-          : "Optimal",
-      solverUsed: "HiGHS (WASM)",
-      buildTimeMs: lastSolveOutcome?.buildTimeMs ?? 1,
-      solveTimeMs: diagTimeMs,
-      numVariables: lastSolveOutcome?.numVariables ?? 0,
-      numConstraints: lastSolveOutcome?.numConstraints ?? 0,
-      objectiveValue: isUnsat ? null : (lastSolveOutcome?.objectiveValue ?? 0),
-      validatedByWashi: !isUnsat,
-      maxViolation: lastSolveOutcome?.maxViolation ?? 0,
-      schedule: isUnsat ? null : currentSchedule,
-      evaluation: isUnsat ? null : currentEvaluation,
-      lpPreview: lastSolveOutcome?.lpPreview ?? "",
-      modelCodePreview:
-        lastSolveOutcome?.modelCodePreview ?? generateWashiCodePreview(appState),
-      conflicts: diag.conflicts,
-      rawConflictNames: diag.rawNames,
-      diffFromPrevious: lastSolveOutcome?.diffFromPrevious ?? null,
-    };
+    const diagOutcome = buildDiagnosticCheckOutcome({
+      state: appState,
+      diag,
+      diagTimeMs,
+      lastSolveOutcome,
+      currentSchedule,
+      currentEvaluation,
+    });
     lastSolveOutcome = diagOutcome;
 
     if (diag.status === "Unsat") {
@@ -2758,15 +2976,23 @@ async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null>
             .map((v) => `- ${v.message}`)
             .join("\n"),
       });
-    } else {
+    } else if (currentSchedule !== null && diagOutcome.validatedByWashi) {
       appendChatMessage({
         role: "system",
         senderLabel: "🔍 矛盾\u30FB違反\u30C1\u30A7\u30C3\u30AF結果",
         initialText:
           `### ✅ 整合性\u30C1\u30A7\u30C3\u30AF完了（矛盾\u30FB違反 0件）\n` +
-          `- **前月末7日間\u306E引\u304D継\u304E**（深夜明\u3051\u30FB準夜明\u3051遷移\u30FB連勤上限）: **\u30AF\u30EA\u30A2**\n` +
-          `- **日別必要人数\u30FB\u30EA\u30FC\u30C0\u30FC配置\u30FBNG\u30DA\u30A2回避**: **\u30AF\u30EA\u30A2**\n` +
-          `- **WaSHI \`verify()\` 数理検証**: **全制約\u30AF\u30EA\u30A2 (最大誤差 0)**`,
+          `- **現在\u306e最適化\u30b7\u30d5\u30c8表**: **\u30eb\u30fc\u30eb違反 0件**\n` +
+          `- **WaSHI \`verify()\` 数理検証**: **全制約\u30af\u30ea\u30a2 (最大誤差 ${diagOutcome.maxViolation})**`,
+      });
+    } else {
+      appendChatMessage({
+        role: "system",
+        senderLabel: "🔍 矛盾\u30FB違反\u30C1\u30A7\u30C3\u30AF結果",
+        initialText:
+          `### ✅ 制約整合\u30c1\u30a7\u30c3\u30af完了（制約矛盾 0件 / 未最適化）\n` +
+          `- **制約定義間\u306e矛盾診断**: 明確\u306a競合\u306f検出\u3055\u308c\u307e\u305b\u3093\u3067\u3057\u305f。\n` +
+          `- **\u30b7\u30d5\u30c8表生成 & \`verify()\` 検証**: 未実行（「⚡ \u30b7\u30d5\u30c8\u3092自動作成」\u3067全制約\u306e数理検証\u3092実行\u3057\u3066\u304f\u3060\u3055\u3044）`,
       });
     }
     return diagOutcome;
@@ -3083,11 +3309,13 @@ async function handleChatSubmit(userText: string): Promise<void> {
   const status = await checkAndInitNano(true);
   if (status === "unavailable") {
     sendBtn.disabled = false;
+    const errSuffix = lastNanoInitError ? `\n\n\u30a8\u30e9\u30fc詳細: \`${lastNanoInitError}\`` : "";
     appendChatMessage({
       role: "system",
       senderLabel: "⚠️ Chrome Built-in AI (Gemini Nano) 未有効",
       initialText:
-        "\u304A使\u3044\u306E\u30D6\u30E9\u30A6\u30B6\u3067\u306F Chrome 内蔵 AI (`LanguageModel` API / Gemini Nano) \u304C有効\u306B\u306A\u3063\u3066\u3044\u306A\u3044\u305F\u3081、AI\u30C1\u30E3\u30C3\u30C8応答\u3092生成\u3067\u304D\u307E\u305B\u3093（擬似AI応答\u306F行\u3044\u307E\u305B\u3093）。\n\n右上\u306E「⚙️」\u30DC\u30BF\u30F3\u304B\u3089 Chrome \u30D5\u30E9\u30B0設定手順\u3092\u3054確認\u3044\u305F\u3060\u304F\u304B、右側\u306E画面\u304B\u3089直接\u30B7\u30D5\u30C8固定\u30FB条件変更\u30FB最適化\u3092\u304A試\u3057\u304F\u3060\u3055\u3044。",
+        "\u304A使\u3044\u306E\u30D6\u30E9\u30A6\u30B6\u3067\u306F Chrome 内蔵 AI (`LanguageModel` API / Gemini Nano) \u304C有効\u306B\u306A\u3063\u3066\u3044\u306A\u3044\u305F\u3081、AI\u30C1\u30E3\u30C3\u30C8応答\u3092生成\u3067\u304D\u307E\u305B\u3093（擬似AI応答\u306F行\u3044\u307E\u305B\u3093）。\n\n右上\u306E「⚙️」\u30DC\u30BF\u30F3\u304B\u3089 Chrome \u30D5\u30E9\u30B0設定手順\u3092\u3054確認\u3044\u305F\u3060\u304F\u304B、右側\u306E画面\u304B\u3089直接\u30B7\u30D5\u30C8固定\u30FB条件変更\u30FB最適化\u3092\u304A試\u3057\u304F\u3060\u3055\u3044。" +
+        errSuffix,
     });
     const setupDialog = $("nano-setup-dialog") as HTMLDialogElement;
     if (!setupDialog.open) {
@@ -3162,7 +3390,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
       operations: enrichedPlan.operations,
     };
 
-    const { updatedState, appliedLogs } = applyChatOperationsToState(
+    const { updatedState, appliedLogs, rejectedLogs } = applyChatOperationsToState(
       appState,
       enrichedPlan.operations
     );
@@ -3178,7 +3406,11 @@ async function handleChatSubmit(userText: string): Promise<void> {
       configAfter: { ...appState.config },
     };
 
-    const pillSummaries = [...(enrichedPlan.routerTrace ?? []), ...appliedLogs];
+    const pillSummaries = [
+      ...(enrichedPlan.routerTrace ?? []),
+      ...appliedLogs,
+      ...rejectedLogs.map((r) => `⚠️ 除外: ${r}`),
+    ];
     if (pillSummaries.length > 0) {
       renderAppliedSummariesInto(assistantMsg.opsContainerEl, pillSummaries);
     }
@@ -3318,6 +3550,12 @@ function openCsvDialog(): void {
   pendingCsvNurses = null;
   pendingCsvRequests = null;
   pendingCsvRelations = null;
+  pendingCsvNursesErrors = [];
+  pendingCsvNursesWarnings = [];
+  pendingCsvRequestsErrors = [];
+  pendingCsvRequestsWarnings = [];
+  pendingCsvRelationsErrors = [];
+  pendingCsvRelationsWarnings = [];
 
   const inputNurses = document.getElementById("file-input-nurses") as HTMLInputElement | null;
   const inputReqs = document.getElementById("file-input-requests") as HTMLInputElement | null;
@@ -3343,7 +3581,10 @@ function openCsvDialog(): void {
   }
 
   const feedbackEl = document.getElementById("csv-import-feedback");
-  if (feedbackEl) feedbackEl.hidden = true;
+  if (feedbackEl) {
+    feedbackEl.hidden = true;
+    feedbackEl.replaceChildren();
+  }
 
   const execBtn = document.getElementById("btn-execute-csv-import") as HTMLButtonElement | null;
   if (execBtn) execBtn.disabled = true;
@@ -3352,42 +3593,107 @@ function openCsvDialog(): void {
   if (dialog) dialog.showModal();
 }
 
+export function buildCsvImportFeedback(params: {
+  nurses: NurseProfile[] | null;
+  requests: ShiftPreference[] | null;
+  relations: PairRelation[] | null;
+  numDays: number;
+  customShiftCodes: ReadonlySet<string>;
+  parseErrors: string[];
+  parseWarnings: string[];
+}): { ready: boolean; isError: boolean; title: string; lines: string[] } {
+  const { nurses, requests, relations, numDays, customShiftCodes, parseErrors, parseWarnings } =
+    params;
+  if (parseErrors.length > 0) {
+    return {
+      ready: false,
+      isError: true,
+      title: `⚠️ CSV読\u307f込\u307f\u30a8\u30e9\u30fc (${parseErrors.length}件):`,
+      lines: [...parseErrors, ...parseWarnings],
+    };
+  }
+  if (!nurses || nurses.length === 0) {
+    return {
+      ready: false,
+      isError: parseWarnings.length > 0,
+      title: parseWarnings.length > 0 ? `⚠️ 警告 (${parseWarnings.length}件):` : "",
+      lines: [...parseWarnings],
+    };
+  }
+
+  const validation = validateNurseDataset(
+    nurses,
+    requests ?? [],
+    relations ?? [],
+    numDays,
+    customShiftCodes
+  );
+  const allWarnings = [...parseWarnings, ...validation.warnings];
+  if (!validation.valid) {
+    return {
+      ready: false,
+      isError: true,
+      title: `⚠️ \u30c7\u30fc\u30bf\u306e不整合\u3092検出\u3057\u307e\u3057\u305f (${validation.errors.length}件):`,
+      lines: [...validation.errors, ...allWarnings],
+    };
+  }
+
+  const reqCount = requests?.length ?? 0;
+  const relCount = relations?.length ?? 0;
+  return {
+    ready: true,
+    isError: false,
+    title: `✅ \u30a4\u30f3\u30dd\u30fc\u30c8準備完了: 看護師 ${nurses.length}名、希望 ${reqCount}件、\u30da\u30a2 ${relCount}件`,
+    lines: allWarnings,
+  };
+}
+
 function checkImportReadiness(): void {
   const feedbackEl = document.getElementById("csv-import-feedback");
   const execBtn = document.getElementById("btn-execute-csv-import") as HTMLButtonElement | null;
 
-  if (!pendingCsvNurses || pendingCsvNurses.length === 0) {
-    if (execBtn) execBtn.disabled = true;
-    if (feedbackEl) feedbackEl.hidden = true;
-    return;
-  }
-
+  const parseErrors = [
+    ...pendingCsvNursesErrors,
+    ...pendingCsvRequestsErrors,
+    ...pendingCsvRelationsErrors,
+  ];
+  const parseWarnings = [
+    ...pendingCsvNursesWarnings,
+    ...pendingCsvRequestsWarnings,
+    ...pendingCsvRelationsWarnings,
+  ];
   const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
-  const validation = validateNurseDataset(
-    pendingCsvNurses,
-    pendingCsvRequests ?? [],
-    pendingCsvRelations ?? [],
-    appState.config.numDays,
-    customCodes
-  );
+  const feedback = buildCsvImportFeedback({
+    nurses: pendingCsvNurses,
+    requests: pendingCsvRequests,
+    relations: pendingCsvRelations,
+    numDays: appState.config.numDays,
+    customShiftCodes: customCodes,
+    parseErrors,
+    parseWarnings,
+  });
 
-  if (!validation.valid) {
-    if (execBtn) execBtn.disabled = true;
-    if (feedbackEl) {
-      feedbackEl.hidden = false;
-      feedbackEl.className = "csv-feedback-box";
-      feedbackEl.innerHTML = `⚠️ <strong>\u30C7\u30FC\u30BF\u306E不整合\u3092検出\u3057\u307E\u3057\u305F:</strong><br>${validation.errors.join("<br>")}`;
-    }
+  if (execBtn) execBtn.disabled = !feedback.ready;
+  if (!feedbackEl) return;
+
+  if (!feedback.title && feedback.lines.length === 0) {
+    feedbackEl.hidden = true;
+    feedbackEl.replaceChildren();
     return;
   }
 
-  if (execBtn) execBtn.disabled = false;
-  if (feedbackEl) {
-    feedbackEl.hidden = false;
-    feedbackEl.className = "csv-feedback-box is-success";
-    const reqCount = pendingCsvRequests?.length ?? 0;
-    const relCount = pendingCsvRelations?.length ?? 0;
-    feedbackEl.innerHTML = `✅ <strong>\u30A4\u30F3\u30DD\u30FC\u30C8準備完了:</strong> 看護師 ${pendingCsvNurses.length}名、希望 ${reqCount}件、\u30DA\u30A2 ${relCount}件`;
+  feedbackEl.hidden = false;
+  feedbackEl.className = feedback.ready ? "csv-feedback-box is-success" : "csv-feedback-box";
+  feedbackEl.replaceChildren();
+
+  if (feedback.title) {
+    const titleEl = document.createElement("strong");
+    titleEl.textContent = feedback.title;
+    feedbackEl.appendChild(titleEl);
+  }
+  for (const line of feedback.lines) {
+    feedbackEl.appendChild(document.createElement("br"));
+    feedbackEl.appendChild(document.createTextNode(line));
   }
 }
 
@@ -3567,12 +3873,12 @@ function setupEventListeners(): void {
 
   // Step 3: Auto-solve nurse schedule (switches to schedule tab and optimizes)
   $("btn-tut-step3")?.addEventListener("click", () => {
+    if (!readConfigInputsToState()) return;
     if (appState.nurses.length === 0) {
       handleGenerateSample(30, true);
     } else {
       switchTab("schedule");
     }
-    readConfigInputsToState();
     void runWashiOptimization();
   });
 
@@ -3619,10 +3925,10 @@ function setupEventListeners(): void {
 
   // Top action bar buttons
   $("btn-solve-washi").addEventListener("click", () => {
+    if (!readConfigInputsToState()) return;
     if (appState.nurses.length === 0) {
       handleGenerateSample(30, false);
     }
-    readConfigInputsToState();
     switchTab("schedule");
     void runWashiOptimization();
   });
@@ -3633,12 +3939,12 @@ function setupEventListeners(): void {
   });
 
   $("btn-check-current").addEventListener("click", () => {
-    readConfigInputsToState();
+    if (!readConfigInputsToState()) return;
     void runExplicitConflictDiagnosis();
   });
 
   $("btn-diagnose-conflict").addEventListener("click", () => {
-    readConfigInputsToState();
+    if (!readConfigInputsToState()) return;
     void runExplicitConflictDiagnosis();
   });
 
@@ -3654,7 +3960,6 @@ function setupEventListeners(): void {
         numDays: appState.config.numDays,
       });
       renderAllViews();
-      updateSolveStatusBadge("idle");
       return;
     }
     appState = {
@@ -3663,7 +3968,6 @@ function setupEventListeners(): void {
     };
     syncConfigInputsFromState();
     renderAllViews();
-    updateSolveStatusBadge("idle");
   };
 
   const resetToDefaultConfig = () => {
@@ -3683,7 +3987,6 @@ function setupEventListeners(): void {
     };
     syncConfigInputsFromState();
     renderAllViews();
-    updateSolveStatusBadge("idle");
   };
 
   $("btn-reset-clean")?.addEventListener("click", resetToCleanState);
@@ -3771,7 +4074,7 @@ function setupEventListeners(): void {
   ];
   for (const id of weightSelectIds) {
     document.getElementById(id)?.addEventListener("change", () => {
-      readConfigInputsToState();
+      if (!readConfigInputsToState()) return;
       triggerAutoOptimizationIfNeeded();
     });
   }
@@ -3779,8 +4082,13 @@ function setupEventListeners(): void {
   // Top Action Bar & Empty State CSV / Sample Actions
   $("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(30));
   $("btn-cat-generate-sample")?.addEventListener("click", () => {
-    const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
-    handleGenerateSample(c);
+    const rawCount = ($("input-staff-count") as HTMLInputElement | null)?.value ?? "";
+    const parsedCount = parseStrictInt(rawCount);
+    if (parsedCount === null || parsedCount < MIN_STAFF_COUNT || parsedCount > MAX_STAFF_COUNT) {
+      alert(`\u30b9\u30bf\u30c3\u30d5人数\u306f ${MIN_STAFF_COUNT}〜${MAX_STAFF_COUNT} \u306e整数\u3067指定\u3057\u3066\u304f\u3060\u3055\u3044。`);
+      return;
+    }
+    handleGenerateSample(parsedCount);
   });
 
   $("btn-empty-csv")?.addEventListener("click", openCsvDialog);
@@ -3815,6 +4123,8 @@ function setupEventListeners(): void {
     const st = $("file-status-nurses");
     if (!file) {
       pendingCsvNurses = null;
+      pendingCsvNursesErrors = [];
+      pendingCsvNursesWarnings = [];
       st.textContent = "未選択";
       st.className = "csv-file-status";
       checkImportReadiness();
@@ -3824,15 +4134,28 @@ function setupEventListeners(): void {
     reader.onload = (ev) => {
       const text = String(ev.target?.result ?? "");
       const parsed = parseNursesCsv(text);
+      pendingCsvNursesErrors = parsed.errors;
+      pendingCsvNursesWarnings = parsed.warnings;
       if (parsed.errors.length > 0) {
         pendingCsvNurses = null;
-        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.textContent = `❌ ${parsed.errors.length}件\u30a8\u30e9\u30fc: ${parsed.errors[0]}`;
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvNurses = parsed.nurses;
-        st.textContent = `✅ ${parsed.nurses.length}名 読\u307F込\u307F完了`;
+        st.textContent =
+          parsed.warnings.length > 0
+            ? `⚠️ ${parsed.nurses.length}名 読込 (警告 ${parsed.warnings.length}件)`
+            : `✅ ${parsed.nurses.length}名 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
+      checkImportReadiness();
+    };
+    reader.onerror = () => {
+      pendingCsvNurses = null;
+      pendingCsvNursesErrors = [`看護師CSV "${file.name}" \u306e読\u307f込\u307f\u306b失敗\u3057\u307e\u3057\u305f。`];
+      pendingCsvNursesWarnings = [];
+      st.textContent = `❌ \u30d5\u30a1\u30a4\u30eb読\u307f込\u307f失敗`;
+      st.className = "csv-file-status is-error";
       checkImportReadiness();
     };
     reader.readAsText(file, "utf-8");
@@ -3844,6 +4167,8 @@ function setupEventListeners(): void {
     const st = $("file-status-requests");
     if (!file) {
       pendingCsvRequests = null;
+      pendingCsvRequestsErrors = [];
+      pendingCsvRequestsWarnings = [];
       st.textContent = "未選択";
       st.className = "csv-file-status";
       checkImportReadiness();
@@ -3855,15 +4180,28 @@ function setupEventListeners(): void {
       const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
       const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
       const parsed = parseRequestsCsv(text, knownIds, customCodes);
+      pendingCsvRequestsErrors = parsed.errors;
+      pendingCsvRequestsWarnings = parsed.warnings;
       if (parsed.errors.length > 0) {
         pendingCsvRequests = null;
-        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.textContent = `❌ ${parsed.errors.length}件\u30a8\u30e9\u30fc: ${parsed.errors[0]}`;
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvRequests = parsed.preferences;
-        st.textContent = `✅ ${parsed.preferences.length}件 読\u307F込\u307F完了`;
+        st.textContent =
+          parsed.warnings.length > 0
+            ? `⚠️ ${parsed.preferences.length}件 読込 (警告 ${parsed.warnings.length}件)`
+            : `✅ ${parsed.preferences.length}件 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
+      checkImportReadiness();
+    };
+    reader.onerror = () => {
+      pendingCsvRequests = null;
+      pendingCsvRequestsErrors = [`希望CSV "${file.name}" \u306e読\u307f込\u307f\u306b失敗\u3057\u307e\u3057\u305f。`];
+      pendingCsvRequestsWarnings = [];
+      st.textContent = `❌ \u30d5\u30a1\u30a4\u30eb読\u307f込\u307f失敗`;
+      st.className = "csv-file-status is-error";
       checkImportReadiness();
     };
     reader.readAsText(file, "utf-8");
@@ -3875,6 +4213,8 @@ function setupEventListeners(): void {
     const st = $("file-status-relations");
     if (!file) {
       pendingCsvRelations = null;
+      pendingCsvRelationsErrors = [];
+      pendingCsvRelationsWarnings = [];
       st.textContent = "未選択";
       st.className = "csv-file-status";
       checkImportReadiness();
@@ -3886,15 +4226,28 @@ function setupEventListeners(): void {
       const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
       const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
       const parsed = parseRelationsCsv(text, knownIds, customCodes);
+      pendingCsvRelationsErrors = parsed.errors;
+      pendingCsvRelationsWarnings = parsed.warnings;
       if (parsed.errors.length > 0) {
         pendingCsvRelations = null;
-        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.textContent = `❌ ${parsed.errors.length}件\u30a8\u30e9\u30fc: ${parsed.errors[0]}`;
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvRelations = parsed.relations;
-        st.textContent = `✅ ${parsed.relations.length}件 読\u307F込\u307F完了`;
+        st.textContent =
+          parsed.warnings.length > 0
+            ? `⚠️ ${parsed.relations.length}件 読込 (警告 ${parsed.warnings.length}件)`
+            : `✅ ${parsed.relations.length}件 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
+      checkImportReadiness();
+    };
+    reader.onerror = () => {
+      pendingCsvRelations = null;
+      pendingCsvRelationsErrors = [`\u30da\u30a2関係CSV "${file.name}" \u306e読\u307f込\u307f\u306b失敗\u3057\u307e\u3057\u305f。`];
+      pendingCsvRelationsWarnings = [];
+      st.textContent = `❌ \u30d5\u30a1\u30a4\u30eb読\u307f込\u307f失敗`;
+      st.className = "csv-file-status is-error";
       checkImportReadiness();
     };
     reader.readAsText(file, "utf-8");
@@ -3910,16 +4263,37 @@ function setupEventListeners(): void {
     const rawName = nameInput.value.trim();
     if (!rawName) return;
 
-    const { updatedState, appliedLogs } = applyChatOperationsToState(appState, [
+    const parseSkillMin = (rawVal: string, label: string): number | null => {
+      const trimmed = rawVal.trim();
+      if (trimmed === "") return 0;
+      const n = parseStrictInt(trimmed);
+      if (n === null || n < 0) {
+        alert(`${label} "${rawVal}" \u306f0以上\u306e整数\u3067入力\u3057\u3066\u304f\u3060\u3055\u3044。`);
+        return null;
+      }
+      return n;
+    };
+    const skillMinDay = parseSkillMin(minDInput.value, "日勤必要人数");
+    if (skillMinDay === null) return;
+    const skillMinEvening = parseSkillMin(minEInput.value, "準夜勤必要人数");
+    if (skillMinEvening === null) return;
+    const skillMinNight = parseSkillMin(minNInput.value, "深夜勤必要人数");
+    if (skillMinNight === null) return;
+
+    const { updatedState, appliedLogs, rejectedLogs } = applyChatOperationsToState(appState, [
       {
         op: "add_skill_def",
         skillName: rawName,
         substitutesFor: subSelect.value ? subSelect.value : undefined,
-        skillMinDay: Number(minDInput.value) || 0,
-        skillMinEvening: Number(minEInput.value) || 0,
-        skillMinNight: Number(minNInput.value) || 0,
+        skillMinDay,
+        skillMinEvening,
+        skillMinNight,
       },
     ]);
+    if (rejectedLogs.length > 0 && appliedLogs.length === 0) {
+      alert(rejectedLogs.join("\n"));
+      return;
+    }
     appState = updatedState;
     nameInput.value = "";
     subSelect.value = "";
@@ -4021,7 +4395,7 @@ function setupEventListeners(): void {
 
   // Tab 2 Settings apply button
   $("btn-apply-config-solve").addEventListener("click", () => {
-    readConfigInputsToState();
+    if (!readConfigInputsToState()) return;
     switchTab("schedule");
     void runWashiOptimization();
   });
@@ -4190,21 +4564,20 @@ function setupEventListeners(): void {
     if (($("contract-forbid-E") as HTMLInputElement).checked) forbiddenShifts.push("E");
     if (($("contract-forbid-N") as HTMLInputElement).checked) forbiddenShifts.push("N");
 
-    const parseOptNum = (id: string): number | undefined => {
-      const raw = ($(id) as HTMLInputElement).value.trim();
-      if (!raw) return undefined;
-      const v = Number(raw);
-      return Number.isFinite(v) ? v : undefined;
-    };
-
-    const minMonthlyWorkDays = parseOptNum("contract-min-work");
-    const maxMonthlyWorkDays = parseOptNum("contract-max-work");
-    const minMonthlyDaysOff = parseOptNum("contract-min-off");
-    const maxMonthlyNightShifts = parseOptNum("contract-max-night");
-    const maxConsecutiveWorkDays = parseOptNum("contract-max-streak");
+    const parsedContract = parseStrictContractInputs({
+      minMonthlyWorkDays: ($("contract-min-work") as HTMLInputElement).value,
+      maxMonthlyWorkDays: ($("contract-max-work") as HTMLInputElement).value,
+      minMonthlyDaysOff: ($("contract-min-off") as HTMLInputElement).value,
+      maxMonthlyNightShifts: ($("contract-max-night") as HTMLInputElement).value,
+      maxConsecutiveWorkDays: ($("contract-max-streak") as HTMLInputElement).value,
+    });
+    if (!parsedContract.ok) {
+      alert(`個別契約\u306e入力\u30a8\u30e9\u30fc:\n${parsedContract.errors.join("\n")}`);
+      return;
+    }
 
     const clearedState = clearNurseContractFromState(appState, targetId);
-    const { updatedState } = applyChatOperationsToState(clearedState, [
+    const { updatedState, rejectedLogs } = applyChatOperationsToState(clearedState, [
       {
         op: "set_nurse_contract",
         nurseNameOrId: targetId,
@@ -4212,13 +4585,13 @@ function setupEventListeners(): void {
         weekdayOnly,
         holidaysOff,
         forbiddenShifts,
-        minMonthlyWorkDays,
-        maxMonthlyWorkDays,
-        minMonthlyDaysOff,
-        maxMonthlyNightShifts,
-        maxConsecutiveWorkDays,
+        ...parsedContract.values,
       },
     ]);
+    if (rejectedLogs.length > 0) {
+      alert(rejectedLogs.join("\n"));
+      return;
+    }
     appState = updatedState;
     contractDialog.close();
     renderAllViews();
@@ -4339,14 +4712,21 @@ async function bootstrap(): Promise<void> {
   });
 
   // Check LanguageModel availability and pre-warm session if already available
-  void checkGeminiNanoAvailability().then((st) => {
-    updateNanoStatusUI(st);
-    if (st === "available") {
-      void checkAndInitNano(true);
-    }
-  });
+  void checkGeminiNanoAvailability()
+    .then((st) => {
+      updateNanoStatusUI(st);
+      if (st === "available") {
+        void checkAndInitNano(true);
+      }
+    })
+    .catch((err) => {
+      console.error("Initial Gemini Nano availability check failed:", err);
+      updateNanoStatusUI("unavailable");
+    });
 
   renderAllViews();
 }
 
-void bootstrap();
+if (typeof document !== "undefined") {
+  void bootstrap();
+}

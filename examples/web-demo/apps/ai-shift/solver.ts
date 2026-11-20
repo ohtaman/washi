@@ -21,6 +21,7 @@ import {
   getShiftTransitionMatrix,
   resolveShiftSelector,
   type ActiveShiftCode,
+  type BaseShiftCode,
   type BuiltInShiftCode,
   type ConstraintMeta,
   type CustomConstraintRule,
@@ -29,6 +30,7 @@ import {
   type MonthlyScheduleMap,
   type NurseMonthlySummary,
   type NurseProfile,
+  type NurseScheduleConfig,
   type NurseSchedulingState,
   type ScheduleCellChange,
   type ScheduleDiffSummary,
@@ -189,6 +191,22 @@ export function isNurseTargetedByRule(
   }
   return doesNurseMatchAttribute(nurse, attr, skillDefs);
 }
+export function validateEnabledStaffingRules(state: NurseSchedulingState): void {
+  const validCodes = new Set<string>(["D", "E", "N", "O", ...(state.customShiftDefs ?? []).map((c) => c.code)]);
+  for (const rule of state.customRules) {
+    if (!rule.enabled || rule.kind !== "staffing_rule") continue;
+    if (!Array.isArray(rule.shifts) || rule.shifts.length === 0) {
+      throw new Error(`staffing_rule "${rule.id}" has empty shifts array.`);
+    }
+    for (const s of rule.shifts) {
+      const resolved = resolveShiftSelector(s, state);
+      if (resolved.length === 0 || resolved.some((c) => !validCodes.has(c))) {
+        throw new Error(`Invalid shift "${String(s)}" in staffing_rule "${rule.id}".`);
+      }
+    }
+  }
+}
+
 /**
  * Evaluates whether a custom staffing rule is active and applicable on a given calendar day,
  * checking date bounds (startDay/endDay), allowedDaysOfWeek, and dayType (weekday, weekend, holiday, etc.).
@@ -243,6 +261,7 @@ export function getRequiredDailyCoverage(
   state: NurseSchedulingState,
   day: number
 ): Record<ActiveShiftCode, number> {
+  validateEnabledStaffingRules(state);
   const { config, customRules } = state;
   const dow = getDayOfWeek(config.year, config.month, day);
   const isWeekend = dow === 0 || dow === 6;
@@ -298,6 +317,7 @@ export function buildNurseWashiModel(
     referenceSchedule?: MonthlyScheduleMap | null;
   }
 ): BuiltNurseWashiModel {
+  validateEnabledStaffingRules(state);
   const { config, nurses, relations, preferences, customRules } = state;
   const customShiftDefs = state.customShiftDefs ?? [];
   const numDays = config.numDays;
@@ -524,7 +544,7 @@ export function buildNurseWashiModel(
   const getBaseShiftExpr = (
     nurseId: string,
     idx: number,
-    base: BuiltInShiftCode
+    base: BaseShiftCode
   ): LinExpr =>
     base === "O"
       ? (expr`1 - ${sum(getNurseDayWorkVars(nurseId, idx))}` as LinExpr)
@@ -562,13 +582,13 @@ export function buildNurseWashiModel(
     return sum(Array.from(explicitSet));
   };
 
-  const SHIFT_LABEL_JA: Record<BuiltInShiftCode, string> = {
+  const SHIFT_LABEL_JA: Record<BaseShiftCode, string> = {
     D: "日勤(D)",
     E: "準夜勤(E)",
     N: "深夜勤(N)",
     O: "公休(O)",
   };
-  const SHIFT_SHORT_JA: Record<BuiltInShiftCode, string> = {
+  const SHIFT_SHORT_JA: Record<BaseShiftCode, string> = {
     D: "日",
     E: "準",
     N: "深",
@@ -738,8 +758,7 @@ export function buildNurseWashiModel(
       const tailStreak = getPrevMonthTailWorkStreak(prev, customShiftDefs);
       const maxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
       if (tailStreak > 0 && maxConsec >= 1) {
-        const clampedStreak = Math.min(tailStreak, maxConsec);
-        const windowInCurrentMonth = maxConsec + 1 - clampedStreak;
+        const windowInCurrentMonth = Math.max(1, maxConsec + 1 - tailStreak);
         let allWindowDaysIncluded = windowInCurrentMonth >= 1 && windowInCurrentMonth <= numDays;
         for (let k = 1; k <= windowInCurrentMonth; k++) {
           if (!isDayIncluded(k)) allWindowDaysIncluded = false;
@@ -749,7 +768,7 @@ export function buildNurseWashiModel(
           for (let k = 0; k < windowInCurrentMonth; k++) {
             boundaryVars.push(...getNurseDayWorkVars(nurse.id, k));
           }
-          const allowedInWindow = maxConsec - clampedStreak;
+          const allowedInWindow = maxConsec - tailStreak;
           addTrackedConstraint(
             expr`${sum(boundaryVars)} <= ${allowedInWindow}`,
             {
@@ -888,7 +907,7 @@ export function buildNurseWashiModel(
       );
 
       if (typeof nurse.maxMonthlyWorkDays === "number") {
-        const maxContractWork = Math.max(0, nurse.maxMonthlyWorkDays);
+        const maxContractWork = nurse.maxMonthlyWorkDays;
         addTrackedConstraint(
           expr`${sum(allWorkVars)} <= ${maxContractWork}`,
           {
@@ -954,7 +973,7 @@ export function buildNurseWashiModel(
 
       // 5b. 36協定（時間外労働月間上限 & 直近1年累計上限）
       if (config.enforce36Agreement) {
-        const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 180;
+        const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 0;
         const remainingAnnualHours = Math.max(0, config.maxAnnualOvertimeHours - prev11Hours);
         const effectiveOvertimeCap = Math.min(config.maxMonthlyOvertimeHours, remainingAnnualHours);
 
@@ -1603,6 +1622,7 @@ export function evaluateNurseSchedule(
   state: NurseSchedulingState,
   schedule: MonthlyScheduleMap
 ): ScheduleEvaluationReport {
+  validateEnabledStaffingRules(state);
   const { config, nurses, relations, preferences, customRules } = state;
   const customShiftDefs = state.customShiftDefs ?? [];
   const numDays = config.numDays;
@@ -1613,16 +1633,12 @@ export function evaluateNurseSchedule(
   if (nurses.length === 0) {
     return {
       valid: true,
-      hardViolationsCount: 0,
-      softPenaltyTotal: 0,
       violations: [],
       dailySummaries: [],
       nurseSummaries: {},
-      satisfactionRatePct: 100,
-      overtimeCompliance: {
-        allNursesCompliant: true,
-        violatingNurses: [],
-      },
+      hardRequestSatisfactionRate: 100,
+      softRequestSatisfactionRate: 100,
+      objectiveScore: 1000,
     };
   }
 
@@ -1674,9 +1690,11 @@ export function evaluateNurseSchedule(
       }
       const activeShiftKey: ActiveShiftCode | null = matchesDayGroup
         ? "D"
-        : shift === "E" || shift === "N"
-          ? shift
-          : null;
+        : shift === "E"
+          ? "E"
+          : shift === "N"
+            ? "N"
+            : null;
       if (activeShiftKey) {
         for (const sd of activeSkillDefs) {
           if (doesNurseSatisfySkill(nurse, sd.code, activeSkillDefs)) {
@@ -1746,10 +1764,10 @@ export function evaluateNurseSchedule(
 
         for (const { s, sLabel, minVal, maxVal } of shiftBounds) {
           const overriddenMin = customRules.some((r) => {
+            if (!r.enabled || r.isHard === false || r.kind !== "staffing_rule") return false;
             if ((r.attribute ?? "all") !== sd.code) return false;
             if (typeof r.minCount !== "number") return false;
-            const rShifts = r.shifts?.length ? r.shifts : ["D"];
-            if (!rShifts.includes(s)) return false;
+            if (!r.shifts?.includes(s)) return false;
             return isStaffingRuleApplicableOnDay(r, d, config);
           });
           if (minVal > 0 && !overriddenMin && sdCounts[s] < minVal) {
@@ -1765,10 +1783,10 @@ export function evaluateNurseSchedule(
           }
 
           const overriddenMax = customRules.some((r) => {
+            if (!r.enabled || r.isHard === false || r.kind !== "staffing_rule") return false;
             if ((r.attribute ?? "all") !== sd.code) return false;
             if (typeof r.maxCount !== "number") return false;
-            const rShifts = r.shifts?.length ? r.shifts : ["D"];
-            if (!rShifts.includes(s)) return false;
+            if (!r.shifts?.includes(s)) return false;
             return isStaffingRuleApplicableOnDay(r, d, config);
           });
           if (typeof maxVal === "number" && maxVal >= 0 && !overriddenMax && sdCounts[s] > maxVal) {
@@ -1840,7 +1858,7 @@ export function evaluateNurseSchedule(
       } else if (rule.enabled && rule.kind === "staffing_rule") {
         if (!config.enforceSkillCoverage) continue;
         if (!isStaffingRuleApplicableOnDay(rule, d, config)) continue;
-        const targetShifts: ShiftCode[] = rule.shifts?.length ? rule.shifts : ["D"];
+        const targetShifts: ShiftCode[] = rule.shifts ?? [];
         const attr = rule.attribute ?? "all";
         const matchedNurses = nurses.filter((n) =>
           doesNurseMatchAttribute(n, attr, activeSkillDefs)
@@ -2187,7 +2205,7 @@ export function evaluateNurseSchedule(
 
     // 36協定（時間外労働月間年間累計）
     const estMonthOvertimeHours = computeNurseMonthOvertimeHours(counts, customShiftDefs);
-    const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 180;
+    const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 0;
     const projectedAnnualOvertimeHours =
       Math.round((prev11Hours + estMonthOvertimeHours) * 10) / 10;
     const remainingAnnual36Hours =
@@ -2660,7 +2678,7 @@ function buildAggregateMonthlyHiGHSModel(
     const baseOden = getBaseOdenShift(cs.code, customShiftDefs);
     for (const nurse of nurses) {
       const forbidByContract =
-        Boolean(nurse.forbiddenShifts?.includes(cs.code)) ||
+        Boolean(nurse.forbiddenShifts?.includes(cs.code as ActiveShiftCode)) ||
         (baseOden !== "O" && Boolean(nurse.forbiddenShifts?.includes(baseOden))) ||
         (!nurse.nightOk && (baseOden === "E" || baseOden === "N"));
       aggCustom[cs.code][nurse.id] = m.continuous(`aggC_${cs.code}_${nurse.id}`, {
@@ -2754,7 +2772,7 @@ function buildAggregateMonthlyHiGHSModel(
     });
 
     if (typeof nurse.maxMonthlyWorkDays === "number") {
-      const maxContractWork = Math.max(0, nurse.maxMonthlyWorkDays);
+      const maxContractWork = nurse.maxMonthlyWorkDays;
       addTracked(
         expr`${sum(nurseWorkVars)} <= ${maxContractWork}`,
         {
@@ -2792,7 +2810,12 @@ function buildAggregateMonthlyHiGHSModel(
               r.isHard !== false &&
               r.kind === "pin_shift" &&
               r.nurseId === nurse.id &&
-              Boolean(r.shift && getBaseOdenShift(r.shift, customShiftDefs) === "O") &&
+              Boolean(
+                r.shift &&
+                  resolveShiftSelector(r.shift, state).every(
+                    (c) => getBaseOdenShift(c, customShiftDefs) === "O"
+                  )
+              ) &&
               typeof r.day === "number"
           )
           .map((r) => r.day!)
@@ -2821,7 +2844,12 @@ function buildAggregateMonthlyHiGHSModel(
               r.isHard !== false &&
               r.kind === "pin_shift" &&
               r.nurseId === nurse.id &&
-              Boolean(r.shift && getBaseOdenShift(r.shift, customShiftDefs) !== "O") &&
+              Boolean(
+                r.shift &&
+                  resolveShiftSelector(r.shift, state).every(
+                    (c) => getBaseOdenShift(c, customShiftDefs) !== "O"
+                  )
+              ) &&
               typeof r.day === "number"
           )
           .map((r) => r.day!)
@@ -2888,7 +2916,7 @@ function buildAggregateMonthlyHiGHSModel(
     }
 
     if (config.enforce36Agreement) {
-      const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 180;
+      const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 0;
       const remainingAnnualHours = Math.max(0, config.maxAnnualOvertimeHours - prev11Hours);
       const effectiveOvertimeCap = Math.min(config.maxMonthlyOvertimeHours, remainingAnnualHours);
       const aggExcess = m.continuous(`aggEx_${nurse.id}`, { lb: 0 });
@@ -3044,7 +3072,7 @@ function collectViolatedSlacks(
 export async function diagnoseNurseScheduleWithHiGHS(
   state: NurseSchedulingState,
   options?: { assumeInfeasibleFromMip?: boolean; signal?: AbortSignal }
-): Promise<{ status: string; conflicts: ConstraintMeta[]; rawNames: string[] }> {
+): Promise<{ status: "Sat" | "Unsat"; conflicts: ConstraintMeta[]; rawNames: string[] }> {
   // Determine candidate active days (boundary days + days with custom rules + date spans + days with multiple hard requests)
   const candidateDays = new Set<number>([1, 2, 3]);
   const addDayWithNeighbors = (d: number) => {
@@ -3196,17 +3224,10 @@ export async function diagnoseNurseScheduleWithHiGHS(
   }
 
   if (options?.assumeInfeasibleFromMip) {
-    const c = state.config;
-    const unisolatedConflict: ConstraintMeta = {
-      name: "coupled_consec_and_transitions",
-      category: "consecutive",
-      labelJa: `複数制約\u306E複合競合（候補: 最大${c.maxConsecutiveWorkDays}連勤制限\u30FB\u30B7\u30D5\u30C8遷移\u30EB\u30FC\u30EB\u30FB月間公休${c.minMonthlyDaysOff}日以上\u306E組\u307F合\u308F\u305B）`,
-      relaxSuggestion: `最大連続勤務日数（現在:${c.maxConsecutiveWorkDays}日）\u307E\u305F\u306F日別\u306E必要人数\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
-    };
     return {
       status: "Unsat",
-      conflicts: [unisolatedConflict],
-      rawNames: [unisolatedConflict.name],
+      conflicts: [],
+      rawNames: [],
     };
   }
 
@@ -3290,11 +3311,14 @@ export async function solveNurseScheduleWithWashi(
       numVariables: 0,
       numConstraints: 0,
       objectiveValue: 0,
+      validatedByWashi: true,
+      maxViolation: 0,
       schedule: emptySchedule,
       evaluation: evaluateNurseSchedule(state, emptySchedule),
-      conflictAnalysis: null,
-      washiCodePreview: "// (\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059。\u30B5\u30F3\u30D7\u30EB生成\u307E\u305F\u306FCSV\u30A4\u30F3\u30DD\u30FC\u30C8\u3092行\u3063\u3066\u304F\u3060\u3055\u3044。)",
+      modelCodePreview: "// (\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059。\u30B5\u30F3\u30D7\u30EB生成\u307E\u305F\u306FCSV\u30A4\u30F3\u30DD\u30FC\u30C8\u3092行\u3063\u3066\u304F\u3060\u3055\u3044。)",
       lpPreview: "// (Empty model)",
+      conflicts: [],
+      rawConflictNames: [],
     };
   }
   const useRefSchedule =
@@ -3440,9 +3464,9 @@ export async function solveNurseScheduleWithWashi(
         evaluation: null,
         lpPreview,
         modelCodePreview,
-        conflicts: Array.from(constraintMeta.values()).slice(0, 5),
+        conflicts: [],
         rawConflictNames: [],
-        errorMessage: diagErr?.message,
+        errorMessage: diagErr?.message ?? String(diagErr),
       };
     }
   }

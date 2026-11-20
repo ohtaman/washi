@@ -32,8 +32,11 @@ import {
   type NurseSchedulingState,
   type NurseSkill,
   type ParsedChatPlan,
+  type ShiftAliasDef,
   type ShiftCode,
   type SkillDefinition,
+  type WardBooleanRuleName,
+  type WardNumericParamName,
   type WashiSolveOutcome,
 } from "./types.js";
 
@@ -286,6 +289,7 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_custom_shift",
             {
               shiftName: { type: "string" },
+              shortLabel: { type: "string" },
               baseShift: { type: "string", enum: ["D", "E", "N", "O"] },
             },
             ["shiftName"]
@@ -1282,44 +1286,50 @@ export function verifyExecutionAgainstRequest(params: {
   };
 }
 
-function resolveDaysFromToolArgs(a: Record<string, any>, numDays: number): number[] {
-  if (typeof a.startDay === "number" || typeof a.endDay === "number") {
-    const rawS =
-      typeof a.startDay === "number"
-        ? a.startDay
-        : typeof a.day === "number"
-          ? a.day
-          : 1;
-    const rawE =
-      typeof a.endDay === "number"
-        ? a.endDay
-        : typeof a.day === "number"
-          ? a.day
-          : numDays;
-    const start = Math.max(1, Math.min(numDays, Math.round(Math.min(rawS, rawE))));
-    const end = Math.max(1, Math.min(numDays, Math.round(Math.max(rawS, rawE))));
+function resolveDaysFromToolArgs(
+  a: Record<string, any>,
+  numDays: number,
+  mode: "day" | "range"
+): number[] {
+  if (mode === "range") {
+    if (a.day !== undefined) return [];
+    const s = a.startDay;
+    const e = a.endDay;
+    if (
+      typeof s !== "number" ||
+      typeof e !== "number" ||
+      !Number.isInteger(s) ||
+      !Number.isInteger(e) ||
+      s < 1 ||
+      e > numDays ||
+      s > e
+    ) {
+      return [];
+    }
     const out: number[] = [];
-    for (let d = start; d <= end; d++) out.push(d);
+    for (let d = s; d <= e; d++) out.push(d);
     return out;
   }
-  if (typeof a.day === "number" && a.day >= 1 && a.day <= numDays) {
-    return [Math.round(a.day)];
+  if (a.startDay !== undefined || a.endDay !== undefined) return [];
+  const d = a.day;
+  if (typeof d !== "number" || !Number.isInteger(d) || d < 1 || d > numDays) {
+    return [];
   }
-  return [];
+  return [d];
 }
 
 function normalizeActiveShifts(
   raw: unknown,
   state?: NurseSchedulingState
 ): ShiftCode[] | null | undefined {
-  if (!Array.isArray(raw)) return undefined;
-  const items = raw
-    .map((s) => String(s ?? "").trim())
-    .filter((s) => s.length > 0);
-  if (items.length === 0) return undefined;
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
 
   const resolved: ShiftCode[] = [];
-  for (const item of items) {
+  for (const rawItem of raw) {
+    if (typeof rawItem !== "string") return null;
+    const item = rawItem.trim();
+    if (!item) return null;
     if (/^night_both$|夜勤両方|準夜\u30FB深夜/i.test(item)) {
       resolved.push("E", "N");
       continue;
@@ -1328,7 +1338,7 @@ function normalizeActiveShifts(
     if (!code) return null;
     resolved.push(code);
   }
-  return resolved.length > 0 ? Array.from(new Set(resolved)) : undefined;
+  return resolved.length > 0 ? Array.from(new Set(resolved)) : null;
 }
 
 function resolveTargetShiftsFromArg(
@@ -1350,7 +1360,8 @@ function resolveTargetShiftsFromArg(
       shifts: fromArray,
     };
   }
-  const s = String(rawTargetShift || "")
+  if (typeof rawTargetShift !== "string") return null;
+  const s = rawTargetShift
     .trim()
     .replace(/^[「『]|[」』]$/g, "")
     .replace(/\u30B7\u30D5\u30C8$/g, "")
@@ -1373,12 +1384,7 @@ function resolveTargetShiftsFromArg(
   }
   const customDefs = state?.customShiftDefs ?? [];
   const existing = customDefs.find(
-    (d) =>
-      d.code === s ||
-      d.label === s ||
-      d.shortLabel === s ||
-      d.label.includes(s) ||
-      s.includes(d.label)
+    (d) => d.code === s || d.label === s || d.shortLabel === s
   );
   if (existing) {
     return { targetShift: existing.code, shifts: [existing.code] };
@@ -1397,13 +1403,13 @@ function resolveShiftCodeOrAliasFromInput(
   rawShift: unknown,
   state?: NurseSchedulingState
 ): ShiftCode | null {
-  if (!rawShift) return "O";
-  const s = String(rawShift)
+  if (typeof rawShift !== "string") return null;
+  const s = rawShift
     .trim()
     .replace(/^[「『]|[」』]$/g, "")
     .replace(/\u30B7\u30D5\u30C8$/g, "")
     .trim();
-  if (!s) return "O";
+  if (!s) return null;
   if (
     s === "O" ||
     s === "W" ||
@@ -1423,13 +1429,7 @@ function resolveShiftCodeOrAliasFromInput(
 
   const customDefs = state?.customShiftDefs ?? [];
   for (const cs of customDefs) {
-    if (
-      cs.code === s ||
-      cs.label === s ||
-      cs.shortLabel === s ||
-      cs.label.includes(s) ||
-      s.includes(cs.label)
-    ) {
+    if (cs.code === s || cs.label === s || cs.shortLabel === s) {
       return cs.code;
     }
   }
@@ -1439,6 +1439,39 @@ function resolveShiftCodeOrAliasFromInput(
     }
   }
   return null;
+}
+
+const VALID_WARD_NUMERIC_PARAMS: ReadonlySet<WardNumericParamName> = new Set([
+  "weekdayDayStaff",
+  "weekendDayStaff",
+  "eveningStaff",
+  "nightStaff",
+  "maxConsecutiveWorkDays",
+  "minMonthlyDaysOff",
+  "minMonthlyWorkDays",
+  "maxMonthlyNightShifts",
+  "maxMonthlyOvertimeHours",
+  "maxAnnualOvertimeHours",
+  "staffCount",
+]);
+
+function isWardNumericParamName(val: unknown): val is WardNumericParamName {
+  return typeof val === "string" && VALID_WARD_NUMERIC_PARAMS.has(val as WardNumericParamName);
+}
+
+const VALID_WARD_BOOLEAN_RULES: ReadonlySet<WardBooleanRuleName> = new Set([
+  "enforcePrevMonthCarryover",
+  "enforceSkillCoverage",
+  "enforcePreceptorPairs",
+  "requireWeekendOff",
+  "enforceNgPairs",
+  "enforceHardRequests",
+  "enforce36Agreement",
+  "preserveCurrentSchedule",
+]);
+
+function isWardBooleanRuleName(val: unknown): val is WardBooleanRuleName {
+  return typeof val === "string" && VALID_WARD_BOOLEAN_RULES.has(val as WardBooleanRuleName);
 }
 
 /**
@@ -1459,14 +1492,30 @@ export function convertStage2ToolToOperation(
   switch (name) {
     case "add_custom_shift": {
       if (!rawShiftName) return null;
-      const baseShift: BaseShiftCode | undefined =
-        a.baseShift === "D" || a.baseShift === "E" || a.baseShift === "N" || a.baseShift === "O"
-          ? a.baseShift
-          : undefined;
+      let baseShift: BaseShiftCode | undefined;
+      if (a.baseShift !== undefined) {
+        if (
+          a.baseShift === "D" ||
+          a.baseShift === "E" ||
+          a.baseShift === "N" ||
+          a.baseShift === "O"
+        ) {
+          baseShift = a.baseShift;
+        } else {
+          return null;
+        }
+      }
+      let shortLabel: string | undefined;
+      if (a.shortLabel !== undefined) {
+        if (typeof a.shortLabel !== "string" || a.shortLabel.trim().length === 0) {
+          return null;
+        }
+        shortLabel = a.shortLabel.trim();
+      }
       return {
         op: "add_custom_shift",
         shiftName: rawShiftName,
-        shortLabel: typeof a.shortLabel === "string" ? a.shortLabel : undefined,
+        shortLabel,
         baseShift,
       };
     }
@@ -1477,36 +1526,22 @@ export function convertStage2ToolToOperation(
         typeof a.attribute === "string" && a.attribute.trim().length > 0
           ? a.attribute.trim()
           : undefined;
-      let attribute: string | undefined;
-      if (rawTargetAttr) {
-        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      if (!rawTargetAttr) return null;
+      const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+      const attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      if (
+        typeof a.count !== "number" ||
+        !Number.isInteger(a.count) ||
+        a.count < 0
+      ) {
+        return null;
       }
-      const nurseNameOrId =
-        typeof a.nurseNameOrId === "string" && a.nurseNameOrId.trim().length > 0
-          ? a.nurseNameOrId.trim()
-          : undefined;
-      if (!attribute && !nurseNameOrId) return null;
-      const minCount =
-        typeof a.minCount === "number"
-          ? a.minCount
-          : typeof a.count === "number"
-            ? a.count
-            : undefined;
-      const maxCount =
-        typeof a.maxCount === "number"
-          ? a.maxCount
-          : typeof a.count === "number"
-            ? a.count
-            : undefined;
-      if (minCount === undefined && maxCount === undefined) return null;
       return {
         op: "add_shift_quota",
         shiftName: rawShiftName,
-        nurseNameOrId,
         attribute,
-        minCount,
-        maxCount,
+        minCount: a.count,
+        maxCount: a.count,
       };
     }
     case "add_shift_prerequisite": {
@@ -1516,98 +1551,86 @@ export function convertStage2ToolToOperation(
         typeof a.attribute === "string" && a.attribute.trim().length > 0
           ? a.attribute.trim()
           : undefined;
-      let attribute: string | undefined;
-      if (rawTargetAttr) {
-        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      if (!rawTargetAttr) return null;
+      const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+      const attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      if (
+        typeof a.count !== "number" ||
+        !Number.isInteger(a.count) ||
+        a.count < 1
+      ) {
+        return null;
       }
-      const cnt =
-        typeof a.count === "number"
-          ? a.count
-          : typeof a.prereqMinCount === "number"
-            ? a.prereqMinCount
-            : undefined;
-      if (!attribute || cnt === undefined) return null;
-      const restrictedShifts = normalizeActiveShifts(a.restrictedShifts, state);
-      if (restrictedShifts === null) return null;
       return {
         op: "add_shift_prerequisite",
         shiftName: rawShiftName,
         attribute,
-        prereqMinCount: cnt,
-        restrictedShifts: restrictedShifts ?? ["E", "N"],
+        prereqMinCount: a.count,
+        restrictedShifts: ["E", "N"],
       };
     }
     case "add_shift_day_restriction": {
       if (!rawShiftName) return null;
-      const hasDateRange = typeof a.startDay === "number" || typeof a.endDay === "number";
-      const rawStart =
-        typeof a.startDay === "number"
-          ? a.startDay
-          : typeof a.endDay === "number"
-            ? a.endDay
-            : undefined;
-      const rawEnd =
-        typeof a.endDay === "number"
-          ? a.endDay
-          : typeof a.startDay === "number"
-            ? a.startDay
-            : undefined;
-      const allowedDays =
-        a.dayRestriction === "weekend_only"
-          ? [0, 6]
-          : a.dayRestriction === "weekday_only"
-            ? [1, 2, 3, 4, 5]
-            : undefined;
-      if (!hasDateRange && !allowedDays) return null;
+      const hasDateArg = a.startDay !== undefined || a.endDay !== undefined;
+      let startDay: number | undefined;
+      let endDay: number | undefined;
+      if (hasDateArg) {
+        if (
+          typeof a.startDay !== "number" ||
+          typeof a.endDay !== "number" ||
+          !Number.isInteger(a.startDay) ||
+          !Number.isInteger(a.endDay) ||
+          a.startDay < 1 ||
+          a.endDay > state.config.numDays ||
+          a.startDay > a.endDay
+        ) {
+          return null;
+        }
+        startDay = a.startDay;
+        endDay = a.endDay;
+      }
+      let allowedDays: number[] | undefined;
+      if (a.dayRestriction !== undefined) {
+        if (a.dayRestriction === "weekend_only") {
+          allowedDays = [0, 6];
+        } else if (a.dayRestriction === "weekday_only") {
+          allowedDays = [1, 2, 3, 4, 5];
+        } else {
+          return null;
+        }
+      }
+      if (!hasDateArg && !allowedDays) return null;
       return {
         op: "add_shift_day_restriction",
         shiftName: rawShiftName,
         allowedDaysOfWeek: allowedDays,
-        startDay: rawStart !== undefined ? Math.min(rawStart, rawEnd!) : undefined,
-        endDay: rawEnd !== undefined ? Math.max(rawStart!, rawEnd) : undefined,
+        startDay,
+        endDay,
       };
     }
     case "add_daily_shift_cap": {
       if (!rawShiftName) return null;
-      let minStaff: number | undefined;
-      let maxStaff: number | undefined;
-      if (typeof a.staffCount === "number") {
-        const cnt = a.staffCount;
-        if (a.boundType === "exact") {
-          minStaff = cnt;
-          maxStaff = cnt;
-        } else if (a.boundType === "min") {
-          minStaff = cnt;
-        } else {
-          maxStaff = cnt;
-        }
-      } else {
-        const rawMin =
-          typeof a.minStaffPerDay === "number"
-            ? a.minStaffPerDay
-            : typeof a.minStaff === "number"
-              ? a.minStaff
-              : undefined;
-        minStaff = rawMin !== undefined && rawMin > 0 ? rawMin : undefined;
-        maxStaff =
-          typeof a.maxStaffPerDay === "number"
-            ? a.maxStaffPerDay
-            : typeof a.maxStaff === "number"
-              ? a.maxStaff
-              : undefined;
-      }
-      if (minStaff === undefined && maxStaff === undefined) return null;
-      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const rawTargetAttr =
         typeof a.attribute === "string" && a.attribute.trim().length > 0
           ? a.attribute.trim()
           : undefined;
-      let attribute: string | undefined;
-      if (rawTargetAttr) {
-        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      if (!rawTargetAttr) return null;
+      if (a.boundType !== "exact" && a.boundType !== "max" && a.boundType !== "min") {
+        return null;
       }
+      if (
+        typeof a.staffCount !== "number" ||
+        !Number.isInteger(a.staffCount) ||
+        a.staffCount < 0
+      ) {
+        return null;
+      }
+      const cnt = a.staffCount;
+      const minStaff = a.boundType === "exact" || a.boundType === "min" ? cnt : undefined;
+      const maxStaff = a.boundType === "exact" || a.boundType === "max" ? cnt : undefined;
+      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+      const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+      const attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
       return {
         op: "add_daily_shift_cap",
         shiftName: rawShiftName,
@@ -1624,98 +1647,147 @@ export function convertStage2ToolToOperation(
         includePrevMonth: true,
       };
     case "level_night_shifts":
+      if (a.groupBy !== "skill" && a.groupBy !== "all") return null;
       return {
         op: "level_night_shifts",
-        levelGroupBy: a.groupBy === "all" ? "all" : "skill",
+        levelGroupBy: a.groupBy,
       };
     case "none":
       return null;
     case "add_ng_pair": {
-      if (!a.nurseA || !a.nurseB) return null;
+      if (
+        typeof a.nurseA !== "string" ||
+        a.nurseA.trim().length === 0 ||
+        typeof a.nurseB !== "string" ||
+        a.nurseB.trim().length === 0
+      ) {
+        return null;
+      }
       const shifts = normalizeActiveShifts(a.shifts, state);
       if (shifts === null) return null;
       return {
         op: "add_ng_pair",
-        nurseNameOrId: String(a.nurseA),
-        nurseBNameOrId: String(a.nurseB),
-        shifts,
+        nurseNameOrId: a.nurseA.trim(),
+        nurseBNameOrId: a.nurseB.trim(),
+        shifts: shifts ?? ["E", "N"],
       };
     }
     case "add_preceptor_pair": {
-      if (!a.newcomerNurse || !a.mentorNurse) return null;
+      if (
+        typeof a.newcomerNurse !== "string" ||
+        a.newcomerNurse.trim().length === 0 ||
+        typeof a.mentorNurse !== "string" ||
+        a.mentorNurse.trim().length === 0
+      ) {
+        return null;
+      }
       const shifts = normalizeActiveShifts(a.shifts, state);
       if (shifts === null) return null;
       return {
         op: "add_preceptor_pair",
-        nurseNameOrId: String(a.newcomerNurse),
-        nurseBNameOrId: String(a.mentorNurse),
-        shifts,
+        nurseNameOrId: a.newcomerNurse.trim(),
+        nurseBNameOrId: a.mentorNurse.trim(),
+        shifts: shifts ?? ["E", "N"],
       };
     }
     case "add_skill_def": {
-      if (!a.skillName) return null;
+      if (typeof a.skillName !== "string" || a.skillName.trim().length === 0) return null;
+      for (const boundVal of [a.minDay, a.minEvening, a.minNight]) {
+        if (
+          boundVal !== undefined &&
+          (typeof boundVal !== "number" || !Number.isInteger(boundVal) || boundVal < 0)
+        ) {
+          return null;
+        }
+      }
       let substitutesFor: NurseSkill | undefined;
-      if (typeof a.substitutesFor === "string" && a.substitutesFor.trim()) {
+      if (a.substitutesFor !== undefined) {
+        if (typeof a.substitutesFor !== "string" || a.substitutesFor.trim().length === 0) {
+          return null;
+        }
         const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
         substitutesFor = inferSkillCodeAndLabel(a.substitutesFor, activeSkills).code;
       }
       return {
         op: "add_skill_def",
-        skillName: String(a.skillName).trim(),
+        skillName: a.skillName.trim(),
         substitutesFor,
-        skillMinDay: typeof a.minDay === "number" ? a.minDay : undefined,
-        skillMinEvening: typeof a.minEvening === "number" ? a.minEvening : undefined,
-        skillMinNight: typeof a.minNight === "number" ? a.minNight : undefined,
+        skillMinDay: a.minDay,
+        skillMinEvening: a.minEvening,
+        skillMinNight: a.minNight,
       };
     }
     case "remove_skill_def":
-      if (!a.skillName) return null;
+      if (typeof a.skillName !== "string" || a.skillName.trim().length === 0) return null;
       return {
         op: "remove_skill_def",
-        skillName: String(a.skillName).trim(),
+        skillName: a.skillName.trim(),
       };
     case "update_nurse_skill": {
-      if (!a.skillName) return null;
-      const rawTarget = String(a.target || "").trim();
+      if (
+        typeof a.skillName !== "string" ||
+        a.skillName.trim().length === 0 ||
+        typeof a.target !== "string" ||
+        a.target.trim().length === 0 ||
+        (a.action !== "add" && a.action !== "remove")
+      ) {
+        return null;
+      }
+      const rawTarget = a.target.trim();
       let attribute: string | undefined;
       let nurseNameOrId: string | undefined;
-      if (rawTarget) {
-        if (/^全員$|^all$|^全$/i.test(rawTarget)) {
-          attribute = "all";
+      if (/^全員$|^all$|^全$/i.test(rawTarget)) {
+        attribute = "all";
+      } else {
+        const cleanedAttr = rawTarget
+          .replace(/\u30B9\u30BF\u30C3\u30D5|看護師|全員|層|\u305F\u3061/g, "")
+          .trim();
+        const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+        const resolved = resolveAttributeCodeAndLabel(cleanedAttr || rawTarget, activeSkills);
+        if (!resolved.isUnknownCustomSkill && !resolveNurseFromText(rawTarget, state.nurses)) {
+          attribute = resolved.code;
         } else {
-          const cleanedAttr = rawTarget.replace(/\u30B9\u30BF\u30C3\u30D5|看護師|全員|層|\u305F\u3061/g, "").trim();
-          const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
-          const resolved = resolveAttributeCodeAndLabel(cleanedAttr || rawTarget, activeSkills);
-          if (!resolved.isUnknownCustomSkill && !resolveNurseFromText(rawTarget, state.nurses)) {
-            attribute = resolved.code;
-          } else {
-            nurseNameOrId = rawTarget;
-          }
+          nurseNameOrId = rawTarget;
         }
       }
       return {
         op: "update_nurse_skill",
-        skillName: String(a.skillName).trim(),
-        skillAction: a.action === "remove" ? "remove" : "add",
+        skillName: a.skillName.trim(),
+        skillAction: a.action,
         nurseNameOrId,
         attribute,
       };
     }
     case "set_staffing_rule": {
-      if (!a.attribute && !a.skillName) return null;
-      const rawAttr = String(a.attribute || a.skillName || "all").trim();
+      if (
+        typeof a.attribute !== "string" ||
+        a.attribute.trim().length === 0 ||
+        typeof a.targetShift !== "string" ||
+        a.targetShift.trim().length === 0
+      ) {
+        return null;
+      }
+      const rawAttr = a.attribute.trim();
       const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const attrValue = resolvedAttr.isUnknownCustomSkill ? rawAttr : resolvedAttr.code;
-      const resolvedTarget = resolveTargetShiftsFromArg(
-        a.targetShift || a.shiftName || a.shift,
-        a.shifts,
-        state
-      );
+      const resolvedTarget = resolveTargetShiftsFromArg(a.targetShift, undefined, state);
       if (!resolvedTarget) return null;
       const { targetShift, shifts } = resolvedTarget;
-      const minCount = typeof a.minCount === "number" ? a.minCount : undefined;
-      const maxCount = typeof a.maxCount === "number" ? a.maxCount : undefined;
+      if (
+        a.minCount !== undefined &&
+        (typeof a.minCount !== "number" || !Number.isInteger(a.minCount) || a.minCount < 0)
+      ) {
+        return null;
+      }
+      if (
+        a.maxCount !== undefined &&
+        (typeof a.maxCount !== "number" || !Number.isInteger(a.maxCount) || a.maxCount < 0)
+      ) {
+        return null;
+      }
+      const minCount = a.minCount;
+      const maxCount = a.maxCount;
       if (minCount === undefined && maxCount === undefined) return null;
 
       return {
@@ -1728,9 +1800,14 @@ export function convertStage2ToolToOperation(
       };
     }
     case "set_nurse_contract": {
-      if (!a.nurseNameOrId) return null;
-      const item = typeof a.item === "string" ? a.item : undefined;
-      const val = typeof a.value === "number" ? a.value : undefined;
+      if (
+        typeof a.nurseNameOrId !== "string" ||
+        a.nurseNameOrId.trim().length === 0 ||
+        typeof a.item !== "string"
+      ) {
+        return null;
+      }
+      const item = a.item;
       const isDayShiftOnly = item === "dayShiftOnly" || item === "日勤専従";
       const isNightShiftOnly = item === "nightShiftOnly" || item === "夜勤専従";
       const isForbidLateNight = item === "forbidLateNight" || item === "深夜勤免除";
@@ -1745,18 +1822,29 @@ export function convertStage2ToolToOperation(
       const isMaxWorkDays = item === "maxWorkDays" || item === "月間最大勤務日数";
       const isMaxConsecDays = item === "maxConsecutiveDays" || item === "最大連勤日数";
 
-      if (
-        (isMaxNight || isMinDaysOff || isMinWorkDays || isMaxWorkDays || isMaxConsecDays) &&
-        val === undefined
-      ) {
+      const isNumericItem =
+        isMaxNight || isMinDaysOff || isMinWorkDays || isMaxWorkDays || isMaxConsecDays;
+      const isBooleanItem =
+        isDayShiftOnly ||
+        isNightShiftOnly ||
+        isForbidLateNight ||
+        isForbidEvening ||
+        isWeekdayOnly ||
+        isAllowAll;
+      if (!isNumericItem && !isBooleanItem) {
         return null;
       }
-
-      const rawForbiddenShifts =
-        isNightShiftOnly || isForbidLateNight || isForbidEvening || isAllowAll || isDayShiftOnly
-          ? undefined
-          : normalizeActiveShifts(a.forbiddenShifts, state);
-      if (rawForbiddenShifts === null) return null;
+      if (isNumericItem) {
+        const minAllowed = isMaxConsecDays ? 1 : 0;
+        if (
+          typeof a.value !== "number" ||
+          !Number.isInteger(a.value) ||
+          a.value < minAllowed
+        ) {
+          return null;
+        }
+      }
+      const val = typeof a.value === "number" ? a.value : undefined;
       const forbiddenShifts: ActiveShiftCode[] | undefined =
         isNightShiftOnly
           ? ["D"]
@@ -1766,65 +1854,30 @@ export function convertStage2ToolToOperation(
               ? ["E"]
               : isAllowAll || isDayShiftOnly
                 ? []
-                : rawForbiddenShifts?.filter(
-                    (s): s is ActiveShiftCode => s === "D" || s === "E" || s === "N"
-                  );
+                : undefined;
       return {
         op: "set_nurse_contract",
-        nurseNameOrId: String(a.nurseNameOrId),
+        nurseNameOrId: a.nurseNameOrId.trim(),
         resetContract: isAllowAll ? true : undefined,
-        nightOk:
-          isDayShiftOnly
-            ? false
-            : isAllowAll || isNightShiftOnly
-              ? true
-              : typeof a.nightOk === "boolean"
-                ? a.nightOk
-                : undefined,
-        maxMonthlyNightShifts:
-          isMaxNight
-            ? val
-            : typeof a.maxNight === "number"
-              ? a.maxNight
-              : undefined,
-        minMonthlyDaysOff:
-          isMinDaysOff
-            ? val
-            : typeof a.minDaysOff === "number"
-              ? a.minDaysOff
-              : undefined,
-        minMonthlyWorkDays:
-          isMinWorkDays
-            ? val
-            : typeof a.minWorkDays === "number"
-              ? a.minWorkDays
-              : undefined,
-        maxMonthlyWorkDays:
-          isMaxWorkDays
-            ? val
-            : typeof a.maxWorkDays === "number"
-              ? a.maxWorkDays
-              : undefined,
-        maxConsecutiveWorkDays:
-          isMaxConsecDays
-            ? val
-            : typeof a.maxConsecutiveDays === "number"
-              ? a.maxConsecutiveDays
-              : undefined,
+        nightOk: isDayShiftOnly ? false : isAllowAll || isNightShiftOnly ? true : undefined,
+        maxMonthlyNightShifts: isMaxNight ? val : undefined,
+        minMonthlyDaysOff: isMinDaysOff ? val : undefined,
+        minMonthlyWorkDays: isMinWorkDays ? val : undefined,
+        maxMonthlyWorkDays: isMaxWorkDays ? val : undefined,
+        maxConsecutiveWorkDays: isMaxConsecDays ? val : undefined,
         forbiddenShifts,
-        weekdayOnly:
-          isWeekdayOnly
-            ? true
-            : isAllowAll
-              ? false
-              : typeof a.weekdayOnly === "boolean"
-                ? a.weekdayOnly
-                : undefined,
+        weekdayOnly: isWeekdayOnly ? true : isAllowAll ? false : undefined,
         holidaysOff: isHolidaysOff ? true : isAllowAll ? false : undefined,
       };
     }
     case "set_shift_transition": {
-      if (!a.fromShift || !a.toShift || !a.policy) return null;
+      if (
+        (a.fromShift !== "D" && a.fromShift !== "E" && a.fromShift !== "N") ||
+        (a.toShift !== "D" && a.toShift !== "E" && a.toShift !== "N" && a.toShift !== "O") ||
+        (a.policy !== "forbid" && a.policy !== "allow" && a.policy !== "require")
+      ) {
+        return null;
+      }
       return {
         op: "set_shift_transition",
         fromShift: a.fromShift,
@@ -1839,24 +1892,47 @@ export function convertStage2ToolToOperation(
     case "reset_default":
       return { op: "reset_default" };
     case "add_request_day":
-    case "add_request":
     case "add_request_range": {
-      if (!a.nurseNameOrId) return null;
-      const days = resolveDaysFromToolArgs(a, state.config.numDays);
+      if (typeof a.nurseNameOrId !== "string" || a.nurseNameOrId.trim().length === 0) {
+        return null;
+      }
+      if (typeof a.isHard !== "boolean") return null;
+      const days = resolveDaysFromToolArgs(
+        a,
+        state.config.numDays,
+        name === "add_request_range" ? "range" : "day"
+      );
       if (days.length === 0) return null;
       const shift = resolveShiftCodeOrAliasFromInput(a.shift, state);
       if (!shift) return null;
       return {
         op: "add_request",
-        nurseNameOrId: String(a.nurseNameOrId),
+        nurseNameOrId: a.nurseNameOrId.trim(),
         day: days[0],
         days: days.length > 1 ? days : undefined,
         shift,
-        isHard: a.isHard !== false,
+        isHard: a.isHard,
       };
     }
     case "add_calendar_request": {
-      if (!a.nurseNameOrId) return null;
+      if (typeof a.nurseNameOrId !== "string" || a.nurseNameOrId.trim().length === 0) {
+        return null;
+      }
+      if (!Array.isArray(a.daysOfWeek)) return null;
+      if (
+        a.onlyMatchedDaysWork !== undefined &&
+        typeof a.onlyMatchedDaysWork !== "boolean"
+      ) {
+        return null;
+      }
+      if (
+        a.holidays !== undefined &&
+        a.holidays !== "include" &&
+        a.holidays !== "exclude" &&
+        a.holidays !== "only"
+      ) {
+        return null;
+      }
       const shift = resolveShiftCodeOrAliasFromInput(a.shift, state);
       if (!shift) return null;
       const dowMap: Record<string, number> = {
@@ -1868,10 +1944,16 @@ export function convertStage2ToolToOperation(
         金: 5,
         土: 6,
       };
-      const rawDows: string[] = Array.isArray(a.daysOfWeek) ? a.daysOfWeek : [];
-      const mappedDows = rawDows
-        .map((k) => dowMap[String(k).replace(/曜日?$/, "")] ?? -1)
-        .filter((d) => d >= 0 && d <= 6);
+      const mappedDows: number[] = [];
+      const rawDows: string[] = [];
+      for (const rawDow of a.daysOfWeek) {
+        if (typeof rawDow !== "string") return null;
+        const cleaned = rawDow.trim().replace(/曜日?$/, "");
+        const idx = dowMap[cleaned];
+        if (idx === undefined) return null;
+        rawDows.push(cleaned);
+        mappedDows.push(idx);
+      }
       const holMode = a.holidays;
       const effectiveHolMode =
         holMode === "only" || (mappedDows.length === 0 && holMode === "include")
@@ -1905,7 +1987,7 @@ export function convertStage2ToolToOperation(
       const reason = `${dowLabel}${holLabel}${onlyMatched ? "\u306E\u307F勤務" : "\u30AB\u30EC\u30F3\u30C0\u30FC指定"}`;
       return {
         op: "add_request",
-        nurseNameOrId: String(a.nurseNameOrId),
+        nurseNameOrId: a.nurseNameOrId.trim(),
         day: days[0],
         days: days.length > 1 ? days : undefined,
         shift,
@@ -1916,25 +1998,35 @@ export function convertStage2ToolToOperation(
       };
     }
     case "forbid_shift_day":
-    case "forbid_shift":
     case "forbid_shift_range": {
-      if (!a.nurseNameOrId) return null;
-      const days = resolveDaysFromToolArgs(a, state.config.numDays);
+      if (typeof a.nurseNameOrId !== "string" || a.nurseNameOrId.trim().length === 0) {
+        return null;
+      }
+      const days = resolveDaysFromToolArgs(
+        a,
+        state.config.numDays,
+        name === "forbid_shift_range" ? "range" : "day"
+      );
       if (days.length === 0) return null;
       const forbidShifts = normalizeActiveShifts(a.shifts, state);
-      if (forbidShifts === null) return null;
+      if (!forbidShifts || forbidShifts.length === 0) return null;
       return {
         op: "forbid_shift",
-        nurseNameOrId: String(a.nurseNameOrId),
+        nurseNameOrId: a.nurseNameOrId.trim(),
         day: days[0],
         days: days.length > 1 ? days : undefined,
-        forbidShifts: forbidShifts ?? ["E", "N"],
+        forbidShifts,
       };
     }
     case "add_date_coverage":
       if (
         typeof a.day !== "number" ||
+        !Number.isInteger(a.day) ||
+        a.day < 1 ||
+        a.day > state.config.numDays ||
         typeof a.minStaff !== "number" ||
+        !Number.isInteger(a.minStaff) ||
+        a.minStaff < 1 ||
         (a.shift !== "D" && a.shift !== "E" && a.shift !== "N")
       ) {
         return null;
@@ -1946,14 +2038,26 @@ export function convertStage2ToolToOperation(
         minStaff: a.minStaff,
       };
     case "set_param":
-      if (!a.paramName || typeof a.paramValue !== "number") return null;
+      if (
+        !isWardNumericParamName(a.paramName) ||
+        typeof a.paramValue !== "number" ||
+        !Number.isInteger(a.paramValue) ||
+        a.paramValue < 0
+      ) {
+        return null;
+      }
       return {
         op: "set_param",
         paramName: a.paramName,
         paramValue: a.paramValue,
       };
     case "toggle_rule":
-      if (!a.ruleName || typeof a.ruleEnabled !== "boolean") return null;
+      if (
+        !isWardBooleanRuleName(a.ruleName) ||
+        typeof a.ruleEnabled !== "boolean"
+      ) {
+        return null;
+      }
       return {
         op: "toggle_rule",
         ruleName: a.ruleName,
@@ -1995,9 +2099,6 @@ function getLanguageModelApi(): any | null {
   if (typeof self !== "undefined" && (self as any).LanguageModel) {
     return (self as any).LanguageModel;
   }
-  if (typeof window !== "undefined" && (window as any).ai?.languageModel) {
-    return (window as any).ai.languageModel;
-  }
   return null;
 }
 
@@ -2010,115 +2111,38 @@ function normalizeAvailabilityString(raw: unknown): GeminiNanoStatus | null {
 }
 
 /**
- * Checks whether Chrome Built-in AI (`LanguageModel`) is available on this device/browser.
- * Passes `expectedInputs` / `expectedOutputs` first (per Chrome 148+ Prompt API spec) and falls back
- * to no-arg `availability()` if the browser build does not accept language option objects yet.
+ * Checks whether Chrome Built-in AI (`LanguageModel`) is available on this device/browser
+ * using strict Prompt API `availability(LANGUAGE_MODEL_JA_OPTIONS)`.
  */
 export async function checkGeminiNanoAvailability(): Promise<GeminiNanoStatus> {
   const api = getLanguageModelApi();
-  if (!api) return "unavailable";
+  if (!api || typeof api.availability !== "function") return "unavailable";
 
-  if (typeof api.availability === "function") {
-    try {
-      const statusWithLang = normalizeAvailabilityString(
-        await api.availability(LANGUAGE_MODEL_JA_OPTIONS)
-      );
-      if (statusWithLang && statusWithLang !== "unavailable") {
-        return statusWithLang;
-      }
-    } catch {
-      // Fall through to no-arg availability check
-    }
-
-    try {
-      const statusDefault = normalizeAvailabilityString(await api.availability());
-      if (statusDefault) {
-        return statusDefault;
-      }
-    } catch (err) {
-      console.warn("LanguageModel.availability() check failed:", err);
-    }
+  try {
+    const statusWithLang = normalizeAvailabilityString(
+      await api.availability(LANGUAGE_MODEL_JA_OPTIONS)
+    );
+    return statusWithLang ?? "unavailable";
+  } catch (err) {
+    console.warn("LanguageModel.availability() check failed:", err);
+    return "unavailable";
   }
-
-  if (typeof api.capabilities === "function") {
-    try {
-      const caps = await api.capabilities();
-      const mapped = normalizeAvailabilityString(caps?.available);
-      if (mapped) return mapped;
-    } catch {
-      // Ignore legacy capabilities error
-    }
-  }
-
-  // If `LanguageModel.create` exists on global scope even when availability() had unexpected signature, allow trying on demand
-  if (typeof api.create === "function") {
-    return "available";
-  }
-
-  return "unavailable";
 }
 
-async function createLanguageModelSessionWithFallback(
+async function createLanguageModelSession(
   api: any,
   systemPrompt: string,
   monitorFn?: (m: any) => void
 ): Promise<any> {
-  const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
-
-  // 1a. Standard Chrome 148+ call with greedy decoding (topK: 1, temperature: 0.1) + Japanese language options
-  try {
-    return await api.create({
-      ...LANGUAGE_MODEL_JA_OPTIONS,
-      temperature: 0.1,
-      topK: 1,
-      initialPrompts: [{ role: "system", content: systemPrompt }],
-      ...baseWithMonitor,
-    });
-  } catch {
-    // 1b. Try temperature: 0, topK: 1
-    try {
-      return await api.create({
-        ...LANGUAGE_MODEL_JA_OPTIONS,
-        temperature: 0,
-        topK: 1,
-        initialPrompts: [{ role: "system", content: systemPrompt }],
-        ...baseWithMonitor,
-      });
-    } catch {
-      // 1c. Standard Chrome 148+ call without explicit temperature/topK
-      try {
-        return await api.create({
-          ...LANGUAGE_MODEL_JA_OPTIONS,
-          initialPrompts: [{ role: "system", content: systemPrompt }],
-          ...baseWithMonitor,
-        });
-      } catch {
-      // 2. Fallback: expectedOutputs ["ja"] without expectedInputs
-      try {
-        return await api.create({
-          expectedOutputs: [{ type: "text", languages: ["ja"] }],
-          initialPrompts: [{ role: "system", content: systemPrompt }],
-          ...baseWithMonitor,
-        });
-      } catch {
-        // 3. Fallback: initialPrompts only (without language tags)
-        try {
-          return await api.create({
-            initialPrompts: [{ role: "system", content: systemPrompt }],
-            ...baseWithMonitor,
-          });
-        } catch {
-          // 4. Final fallback: bare create()
-          return await api.create(baseWithMonitor);
-        }
-      }
-      }
-    }
-  }
+  return await api.create({
+    ...LANGUAGE_MODEL_JA_OPTIONS,
+    initialPrompts: [{ role: "system", content: systemPrompt }],
+    ...(monitorFn ? { monitor: monitorFn } : {}),
+  });
 }
 
 /**
- * Resolves a nurse by ID ("N01"), full name ("佐藤 美咲"), family name ("佐藤"), or kana.
+ * Resolves a nurse strictly by ID ("N01"), exact full name ("佐藤 美咲"), exact full kana, or unique family name.
  */
 export function resolveNurseFromText(
   query: string | undefined,
@@ -2142,21 +2166,17 @@ export function resolveNurseFromText(
     if (found) return found;
   }
 
-  for (const n of nurses) {
-    const noSpaceName = n.name.replace(/\s+/g, "");
-    const familyName = n.name.split(" ")[0];
-    const givenName = n.name.split(" ")[1] ?? "";
-    const noSpaceKana = n.kana.replace(/\s+/g, "");
-    if (
-      noSpaceName === cleaned ||
-      noSpaceName.includes(cleaned) ||
-      cleaned.includes(familyName) ||
-      (givenName && cleaned.includes(givenName)) ||
-      noSpaceKana.includes(cleaned)
-    ) {
-      return n;
-    }
-  }
+  const byExactName = nurses.filter((n) => n.name.replace(/\s+/g, "") === cleaned);
+  if (byExactName.length === 1) return byExactName[0]!;
+  if (byExactName.length > 1) return null;
+
+  const byExactKana = nurses.filter((n) => n.kana.replace(/\s+/g, "") === cleaned);
+  if (byExactKana.length === 1) return byExactKana[0]!;
+  if (byExactKana.length > 1) return null;
+
+  const byFamilyName = nurses.filter((n) => n.name.trim().split(/\s+/)[0] === cleaned);
+  if (byFamilyName.length === 1) return byFamilyName[0]!;
+
   return null;
 }
 
@@ -2398,7 +2418,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       throw new Error("Gemini Nano (LanguageModel API) \u304C利用\u3067\u304D\u307E\u305B\u3093。");
     }
     const cfg = STAGE2_CATEGORY_CONFIGS[category];
-    const s = await createLanguageModelSessionWithFallback(api, cfg.systemPrompt);
+    const s = await createLanguageModelSession(api, cfg.systemPrompt);
     stage2BaseSessions[category] = s;
     return s;
   }
@@ -2421,20 +2441,14 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     },
 
     async initialize(onProgress?: (pct: number) => void): Promise<GeminiNanoStatus> {
-      const availability = await checkGeminiNanoAvailability();
-      currentStatus = availability;
-
-      // Do not call create() when unavailable — the model cannot run on this device.
-      if (availability === "unavailable") {
-        return "unavailable";
-      }
-
       const api = getLanguageModelApi();
       if (!api || typeof api.create !== "function") {
         currentStatus = "unavailable";
         return "unavailable";
       }
 
+      const hadRouterBefore = Boolean(routerBaseSession);
+      const hadConsultBefore = Boolean(consultBaseSession);
       try {
         const monitorFn = (m: any) => {
           m?.addEventListener?.("downloadprogress", (e: any) => {
@@ -2448,7 +2462,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         };
 
         if (!routerBaseSession) {
-          routerBaseSession = await createLanguageModelSessionWithFallback(
+          routerBaseSession = await createLanguageModelSession(
             api,
             STAGE1_ROUTER_SYSTEM_PROMPT,
             monitorFn
@@ -2456,7 +2470,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
 
         if (!consultBaseSession) {
-          consultBaseSession = await createLanguageModelSessionWithFallback(
+          consultBaseSession = await createLanguageModelSession(
             api,
             CONSULT_SYSTEM_PROMPT,
             monitorFn
@@ -2464,19 +2478,30 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
 
         if (!activeConsultSession && consultBaseSession) {
-          activeConsultSession =
-            typeof consultBaseSession.clone === "function"
-              ? await consultBaseSession.clone()
-              : consultBaseSession;
+          if (typeof consultBaseSession.clone !== "function") {
+            throw new Error("LanguageModel consult session does not support clone().");
+          }
+          activeConsultSession = await consultBaseSession.clone();
         }
 
         currentStatus = "available";
         downloadProgress = 100;
         return "available";
       } catch (err) {
-        console.warn("Failed to initialize Gemini Nano session:", err);
-        currentStatus = await checkGeminiNanoAvailability();
-        return currentStatus;
+        if (!hadRouterBefore && routerBaseSession) {
+          try {
+            routerBaseSession.destroy?.();
+          } catch (_) {}
+          routerBaseSession = null;
+        }
+        if (!hadConsultBefore && consultBaseSession) {
+          try {
+            consultBaseSession.destroy?.();
+          } catch (_) {}
+          consultBaseSession = null;
+        }
+        currentStatus = "unavailable";
+        throw err;
       }
     },
 
@@ -2514,13 +2539,12 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         activeLabel: "⏳ 指示\u3092解析\u3057\u3066\u3044\u307E\u3059…",
         routerTrace: [...routerTrace],
       });
-      const routerBranch =
-        typeof routerBaseSession.clone === "function"
-          ? await routerBaseSession.clone()
-          : routerBaseSession;
+      if (typeof routerBaseSession.clone !== "function") {
+        throw new Error("LanguageModel router session does not support clone().");
+      }
+      const routerBranch = await routerBaseSession.clone();
 
       let stage1: Stage1RouterResult;
-      let stage1RoutingFailed = false;
       try {
         const routerContextLines = [
           `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
@@ -2530,18 +2554,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         ];
         const routerPrompt = `${routerContextLines.join("\n")}\n\n\u30E6\u30FC\u30B6\u30FC\u306E発話: 「${userMessage}」`;
         const t1Start = performance.now();
-        let rawStage1 = "";
-        let parseErr: string | undefined;
-        try {
-          rawStage1 = await routerBranch.prompt(routerPrompt, {
-            responseConstraint: STAGE1_ROUTER_SCHEMA,
-            signal,
-          });
-          stage1 = JSON.parse(rawStage1.trim()) as Stage1RouterResult;
-        } catch (err: any) {
-          parseErr = err?.message ?? String(err);
-          stage1RoutingFailed = true;
-          stage1 = { response: rawStage1 || userMessage, routes: [{ tool_type: "question" }] };
+        const rawStage1 = await routerBranch.prompt(routerPrompt, {
+          responseConstraint: STAGE1_ROUTER_SCHEMA,
+          signal,
+        });
+        stage1 = JSON.parse(String(rawStage1).trim()) as Stage1RouterResult;
+        if (!stage1 || !Array.isArray(stage1.routes) || stage1.routes.length === 0) {
+          throw new Error("Stage 1 router returned an invalid or empty routes array.");
         }
         const t1Duration = Math.max(1, Math.round(performance.now() - t1Start));
         llmCalls.push({
@@ -2551,7 +2570,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           responseConstraintSchema: STAGE1_ROUTER_SCHEMA,
           rawOutput: rawStage1,
           parsedOutput: stage1,
-          parseError: parseErr,
           durationMs: t1Duration,
           tokenUsage: readSessionTokenUsage(routerBranch),
         });
@@ -2567,10 +2585,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
       }
 
-      const rawRoutes: Stage1RouteItem[] =
-        Array.isArray(stage1.routes) && stage1.routes.length > 0
-          ? stage1.routes
-          : [{ tool_type: "question", instruction: userMessage }];
+      const rawRoutes: Stage1RouteItem[] = stage1.routes;
 
       const stage1Thought = stage1.thought?.trim() || undefined;
       const stage1Response = stage1.response || userMessage;
@@ -2603,15 +2618,15 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           }
         } else if (cat === "question") {
           nonToolCategories.push("question");
+        } else {
+          throw new Error(`Stage 1 router returned unknown tool_type "${String(cat)}".`);
         }
       }
 
       const traceLabels =
         activeRoutes.length > 0
           ? activeRoutes.map((r) => `${r.category}("${r.instruction}")`)
-          : nonToolCategories.length > 0
-            ? nonToolCategories
-            : ["question"];
+          : nonToolCategories;
       const thoughtPrefix = stage1Thought ? `💭 ${stage1Thought} ➔ ` : "";
       routerTrace.push(`🧭 Turn 1 (Planner): ${thoughtPrefix}routes=${JSON.stringify(traceLabels)}`);
       onProgress?.({
@@ -2633,9 +2648,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         lastNonToolReason = reason;
         if (reason === "clarify") {
           recordPendingClarification(userMessage, stage1Response);
-        } else if (!stage1RoutingFailed) {
-          // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable
-          // Stage 1 call synthesizes a fallback `question` route and must keep it for a retry.
+        } else {
           pendingClarification = null;
         }
         return {
@@ -2670,10 +2683,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           routerTrace: [...routerTrace],
         });
         const baseCatSession = await getOrCreateStage2BaseSession(category);
-        const catBranch =
-          typeof baseCatSession.clone === "function"
-            ? await baseCatSession.clone()
-            : baseCatSession;
+        if (typeof baseCatSession.clone !== "function") {
+          throw new Error(`LanguageModel Stage 2 session (${category}) does not support clone().`);
+        }
+        const catBranch = await baseCatSession.clone();
 
         const routeOps: ChatConstraintOperation[] = [];
         try {
@@ -2696,18 +2709,11 @@ export function createGeminiNanoManager(): GeminiNanoManager {
                 : userMessage;
           const stage2Input = `${dictNote}${historyNote}\u30E6\u30FC\u30B6\u30FC\u306E指示: 「${effectiveInstruction}」`;
           const t2Start = performance.now();
-          let rawStage2 = "";
-          let parsedStage2: any = null;
-          let parseErr: string | undefined;
-          try {
-            rawStage2 = await catBranch.prompt(stage2Input, {
-              responseConstraint: catConfig.schema,
-              signal,
-            });
-            parsedStage2 = JSON.parse(rawStage2.trim());
-          } catch (err: any) {
-            parseErr = err?.message ?? String(err);
-          }
+          const rawStage2 = await catBranch.prompt(stage2Input, {
+            responseConstraint: catConfig.schema,
+            signal,
+          });
+          const parsedStage2 = JSON.parse(String(rawStage2).trim());
           const t2Duration = Math.max(1, Math.round(performance.now() - t2Start));
           llmCalls.push({
             step: "turn2_extractor",
@@ -2717,7 +2723,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             responseConstraintSchema: catConfig.schema,
             rawOutput: rawStage2,
             parsedOutput: parsedStage2,
-            parseError: parseErr,
             durationMs: t2Duration,
             tokenUsage: readSessionTokenUsage(catBranch),
           });
@@ -2790,6 +2795,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         } else {
           const previewApplied = applyChatOperationsToState(state, operations);
           previewAppliedLogs = previewApplied.appliedLogs;
+          if (previewApplied.rejectedLogs.length > 0) {
+            routerTrace.push(`⚠️ Step 3 (Excluded): ${previewApplied.rejectedLogs.join(" / ")}`);
+          }
           if (previewApplied.appliedLogs.length > 0) {
             pendingClarification = null;
             appendTurnHistory(
@@ -2958,10 +2966,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           activeConsultSession.destroy();
         } catch (_) {}
       }
-      const turnSession =
-        typeof consultBaseSession.clone === "function"
-          ? await consultBaseSession.clone()
-          : consultBaseSession;
+      if (typeof consultBaseSession.clone !== "function") {
+        throw new Error("LanguageModel consult session does not support clone().");
+      }
+      const turnSession = await consultBaseSession.clone();
       activeConsultSession = turnSession;
 
       let fullPrompt: string;
@@ -3192,7 +3200,11 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         try {
           const stream = turnSession.promptStreaming(fullPrompt, { signal });
           for await (const chunk of stream) {
-            if (signal?.aborted) break;
+            if (signal?.aborted) {
+              const abortErr = new Error("Aborted");
+              abortErr.name = "AbortError";
+              throw abortErr;
+            }
             if (typeof chunk === "string") {
               // Handle both delta chunks and cumulative chunks smoothly
               if (chunk.startsWith(accumulated) && chunk.length >= accumulated.length) {
@@ -3204,12 +3216,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
                 yield chunk;
               }
             }
-          }
-        } catch (err: any) {
-          if (!accumulated) {
-            const fallbackMsg = lastStage1Response || "応答\u306E生成中\u306B上限\u306B達\u3057\u307E\u3057\u305F。";
-            accumulated = fallbackMsg;
-            yield fallbackMsg;
           }
         } finally {
           lastConsultTrace = {
@@ -3227,17 +3233,16 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       let full = "";
       try {
         full = await turnSession.prompt(fullPrompt, { signal });
-      } catch {
-        full = lastStage1Response || "応答\u306E生成中\u306B上限\u306B達\u3057\u307E\u3057\u305F。";
+      } finally {
+        lastConsultTrace = {
+          step: "turn3_consultation_stream",
+          systemPrompt: CONSULT_SYSTEM_PROMPT,
+          userPrompt: fullPrompt,
+          rawOutput: full,
+          durationMs: Math.max(1, Math.round(performance.now() - t3Start)),
+          tokenUsage: readSessionTokenUsage(turnSession),
+        };
       }
-      lastConsultTrace = {
-        step: "turn3_consultation_stream",
-        systemPrompt: CONSULT_SYSTEM_PROMPT,
-        userPrompt: fullPrompt,
-        rawOutput: full,
-        durationMs: Math.max(1, Math.round(performance.now() - t3Start)),
-        tokenUsage: readSessionTokenUsage(turnSession),
-      };
       yield full;
     },
 
@@ -3254,7 +3259,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           activeConsultSession.destroy();
         } catch (_) {}
       }
-      if (consultBaseSession && typeof consultBaseSession.clone === "function") {
+      if (consultBaseSession) {
+        if (typeof consultBaseSession.clone !== "function") {
+          throw new Error("LanguageModel consult session does not support clone().");
+        }
         activeConsultSession = await consultBaseSession.clone();
       }
     },
@@ -3336,12 +3344,7 @@ function resolveExistingShiftCode(
     return clean;
   }
   const existing = existingDefs.find(
-    (d) =>
-      d.code === clean ||
-      d.label === clean ||
-      d.shortLabel === clean ||
-      d.label.includes(clean) ||
-      clean.includes(d.label)
+    (d) => d.code === clean || d.label === clean || d.shortLabel === clean
   );
   return existing ? existing.code : null;
 }
@@ -3419,6 +3422,16 @@ function resolveAttributeCodeAndLabel(
   };
 }
 
+function mergeBuiltInAndCustomShiftAliases(
+  customShiftDefs: readonly CustomShiftDef[],
+  existingAliases?: readonly ShiftAliasDef[]
+): ShiftAliasDef[] {
+  const builtInAliases = createDefaultShiftAliases(customShiftDefs);
+  const builtInCodes = new Set(builtInAliases.map((a) => a.code));
+  const customAliases = (existingAliases ?? []).filter((a) => !builtInCodes.has(a.code));
+  return [...builtInAliases, ...customAliases];
+}
+
 /**
  * Applies structured operations extracted by Gemini Nano to the current `NurseSchedulingState`.
  */
@@ -3428,6 +3441,7 @@ export function applyChatOperationsToState(
 ): {
   updatedState: NurseSchedulingState;
   appliedLogs: string[];
+  rejectedLogs: string[];
 } {
   let nextState: NurseSchedulingState = {
     config: { ...state.config },
@@ -3440,6 +3454,7 @@ export function applyChatOperationsToState(
     skillDefs: [...(state.skillDefs ?? createDefaultSkillDefs())],
   };
   const appliedLogs: string[] = [];
+  const rejectedLogs: string[] = [];
 
   for (const op of operations) {
     if (op.op === "reset_default") {
@@ -3458,24 +3473,40 @@ export function applyChatOperationsToState(
         op.skillName,
         activeSkills
       );
-      if (!label) continue;
+      if (!label) {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb名 "${op.skillName}" \u304c空\u307e\u305f\u306f不正\u3067\u3059`);
+        continue;
+      }
       const existingIdx = activeSkills.findIndex(
         (s) => s.code === code || s.label === label
       );
       if (existingIdx >= 0 || findSkillOrAttributeDef(op.skillName, activeSkills)) {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb「${label}」\u306f既\u306b登録\u3055\u308c\u3066\u3044\u307e\u3059`);
+        continue;
+      }
+      if (
+        (op.skillMinDay !== undefined &&
+          (typeof op.skillMinDay !== "number" ||
+            !Number.isInteger(op.skillMinDay) ||
+            op.skillMinDay < 0)) ||
+        (op.skillMinEvening !== undefined &&
+          (typeof op.skillMinEvening !== "number" ||
+            !Number.isInteger(op.skillMinEvening) ||
+            op.skillMinEvening < 0)) ||
+        (op.skillMinNight !== undefined &&
+          (typeof op.skillMinNight !== "number" ||
+            !Number.isInteger(op.skillMinNight) ||
+            op.skillMinNight < 0))
+      ) {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb「${label}」\u306e最低配置人数\u304c不正\u3067\u3059`);
         continue;
       }
       const substitutesFor = op.substitutesFor
         ? inferSkillCodeAndLabel(op.substitutesFor, activeSkills).code
         : undefined;
-      const minDay =
-        typeof op.skillMinDay === "number" ? Math.max(0, Math.round(op.skillMinDay)) : 0;
-      const minEvening =
-        typeof op.skillMinEvening === "number"
-          ? Math.max(0, Math.round(op.skillMinEvening))
-          : 0;
-      const minNight =
-        typeof op.skillMinNight === "number" ? Math.max(0, Math.round(op.skillMinNight)) : 0;
+      const minDay = op.skillMinDay ?? 0;
+      const minEvening = op.skillMinEvening ?? 0;
+      const minNight = op.skillMinNight ?? 0;
 
       const newSkillDef: SkillDefinition = {
         code,
@@ -3509,11 +3540,18 @@ export function applyChatOperationsToState(
 
     if (op.op === "remove_skill_def" && op.skillName) {
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
-      const { code, label } = inferSkillCodeAndLabel(op.skillName, activeSkills);
-      const targetDef = activeSkills.find(
-        (s) => s.code === code || s.label === label || s.label.includes(op.skillName!)
-      );
-      if (!targetDef) continue;
+      const rawName = op.skillName.trim();
+      const matchedDef = findSkillOrAttributeDef(rawName, activeSkills);
+      const { code, label } = inferSkillCodeAndLabel(rawName, activeSkills);
+      const targetDef =
+        (matchedDef && matchedDef.code !== "all"
+          ? activeSkills.find((s) => s.code === matchedDef.code)
+          : undefined) ??
+        activeSkills.find((s) => s.code === code || s.label === label || s.label === rawName);
+      if (!targetDef) {
+        rejectedLogs.push(`削除対象\u30b9\u30ad\u30eb "${op.skillName}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
       const targetCode = targetDef.code;
       const targetLabel = targetDef.label;
 
@@ -3540,13 +3578,22 @@ export function applyChatOperationsToState(
         activeSkills
       );
       if (!activeSkills.some((s) => s.code === code)) {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb "${op.skillName}" \u306f登録\u3055\u308c\u3066\u3044\u307e\u305b\u3093`);
         continue;
       }
-      const action = op.skillAction === "remove" ? "remove" : "add";
+      if (op.skillAction !== "add" && op.skillAction !== "remove") {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb操作種別 "${String(op.skillAction)}" \u304c不正\u3067\u3059`);
+        continue;
+      }
+      const action = op.skillAction;
       const targetNurse = op.nurseNameOrId
         ? resolveNurseFromText(op.nurseNameOrId, nextState.nurses)
         : null;
       const targetAttr = op.attribute;
+      if (!targetNurse && !targetAttr) {
+        rejectedLogs.push(`\u30b9\u30ad\u30eb変更対象 "${op.nurseNameOrId ?? ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
       let countChanged = 0;
 
       nextState.nurses = nextState.nurses.map((n) => {
@@ -3590,20 +3637,33 @@ export function applyChatOperationsToState(
     if (op.op === "set_staffing_rule") {
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const rawAttr = op.attribute;
-      if (!rawAttr) continue;
+      if (!rawAttr) {
+        rejectedLogs.push("配置\u30eb\u30fc\u30eb\u306e対象属性\u304c指定\u3055\u308c\u3066\u3044\u307e\u305b\u3093");
+        continue;
+      }
       const resolved = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const resolvedTarget = resolveTargetShiftsFromArg(
         op.targetShift,
         op.shifts,
         nextState
       );
-      if (!resolvedTarget) continue;
+      if (!resolvedTarget) {
+        rejectedLogs.push(`配置\u30eb\u30fc\u30eb\u306e対象\u30b7\u30d5\u30c8 "${op.targetShift ?? ""}" \u304c不正\u3067\u3059`);
+        continue;
+      }
       const { shifts } = resolvedTarget;
-      const minCount =
-        typeof op.minCount === "number" ? Math.max(0, Math.round(op.minCount)) : undefined;
-      const maxCount =
-        typeof op.maxCount === "number" ? Math.max(0, Math.round(op.maxCount)) : undefined;
-      if (minCount === undefined && maxCount === undefined) continue;
+      const validMin =
+        op.minCount === undefined ||
+        (typeof op.minCount === "number" && Number.isInteger(op.minCount) && op.minCount >= 0);
+      const validMax =
+        op.maxCount === undefined ||
+        (typeof op.maxCount === "number" && Number.isInteger(op.maxCount) && op.maxCount >= 0);
+      if (!validMin || !validMax || (op.minCount === undefined && op.maxCount === undefined)) {
+        rejectedLogs.push("配置\u30eb\u30fc\u30eb\u306e人数範囲\u304c不正\u3067\u3059");
+        continue;
+      }
+      const minCount = op.minCount;
+      const maxCount = op.maxCount;
 
       const shiftLabels = shifts
         .map((s) => getShiftMeta(s, nextState.customShiftDefs, nextState.shiftAliases).label)
@@ -3613,9 +3673,8 @@ export function applyChatOperationsToState(
       if (typeof maxCount === "number") {
         boundParts.push(maxCount === 0 ? "上限0名(配置禁止)" : `上限${maxCount}名以下`);
       }
-      const boundDesc = boundParts.length > 0 ? boundParts.join(" / ") : "配置\u30EB\u30FC\u30EB";
+      const boundDesc = boundParts.join(" / ");
 
-      // Replace any previous staffing_rule with the same shifts and attribute
       const shiftsKey = shifts.join(",");
       nextState.customRules = nextState.customRules.filter(
         (r) =>
@@ -3645,74 +3704,93 @@ export function applyChatOperationsToState(
 
     if (op.op === "set_nurse_contract" && op.nurseNameOrId) {
       const targetNurse = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
-      if (targetNurse) {
-        const changes: string[] = [];
-        if (op.resetContract) {
-          nextState = clearNurseContractFromState(nextState, targetNurse.id);
-          changes.push("制限解除(標準契約\u306B復帰)");
+      if (!targetNurse) {
+        rejectedLogs.push(`契約変更対象\u30b9\u30bf\u30c3\u30d5 "${op.nurseNameOrId}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
+      const invalidNumeric =
+        (op.maxMonthlyNightShifts !== undefined &&
+          (!Number.isInteger(op.maxMonthlyNightShifts) || op.maxMonthlyNightShifts < 0)) ||
+        (op.minMonthlyDaysOff !== undefined &&
+          (!Number.isInteger(op.minMonthlyDaysOff) || op.minMonthlyDaysOff < 0)) ||
+        (op.minMonthlyWorkDays !== undefined &&
+          (!Number.isInteger(op.minMonthlyWorkDays) || op.minMonthlyWorkDays < 0)) ||
+        (op.maxMonthlyWorkDays !== undefined &&
+          (!Number.isInteger(op.maxMonthlyWorkDays) || op.maxMonthlyWorkDays < 0)) ||
+        (op.maxConsecutiveWorkDays !== undefined &&
+          (!Number.isInteger(op.maxConsecutiveWorkDays) || op.maxConsecutiveWorkDays < 1));
+      if (invalidNumeric) {
+        rejectedLogs.push(`\u30b9\u30bf\u30c3\u30d5 "${targetNurse.name}" \u306e契約数値\u304c範囲外\u307e\u305f\u306f整数\u3067\u306f\u3042\u308a\u307e\u305b\u3093`);
+        continue;
+      }
+      const changes: string[] = [];
+      if (op.resetContract) {
+        nextState = clearNurseContractFromState(nextState, targetNurse.id);
+        changes.push("制限解除(標準契約\u306B復帰)");
+      }
+      nextState.nurses = nextState.nurses.map((n) => {
+        if (n.id !== targetNurse.id) return n;
+        const updated = { ...n };
+        if (typeof op.nightOk === "boolean" && !op.resetContract) {
+          updated.nightOk = op.nightOk;
+          changes.push(op.nightOk ? "夜勤可" : "日勤専従(夜勤免除)");
         }
-        nextState.nurses = nextState.nurses.map((n) => {
-          if (n.id !== targetNurse.id) return n;
-          const updated = { ...n };
-          if (typeof op.nightOk === "boolean" && !op.resetContract) {
-            updated.nightOk = op.nightOk;
-            changes.push(op.nightOk ? "夜勤可" : "日勤専従(夜勤免除)");
-          }
-          if (typeof op.maxMonthlyNightShifts === "number") {
-            updated.maxMonthlyNightShifts = Math.max(0, Math.round(op.maxMonthlyNightShifts));
-            changes.push(`月間夜勤上限=${updated.maxMonthlyNightShifts}回`);
-          }
-          if (typeof op.minMonthlyDaysOff === "number") {
-            updated.minMonthlyDaysOff = Math.max(0, Math.round(op.minMonthlyDaysOff));
-            changes.push(`月間最低公休=${updated.minMonthlyDaysOff}日`);
-          }
-          if (typeof op.minMonthlyWorkDays === "number") {
-            updated.minMonthlyWorkDays = Math.max(0, Math.round(op.minMonthlyWorkDays));
-            changes.push(`月間最低勤務=${updated.minMonthlyWorkDays}日`);
-          }
-          if (typeof op.maxMonthlyWorkDays === "number") {
-            updated.maxMonthlyWorkDays = Math.max(0, Math.round(op.maxMonthlyWorkDays));
-            changes.push(`月間最大勤務=${updated.maxMonthlyWorkDays}日`);
-          }
-          if (typeof op.maxConsecutiveWorkDays === "number") {
-            updated.maxConsecutiveWorkDays = Math.max(1, Math.round(op.maxConsecutiveWorkDays));
-            changes.push(`最大連勤=${updated.maxConsecutiveWorkDays}連勤`);
-          }
-          if (Array.isArray(op.forbiddenShifts) && !op.resetContract) {
-            if (op.forbiddenShifts.length === 0) {
-              updated.forbiddenShifts = undefined;
-            } else {
-              updated.forbiddenShifts = op.forbiddenShifts;
-              if (op.forbiddenShifts.includes("D")) {
-                changes.push("夜勤専従(日勤免除)");
-              } else if (op.forbiddenShifts.includes("N")) {
-                changes.push("深夜勤免除");
-              } else if (op.forbiddenShifts.includes("E")) {
-                changes.push("準夜勤免除");
-              }
-            }
-          }
-          if (typeof op.weekdayOnly === "boolean" && !op.resetContract) {
-            updated.weekdayOnly = op.weekdayOnly || undefined;
-            if (op.weekdayOnly && !op.holidaysOff) {
-              changes.push("平日\u306E\u307F勤務(土日休)");
-            }
-          }
-          if (typeof op.holidaysOff === "boolean" && !op.resetContract) {
-            updated.holidaysOff = op.holidaysOff || undefined;
-            if (op.holidaysOff) {
-              changes.push(op.weekdayOnly ? "土日祝休\u307F" : "祝日休\u307F");
-            } else {
-              changes.push("祝日休\u307F解除");
-            }
-          }
-          return updated;
-        });
-        if (changes.length > 0) {
-          appliedLogs.push(
-            `個別勤務契約変更: ${targetNurse.name}(${targetNurse.id}) \u3092 [${changes.join(" / ")}] \u306B設定\u3057\u307E\u3057\u305F`
-          );
+        if (typeof op.maxMonthlyNightShifts === "number") {
+          updated.maxMonthlyNightShifts = op.maxMonthlyNightShifts;
+          changes.push(`月間夜勤上限=${updated.maxMonthlyNightShifts}回`);
         }
+        if (typeof op.minMonthlyDaysOff === "number") {
+          updated.minMonthlyDaysOff = op.minMonthlyDaysOff;
+          changes.push(`月間最低公休=${updated.minMonthlyDaysOff}日`);
+        }
+        if (typeof op.minMonthlyWorkDays === "number") {
+          updated.minMonthlyWorkDays = op.minMonthlyWorkDays;
+          changes.push(`月間最低勤務=${updated.minMonthlyWorkDays}日`);
+        }
+        if (typeof op.maxMonthlyWorkDays === "number") {
+          updated.maxMonthlyWorkDays = op.maxMonthlyWorkDays;
+          changes.push(`月間最大勤務=${updated.maxMonthlyWorkDays}日`);
+        }
+        if (typeof op.maxConsecutiveWorkDays === "number") {
+          updated.maxConsecutiveWorkDays = op.maxConsecutiveWorkDays;
+          changes.push(`最大連勤=${updated.maxConsecutiveWorkDays}連勤`);
+        }
+        if (Array.isArray(op.forbiddenShifts) && !op.resetContract) {
+          if (op.forbiddenShifts.length === 0) {
+            updated.forbiddenShifts = undefined;
+          } else {
+            updated.forbiddenShifts = op.forbiddenShifts;
+            if (op.forbiddenShifts.includes("D")) {
+              changes.push("夜勤専従(日勤免除)");
+            } else if (op.forbiddenShifts.includes("N")) {
+              changes.push("深夜勤免除");
+            } else if (op.forbiddenShifts.includes("E")) {
+              changes.push("準夜勤免除");
+            }
+          }
+        }
+        if (typeof op.weekdayOnly === "boolean" && !op.resetContract) {
+          updated.weekdayOnly = op.weekdayOnly || undefined;
+          if (op.weekdayOnly && !op.holidaysOff) {
+            changes.push("平日\u306E\u307F勤務(土日休)");
+          }
+        }
+        if (typeof op.holidaysOff === "boolean" && !op.resetContract) {
+          updated.holidaysOff = op.holidaysOff || undefined;
+          if (op.holidaysOff) {
+            changes.push(op.weekdayOnly ? "土日祝休\u307F" : "祝日休\u307F");
+          } else {
+            changes.push("祝日休\u307F解除");
+          }
+        }
+        return updated;
+      });
+      if (changes.length > 0) {
+        appliedLogs.push(
+          `個別勤務契約変更: ${targetNurse.name}(${targetNurse.id}) \u3092 [${changes.join(" / ")}] \u306B設定\u3057\u307E\u3057\u305F`
+        );
+      } else {
+        rejectedLogs.push(`\u30b9\u30bf\u30c3\u30d5 "${targetNurse.name}" \u3078\u306e契約変更内容\u304c空\u3067\u3059`);
       }
       continue;
     }
@@ -3733,25 +3811,32 @@ export function applyChatOperationsToState(
     if (op.op === "add_preceptor_pair" && op.nurseNameOrId && op.nurseBNameOrId) {
       const nA = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
       const nB = resolveNurseFromText(op.nurseBNameOrId, nextState.nurses);
-      if (nA && nB && nA.id !== nB.id) {
-        const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
-        if (resolvedShifts === null) continue;
-        const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
-        nextState.relations.push({
-          id: `chat_preceptor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          nurseA: nA.id,
-          nurseB: nB.id,
-          type: "preceptor",
-          enabled: true,
-          shifts: targetShifts,
-          isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
-          penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
-          reason: "\u30C1\u30E3\u30C3\u30C8指示\u306B\u3088\u308B\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2設定",
-        });
-        appliedLogs.push(
-          `\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) \u306E同行\u30B7\u30D5\u30C8([${targetShifts.join("/")}])\u3092有効化\u3057\u307E\u3057\u305F`
+      if (!nA || !nB || nA.id === nB.id) {
+        rejectedLogs.push(
+          `\u30d7\u30ea\u30bb\u30d7\u30bf\u30fc\u30da\u30a2\u306e対象\u30b9\u30bf\u30c3\u30d5 (${op.nurseNameOrId} / ${op.nurseBNameOrId}) \u304c見\u3064\u304b\u3089\u306a\u3044\u304b同一人物\u3067\u3059`
         );
+        continue;
       }
+      const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
+      if (resolvedShifts === null) {
+        rejectedLogs.push("\u30d7\u30ea\u30bb\u30d7\u30bf\u30fc\u30da\u30a2\u306e対象\u30b7\u30d5\u30c8\u304c不正\u307e\u305f\u306f空\u3067\u3059");
+        continue;
+      }
+      const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
+      nextState.relations.push({
+        id: `chat_preceptor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        nurseA: nA.id,
+        nurseB: nB.id,
+        type: "preceptor",
+        enabled: true,
+        shifts: targetShifts,
+        isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
+        penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
+        reason: "\u30C1\u30E3\u30C3\u30C8指示\u306B\u3088\u308B\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2設定",
+      });
+      appliedLogs.push(
+        `\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) \u306E同行\u30B7\u30D5\u30C8([${targetShifts.join("/")}])\u3092有効化\u3057\u307E\u3057\u305F`
+      );
       continue;
     }
 
@@ -3780,7 +3865,10 @@ export function applyChatOperationsToState(
 
     if (op.op === "add_custom_shift" && (op.shiftName || op.shift)) {
       const rawName = (op.shiftName || op.shift || "").trim();
-      if (!rawName) continue;
+      if (!rawName) {
+        rejectedLogs.push("追加\u30b7\u30d5\u30c8名\u304c空\u3067\u3059");
+        continue;
+      }
       const { code: inferredCode, shortLabel, label } = inferShortLabelAndCode(
         rawName,
         nextState.customShiftDefs
@@ -3795,6 +3883,7 @@ export function applyChatOperationsToState(
         ...(nextState.shiftAliases ?? []).flatMap((a) => [a.code, a.code.toUpperCase()]),
       ]);
       if (reservedCodes.has(label) || reservedCodes.has(label.toUpperCase())) {
+        rejectedLogs.push(`\u30b7\u30d5\u30c8名 "${label}" \u306f予約語\u3068重複\u3057\u3066\u3044\u307e\u3059`);
         continue;
       }
       const existingByLabel = nextState.customShiftDefs.find((d) => d.label === label);
@@ -3815,6 +3904,7 @@ export function applyChatOperationsToState(
           collidesWithOtherCustomShift ||
           conflictsWithExistingLabelCode
         ) {
+          rejectedLogs.push(`\u30ab\u30b9\u30bf\u30e0\u30b7\u30d5\u30c8\u30b3\u30fc\u30c9 "${rawExplicit}" \u306f無効\u307e\u305f\u306f重複\u3057\u3066\u3044\u307e\u3059`);
           continue;
         }
       }
@@ -3856,7 +3946,10 @@ export function applyChatOperationsToState(
           countsAsWorkDay,
           overtimeHoursPerShift,
         });
-        nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
+        nextState.shiftAliases = mergeBuiltInAndCustomShiftAliases(
+          nextState.customShiftDefs,
+          nextState.shiftAliases
+        );
         appliedLogs.push(
           `新\u3057\u3044\u30B7\u30D5\u30C8種別「${finalShort}: ${label} (${timeRange}, 所属:${baseShift})」\u3092追加\u3057\u307E\u3057\u305F`
         );
@@ -3871,7 +3964,10 @@ export function applyChatOperationsToState(
         if (includedInAliases !== undefined) {
           existingByLabel.includedInAliases = includedInAliases;
         }
-        nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
+        nextState.shiftAliases = mergeBuiltInAndCustomShiftAliases(
+          nextState.customShiftDefs,
+          nextState.shiftAliases
+        );
         appliedLogs.push(
           `\u30B7\u30D5\u30C8種別「${existingByLabel.shortLabel}: ${existingByLabel.label} (${existingByLabel.timeRange}, 所属:${baseShift})」\u3092更新\u3057\u307E\u3057\u305F`
         );
@@ -3884,7 +3980,10 @@ export function applyChatOperationsToState(
         op.shiftName || op.shift,
         nextState.customShiftDefs
       );
-      if (!shiftCode) continue;
+      if (!shiftCode) {
+        rejectedLogs.push(`\u30b7\u30d5\u30c8 "${op.shiftName || op.shift || ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
       const nurse = op.nurseNameOrId
@@ -3892,7 +3991,14 @@ export function applyChatOperationsToState(
         : null;
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const rawAttr = nurse ? undefined : op.attribute;
-      if (!nurse && !rawAttr) continue;
+      if (op.nurseNameOrId && !nurse) {
+        rejectedLogs.push(`\u30ce\u30eb\u30de対象\u30b9\u30bf\u30c3\u30d5 "${op.nurseNameOrId}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
+      if (!nurse && !rawAttr) {
+        rejectedLogs.push("\u30b7\u30d5\u30c8回数\u30eb\u30fc\u30eb\u306e対象\u30b9\u30bf\u30c3\u30d5\u307e\u305f\u306f属性\u304c指定\u3055\u308c\u3066\u3044\u307e\u305b\u3093");
+        continue;
+      }
 
       const resolvedAttr = rawAttr
         ? resolveAttributeCodeAndLabel(rawAttr, activeSkills)
@@ -3905,9 +4011,18 @@ export function applyChatOperationsToState(
             ? resolvedAttr.code
             : rawAttr;
 
-      const minCount = typeof op.minCount === "number" ? Math.round(op.minCount) : undefined;
-      const maxCount = typeof op.maxCount === "number" ? Math.round(op.maxCount) : undefined;
-      if (minCount === undefined && maxCount === undefined) continue;
+      const validMin =
+        op.minCount === undefined ||
+        (typeof op.minCount === "number" && Number.isInteger(op.minCount) && op.minCount >= 0);
+      const validMax =
+        op.maxCount === undefined ||
+        (typeof op.maxCount === "number" && Number.isInteger(op.maxCount) && op.maxCount >= 0);
+      if (!validMin || !validMax || (op.minCount === undefined && op.maxCount === undefined)) {
+        rejectedLogs.push("\u30b7\u30d5\u30c8回数\u30eb\u30fc\u30eb\u306e回数\u304c不正\u3067\u3059");
+        continue;
+      }
+      const minCount = op.minCount;
+      const maxCount = op.maxCount;
 
       const countText =
         minCount !== undefined && maxCount !== undefined && minCount === maxCount
@@ -3924,7 +4039,6 @@ export function applyChatOperationsToState(
           ? "\u30B9\u30BF\u30C3\u30D5全員"
           : `${resolvedAttr?.label ?? getSkillMeta(String(attribute), activeSkills).label}全員`;
 
-      // Replace any previous quota rule for the same target and shift
       nextState.customRules = nextState.customRules.filter(
         (r) =>
           !(
@@ -3956,35 +4070,50 @@ export function applyChatOperationsToState(
         op.shiftName || op.shift,
         nextState.customShiftDefs
       );
-      if (!shiftCode) continue;
+      if (!shiftCode) {
+        rejectedLogs.push(`\u30b7\u30d5\u30c8 "${op.shiftName || op.shift || ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
-      const hasDateBounds =
-        typeof op.startDay === "number" || typeof op.endDay === "number";
-      const startDay =
-        typeof op.startDay === "number"
-          ? Math.max(1, Math.min(nextState.config.numDays, Math.round(op.startDay)))
-          : undefined;
-      const endDay =
-        typeof op.endDay === "number"
-          ? Math.max(1, Math.min(nextState.config.numDays, Math.round(op.endDay)))
-          : undefined;
+      const hasDateBounds = op.startDay !== undefined || op.endDay !== undefined;
+      let startDay: number | undefined;
+      let endDay: number | undefined;
+      if (hasDateBounds) {
+        if (
+          typeof op.startDay !== "number" ||
+          typeof op.endDay !== "number" ||
+          !Number.isInteger(op.startDay) ||
+          !Number.isInteger(op.endDay) ||
+          op.startDay < 1 ||
+          op.endDay > nextState.config.numDays ||
+          op.startDay > op.endDay
+        ) {
+          rejectedLogs.push(
+            `期間制限\u306e日付範囲 (${String(op.startDay)}〜${String(op.endDay)}) \u304c不正\u3067\u3059`
+          );
+          continue;
+        }
+        startDay = op.startDay;
+        endDay = op.endDay;
+      }
       const allowedDays =
         op.allowedDaysOfWeek && op.allowedDaysOfWeek.length > 0
           ? op.allowedDaysOfWeek
           : undefined;
-      if (!hasDateBounds && !allowedDays) continue;
+      if (!hasDateBounds && !allowedDays) {
+        rejectedLogs.push("期間\u30fb曜日\u306e\u3044\u305a\u308c\u3082指定\u3055\u308c\u3066\u3044\u307e\u305b\u3093");
+        continue;
+      }
 
       const dowNames = ["日", "月", "火", "水", "木", "金", "土"];
       const descParts: string[] = [];
-      if (startDay !== undefined || endDay !== undefined) {
-        const s = startDay ?? 1;
-        const e = endDay ?? nextState.config.numDays;
-        const spanDays = Math.max(1, e - s + 1);
+      if (startDay !== undefined && endDay !== undefined) {
+        const spanDays = endDay - startDay + 1;
         descParts.push(
-          s === e
-            ? `${nextState.config.month}/${s}\u306E\u307F`
-            : `${nextState.config.month}/${s}〜${nextState.config.month}/${e} (計${spanDays}日間) \u306E\u307F`
+          startDay === endDay
+            ? `${nextState.config.month}/${startDay}\u306E\u307F`
+            : `${nextState.config.month}/${startDay}〜${nextState.config.month}/${endDay} (計${spanDays}日間) \u306E\u307F`
         );
       }
       if (allowedDays && allowedDays.length > 0) {
@@ -4023,13 +4152,19 @@ export function applyChatOperationsToState(
         op.shiftName || op.prereqShift || op.shift,
         nextState.customShiftDefs
       );
-      if (!prereqCode) continue;
+      if (!prereqCode) {
+        rejectedLogs.push(`先行条件\u30b7\u30d5\u30c8 "${op.shiftName || op.prereqShift || op.shift || ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
 
       const meta = getShiftMeta(prereqCode, nextState.customShiftDefs);
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const rawAttr = op.attribute;
-      const rawK = typeof op.prereqMinCount === "number" ? op.prereqMinCount : undefined;
-      if (!rawAttr || rawK === undefined) continue;
+      const rawK = op.prereqMinCount;
+      if (!rawAttr || typeof rawK !== "number" || !Number.isInteger(rawK) || rawK < 1) {
+        rejectedLogs.push("先行条件\u306e対象属性\u307e\u305f\u306f必要回数(1以上)\u304c不正\u3067\u3059");
+        continue;
+      }
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const attribute =
         rawAttr === "all"
@@ -4037,9 +4172,12 @@ export function applyChatOperationsToState(
           : !resolvedAttr.isUnknownCustomSkill
             ? resolvedAttr.code
             : rawAttr;
-      const kReq = Math.max(1, Math.round(rawK));
+      const kReq = rawK;
       const resolvedRestricted = normalizeActiveShifts(op.restrictedShifts, nextState);
-      if (resolvedRestricted === null) continue;
+      if (resolvedRestricted === null) {
+        rejectedLogs.push("先行条件\u306e対象夜勤\u30b7\u30d5\u30c8指定\u304c不正\u3067\u3059");
+        continue;
+      }
       const restricted: ShiftCode[] = resolvedRestricted ?? ["E", "N"];
       const targetLabel =
         attribute === "all"
@@ -4075,14 +4213,40 @@ export function applyChatOperationsToState(
         op.shiftName || op.shift,
         nextState.customShiftDefs
       );
-      if (!shiftCode) continue;
+      if (!shiftCode) {
+        rejectedLogs.push(`1日配置\u30eb\u30fc\u30eb対象\u30b7\u30d5\u30c8 "${op.shiftName || op.shift || ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
 
+      const validMin =
+        op.minStaff === undefined ||
+        (typeof op.minStaff === "number" && Number.isInteger(op.minStaff) && op.minStaff >= 0);
+      const validMax =
+        op.maxStaff === undefined ||
+        (typeof op.maxStaff === "number" && Number.isInteger(op.maxStaff) && op.maxStaff >= 0);
+      if (!validMin || !validMax || (op.minStaff === undefined && op.maxStaff === undefined)) {
+        rejectedLogs.push("1日配置人数\u306e上限\u30fb下限指定\u304c不正\u3067\u3059");
+        continue;
+      }
+      if (op.startDay !== undefined || op.endDay !== undefined) {
+        const s = op.startDay;
+        const e = op.endDay;
+        if (
+          typeof s !== "number" ||
+          typeof e !== "number" ||
+          !Number.isInteger(s) ||
+          !Number.isInteger(e) ||
+          s < 1 ||
+          e > nextState.config.numDays ||
+          s > e
+        ) {
+          rejectedLogs.push(`1日配置\u30eb\u30fc\u30eb\u306e日付範囲 (${String(s)}〜${String(e)}) \u304c不正\u3067\u3059`);
+          continue;
+        }
+      }
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
-      const maxStaff =
-        typeof op.maxStaff === "number" ? Math.max(0, Math.round(op.maxStaff)) : undefined;
-      const minStaff =
-        typeof op.minStaff === "number" ? Math.max(0, Math.round(op.minStaff)) : undefined;
-      if (minStaff === undefined && maxStaff === undefined) continue;
+      const maxStaff = op.maxStaff;
+      const minStaff = op.minStaff;
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const rawAttr = op.attribute;
       const resolvedAttr = rawAttr
@@ -4127,8 +4291,8 @@ export function applyChatOperationsToState(
         attribute,
         minStaff,
         maxStaff,
-        startDay: typeof op.startDay === "number" ? op.startDay : undefined,
-        endDay: typeof op.endDay === "number" ? op.endDay : undefined,
+        startDay: op.startDay,
+        endDay: op.endDay,
         description: desc,
       };
       nextState.customRules.push(rule);
@@ -4141,14 +4305,19 @@ export function applyChatOperationsToState(
         op.shiftName || op.shift,
         nextState.customShiftDefs
       );
-      if (!shiftCode) continue;
+      if (!shiftCode) {
+        rejectedLogs.push(`前月実績算入\u306e対象\u30b7\u30d5\u30c8 "${op.shiftName || op.shift || ""}" \u304c見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
+      let matchedCount = 0;
       nextState.customRules = nextState.customRules.map((r) => {
         if (
           (r.kind === "shift_count_quota" && r.shift === shiftCode) ||
           (r.kind === "shift_prerequisite" && r.prereqShift === shiftCode)
         ) {
+          matchedCount++;
           const suffix = "（前月\u307E\u3067\u306E受講実績\u3092含\u3080）";
           return {
             ...r,
@@ -4160,6 +4329,13 @@ export function applyChatOperationsToState(
         }
         return r;
       });
+
+      if (matchedCount === 0) {
+        rejectedLogs.push(
+          `\u30b7\u30d5\u30c8「${meta.label}」\u306b対応\u3059\u308b回数\u30ce\u30eb\u30de\u30fb先行条件\u30eb\u30fc\u30eb\u304c存在\u3057\u306a\u3044\u305f\u3081、前月実績算入\u3092適用\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f`
+        );
+        continue;
+      }
 
       appliedLogs.push(
         `前月実績\u306E算入\u30EB\u30FC\u30EB適用: 「${meta.label}」\u306E必要回数\u304A\u3088\u3073先行条件\u306B前月\u307E\u3067\u306E受講実績\u3092算入可能\u306B\u3057\u307E\u3057\u305F`
@@ -4175,7 +4351,7 @@ export function applyChatOperationsToState(
         id: `level_night_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
         kind: "level_night_shifts",
         enabled: true,
-        levelGroupBy: op.levelGroupBy || "skill",
+        levelGroupBy: op.levelGroupBy ?? "skill",
         description:
           "夜勤平準化\u30EB\u30FC\u30EB: \u30B9\u30AD\u30EB\u30FB属性\u30B0\u30EB\u30FC\u30D7（\u30EA\u30FC\u30C0\u30FC\u30FB中堅\u30FB新人\u30FB救急\u30B9\u30AD\u30EB等）\u3054\u3068\u306B月間\u306E夜勤回数(準夜\u30FB深夜)\u306E\u3070\u3089\u3064\u304D\u3092最小化\u3057\u3066均等化\u3059\u308B",
       };
@@ -4185,16 +4361,28 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "set_param" && op.paramName && typeof op.paramValue === "number") {
-      const val = Math.round(op.paramValue);
+      if (!Number.isInteger(op.paramValue)) {
+        rejectedLogs.push(`\u30d1\u30e9\u30e1\u30fc\u30bf "${op.paramName}" \u306e値 ${op.paramValue} \u306f整数\u3067\u3042\u308b必要\u304c\u3042\u308a\u307e\u3059`);
+        continue;
+      }
+      const val = op.paramValue;
       if (op.paramName === "staffCount") {
-        const clamped = Math.min(36, Math.max(15, val));
+        if (val < 15 || val > 36) {
+          rejectedLogs.push(`\u30b9\u30bf\u30c3\u30d5人数 ${val} \u306f 15〜36 \u306e範囲\u3067指定\u3057\u3066\u304f\u3060\u3055\u3044`);
+          continue;
+        }
         nextState = generateNurseSchedulingState({
           ...nextState.config,
-          staffCount: clamped,
+          staffCount: val,
           seed: nextState.config.seed + 1,
         });
-        appliedLogs.push(`\u30B9\u30BF\u30C3\u30D5人数\u3092 ${clamped}名 \u306B変更\u3057、\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u30FB前月\u30B7\u30D5\u30C8\u30FB希望\u3092再生成\u3057\u307E\u3057\u305F`);
+        appliedLogs.push(`\u30B9\u30BF\u30C3\u30D5人数\u3092 ${val}名 \u306B変更\u3057、\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB\u30FB前月\u30B7\u30D5\u30C8\u30FB希望\u3092再生成\u3057\u307E\u3057\u305F`);
       } else {
+        const minAllowed = op.paramName === "maxConsecutiveWorkDays" ? 1 : 0;
+        if (val < minAllowed) {
+          rejectedLogs.push(`\u30d1\u30e9\u30e1\u30fc\u30bf "${op.paramName}" \u306e値 ${val} \u306f ${minAllowed} 以上\u3092指定\u3057\u3066\u304f\u3060\u3055\u3044`);
+          continue;
+        }
         (nextState.config as any)[op.paramName] = val;
         const paramLabels: Record<string, string> = {
           weekdayDayStaff: "平日\u30FB日勤\u306E必要人数",
@@ -4233,107 +4421,123 @@ export function applyChatOperationsToState(
 
     if (op.op === "add_request" && op.nurseNameOrId) {
       const nurse = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
-      const rawDays = op.days?.length ? op.days : op.day ? [op.day] : [];
-      const days = Array.from(
-        new Set(rawDays.filter((d) => d >= 1 && d <= nextState.config.numDays))
-      ).sort((a, b) => a - b);
-      const resolvedShift = resolveShiftCodeOrAliasFromInput(op.shift ?? "O", nextState);
-      if (!resolvedShift) continue;
+      if (!nurse) {
+        rejectedLogs.push(`対象\u30b9\u30bf\u30c3\u30d5 "${op.nurseNameOrId}" \u304c名簿\u306b見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
+      const rawDays = op.days?.length ? op.days : op.day !== undefined ? [op.day] : [];
+      if (
+        rawDays.length === 0 ||
+        rawDays.some(
+          (d) =>
+            typeof d !== "number" ||
+            !Number.isInteger(d) ||
+            d < 1 ||
+            d > nextState.config.numDays
+        )
+      ) {
+        rejectedLogs.push(`対象日付\u304c不正\u307e\u305f\u306f月\u306e範囲外(1〜${nextState.config.numDays})\u3067\u3059`);
+        continue;
+      }
+      const days = Array.from(new Set(rawDays)).sort((a, b) => a - b);
+      const resolvedShift = resolveShiftCodeOrAliasFromInput(op.shift, nextState);
+      if (!resolvedShift) {
+        rejectedLogs.push(`\u30b7\u30d5\u30c8\u30b3\u30fc\u30c9 "${String(op.shift)}" \u304c無効\u307e\u305f\u306f未登録\u3067\u3059`);
+        continue;
+      }
       const shift: ShiftCode = resolvedShift;
       const isHard = op.isHard !== false;
-      if (nurse && days.length > 0) {
-        const customOrAliasMeta = getShiftMeta(
-          shift,
-          nextState.customShiftDefs,
-          nextState.shiftAliases
-        );
-        const shiftName =
-          shift === "O"
-            ? "公休(O)"
-            : shift === "W"
-              ? "勤務(\u30B7\u30D5\u30C8\u304A任\u305B)"
-              : shift === "D"
-                ? "日勤(D)"
-                : shift === "EN"
-                  ? "夜勤(準夜\u30FB深夜)"
-                  : shift === "E"
-                    ? "準夜勤(E)"
-                    : shift === "N"
-                      ? "深夜勤(N)"
-                      : `${customOrAliasMeta.label}(${customOrAliasMeta.shortLabel})`;
-        const reasonLabel = op.reason || "\u30C1\u30E3\u30C3\u30C8指示";
-        if (isHard) {
-          const daySet = new Set(days);
-          const reconciledPin = reconcileCellRulesForPin(nextState, nurse.id, daySet, shift);
-          nextState.customRules = reconciledPin.customRules;
-          nextState.preferences = reconciledPin.preferences;
-          for (const d of days) {
-            const rule: CustomConstraintRule = {
-              id: `chat_pin_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
+      const customOrAliasMeta = getShiftMeta(
+        shift,
+        nextState.customShiftDefs,
+        nextState.shiftAliases
+      );
+      const shiftName =
+        shift === "O"
+          ? "公休(O)"
+          : shift === "W"
+            ? "勤務(\u30B7\u30D5\u30C8\u304A任\u305B)"
+            : shift === "D"
+              ? "日勤(D)"
+              : shift === "EN"
+                ? "夜勤(準夜\u30FB深夜)"
+                : shift === "E"
+                  ? "準夜勤(E)"
+                  : shift === "N"
+                    ? "深夜勤(N)"
+                    : `${customOrAliasMeta.label}(${customOrAliasMeta.shortLabel})`;
+      const reasonLabel = op.reason || "\u30C1\u30E3\u30C3\u30C8指示";
+      if (isHard) {
+        const daySet = new Set(days);
+        const reconciledPin = reconcileCellRulesForPin(nextState, nurse.id, daySet, shift);
+        nextState.customRules = reconciledPin.customRules;
+        nextState.preferences = reconciledPin.preferences;
+        for (const d of days) {
+          const rule: CustomConstraintRule = {
+            id: `chat_pin_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
+            kind: "pin_shift",
+            enabled: true,
+            nurseId: nurse.id,
+            day: d,
+            shift,
+            description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`,
+          };
+          nextState.customRules.push(rule);
+        }
+
+        if (op.onlyMatchedDaysWork && shift !== "O") {
+          const otherDays: number[] = [];
+          for (let d = 1; d <= nextState.config.numDays; d++) {
+            if (!daySet.has(d)) otherDays.push(d);
+          }
+          const otherSet = new Set(otherDays);
+          const reconciledOther = reconcileCellRulesForPin(nextState, nurse.id, otherSet, "O");
+          nextState.customRules = reconciledOther.customRules;
+          nextState.preferences = reconciledOther.preferences;
+          for (const d of otherDays) {
+            nextState.customRules.push({
+              id: `chat_pin_off_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
               kind: "pin_shift",
               enabled: true,
               nurseId: nurse.id,
               day: d,
-              shift,
-              description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`,
-            };
-            nextState.customRules.push(rule);
-          }
-
-          if (op.onlyMatchedDaysWork && shift !== "O") {
-            const otherDays: number[] = [];
-            for (let d = 1; d <= nextState.config.numDays; d++) {
-              if (!daySet.has(d)) otherDays.push(d);
-            }
-            const otherSet = new Set(otherDays);
-            const reconciledOther = reconcileCellRulesForPin(nextState, nurse.id, otherSet, "O");
-            nextState.customRules = reconciledOther.customRules;
-            nextState.preferences = reconciledOther.preferences;
-            for (const d of otherDays) {
-              nextState.customRules.push({
-                id: `chat_pin_off_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
-                kind: "pin_shift",
-                enabled: true,
-                nurseId: nurse.id,
-                day: d,
-                shift: "O",
-                description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u3092「公休(O)」\u306B固定 (${reasonLabel}\u306E指定曜日外)`,
-              });
-            }
-            appliedLogs.push(
-              `${formatDaySpanLabel(nextState.config.month, days)} (計${days.length}日): ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定\u3057、\u305D\u308C以外\u306E曜日(${otherDays.length}日)\u3092「公休(O)」\u306B固定 (${reasonLabel})`
-            );
-          } else {
-            if (days.length === 1) {
-              appliedLogs.push(
-                `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`
-              );
-            } else {
-              appliedLogs.push(
-                `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`
-              );
-            }
-          }
-        } else {
-          for (const d of days) {
-            nextState.preferences.push({
-              id: `chat_pref_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
-              nurseId: nurse.id,
-              day: d,
-              shift,
-              isHard: false,
-              reason: op.reason || "\u30C1\u30E3\u30C3\u30C8希望追加",
+              shift: "O",
+              description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u3092「公休(O)」\u306B固定 (${reasonLabel}\u306E指定曜日外)`,
             });
           }
+          appliedLogs.push(
+            `${formatDaySpanLabel(nextState.config.month, days)} (計${days.length}日): ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定\u3057、\u305D\u308C以外\u306E曜日(${otherDays.length}日)\u3092「公休(O)」\u306B固定 (${reasonLabel})`
+          );
+        } else {
           if (days.length === 1) {
             appliedLogs.push(
-              `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u306B\u30BD\u30D5\u30C8希望「${shiftName}」\u3092追加\u3057\u307E\u3057\u305F`
+              `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`
             );
           } else {
             appliedLogs.push(
-              `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u306B\u30BD\u30D5\u30C8希望「${shiftName}」\u3092追加\u3057\u307E\u3057\u305F`
+              `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u3092「${shiftName}」\u306B固定 (${reasonLabel})`
             );
           }
+        }
+      } else {
+        for (const d of days) {
+          nextState.preferences.push({
+            id: `chat_pref_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
+            nurseId: nurse.id,
+            day: d,
+            shift,
+            isHard: false,
+            reason: op.reason || "\u30C1\u30E3\u30C3\u30C8希望追加",
+          });
+        }
+        if (days.length === 1) {
+          appliedLogs.push(
+            `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u306B\u30BD\u30D5\u30C8希望「${shiftName}」\u3092追加\u3057\u307E\u3057\u305F`
+          );
+        } else {
+          appliedLogs.push(
+            `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u306B\u30BD\u30D5\u30C8希望「${shiftName}」\u3092追加\u3057\u307E\u3057\u305F`
+          );
         }
       }
       continue;
@@ -4341,102 +4545,139 @@ export function applyChatOperationsToState(
 
     if (op.op === "forbid_shift" && op.nurseNameOrId) {
       const nurse = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
-      const rawDays = op.days?.length ? op.days : op.day ? [op.day] : [];
-      const days = Array.from(
-        new Set(rawDays.filter((d) => d >= 1 && d <= nextState.config.numDays))
-      ).sort((a, b) => a - b);
-      if (nurse && days.length > 0) {
-        const resolvedShifts = normalizeActiveShifts(op.forbidShifts, nextState);
-        if (resolvedShifts === null) continue;
-        const shifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
-        const daySet = new Set(days);
-        const reconciledForbid = reconcileCellRulesForForbid(nextState, nurse.id, daySet, shifts);
-        nextState.customRules = reconciledForbid.customRules;
-        nextState.preferences = reconciledForbid.preferences;
-        for (const d of days) {
-          const rule: CustomConstraintRule = {
-            id: `chat_forbid_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
-            kind: "forbid_shift",
-            enabled: true,
-            nurseId: nurse.id,
-            day: d,
-            forbidShifts: shifts,
-            description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`,
-          };
-          nextState.customRules.push(rule);
-        }
-        if (days.length === 1) {
-          appliedLogs.push(
-            `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`
-          );
-        } else {
-          appliedLogs.push(
-            `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`
-          );
-        }
+      if (!nurse) {
+        rejectedLogs.push(`配置禁止\u306e対象\u30b9\u30bf\u30c3\u30d5 "${op.nurseNameOrId}" \u304c名簿\u306b見\u3064\u304b\u308a\u307e\u305b\u3093`);
+        continue;
+      }
+      const rawDays = op.days?.length ? op.days : op.day !== undefined ? [op.day] : [];
+      if (
+        rawDays.length === 0 ||
+        rawDays.some(
+          (d) =>
+            typeof d !== "number" ||
+            !Number.isInteger(d) ||
+            d < 1 ||
+            d > nextState.config.numDays
+        )
+      ) {
+        rejectedLogs.push(`配置禁止\u306e日付\u304c不正\u307e\u305f\u306f月\u306e範囲外(1〜${nextState.config.numDays})\u3067\u3059`);
+        continue;
+      }
+      const days = Array.from(new Set(rawDays)).sort((a, b) => a - b);
+      const resolvedShifts = normalizeActiveShifts(op.forbidShifts, nextState);
+      if (!resolvedShifts || resolvedShifts.length === 0) {
+        rejectedLogs.push("配置禁止\u306e\u30b7\u30d5\u30c8指定\u304c空\u307e\u305f\u306f無効\u3067\u3059");
+        continue;
+      }
+      const shifts: ShiftCode[] = resolvedShifts;
+      const daySet = new Set(days);
+      const reconciledForbid = reconcileCellRulesForForbid(nextState, nurse.id, daySet, shifts);
+      nextState.customRules = reconciledForbid.customRules;
+      nextState.preferences = reconciledForbid.preferences;
+      for (const d of days) {
+        const rule: CustomConstraintRule = {
+          id: `chat_forbid_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
+          kind: "forbid_shift",
+          enabled: true,
+          nurseId: nurse.id,
+          day: d,
+          forbidShifts: shifts,
+          description: `${nextState.config.month}/${d}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`,
+        };
+        nextState.customRules.push(rule);
+      }
+      if (days.length === 1) {
+        appliedLogs.push(
+          `${nextState.config.month}/${days[0]}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`
+        );
+      } else {
+        appliedLogs.push(
+          `${formatDaySpanLabel(nextState.config.month, days)}: ${nurse.name}(${nurse.id}) \u306E [${shifts.join("/")}] \u30B7\u30D5\u30C8配置\u3092禁止`
+        );
       }
       continue;
     }
 
-    if (op.op === "add_date_coverage" && op.day && typeof op.minStaff === "number") {
-      if (op.day >= 1 && op.day <= nextState.config.numDays) {
-        const shift: ShiftCode =
-          op.shift === "E" || op.shift === "N" ? op.shift : "D";
-        const shiftLabel = shift === "D" ? "日勤(D)" : shift === "E" ? "準夜勤(E)" : "深夜勤(N)";
-        const rule: CustomConstraintRule = {
-          id: `chat_cov_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          kind: "date_coverage",
-          enabled: true,
-          day: op.day,
-          shift,
-          minStaff: Math.max(1, Math.round(op.minStaff)),
-          description: `${nextState.config.month}/${op.day} \u306E${shiftLabel}必要人数\u3092 ${Math.round(op.minStaff)}名以上 \u306B設定`,
-        };
-        nextState.customRules.push(rule);
-        appliedLogs.push(rule.description);
+    if (op.op === "add_date_coverage") {
+      if (
+        typeof op.day !== "number" ||
+        !Number.isInteger(op.day) ||
+        op.day < 1 ||
+        op.day > nextState.config.numDays ||
+        (op.shift !== "D" && op.shift !== "E" && op.shift !== "N") ||
+        typeof op.minStaff !== "number" ||
+        !Number.isInteger(op.minStaff) ||
+        op.minStaff < 1
+      ) {
+        rejectedLogs.push(
+          `日別必要人数設定 (${String(op.day)}日 / ${String(op.shift)} / ${String(op.minStaff)}名) \u304c不正\u3067\u3059`
+        );
+        continue;
       }
+      const shiftLabel = op.shift === "D" ? "日勤(D)" : op.shift === "E" ? "準夜勤(E)" : "深夜勤(N)";
+      const rule: CustomConstraintRule = {
+        id: `chat_cov_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        kind: "date_coverage",
+        enabled: true,
+        day: op.day,
+        shift: op.shift,
+        minStaff: op.minStaff,
+        description: `${nextState.config.month}/${op.day} \u306E${shiftLabel}必要人数\u3092 ${op.minStaff}名以上 \u306B設定`,
+      };
+      nextState.customRules.push(rule);
+      appliedLogs.push(rule.description);
       continue;
     }
 
     if (op.op === "add_ng_pair" && op.nurseNameOrId && op.nurseBNameOrId) {
       const nA = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
       const nB = resolveNurseFromText(op.nurseBNameOrId, nextState.nurses);
-      if (nA && nB && nA.id !== nB.id) {
-        const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
-        if (resolvedShifts === null) continue;
-        const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
-        const shiftDesc =
-          targetShifts.length === 3
-            ? "全\u30B7\u30D5\u30C8(日勤\u30FB準夜\u30FB深夜)"
-            : targetShifts.length === 2 &&
-                targetShifts.includes("E") &&
-                targetShifts.includes("N")
-              ? "同夜勤(準夜\u30FB深夜)"
-              : `[${targetShifts.join("/")}] \u30B7\u30D5\u30C8`;
-        nextState.relations = nextState.relations.filter(
-          (r) =>
-            !(
-              r.type === "ng_pair" &&
-              ((r.nurseA === nA.id && r.nurseB === nB.id) ||
-                (r.nurseA === nB.id && r.nurseB === nA.id))
-            )
+      if (!nA || !nB || nA.id === nB.id) {
+        rejectedLogs.push(
+          `相性NG\u30da\u30a2\u306e対象\u30b9\u30bf\u30c3\u30d5 (${op.nurseNameOrId} / ${op.nurseBNameOrId}) \u304c見\u3064\u304b\u3089\u306a\u3044\u304b同一人物\u3067\u3059`
         );
-        const description = `相性NG\u30DA\u30A2追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) \u306E${shiftDesc}同時配置\u3092禁止`;
-        nextState.relations.push({
-          id: `chat_ng_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          type: "ng_pair",
-          enabled: true,
-          nurseA: nA.id,
-          nurseB: nB.id,
-          shifts: targetShifts,
-          isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
-          penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
-          reason: description,
-        });
-        appliedLogs.push(description);
+        continue;
       }
+      const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
+      if (resolvedShifts === null) {
+        rejectedLogs.push("相性NG\u30da\u30a2\u306e対象\u30b7\u30d5\u30c8\u304c不正\u307e\u305f\u306f空\u3067\u3059");
+        continue;
+      }
+      const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
+      const shiftDesc =
+        targetShifts.length === 3
+          ? "全\u30B7\u30D5\u30C8(日勤\u30FB準夜\u30FB深夜)"
+          : targetShifts.length === 2 &&
+              targetShifts.includes("E") &&
+              targetShifts.includes("N")
+            ? "同夜勤(準夜\u30FB深夜)"
+            : `[${targetShifts.join("/")}] \u30B7\u30D5\u30C8`;
+      nextState.relations = nextState.relations.filter(
+        (r) =>
+          !(
+            r.type === "ng_pair" &&
+            ((r.nurseA === nA.id && r.nurseB === nB.id) ||
+              (r.nurseA === nB.id && r.nurseB === nA.id))
+          )
+      );
+      const description = `相性NG\u30DA\u30A2追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) \u306E${shiftDesc}同時配置\u3092禁止`;
+      nextState.relations.push({
+        id: `chat_ng_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        type: "ng_pair",
+        enabled: true,
+        nurseA: nA.id,
+        nurseB: nB.id,
+        shifts: targetShifts,
+        isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
+        penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
+        reason: description,
+      });
+      appliedLogs.push(description);
+      continue;
     }
+
+    rejectedLogs.push(`無効\u307e\u305f\u306f\u30d1\u30e9\u30e1\u30fc\u30bf不足\u306e操作 (${op.op}) \u3092\u30b9\u30ad\u30c3\u30d7\u3057\u307e\u3057\u305f`);
   }
 
-  return { updatedState: nextState, appliedLogs };
+  return { updatedState: nextState, appliedLogs, rejectedLogs };
 }
