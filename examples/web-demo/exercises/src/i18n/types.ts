@@ -64,6 +64,7 @@ export interface ExercisesUiStrings {
   editor: {
     workbenchTitle: string;
     eitherRuntimeHint: string;
+    washiOnlyHint: string;
     label: string;
     runBtn: string;
     runningBtn: string;

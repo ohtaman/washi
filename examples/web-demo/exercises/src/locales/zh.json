@@ -86,6 +86,7 @@
     "editor": {
       "workbenchTitle": "答题区（编辑代码并运行判题）",
       "eitherRuntimeHint": "只需在 WaSHI (TypeScript) 或 PuLP (Python) 任意一种运行时中通过即可完成本题。",
+      "washiOnlyHint": "本题使用 WaSHI 专属建模能力（CP / SMT / 凸QP / 分解算法），请在 WaSHI (TypeScript) 中完成求解。",
       "label": "实现 solve(input) 并返回结果对象",
       "runBtn": "运行并判题",
       "runningBtn": "运行中…",
@@ -139,40 +140,40 @@
       "description": "从一行改错的即时运行开始，循序渐进掌握线性不等式、整数与 0-1 变量、二维分配矩阵、多周期库存平衡以及开关关联混合整数建模。"
     },
     "2": {
-      "title": "线性化技巧、凸QP 与对偶灵敏度分析",
-      "description": "掌握 Charnes-Cooper 分式线性化、极小化极大、松弛罚项、鲁棒 L1/Linf 拟合、凸二次规划组合与影子价格/检验数。"
+      "title": "MIP 建模惯用模式——逻辑约束、Big-M 与集合覆盖",
+      "description": "半连续生产、固定成本网络设计、基数与逻辑 Big-M 线性化、集合覆盖与划分、多维背包、分段折扣与带容量选址 (CFLP)。"
     },
     "3": {
-      "title": "混合整数规划 (MIP) 建模惯用模式",
-      "description": "固定成本与半连续变量、指示变量逻辑链、SOS2 分段线性近似、McCormick 松弛与模式枚举。"
+      "title": "线性化技巧与对偶灵敏度分析",
+      "description": "极小化极大上镜图、L1 偏差与超额惩罚、Charnes-Cooper 分式线性化、0-1 乘积线性化、紧 Big-M、影子价格与检验数。"
     },
     "4": {
-      "title": "命题逻辑与 SMT 建模",
-      "description": "唯一性证明、反证推理、策略验证、极小冲突核 (Unsat Core) 与 MaxSAT 修复。"
+      "title": "约束规划 (CP / LCG) 与全局约束",
+      "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束、二维矩形装箱、对称性破除以及 MIP 与 CP 对比。"
     },
     "5": {
-      "title": "约束规划 (CP / LCG) 与全局约束",
-      "description": "深入掌握 distinct、at、allowed、disjoint、cumulative 等全局约束与多范式对比。"
+      "title": "命题逻辑、SMT 与冲突诊断修复",
+      "description": "基于 No-Good 割的唯一性证明、依赖与权限规则反例检测、极小冲突核 (Unsat Core)、MaxSAT 修复、历史数据审计与 SMT-LIRA。"
     },
     "6": {
       "title": "网络流、全幺模性、连通性与车辆路径规划 (VRP)",
-      "description": "利用全幺模性加速求解、最大流最小割、基于流的图连通性、带时间窗车辆路径规划与区域划分。"
+      "description": "利用全幺模性、最大流最小割、资源受限最短路、基于流的图连通性、MTZ/TSP、CVRP / VRPTW 与连通区域划分。"
     },
     "7": {
       "title": "生产计划、库存控制、供应链与能源调度",
-      "description": "强松弛批量计划、多层 BOM/MRP、选址分配、机组组合与储能套利调度。"
+      "description": "强松弛批量计划、多品目 CLSP、缺货模型对比、多层 BOM/MRP、交叉转运、机组组合与储能峰谷套利调度。"
     },
     "8": {
-      "title": "车间调度、人员排班、课表编排与收益管理",
-      "description": "车间调度对比、RCPSP、轮班窗口约束、排课系统与舱位收益管理。"
+      "title": "车间调度、人员排班、课表编排与设备分配",
+      "description": "交期延误与顺序相关换产调度、作业车间 (MIP vs CP)、RCPSP、连班与夜班间隔、技能/互斥对约束、排课与手术室排程。"
     },
     "9": {
-      "title": "需求审计、多目标权衡与不确定性优化",
-      "description": "历史数据伪约束审计、模型诊断、目标/字典序/帕累托前沿、公平性度量、最小扰动重排、CVaR 与鲁棒优化。"
+      "title": "多目标权衡、公平性、重排程与不确定性优化",
+      "description": "弹性软约束层级、字典序多阶段、帕累托前沿、公平性度量（含二次均衡）、最小扰动重排、随机追索、CVaR 与鲁棒优化。"
     },
     "10": {
-      "title": "大规模分解算法与混合求解器架构",
-      "description": "延迟割平面、列生成法、Dantzig-Wolfe 分解、经典与逻辑 Benders 分解、拉格朗日松弛及综合实战。"
+      "title": "建模加强、大规模分解算法与混合求解架构",
+      "description": "紧致 Big-M 与数值缩放、覆盖割、迭代子环消除、列生成、Dantzig-Wolfe、经典与逻辑 Benders 分解、LNS 及 S&OP 综合实战。"
     }
   },
   "judgeHelpers": {

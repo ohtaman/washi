@@ -375,6 +375,8 @@ class ExercisesApp {
   }
 
   private switchRuntimeTab(next: RuntimeId, focusTab: boolean = false): void {
+    const prob = this.getInteractiveProblem();
+    if (prob && !prob.meta.runtimes.includes(next)) return;
     if (this.activeRuntime === next) return;
     this.activeRuntime = next;
     this.armedSolutionRuntime = null;
@@ -719,6 +721,8 @@ class ExercisesApp {
         e.key === "End"
       ) {
         e.preventDefault();
+        const prob = this.getInteractiveProblem();
+        if (!prob || prob.meta.runtimes.length < 2) return;
         const next: RuntimeId =
           e.key === "Home"
             ? "washi"
@@ -1138,6 +1142,10 @@ class ExercisesApp {
       if (seq !== this.renderSeq) return;
 
       document.title = `${prob.meta.title[locale]} — ${strings.brandTitle}`;
+      const effectiveRuntime: RuntimeId = prob.meta.runtimes.includes(this.activeRuntime)
+        ? this.activeRuntime
+        : (prob.meta.runtimes[0] ?? "washi");
+      this.activeRuntime = effectiveRuntime;
       bodyHtml = renderWorkspaceHtml({
         locale,
         strings,
@@ -1150,9 +1158,9 @@ class ExercisesApp {
         prevProblem: prevProb,
         nextProblem: nextProb,
         progress: this.progress,
-        activeRuntime: this.activeRuntime,
+        activeRuntime: effectiveRuntime,
         washiCode: this.getDraftCode(prob, "washi"),
-        highspyCode: this.getDraftCode(prob, "highspy"),
+        highspyCode: prob.meta.runtimes.includes("highspy") ? this.getDraftCode(prob, "highspy") : "",
       });
     } else if (this.viewMode === "guide") {
       let guideMarkdown = this.guideCache.get(locale);

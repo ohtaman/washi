@@ -1222,6 +1222,34 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       expect(decodeHtmlEntities(p010WsHtml)).toContain(UI_STRINGS[locale].workspace.discussionBtn);
       expect(p010WsHtml).toContain(`${p010.meta.difficulty}/5`);
       expect(p010WsHtml).toContain(UI_STRINGS[locale].solvedBadge);
+      expect(p010WsHtml).toContain('id="tab-highspy"');
+      expect(p010WsHtml).toContain('id="panel-highspy"');
+
+      // WaSHI-only problem (runtimes: ["washi"]) must omit Python tab/panel and fall back active tab to WaSHI
+      const washiOnlyProb = {
+        ...p010,
+        meta: { ...p010.meta, runtimes: ["washi" as const] },
+      };
+      const washiOnlyHtml = renderWorkspaceHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
+        problem: washiOnlyProb,
+        problemMarkdown,
+        prevProblem: PROBLEMS.find((p) => p.meta.id === "009") ?? null,
+        nextProblem: null,
+        progress: state,
+        activeRuntime: "highspy",
+        washiCode: p010.washiStarter,
+        highspyCode: "",
+      });
+      expect(washiOnlyHtml).toContain('id="tab-washi"');
+      expect(washiOnlyHtml).toContain('id="panel-washi"');
+      expect(washiOnlyHtml).not.toContain('id="tab-highspy"');
+      expect(washiOnlyHtml).not.toContain('id="panel-highspy"');
+      expect(washiOnlyHtml).not.toMatch(/id="panel-washi"[^>]*\bhidden\b/);
+      expect(decodeHtmlEntities(washiOnlyHtml)).toContain(UI_STRINGS[locale].editor.washiOnlyHint);
 
       const guideMd = await loadGuideMarkdown(locale);
       const guideCached = await loadGuideMarkdown(locale);

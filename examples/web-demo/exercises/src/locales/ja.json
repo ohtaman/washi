@@ -86,6 +86,7 @@
     "editor": {
       "workbenchTitle": "解答欄（コードを書いて実行）",
       "eitherRuntimeHint": "WaSHI (TypeScript) と PuLP (Python) のどちらか一方を AC にするとこの問題は完了になります。",
+      "washiOnlyHint": "この問題は WaSHI 固有の機能（CP / SMT / 凸QP / 分解法）を使うため、WaSHI (TypeScript) で解答します。",
       "label": "solve(input) を実装して結果を返す",
       "runBtn": "実行して採点",
       "runningBtn": "実行中…",
@@ -139,40 +140,40 @@
       "description": "1行修正の感覚確認から始めて、線形制約の追加、整数・0-1変数、2次元行列、多期間在庫フロー、固定費と連続量を結ぶ MIP までを段階的に身につけます。"
     },
     "2": {
-      "title": "線形化技巧・凸QP・双対と感度分析",
-      "description": "Charnes-Cooper 法による比率の線形化、ミニマックスのエピグラフ化、正値部分・ロバスト回帰、凸二次計画、潜在価格（Shadow Price）と被約費用を学びます。"
+      "title": "MIP 定式化の基本定石（論理条件・Big-M・集合被覆）",
+      "description": "半連続生産、固定費ネットワーク設計、選択・論理条件の Big-M 線形化、集合被覆・分割、多次元ナップサック、区分線形割引、容量制約付き施設配置を学びます。"
     },
     "3": {
-      "title": "混合整数計画（MIP）の定式化パターン",
-      "description": "固定費・半連続変数、インジケータの向きとチェイン結合、SOS2 折れ線近似、McCormick 緩和、パターン列挙への発想転換。"
+      "title": "線形化技巧と双対・感度分析",
+      "description": "ミニマックスのエピグラフ化、L1 偏差・超過ペナルティ、Charnes-Cooper 比率線形化、0-1 積の線形化、潜在価格（Shadow Price）と被約費用を学びます。"
     },
     "4": {
-      "title": "論理充足と SMT モデリング",
-      "description": "一意性証明、背理法推論、ルール矛盾の Unsat Core 特定、MaxSAT 修復、実数＋論理（SMT-LIRA）の検証。"
+      "title": "制約プログラミング（CP / LCG）とグローバル制約",
+      "description": "distinct・at・allowed・disjoint・cumulative の各グローバル制約、2次元矩形パッキング、対称性除去、MIP と CP の解法比較。"
     },
     "5": {
-      "title": "制約プログラミング（CP / LCG）とグローバル制約",
-      "description": "distinct・at・allowed・disjoint・cumulative の各グローバル制約、対称性除去、MIP・CP・SMT の解法比較。"
+      "title": "論理充足・SMT・矛盾診断と修復",
+      "description": "No-Good カットによる一意性証明、依存・権限ルールの反例検出、Unsat Core 特定、MaxSAT 的修復、実績データ監査、SMT-LIRA 検証。"
     },
     "6": {
       "title": "ネットワーク・全単模性・連結性・配送計画 (VRP)",
-      "description": "全単模性の威力、最大流最小カット、仮想フローによる領域連結性、CVRP / VRPTW、テリトリー設計。"
+      "description": "全単模性の威力、最大流最小カット、資源制約付き最短路、仮想フローによる領域連結性、MTZ/TSP、CVRP / VRPTW、連結テリトリー設計。"
     },
     "7": {
       "title": "生産・在庫・サプライチェーン・エネルギー運用",
-      "description": "強定式化ロットサイズ、多段階MRP、サプライヤー配分、CFLP、発電機起動停止計画、蓄電池ピークカット。"
+      "description": "強定式化ロットサイズ、多品目 CLSP、欠品モデル、多段階 MRP、サプライヤー配分、電力ユニットコミットメント、蓄電池ピークカット。"
     },
     "8": {
-      "title": "スケジューリング・シフト・時間割・収益管理",
-      "description": "ジョブショップ比較（MIP vs CP）、RCPSP、連勤・夜勤インターバル、大学時間割、手術室スケジュール、座席在庫制御。"
+      "title": "スケジューリング・シフト・時間割・設備割当",
+      "description": "納期遅れ・段取り依存スケジュール、ジョブショップ（MIP vs CP）、RCPSP、連勤・夜勤インターバル、スキル・ペア制約、時間割、手術室割当。"
     },
     "9": {
-      "title": "要件監査・多目的・不確実性最適化",
-      "description": "過去データによる制約監査、不能・非有界デバッグ、ゴール計画・辞書式・パレート曲線、公平性、最小変更リスケ、CVaR とロバスト最適化。"
+      "title": "多目的・公平性・リスケジュール・不確実性最適化",
+      "description": "弾力制約階層、辞書式最適化、パレート曲線、公平性指標（二次平準化含む）、最小変更リスケ、確率計画、CVaR とロバスト最適化。"
     },
     "10": {
-      "title": "大規模分解法とマルチソルバー・ハイブリッド解法",
-      "description": "遅延カットTSP、列生成法（CSP/シフト/VRP）、Dantzig-Wolfe、Benders / LBBD、ラグランジュ緩和、LNS、S&OP 総合演習。"
+      "title": "定式化改善・大規模分解法・反復ハイブリッド解法",
+      "description": "Big-M タイト化、妥当不等式、反復カット TSP、列生成法、Dantzig-Wolfe、古典・論理 Benders 分解、LNS、S&OP 総合演習。"
     }
   },
   "judgeHelpers": {
