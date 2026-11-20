@@ -1,0 +1,25 @@
+{
+  "id": "067",
+  "slug": "supplier-allocation-caps",
+  "chapter": 7,
+  "order": 7,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 3,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

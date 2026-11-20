@@ -1,0 +1,34 @@
+{
+  "title": "#070. Energy-Coupled Production & Battery Scheduling",
+  "subtitle": "Chapter 7 synthesis: co-optimize multi-period lot sizing, time-of-use electricity tariffs, and battery peak shaving.",
+  "tags": [
+    "MIP",
+    "Lot Sizing",
+    "Energy Coupling",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4-period off-peak production & peak shaving",
+    "6-period tight production capacity",
+    "6-period high setup cost & idle power",
+    "8-period multi-peak tariff & load spike",
+    "8-period fractional demands & asymmetric battery"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setups, production, inventory, charge, discharge, soc, peakLoad, totalCost }.",
+    "m1": "setups[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "production[{p0}] ({p1}) must be within [0, {p2}] for its setup status.",
+    "m3": "inventory[{p0}] cannot be negative (received {p1}).",
+    "m4": "Product inventory balance mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m5": "{p0}[{p1}] ({p2}) must be between 0 and maxPower {p3}.",
+    "m6": "Simultaneous charge ({p1}) and discharge ({p2}) is disallowed in period {p0}.",
+    "m7": "soc[{p0}] ({p1}) must lie within [0, {p2}].",
+    "m8": "Battery SOC transition mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m9": "Net grid import at period {p0} cannot be negative (received {p1}).",
+    "m10": "Reported peakLoad ({p0}) is less than total grid load at period {p1} ({p2}).",
+    "m11": "Final battery SOC ({p0}) must be at least initial SOC ({p1}).",
+    "m12": "Reported totalCost ({p0}) does not match recomputed production + energy + demand cost ({p1}).",
+    "m13": "Valid coupled schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m14": "Optimal energy-coupled production and storage plan found (totalCost = {p0})!"
+  }
+}

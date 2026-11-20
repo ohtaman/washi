@@ -1,0 +1,25 @@
+{
+  "id": "062",
+  "slug": "multi-item-clsp",
+  "chapter": 7,
+  "order": 2,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

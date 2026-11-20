@@ -1,0 +1,29 @@
+{
+  "title": "#063. Backorders & Lost Sales Inventory Planning",
+  "subtitle": "Model demand fulfillment split across immediate sales, temporary backorders, and permanent lost sales in a multi-period LP.",
+  "tags": [
+    "LP",
+    "Backorders",
+    "Lost Sales",
+    "Inventory Flow"
+  ],
+  "caseNames": [
+    "4-period peak capacity spike",
+    "5-period demand surge exceeding capacity",
+    "4-period high-cost peak avoidance",
+    "5-period high starting stock",
+    "6-period fractional multi-tradeoff"
+  ],
+  "judge": {
+    "m0": "Output must be an object { production, sales, inventory, backlog, lostSales, netProfit }.",
+    "m1": "production[{p0}] ({p1}) must be between 0 and capacity {p2}.",
+    "m2": "{p0}[{p1}] cannot be negative (received {p2}).",
+    "m3": "lostSales[{p0}] ({p1}) must be between 0 and demand {p2}.",
+    "m4": "Physical inventory balance mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m5": "Backlog balance mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m6": "Ending backlog at the final period must be cleared to 0 (received {p0}).",
+    "m7": "Reported netProfit ({p0}) does not match recomputed profit ({p1}).",
+    "m8": "Feasible plan, but netProfit ({p0}) is below maximum ({p1}).",
+    "m9": "Optimal backorder and lost-sales plan found (netProfit = {p0})!"
+  }
+}

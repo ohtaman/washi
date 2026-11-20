@@ -1,0 +1,33 @@
+{
+  "title": "#066. Cross-Docking Door & Flow Synchronization",
+  "subtitle": "Assign inbound and outbound trucks to cross-dock doors while matching commodity flows and arrival-departure time synchronization.",
+  "tags": [
+    "MIP",
+    "Cross-Docking",
+    "Synchronization",
+    "Disaggregation"
+  ],
+  "caseNames": [
+    "3 inbound x 3 outbound across 2x2 doors",
+    "4 inbound x 3 outbound with door congestion",
+    "4x4 trucks across 2x3 doors and 3 commodities",
+    "5 inbound x 4 outbound with tight due windows",
+    "3x3 trucks across asymmetric 2x3 doors (fractional loads)"
+  ],
+  "judge": {
+    "m0": "Output must be an object { inDoor, outDoor, flows, departures, totalCost }.",
+    "m1": "Field \"flows\" must have {p0} inbound rows.",
+    "m2": "flows[{p0}] must have {p1} outbound entries.",
+    "m3": "flows[{p0}][{p1}][{p2}] cannot be negative (received {p3}).",
+    "m4": "{p0}[{p1}] must be an integer door index in 0..{p3} (received {p2}).",
+    "m5": "Inbound door {p0} handles {p1} trucks exceeding door capacity {p2}.",
+    "m6": "departures[{p0}] cannot be negative (received {p1}).",
+    "m7": "Outbound door {p0} handles {p1} trucks exceeding door capacity {p2}.",
+    "m8": "Inbound truck {p0} shipped {p2} of commodity {p1} exceeding supply {p3}.",
+    "m9": "Outbound truck {p0} received {p2} of commodity {p1}, below demand {p3}.",
+    "m10": "Outbound truck {p0} departs at {p1} before freight from inbound truck {p2} finishes transfer at {p3}.",
+    "m11": "Reported totalCost ({p0}) does not match recomputed handling + delay cost ({p1}).",
+    "m12": "Valid cross-docking schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m13": "Optimal cross-docking synchronization found (totalCost = {p0})!"
+  }
+}

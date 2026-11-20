@@ -1,0 +1,27 @@
+{
+  "id": "069",
+  "slug": "battery-peak-shaving",
+  "chapter": 7,
+  "order": 9,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 3,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "LP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "title": "#062. Multi-Item Capacitated Lot Sizing (CLSP)",
+  "subtitle": "Coordinate production batches and setups for multiple items sharing scarce machine hours across periods.",
+  "tags": [
+    "MIP",
+    "CLSP",
+    "Setup Time",
+    "Shared Capacity"
+  ],
+  "caseNames": [
+    "2 items across 4 periods",
+    "3 items with tight capacity",
+    "2 items with zero-demand periods",
+    "3 items across 5 periods",
+    "4 items with fractional rates"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setups, production, inventory, totalCost }.",
+    "m1": "Field \"{p0}\" must have {p1} rows (one per item).",
+    "m2": "setups[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "production[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m4": "Item {p0} produced {p2} units in period {p1} without an active setup (setups[{p0}][{p1}] = 0).",
+    "m5": "inventory[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m6": "Inventory balance mismatch for item {p0} in period {p1}: expected {p2}, got {p3}.",
+    "m7": "Machine hours used in period {p0} ({p1}) exceed capacity ({p2}).",
+    "m8": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
+    "m9": "Valid CLSP schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m10": "Optimal multi-item CLSP schedule found (totalCost = {p0})!"
+  }
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [80, 120, 160, 190, 150, 100],
+      "pMin": [40, 25, 10],
+      "pMax": [110, 70, 45],
+      "rampLimit": [45, 40, 45],
+      "minUp": [3, 2, 1],
+      "minDown": [2, 2, 1],
+      "startupCosts": [450, 220, 80],
+      "fuelCosts": [20, 32, 48]
+    },
+    "expectedOptimal": 19730
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [70, 130, 175, 140, 90, 150, 180, 110],
+      "pMin": [45, 30, 10],
+      "pMax": [115, 75, 50],
+      "rampLimit": [50, 45, 50],
+      "minUp": [3, 2, 1],
+      "minDown": [3, 2, 1],
+      "startupCosts": [500, 250, 90],
+      "fuelCosts": [18, 30, 46]
+    },
+    "expectedOptimal": 23630
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [60, 105, 155, 200, 215, 170, 120, 85],
+      "pMin": [50, 30, 20, 10],
+      "pMax": [110, 80, 55, 40],
+      "rampLimit": [35, 30, 35, 40],
+      "minUp": [4, 3, 2, 1],
+      "minDown": [2, 2, 2, 1],
+      "startupCosts": [520, 300, 160, 70],
+      "fuelCosts": [17, 25, 35, 52]
+    },
+    "expectedOptimal": 23600
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [65, 95, 140, 195, 220, 160, 110, 145, 190, 120],
+      "pMin": [60, 35, 20, 10],
+      "pMax": [120, 85, 60, 45],
+      "rampLimit": [40, 35, 35, 45],
+      "minUp": [4, 3, 2, 1],
+      "minDown": [3, 2, 2, 1],
+      "startupCosts": [600, 320, 180, 80],
+      "fuelCosts": [16, 24, 34, 50]
+    },
+    "expectedOptimal": 29610
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [72.5, 118.0, 164.5, 210.0, 242.5, 225.0, 178.5, 152.0, 195.5, 130.0],
+      "pMin": [55, 40, 25, 15, 10],
+      "pMax": [120, 90, 65, 50, 40],
+      "rampLimit": [45, 40, 35, 35, 40],
+      "minUp": [4, 3, 2, 2, 1],
+      "minDown": [3, 2, 2, 1, 1],
+      "startupCosts": [580, 360, 210, 120, 65],
+      "fuelCosts": [15, 22, 30, 40, 55]
+    },
+    "expectedOptimal": 32053
+  }
+]

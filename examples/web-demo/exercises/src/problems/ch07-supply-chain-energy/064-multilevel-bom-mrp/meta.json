@@ -1,0 +1,25 @@
+{
+  "id": "064",
+  "slug": "multilevel-bom-mrp",
+  "chapter": 7,
+  "order": 4,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 15,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

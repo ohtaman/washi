@@ -6,6 +6,7 @@ import { CH03_PROBLEMS } from "./ch03-linearization-duality/index.js";
 import { CH04_PROBLEMS } from "./ch04-constraint-programming/index.js";
 import { CH05_PROBLEMS } from "./ch05-propositional-smt-diagnosis/index.js";
 import { CH06_PROBLEMS } from "./ch06-networks-routing/index.js";
+import { CH07_PROBLEMS } from "./ch07-supply-chain-energy/index.js";
 export { CHAPTERS } from "./chapters.js";
 
 export const PROBLEMS: ProblemDefinition[] = [
@@ -16,6 +17,7 @@ export const PROBLEMS: ProblemDefinition[] = [
   ...CH04_PROBLEMS,
   ...CH05_PROBLEMS,
   ...CH06_PROBLEMS,
+  ...CH07_PROBLEMS,
 ];
 
 export function getProblemById(id: string): ProblemDefinition | undefined {

@@ -1,0 +1,30 @@
+{
+  "title": "#067. Supplier Allocation with Semi-Continuous & Share Caps",
+  "subtitle": "Allocate plant procurement across suppliers under semi-continuous order bounds, single-supplier share caps, and active vendor limits.",
+  "tags": [
+    "MIP",
+    "Procurement",
+    "Semi-Continuous",
+    "Diversification"
+  ],
+  "caseNames": [
+    "4 suppliers x 3 plants (60% cap)",
+    "5 suppliers x 3 plants (50% cap)",
+    "5 suppliers x 4 plants (55% cap)",
+    "6 suppliers x 4 plants (fractional demands)",
+    "6 suppliers x 5 plants (tight count window)"
+  ],
+  "judge": {
+    "m0": "Output must be an object { active, allocations, totalCost }.",
+    "m1": "Field \"allocations\" must have {p0} rows (one per supplier).",
+    "m2": "active[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m3": "allocations[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m4": "allocations[{p0}][{p1}] ({p2}) exceeds single-supplier share cap ({p3}).",
+    "m5": "Supplier {p0} total order ({p1}) must lie in [{p2}, {p3}] for its activation status.",
+    "m6": "Active supplier count ({p0}) must lie within [{p1}, {p2}].",
+    "m7": "Plant {p0} received {p1} units, below demand {p2}.",
+    "m8": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
+    "m9": "Valid procurement plan, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m10": "Optimal supplier allocation found (totalCost = {p0})!"
+  }
+}
