@@ -51,22 +51,26 @@
 
 ## 5. 相关链接与参考资料 {#resources}
 
-聚焦于 WaSHI 的核心场景——**组合优化（LP / MIP / CP / SMT）**的官方文档与精选参考资料：
+本节汇总以组合优化为核心、围绕数学优化与约束规划（LP / MIP / CP / SMT）问题理解与建模的官方文档与参考资料：
+
+### 参考资料选择建议
+
+学习建模基础与实用技巧时，可参考 MO-book、MOSEK Modeling Cookbook 与 opt100；了解约束规划（CP）可查阅 MiniZinc Handbook；学习逻辑约束与 SMT 可尝试 Online Z3 Guide；关于在 WaSHI 中的具体实现方式，请参阅 WaSHI 官方文档。
 
 ### 建模库与求解器官方文档
 
-- [WaSHI 文档（快速开始）](/zh/getting-started/) / [建模技巧](/zh/guide/formulation-tips) — WaSHI 本体 API、各求解器后端与建模指南。
-- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 LP / MIP 代数建模库文档（英文）。
-- [HiGHS](https://highs.dev/)（[文档](https://ergo-code.github.io/HiGHS/)） — 同时支撑 WaSHI 与 PuLP 求解 LP / MIP 的开源求解器（英文）。
-- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 MIP、车辆路径、排程与 CP-SAT 约束规划的官方指南与示例（英文）。
-- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 约束规划（CP）与全局约束建模的标准手册（英文）。
-- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — Julia 代数建模语言文档，提供精炼的 LP / MIP 建模模式介绍（英文）。
-- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI 约束规划（CP）后端采用的 Lazy Clause Generation 求解器（英文）。
-- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — 面向 SMT 求解器 Z3 的在线交互式教程与参考（英文）。
+- [WaSHI 官方文档](https://washi.ohtaman.dev/zh/) — 收录 WaSHI 的 API、各求解器后端、建模指南与代码示例。
+- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 Python LP / MIP 代数建模库参考文档。
+- [HiGHS](https://highs.dev/)（[Docs](https://ergo-code.github.io/HiGHS/dev/)） — WaSHI 默认的 LP / MIP / QP 求解器，也是可在 PuLP 中直接调用的高性能开源求解器。
+- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 MIP、车辆路径、排程与 CP-SAT 等丰富实战示例的官方指南。
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 系统讲解约束规划（CP）建模方法与全局约束的标准手册。
+- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — 面向 Julia 的数学优化建模库，收录 LP / MIP 等常见建模模式与实现示例。
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI 约束规划（CP）后端采用的 Lazy Clause Generation（LCG）约束编程求解器。
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — 可直接在浏览器中动手练习 SMT 求解器 Z3 逻辑约束与可满足性判定的官方教程。
 
-### 组合优化建模指南与问题库
+### 组合优化指南与问题库
 
-- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 实用的建模技巧手册，其中混合整数优化章节（Big-M、指示约束、线性化）尤为值得参考（英文）。
-- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — 配备可运行 Jupyter Notebook 的开源书籍，系统介绍网络流与 MIP 建模（英文）。
-- [CSPLib](https://www.csplib.org/) — 约束规划与组合优化领域的经典标准问题库（英文）。
-- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — 同名书籍系列的在线配套教程与模型详解，系统覆盖图论、物流配送与排程（日语）。
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 汇集 Big-M、指示约束、逻辑条件线性化等实用建模技巧，其中 Mixed Integer Optimization 章节尤为实用。
+- [Hands-On Mathematical Optimization with Python（MO-book）](https://mobook.github.io/MO-book/) — 结合 Jupyter Notebook 实战代码讲解 LP / MIP 与网络优化的开源教材。
+- [CSPLib](https://www.csplib.org/) — 收录约束规划与组合优化领域经典标准测试问题的题库。
+- [Python 实战优化问题 100+（SCMOPT opt100）](https://scmopt.github.io/opt100/) — 涵盖图论、指派、选址、物流配送与排程等 100 余道优化问题的建模与求解介绍，并附有相关日文书籍的配套支持内容。

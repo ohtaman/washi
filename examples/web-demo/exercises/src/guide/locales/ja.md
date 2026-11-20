@@ -51,22 +51,26 @@
 
 ## 5. 関連リンク・参考リソース {#resources}
 
-WaSHI が主眼とする **組合せ最適化（LP / MIP / CP / SMT）** の理解・定式化に役立つ公式ドキュメントと厳選リソースです。
+組合せ最適化を中心に、数理最適化・制約プログラミング（LP / MIP / CP / SMT）の問題理解と定式化に役立つ公式ドキュメントと参考資料を紹介します。
+
+### 参考資料の使い分け
+
+定式化の基本や実践的なテクニックを学ぶには、MO-book、MOSEK Modeling Cookbook、opt100 が参考になります。制約プログラミング（CP）には MiniZinc Handbook、論理制約や SMT には Online Z3 Guide が役立ちます。WaSHI での実装方法については WaSHI 公式ドキュメントを参照してください。
 
 ### モデリングライブラリ・ソルバー公式ドキュメント
 
-- [WaSHI ドキュメント（はじめに）](/ja/getting-started/) / [定式化のヒント](/ja/guide/formulation-tips) — WaSHI 本体の API、各ソルバーバックエンド、定式化ガイド。
-- [PuLP 公式ドキュメント](https://coin-or.github.io/pulp/) — `PuLP (Python)` タブで使用している LP / MIP モデラーのリファレンス（英語）。
-- [HiGHS](https://highs.dev/)（[Docs](https://ergo-code.github.io/HiGHS/)） — WaSHI と PuLP の双方で LP / MIP 計算を担うオープンソースソルバー（英語）。
-- [Google OR-Tools](https://developers.google.com/optimization) — MIP・配送計画・スケジューリング・CP-SAT ソルバーの実例豊富な公式ガイド（英語）。
-- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 制約プログラミング（CP）とグローバル制約の標準モデリング解説書（英語）。
-- [JuMP ドキュメント](https://jump.dev/JuMP.jl/stable/) — Julia の代数モデリング言語。LP / MIP の定式化パターンも整理されています（英語）。
-- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI の CP バックエンドに使われている Lazy Clause Generation 型ソルバー（英語）。
-- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — SMT ソルバー Z3 をブラウザ上で試しながら学べる公式ガイド（英語）。
+- [WaSHI 公式ドキュメント](https://washi.ohtaman.dev/ja/) — WaSHI の API、各ソルバーバックエンド、定式化ガイド、実装例を掲載。
+- [PuLP 公式ドキュメント](https://coin-or.github.io/pulp/) — `PuLP (Python)` タブで使用している Python 向け LP / MIP モデリングライブラリのリファレンス。
+- [HiGHS](https://highs.dev/)（[Docs](https://ergo-code.github.io/HiGHS/dev/)） — WaSHI の標準 LP / MIP / QP ソルバー。PuLP からも利用できる高性能なオープンソースソルバー。
+- [Google OR-Tools](https://developers.google.com/optimization) — MIP・配送計画・スケジューリング・CP-SAT など、実例が豊富な公式ガイド。
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 制約プログラミング（CP）のモデリング手法やグローバル制約を体系的に解説。
+- [JuMP ドキュメント](https://jump.dev/JuMP.jl/stable/) — Julia 向けの数理最適化モデリングライブラリ。LP / MIP をはじめとする定式化パターンや実装例を掲載。
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI の CP バックエンドに使用されている Lazy Clause Generation（LCG）型の制約プログラミングソルバー。
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — SMT ソルバー Z3 をブラウザ上で試しながら、論理制約や充足可能性判定を学べる公式ガイド。
 
 ### 組合せ最適化の解説・問題リファレンス
 
-- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Big-M・指示制約・線形化テクニックなど実務的なモデリング定石集（特に Mixed Integer Optimization 章が有用・英語）。
-- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — ネットワーク流や MIP を中心に Jupyter Notebook 付きで学べるオープン書籍（英語）。
-- [CSPLib](https://www.csplib.org/) — 制約プログラミング・組合せ最適化の標準ベンチマーク問題ライブラリ（英語）。
-- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — 書籍『Pythonによる実務で役立つ最適化問題100+』シリーズのサポートサイト。グラフ・組合せ・物流・スケジューリング等の定式化解説書（日本語）。
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Big-M、指示制約、論理条件の線形化など、実践的なモデリングの定石集。特に Mixed Integer Optimization 章が有用。
+- [Hands-On Mathematical Optimization with Python（MO-book）](https://mobook.github.io/MO-book/) — LP / MIP、ネットワーク最適化などの数理最適化を、Jupyter Notebook による実装例とともに学べるオープン教材。
+- [CSPLib](https://www.csplib.org/) — 制約プログラミングや組合せ最適化の標準的なベンチマーク問題を収録したライブラリ。
+- [Python言語による実務で使える100+の最適化問題（SCMOPT opt100）](https://scmopt.github.io/opt100/) — グラフ・割当・施設配置・物流・スケジューリングなど、100を超える最適化問題の定式化や解法を紹介。関連書籍『Pythonによる実務で役立つ最適化問題100+』のサポート情報も掲載。
