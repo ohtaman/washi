@@ -1,0 +1,25 @@
+{
+  "id": "076",
+  "slug": "consecutive-night-rest",
+  "chapter": 8,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

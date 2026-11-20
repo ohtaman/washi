@@ -1,0 +1,28 @@
+{
+  "title": "#076. Rostering with Consecutive Workday Limits & Night-to-Day Rest",
+  "subtitle": "Enforce rolling-window consecutive workday caps and forbid hazardous night-to-morning shift transitions in staff scheduling.",
+  "tags": [
+    "MIP",
+    "Staff Rostering",
+    "Rolling Window",
+    "Transition Rules"
+  ],
+  "caseNames": [
+    "4-staff 4-day rest rules",
+    "6-staff 5-day 3-consecutive cap",
+    "6-staff 6-day strict 2-day cap",
+    "8-staff 6-day double-night demand",
+    "9-staff 7-day weekly cycle"
+  ],
+  "judge": {
+    "m0": "Output must be an object { schedule, totalCost }.",
+    "m1": "Field \"schedule\" must be a {p0}x{p1} matrix.",
+    "m2": "schedule[{p0}][{p1}] must be an integer in [-1, 2] (received {p2}).",
+    "m3": "Staff {p0} works more than {p3} consecutive days in window [{p1}, {p2}].",
+    "m4": "Staff {p0} has a forbidden Night (2) -> Day (0) transition from day {p1} to day {p2}.",
+    "m5": "Day {p0}, shift {p1} has {p2} staff assigned, below demand {p3}.",
+    "m6": "Reported totalCost ({p0}) does not match computed shift cost ({p1}).",
+    "m7": "Valid roster, but total cost ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal rest-compliant roster found (totalCost = {p0})!"
+  }
+}

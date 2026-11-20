@@ -1,0 +1,25 @@
+{
+  "title": "#071. Single-Machine Weighted Tardiness with Release Dates",
+  "subtitle": "Schedule jobs on one machine using disjunctive Big-M precedence binaries to minimize total weighted tardiness.",
+  "tags": [
+    "MIP",
+    "Scheduling",
+    "Disjunctive Big-M",
+    "Tardiness"
+  ],
+  "caseNames": [
+    "3-job release-wait instance",
+    "4-job staggered arrivals",
+    "5-job simultaneous arrival",
+    "5-job fractional durations and weights",
+    "6-job multi-priority bottleneck"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, totalWeightedTardiness }.",
+    "m1": "Job {p0} starts at {p1}, before its release date {p2}.",
+    "m2": "Jobs {p0} ([{p1}, {p2})) and {p3} ([{p4}, {p5})) overlap on the single machine.",
+    "m3": "Reported totalWeightedTardiness ({p0}) does not match computed weighted tardiness ({p1}).",
+    "m4": "Valid schedule, but total weighted tardiness ({p0}) exceeds minimum ({p1}).",
+    "m5": "Optimal single-machine schedule found (totalWeightedTardiness = {p0})!"
+  }
+}
