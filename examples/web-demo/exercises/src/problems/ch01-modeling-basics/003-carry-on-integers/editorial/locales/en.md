@@ -15,7 +15,7 @@ $$
 ## Key Points
 
 - **Integer vs. continuous**: With continuous variables (LP relaxation), a solver could take fractional pieces such as `1.75` of an item to achieve a higher but physically invalid objective. Switching to integer variables turns the model into a Mixed-Integer Program (**MIP**).
-- **Safe integer extraction**: Solver floating-point tolerances can produce `1.999999999` or `-0` for integer variables, so normalize outputs with `Math.round(v.value!) || 0` (`round(h.val(c))` in Python).
+- **Safe integer extraction**: Solver floating-point tolerances can produce `1.999999999` or `-0` for integer variables, so normalize outputs with `Math.round(v.value!) || 0` (`round(pulp.value(c))` in Python).
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
@@ -32,14 +32,12 @@ m.constraint(
 );
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
 counts = [
-    h.addIntegral(lb=0, ub=cap, name=f"item_{i}")
+    pulp.LpVariable(f"item_{i}", lowBound=0, upBound=cap, cat=pulp.LpInteger)
     for i, cap in enumerate(max_counts)
 ]
-h.addConstr(
-    h.qsum(weights[i] * counts[i] for i in range(len(counts))) <= input_data["maxWeight"]
-)
+prob += pulp.lpDot(weights, counts) <= input_data["maxWeight"]
 ```

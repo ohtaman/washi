@@ -33,11 +33,11 @@ m.constraint(
 );
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
 for i in range(n_s):
-    h.addConstr(h.qsum(shipments[i][j] for j in range(n_d)) <= supplies[i])
+    prob += pulp.lpSum(shipments[i][j] for j in range(n_d)) <= supplies[i]
 for j in range(n_d):
-    h.addConstr(h.qsum(shipments[i][j] for i in range(n_s)) >= demands[j])
+    prob += pulp.lpSum(shipments[i][j] for i in range(n_s)) >= demands[j]
 ```

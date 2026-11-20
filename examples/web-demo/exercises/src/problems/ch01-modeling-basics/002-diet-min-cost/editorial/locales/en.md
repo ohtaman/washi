@@ -28,9 +28,9 @@ m.constraint(expr`2 * ${oats} + ${beans} >= ${input.minProtein}`, "protein");
 m.constraint(expr`${oats} + 3 * ${beans} >= ${input.minFiber}`, "fiber");
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
-h.addConstr(2 * oats + beans >= input_data["minProtein"])
-h.addConstr(oats + 3 * beans >= input_data["minFiber"])
+prob += 2 * oats + beans >= input_data["minProtein"]
+prob += oats + 3 * beans >= input_data["minFiber"]
 ```

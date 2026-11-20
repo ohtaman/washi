@@ -5,19 +5,19 @@
 ## 1. 採点の仕組み（`solve(input)`） {#solve-contract}
 
 - どの問題も、入力を受け取って結果の JSON オブジェクト（Python なら `dict`）を返す関数 **`solve(input)`** を 1 つ実装します。
-- **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、HiGHS 公式の **Python (`highspy`)** を Pyodide 上で動かせるようにしています。
+- **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、定番の **Python (`PuLP` + HiGHS)** を Pyodide 上で動かせるようにしています。
 - **「実行して採点」** を押すと、テストケースごとに `solve(input)` が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
-- **WaSHI (TypeScript)** と **Python (highspy)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。
+- **WaSHI (TypeScript)** と **Python (PuLP)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。
 
 ## 2. モデルの基本構成要素 {#building-blocks}
 
-| 用語 | 意味 | WaSHI (TS) | highspy (Python) |
+| 用語 | 意味 | WaSHI (TS) | PuLP (Python) |
 | --- | --- | --- | --- |
-| **決定変数** (Decision Variable) | ソルバーが最適な値を決める未知数。 | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `h.addVariable(...)` / `h.addIntegral(...)` / `h.addBinary(...)` |
-| **上下界** (Bounds) | 単一変数にかかる範囲制限（例：$x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lb=0.0, ub=cap` |
-| **線形式** (Linear Expression) | 変数の定数倍の和＋定数（例：$2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` または `dot(...)` | `2 * x + 3 * y` または `h.qsum(...)` |
-| **制約** (Constraint) | 有効な解が必ず満たさなければならない等式・不等式（`<=`, `>=`, `==`）。 | ``m.constraint(expr`... <= ...`)`` | `h.addConstr(...)` |
-| **目的関数** (Objective) | 最小化または最大化したいスカラー指標（利益・コストなど）。 | `m.objective(maximize(...))` / `minimize(...)` | `h.maximize(...)` / `h.minimize(...)` |
+| **決定変数** (Decision Variable) | ソルバーが最適な値を決める未知数。 | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `pulp.LpVariable(..., cat=pulp.LpContinuous / LpInteger / LpBinary)` |
+| **上下界** (Bounds) | 単一変数にかかる範囲制限（例：$x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
+| **線形式** (Linear Expression) | 変数の定数倍の和＋定数（例：$2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` または `dot(...)` | `2 * x + 3 * y` または `pulp.lpSum(...)` |
+| **制約** (Constraint) | 有効な解が必ず満たさなければならない等式・不等式（`<=`, `>=`, `==`）。 | ``m.constraint(expr`... <= ...`)`` | `prob += ... <= ...` |
+| **目的関数** (Objective) | 最小化または最大化したいスカラー指標（利益・コストなど）。 | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` ＋ `prob += ...` |
 
 ### 変数の種類 {#variable-types}
 

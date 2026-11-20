@@ -27,8 +27,8 @@ $$
 m.constraint(expr`${c} + 2 * ${l} <= ${input.butterCap}`, "butter");
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
-h.addConstr(c + 2 * l <= input_data["butterCap"])
+prob += c + 2 * l <= input_data["butterCap"], "butter"
 ```

@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -8,13 +8,12 @@ def solve(input_data: dict) -> dict:
     capacities = input_data["capacities"]
     n_products = len(margins)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("product_mix", pulp.LpMaximize)
 
-    quantities = [h.addVariable(lb=0.0, name=f"q_{j}") for j in range(n_products)]
+    quantities = [pulp.LpVariable(f"q_{j}", lowBound=0) for j in range(n_products)]
 
     # TODO:
     # 1. For each k, cap in enumerate(capacities), add resource usage <= cap
-    # 2. Call h.maximize(...) on total margin
-    # 3. Return {"quantities": [float(h.val(v)) for v in quantities], "totalProfit": float(h.getObjectiveValue())}
+    # 2. Set the objective `prob += ...` on total margin and call `prob.solve(pulp.HiGHS(msg=False))`
+    # 3. Return {"quantities": [float(pulp.value(v)) for v in quantities], "totalProfit": float(pulp.value(prob.objective))}
     raise NotImplementedError("Not implemented")

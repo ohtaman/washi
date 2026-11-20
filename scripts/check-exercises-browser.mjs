@@ -476,13 +476,13 @@ async function run() {
         `${id}: inactive tabpanel must carry hidden attribute`
       );
 
-      // Verify #000-#003 starters in real Pyodide highspy too
+      // Verify #000-#003 starters in real Pyodide PuLP too
       if (id === "000" || id === "001" || id === "002" || id === "003") {
         if (id === "001") {
           const origPyStarter = await page.locator("#editor-highspy").inputValue();
           await page
             .locator("#editor-highspy")
-            .fill(origPyStarter.replace(/^\s*h\.maximize\(.*\)$/m, ""));
+            .fill(origPyStarter.replace(/^\s*prob\.solve\(.*\)$/m, ""));
           await page.click('button[data-action="run"][data-runtime="highspy"]');
           await page.waitForSelector("#judge-results .verdict-pill.is-error", { timeout: 120_000 });
           await page.click('button[data-action="reset"][data-runtime="highspy"]');
@@ -491,16 +491,30 @@ async function run() {
         await page.waitForSelector("#judge-results .verdict-pill.is-violation", { timeout: 120_000 });
       }
 
-      // Reveal & Run real Python highspy solution in Pyodide Web Worker
+      // Reveal & Run real Python PuLP solution in Pyodide Web Worker
       const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
       await pySolBtn.click();
       await pySolBtn.click();
+      if (id === "001") {
+        // Also verify zero-argument `prob.solve()` defaults to HiGHS in Pyodide (instead of failing on CBC subprocess)
+        const pySol = await page.locator("#editor-highspy").inputValue();
+        await page.locator("#editor-highspy").fill(pySol.replace("prob.solve(pulp.HiGHS(msg=False))", "prob.solve()"));
+        await page.click('button[data-action="run"][data-runtime="highspy"]');
+        await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
+        await page.locator("#editor-highspy").fill(pySol);
+      }
       if (id === "007" || id === "010") {
         const pySol = await page.locator("#editor-highspy").inputValue();
         const poisoned =
           id === "007"
-            ? pySol.replace("h.minimize(", "h.addConstr(x[0][0] == 1)\n    h.addConstr(x[0][0] == 0)\n    h.minimize(")
-            : pySol.replace("h.maximize(", "h.addConstr(quantities[0] >= 9999)\n    h.maximize(");
+            ? pySol.replace(
+                "prob.solve(pulp.HiGHS(msg=False))",
+                "prob += x[0][0] == 1\n    prob += x[0][0] == 0\n    prob.solve(pulp.HiGHS(msg=False))"
+              )
+            : pySol.replace(
+                "prob.solve(pulp.HiGHS(msg=False))",
+                "prob += quantities[0] >= 9999\n    prob.solve(pulp.HiGHS(msg=False))"
+              );
         await page.locator("#editor-highspy").fill(poisoned);
         await page.click('button[data-action="run"][data-runtime="highspy"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-infeasible", { timeout: 120_000 });
@@ -518,7 +532,7 @@ async function run() {
       const pyCheckText = await page.locator("#tab-highspy .runtime-tab-check").innerText();
       assert(pyCheckText.includes("✓"), `${id}: expected highspy tab checkmark after Python AC`);
 
-      console.log(`  [PASS] Problem ${id}: WaSHI AC + Pyodide highspy AC verified.`);
+      console.log(`  [PASS] Problem ${id}: WaSHI AC + Pyodide PuLP AC verified.`);
     }
 
     // 4. Verify 10 / 100 progress persistence across reload without Backup UI + clearing solved status

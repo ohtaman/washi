@@ -16,7 +16,7 @@ $$
 ## Key Points
 
 - **Doubly stochastic constraints enforce 1-to-1 matching**: Row sums `== 1` ensure every worker takes one task, and column sums `== 1` ensure every task receives one worker. (Because the assignment constraint matrix is totally unimodular, even continuous relaxation vertices are 0-1 integers.)
-- **Extracting the permutation vector**: Read `assignment[i]` by finding the column `j` where `Math.round(cell.value!) === 1` (`round(h.val(x[i][j])) == 1` in Python).
+- **Extracting the permutation vector**: Read `assignment[i]` by finding the column `j` where `Math.round(cell.value!) === 1` (`round(pulp.value(x[i][j])) == 1` in Python).
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
@@ -32,16 +32,16 @@ const assignment = x.map((row) =>
 );
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
 for i in range(n):
-    h.addConstr(h.qsum(x[i][j] for j in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for j in range(n)) == 1
 for j in range(n):
-    h.addConstr(h.qsum(x[i][j] for i in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for i in range(n)) == 1
 
 assignment = [
-    next(j for j in range(n) if round(h.val(x[i][j])) == 1)
+    next(j for j in range(n) if round(pulp.value(x[i][j])) == 1)
     for i in range(n)
 ]
 ```

@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -10,22 +10,20 @@ def solve(input_data: dict) -> dict:
     mat_cap = input_data["materialCap"]
     n = len(margins)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("line_activation", pulp.LpMaximize)
 
-    open_vars = [h.addBinary(name=f"open_{i}") for i in range(n)]
-    quantities = [h.addVariable(lb=0.0, name=f"qty_{i}") for i in range(n)]
+    open_vars = [pulp.LpVariable(f"open_{i}", cat=pulp.LpBinary) for i in range(n)]
+    quantities = [pulp.LpVariable(f"qty_{i}", lowBound=0) for i in range(n)]
 
     for i in range(n):
-        h.addConstr(quantities[i] <= capacities[i] * open_vars[i])
-    h.addConstr(h.qsum(mat_usages[i] * quantities[i] for i in range(n)) <= mat_cap)
+        prob += quantities[i] <= capacities[i] * open_vars[i]
+    prob += pulp.lpDot(mat_usages, quantities) <= mat_cap
 
-    h.maximize(
-        h.qsum(margins[i] * quantities[i] - fixed_costs[i] * open_vars[i] for i in range(n))
-    )
+    prob += pulp.lpDot(margins, quantities) - pulp.lpDot(fixed_costs, open_vars)
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "open": [round(h.val(v)) for v in open_vars],
-        "quantities": [float(h.val(v)) for v in quantities],
-        "netProfit": float(h.getObjectiveValue()),
+        "open": [round(pulp.value(v)) for v in open_vars],
+        "quantities": [float(pulp.value(v)) for v in quantities],
+        "netProfit": float(pulp.value(prob.objective)),
     }

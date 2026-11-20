@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每个候选项目声明 0-1 二进制变量（`m.binary(...)` / `h.addBinary(...)`），添加预算上限约束 `dot(costs, selected) <= budget`，并最大化总收益 `dot(values, selected)`。
+为每个候选项目声明 0-1 二进制变量（`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`），添加预算上限约束 `dot(costs, selected) <= budget`，并最大化总收益 `dot(values, selected)`。
 
 ## 数学模型
 
@@ -15,7 +15,7 @@ $$
 ## 核心要点
 
 - **为什么贪心法在 0-1 背包上会失效**：按“收益/成本”性价比贪心选择常常会留下无法塞入其他项目的剩余预算（如停在收益 `30`），而整数规划求解器能在全局组合中精准找到总收益 `36` 的最优方案。
-- **二进制结果的取整处理**：使用 `Math.round(v.value!) || 0`（Python 中使用 `round(h.val(v))`）可以消去 `0.999999999` 或 `-0` 等浮点精度残留。
+- **二进制结果的取整处理**：使用 `Math.round(v.value!) || 0`（Python 中使用 `round(pulp.value(v))`）可以消去 `0.999999999` 或 `-0` 等浮点精度残留。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
@@ -29,11 +29,12 @@ m.constraint(expr`dot(${input.costs}, ${selected}) <= ${input.budget}`, "budget"
 m.objective(maximize(expr`dot(${input.values}, ${selected})`));
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
-selected = [h.addBinary(name=f"sel_{i}") for i in range(n)]
+selected = [pulp.LpVariable(f"sel_{i}", cat=pulp.LpBinary) for i in range(n)]
 
-h.addConstr(h.qsum(costs[i] * selected[i] for i in range(n)) <= budget)
-h.maximize(h.qsum(values[i] * selected[i] for i in range(n)))
+prob += pulp.lpDot(costs, selected) <= budget
+prob += pulp.lpDot(values, selected)
+prob.solve(pulp.HiGHS(msg=False))
 ```

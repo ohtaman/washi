@@ -33,12 +33,11 @@ m.constraint(
 m.objective(maximize(expr`dot(${input.margins}, ${quantities})`));
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
 for k, cap in enumerate(capacities):
-    h.addConstr(
-        h.qsum(usages[k][j] * quantities[j] for j in range(n_products)) <= cap
-    )
-h.maximize(h.qsum(margins[j] * quantities[j] for j in range(n_products)))
+    prob += pulp.lpDot(usages[k], quantities) <= cap
+prob += pulp.lpDot(margins, quantities)
+prob.solve(pulp.HiGHS(msg=False))
 ```

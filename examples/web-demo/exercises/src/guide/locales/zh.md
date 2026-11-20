@@ -4,20 +4,20 @@
 
 ## 1. 判题机制（`solve(input)`） {#solve-contract}
 
-- 每道题都要求实现一个函数：在 **WaSHI (TypeScript)** 中实现 `solve(input)`，或在 **Python (highspy)** 中实现 `solve(input_data)`，并返回结果 JSON 对象（Python 为 `dict`）。
-- **WaSHI** 本身是 TypeScript / JavaScript 建模库而非 Python 包；为了让 Python 使用者也能免安装直接在浏览器中刷题并对照写法，系统通过 Pyodide 提供了 HiGHS 官方的 **Python (`highspy`)** 作为并行练习环境。
+- 每道题都要求实现一个函数：在 **WaSHI (TypeScript)** 中实现 `solve(input)`，或在 **Python (PuLP)** 中实现 `solve(input_data)`，并返回结果 JSON 对象（Python 为 `dict`）。
+- **WaSHI** 本身是 TypeScript / JavaScript 建模库而非 Python 包；为了让 Python 使用者也能免安装直接在浏览器中刷题并对照写法，系统通过 Pyodide 提供了经典的 **Python (`PuLP` + HiGHS)** 作为并行练习环境。
 - 点击 **「运行并判题」** 后，系统会对每个测试用例传入输入并检查返回值是否满足约束且达到最优目标值。
 - 在**任意一种**运行时下通过（**AC**）即可标记为已完成（`✓`）。`console.log` 或 `print` 仅用于调试查看。
 
 ## 2. 模型基本要素 {#building-blocks}
 
-| 术语 | 含义 | WaSHI (TS) | highspy (Python) |
+| 术语 | 含义 | WaSHI (TS) | PuLP (Python) |
 | --- | --- | --- | --- |
-| **决策变量** (Decision Variable) | 由求解器决定取值的未知量。 | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `h.addVariable(...)` / `h.addIntegral(...)` / `h.addBinary(...)` |
-| **上下界** (Bounds) | 单个变量的取值范围限制（例如 $x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lb=0.0, ub=cap` |
-| **线性表达式** (Linear Expression) | 变量的常数倍之和加常数项（如 $2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` 或 `dot(...)` | `2 * x + 3 * y` 或 `h.qsum(...)` |
-| **约束条件** (Constraint) | 有效解必须满足的等式或不等式（`<=`, `>=`, `==`）。 | ``m.constraint(expr`... <= ...`)`` | `h.addConstr(...)` |
-| **目标函数** (Objective) | 需要最小化或最大化的标量指标（成本、利润等）。 | `m.objective(maximize(...))` / `minimize(...)` | `h.maximize(...)` / `h.minimize(...)` |
+| **决策变量** (Decision Variable) | 由求解器决定取值的未知量。 | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `pulp.LpVariable(..., cat=pulp.LpContinuous / LpInteger / LpBinary)` |
+| **上下界** (Bounds) | 单个变量的取值范围限制（例如 $x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
+| **线性表达式** (Linear Expression) | 变量的常数倍之和加常数项（如 $2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` 或 `dot(...)` | `2 * x + 3 * y` 或 `pulp.lpSum(...)` |
+| **约束条件** (Constraint) | 有效解必须满足的等式或不等式（`<=`, `>=`, `==`）。 | ``m.constraint(expr`... <= ...`)`` | `prob += ... <= ...` |
+| **目标函数** (Objective) | 需要最小化或最大化的标量指标（成本、利润等）。 | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` + `prob += ...` |
 
 ### 变量类型 {#variable-types}
 

@@ -78,13 +78,13 @@ for job in jobs:
         results[job["id"]] = {"ok": False, "error": traceback.format_exc()}
 print(json.dumps(results))
 `;
-  const proc = spawnSync("uv", ["run", "--with", "highspy", "python3", "-c", script], {
+  const proc = spawnSync("uv", ["run", "--with", "pulp<4", "--with", "highspy", "python3", "-c", script], {
     input: JSON.stringify(jobs),
     encoding: "utf-8",
     maxBuffer: 20 * 1024 * 1024,
   });
   if (proc.status !== 0) {
-    throw new Error(`Python highspy batch runner failed (exit ${proc.status}):\n${proc.stderr}\n${proc.stdout}`);
+    throw new Error(`Python PuLP batch runner failed (exit ${proc.status}):\n${proc.stderr}\n${proc.stdout}`);
   }
   return JSON.parse(proc.stdout);
 }
@@ -113,8 +113,8 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
         expect(prob.washiStarter).toContain("import ");
         expect(prob.washiStarter).toContain("new Model(");
-        expect(prob.highspyStarter).toContain("import highspy");
-        expect(prob.highspyStarter).toContain("highspy.Highs()");
+        expect(prob.highspyStarter).toContain("import pulp");
+        expect(prob.highspyStarter).toContain("pulp.LpProblem(");
       }
       expect(prob.washiStarter).not.toContain("ReducedCostBoss");
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
@@ -322,7 +322,7 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     expect(unboundedVerdict.message).toContain("Unbounded");
   }, 60_000);
 
-  itHighspy("cross-verifies every highspy Python solution.py against identical cases.json and shared judge()", () => {
+  itHighspy("cross-verifies every PuLP Python solution.py against identical cases.json and shared judge()", () => {
     const jobs = PROBLEMS.map((p) => ({
       id: p.meta.id,
       code: p.highspySolution,
@@ -361,8 +361,25 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     );
     for (const id of ["000", "001", "002", "003"]) {
       const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+      expect(starterBatch[id].ok, `${id} starter failed: ${starterBatch[id].error}`).toBe(true);
       const v = p.judge(p.cases[0].input, starterBatch[id].outputs![0], p.cases[0].expectedOptimal, "en");
       expect(v.status, `${id} python starter verdict`).toBe("VIOLATION");
+    }
+
+    // Verify #004-#010 PuLP starters explicitly raise NotImplementedError
+    const unimplBatch = runHighspyBatch(
+      ["004", "005", "006", "007", "008", "009", "010"].map((id) => {
+        const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+        return {
+          id: p.meta.id,
+          code: p.highspyStarter,
+          inputs: [p.cases[0].input],
+        };
+      })
+    );
+    for (const id of ["004", "005", "006", "007", "008", "009", "010"]) {
+      expect(unimplBatch[id].ok, `${id} starter should raise`).toBe(false);
+      expect(unimplBatch[id].error).toContain("NotImplementedError");
     }
   }, 60_000);
 });

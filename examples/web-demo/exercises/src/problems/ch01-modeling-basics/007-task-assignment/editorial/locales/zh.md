@@ -16,7 +16,7 @@ $$
 ## 核心要点
 
 - **双随机约束刻画一一匹配**：行和 `== 1` 保证每个人不闲置也不兼任，列和 `== 1` 保证每项任务都有且仅有一人负责。（指派问题约束矩阵具有全幺模性，连续松弛的顶点本身就是 0-1 整数。）
-- **还原分配数组**：求解后使用 `row.findIndex((cell) => Math.round(cell.value!) === 1)`（Python 中用 `round(h.val(x[i][j])) == 1`）提取每行唯一被选中的列下标。
+- **还原分配数组**：求解后使用 `row.findIndex((cell) => Math.round(cell.value!) === 1)`（Python 中用 `round(pulp.value(x[i][j])) == 1`）提取每行唯一被选中的列下标。
 - 概念参考：[指南与术语表 — 核心建模要素](?view=guide&lang=zh#building-blocks) / [变量类型](?view=guide&lang=zh#variable-types)
 
 ## 实现要点
@@ -32,16 +32,16 @@ const assignment = x.map((row) =>
 );
 ```
 
-**Python (highspy)**
+**Python (PuLP)**
 
 ```python
 for i in range(n):
-    h.addConstr(h.qsum(x[i][j] for j in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for j in range(n)) == 1
 for j in range(n):
-    h.addConstr(h.qsum(x[i][j] for i in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for i in range(n)) == 1
 
 assignment = [
-    next(j for j in range(n) if round(h.val(x[i][j])) == 1)
+    next(j for j in range(n) if round(pulp.value(x[i][j])) == 1)
     for i in range(n)
 ]
 ```

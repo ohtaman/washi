@@ -1,9 +1,9 @@
 {
   "ui": {
     "brandTitle": "数理最適化100本ノック",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習問題集 (WaSHI & highspy)",
-    "heroStanceTitle": "対応言語と Python (highspy) の位置づけ",
-    "heroStanceBody": "WaSHI 自体は TypeScript / JavaScript 向けの最適化モデラーであり、Python ライブラリではありません。この問題集では、普段 Python に親しんでいる方も環境構築なしにブラウザですぐ解けるよう、HiGHS 公式の Python パッケージ（highspy / Pyodide）も比較・学習用ランタイムとして併設しています。WaSHI・Python のどちらで AC しても解答済みになります。",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習問題集 (WaSHI & PuLP)",
+    "heroStanceTitle": "対応言語と Python (PuLP) の位置づけ",
+    "heroStanceBody": "WaSHI 自体は TypeScript / JavaScript 向けの最適化モデラーであり、Python ライブラリではありません。この問題集では、普段 Python を使っている方でも環境構築なしにブラウザですぐ解けるよう、最適化の定番である PuLP（ソルバーは HiGHS / Pyodide WebAssembly）も併設しています。WaSHI・Python のどちらで AC しても解答済みになります。",
     "navDocs": "ドキュメント",
     "navShowcase": "ショーケース",
     "navPlayground": "Playground",
@@ -49,9 +49,9 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "Python (highspy)",
+      "highspy": "Python (PuLP)",
       "tablistLabel": "実行ランタイム切り替え",
-      "pythonLazyNote": "Pyodide v0.29 (highspy) は Python タブで初回実行するときだけバックグラウンド読込されます。"
+      "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) は Python タブで初回実行するときだけバックグラウンド読込されます。"
     },
     "sections": {
       "scenario": "問題",
@@ -65,12 +65,12 @@
     },
     "editor": {
       "workbenchTitle": "解答欄（コードを書いて実行）",
-      "eitherRuntimeHint": "WaSHI (TypeScript) と Python (highspy) のどちらか一方を AC にするとこの問題は完了になります。",
+      "eitherRuntimeHint": "WaSHI (TypeScript) と Python (PuLP) のどちらか一方を AC にするとこの問題は完了になります。",
       "label": "solve(input) を実装して結果を返す",
       "runBtn": "実行して採点",
       "runningBtn": "実行中…",
       "loadingPyodide": "Pyodide v0.29 WebAssembly 読込中…",
-      "loadingHighspy": "highspy パッケージ読込中…",
+      "loadingHighspy": "PuLP & HiGHS パッケージ読込中…",
       "runningPython": "Python ソルバー実行中…",
       "resetBtn": "リセット",
       "solutionBtn": "模範解答を読み込む",
