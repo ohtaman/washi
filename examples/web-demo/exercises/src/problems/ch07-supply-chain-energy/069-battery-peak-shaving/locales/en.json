@@ -1,0 +1,30 @@
+{
+  "title": "#069. Battery Storage Arbitrage & Peak Shaving",
+  "subtitle": "Dispatch grid-connected battery charging and discharging under TOU tariffs, round-trip efficiency losses, SOC bounds, and a peak-demand ratchet.",
+  "tags": [
+    "LP",
+    "MIP",
+    "Energy Storage",
+    "Peak Shaving"
+  ],
+  "caseNames": [
+    "6-period two-tier TOU peak shaving",
+    "8-period three-tier TOU dispatch",
+    "8-period demand-charge dominant shaving",
+    "10-period high price-spread arbitrage",
+    "12-period asymmetric efficiency & fractional loads"
+  ],
+  "judge": {
+    "m0": "Output must be an object { charge, discharge, soc, peakLoad, totalCost }.",
+    "m1": "{p0}[{p1}] ({p2}) must be between 0 and maxPower {p3}.",
+    "m2": "Simultaneous charge ({p1}) and discharge ({p2}) is disallowed in period {p0}.",
+    "m3": "soc[{p0}] ({p1}) must lie within [{p2}, {p3}].",
+    "m4": "Battery SOC transition mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m5": "Net grid import at period {p0} cannot be negative (received {p1}).",
+    "m6": "Reported peakLoad ({p0}) is less than grid load at period {p1} ({p2}).",
+    "m7": "Final SOC ({p0}) is below required minFinalSoc ({p1}).",
+    "m8": "Reported totalCost ({p0}) does not match recomputed energy + demand charge ({p1}).",
+    "m9": "Valid battery dispatch, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m10": "Optimal battery arbitrage and peak-shaving dispatch found (totalCost = {p0})!"
+  }
+}

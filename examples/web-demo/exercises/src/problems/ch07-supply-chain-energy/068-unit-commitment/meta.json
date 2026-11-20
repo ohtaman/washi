@@ -1,0 +1,25 @@
+{
+  "id": "068",
+  "slug": "unit-commitment",
+  "chapter": 7,
+  "order": 8,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 4,
+  "estimatedMinutes": 18,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

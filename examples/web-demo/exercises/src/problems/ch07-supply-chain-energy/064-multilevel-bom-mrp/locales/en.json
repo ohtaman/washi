@@ -1,0 +1,29 @@
+{
+  "title": "#064. Multi-Level BOM & Lead-Time MRP",
+  "subtitle": "Plan integer component and assembly releases across a multi-level Bill of Materials with positive production lead times.",
+  "tags": [
+    "MIP",
+    "MRP",
+    "Bill of Materials",
+    "Lead Times"
+  ],
+  "caseNames": [
+    "3-level linear BOM across 5 periods",
+    "3-item assembly BOM across 6 periods",
+    "4-item diamond BOM across 6 periods",
+    "4-item BOM with spare-parts demand",
+    "4-item multi-lead-time schedule"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setups, production, inventory, totalCost }.",
+    "m1": "Field \"{p0}\" must have {p1} rows (one per item).",
+    "m2": "setups[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "production[{p0}][{p1}] must be an integer (received {p2}).",
+    "m4": "production[{p0}][{p1}] ({p2}) must be between 0 and allowed capacity {p3}.",
+    "m5": "inventory[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m6": "MRP balance mismatch for item {p0} in period {p1}: expected {p2}, got {p3}.",
+    "m7": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
+    "m8": "Valid MRP schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m9": "Optimal multi-level MRP plan found (totalCost = {p0})!"
+  }
+}

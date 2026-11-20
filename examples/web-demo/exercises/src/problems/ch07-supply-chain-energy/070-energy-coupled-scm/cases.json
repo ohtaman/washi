@@ -1,0 +1,102 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [20, 35, 25, 30],
+      "setupCost": 120,
+      "holdCost": 1.5,
+      "prodCap": 60,
+      "setupPower": 10,
+      "unitPower": 1.0,
+      "baseLoads": [10, 85, 15, 90],
+      "prices": [0.5, 2.0, 0.6, 2.2],
+      "demandCharge": 8.0,
+      "batteryCap": 80,
+      "initSoc": 20,
+      "maxPower": 35,
+      "etaCharge": 0.8,
+      "etaDischarge": 0.8
+    },
+    "expectedOptimal": 1449.347561
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [18, 30, 40, 22, 35, 20],
+      "setupCost": 140,
+      "holdCost": 1.8,
+      "prodCap": 55,
+      "setupPower": 12,
+      "unitPower": 1.8,
+      "baseLoads": [25, 35, 55, 30, 50, 25],
+      "prices": [0.4, 1.5, 2.4, 0.7, 2.2, 0.5],
+      "demandCharge": 10.0,
+      "batteryCap": 90,
+      "initSoc": 30,
+      "maxPower": 40,
+      "etaCharge": 0.92,
+      "etaDischarge": 0.9
+    },
+    "expectedOptimal": 2507.28056
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [15, 25, 35, 30, 25, 20],
+      "setupCost": 220,
+      "holdCost": 1.2,
+      "prodCap": 65,
+      "setupPower": 20,
+      "unitPower": 1.5,
+      "baseLoads": [20, 30, 45, 50, 40, 25],
+      "prices": [0.6, 1.2, 2.0, 2.5, 1.6, 0.7],
+      "demandCharge": 9.0,
+      "batteryCap": 100,
+      "initSoc": 25,
+      "maxPower": 35,
+      "etaCharge": 0.9,
+      "etaDischarge": 0.9
+    },
+    "expectedOptimal": 2488.412593
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [15, 20, 32, 28, 18, 34, 30, 16],
+      "setupCost": 160,
+      "holdCost": 1.4,
+      "prodCap": 55,
+      "setupPower": 14,
+      "unitPower": 1.6,
+      "baseLoads": [20, 25, 45, 50, 30, 40, 60, 25],
+      "prices": [0.4, 0.5, 1.8, 2.2, 0.8, 1.6, 2.6, 0.6],
+      "demandCharge": 11.0,
+      "batteryCap": 110,
+      "initSoc": 35,
+      "maxPower": 42,
+      "etaCharge": 0.92,
+      "etaDischarge": 0.88
+    },
+    "expectedOptimal": 2841.108261
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [12.5, 24.0, 31.5, 22.0, 19.5, 29.0, 26.5, 15.0],
+      "setupCost": 150,
+      "holdCost": 1.6,
+      "prodCap": 50,
+      "setupPower": 12,
+      "unitPower": 1.75,
+      "baseLoads": [18.0, 24.5, 42.0, 46.5, 28.0, 36.5, 54.0, 22.0],
+      "prices": [0.45, 0.6, 1.75, 2.3, 0.85, 1.5, 2.4, 0.55],
+      "demandCharge": 10.5,
+      "batteryCap": 95,
+      "initSoc": 30,
+      "maxPower": 38,
+      "etaCharge": 0.92,
+      "etaDischarge": 0.88
+    },
+    "expectedOptimal": 2690.614653
+  }
+]

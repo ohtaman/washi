@@ -1,0 +1,49 @@
+## アプローチ
+
+各期の状態を「実在庫 $I_t \ge 0$ の保存式」と「バックオーダー $b_t \ge 0$・出荷販売 $s_t$・機会損失 $l_t$ の保存式」の 2 本の線形等式に分解し、最終期の $b_{T-1} = 0$ を変数上界で課して純利益を最大化する LP を組みます。
+
+## 数理モデル
+
+$$
+\begin{aligned}
+\max_{x, s, I, b, l \ge 0} \quad & \sum_{t=0}^{T-1} \left( r s_t - c_t x_t - h I_t - p_b b_t - p_l l_t \right) \\
+\text{s.t.} \quad & I_t = I_{t-1} + x_t - s_t && \forall t \;\; (I_{-1} = I_{\text{init}}) \\
+& b_t = b_{t-1} + d_t - s_t - l_t && \forall t \;\; (b_{-1} = 0,\; b_{T-1} = 0) \\
+& 0 \le x_t \le C_t, \quad 0 \le l_t \le d_t && \forall t
+\end{aligned}
+$$
+
+## ポイント
+
+- **0-1 変数なしで $I_t \cdot b_t = 0$ が成り立つ理由**: 保管費 $h > 0$ と遅延ペナルティ $p_b > 0$ がどちらも正であるため、在庫とバックオーダーを同時に持つと総出荷量が増えないまま $(h + p_b)\min(I_t, b_t)$ だけ損をします。よって線形計画のまま自然にどちらか一方がゼロになります。
+- **3 通りの需給調整**: 需要スパイクや高コスト期に対し、事前積み増し（保管費 $h$）・バックオーダー（遅延費 $p_b$）・受注見送り（逸失利益 $r - c_t + p_l$）を自動的に天秤にかけます。
+- 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
+
+## 実装の勘所
+
+**WaSHI (TypeScript)**
+
+```ts
+m.constraint(
+  input.demands.map((_, t) => {
+    const prevInv = t === 0 ? input.initialInventory : inventory[t - 1];
+    return expr`${prevInv} + ${production[t]} - ${sales[t]} - ${inventory[t]} == 0`;
+  })
+);
+m.constraint(
+  input.demands.map((demand, t) => {
+    const prevBack = t === 0 ? 0 : backlog[t - 1];
+    return expr`${prevBack} + ${demand} - ${sales[t]} - ${lostSales[t]} - ${backlog[t]} == 0`;
+  })
+);
+```
+
+**PuLP (Python)**
+
+```python
+for t in range(T):
+    prev_inv = init_inv if t == 0 else inventory[t - 1]
+    prev_back = 0 if t == 0 else backlog[t - 1]
+    prob += prev_inv + production[t] - sales[t] == inventory[t]
+    prob += prev_back + demands[t] - sales[t] - lost_sales[t] == backlog[t]
+```

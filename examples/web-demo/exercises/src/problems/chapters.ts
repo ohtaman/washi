@@ -15,7 +15,7 @@ const CHAPTER_SPEC: ReadonlyArray<{
   { chapter: 4, idRange: "031–040", available: true, paradigms: ["CP", "MIP"] },
   { chapter: 5, idRange: "041–050", available: true, paradigms: ["SMT"] },
   { chapter: 6, idRange: "051–060", available: true, paradigms: ["LP", "MIP", "CP"] },
-  { chapter: 7, idRange: "061–070", available: false, paradigms: ["LP", "MIP"] },
+  { chapter: 7, idRange: "061–070", available: true, paradigms: ["LP", "MIP"] },
   { chapter: 8, idRange: "071–080", available: false, paradigms: ["MIP", "CP"] },
   { chapter: 9, idRange: "081–090", available: false, paradigms: ["LP", "MIP", "QP"] },
   { chapter: 10, idRange: "091–100", available: false, paradigms: ["LP", "MIP", "CP", "SMT"] },

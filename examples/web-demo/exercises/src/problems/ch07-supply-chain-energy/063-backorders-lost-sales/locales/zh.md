@@ -1,0 +1,62 @@
+# #063. 含延期交货与缺货损失的库存计划
+
+<!-- section:scenario -->
+某制造企业需要从已知的期初库存和零初始积压订单出发，在多周期内联合决策连续产量、实际交付销量、期末物理库存、延期交货积压量以及永久流失的缺货损失。
+
+在每个周期，物理库存满足“上期库存 + 本期生产 - 本期交付 = 本期期末库存”；当期需求则拆分为“本期交付 + 积压增量 + 本期流失需求”，其中流失需求不超过当期需求且最后一期末的积压必须全部清零。每次交付获得固定单价收入，而生产、库存持有、积压延期及需求流失分别产生成本。请规划各项连续决策量以 **最大化净利润**。
+
+<!-- section:io -->
+### 输入
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `demands` | `number[]` | 第 $t$ 期客户需求 $d_t$ |
+| `capacities` | `number[]` | 第 $t$ 期最大产能上限 $C_t$ |
+| `prodCosts` | `number[]` | 第 $t$ 期单位生产成本 $c_t$ |
+| `unitPrice` | `number` | 每交付 1 单位产品的销售单价 $r$ |
+| `holdCost` | `number` | 每单位每期的库存持有成本 $h$ |
+| `backorderCost` | `number` | 每单位每期的延期积压惩罚 $p_b$ |
+| `lostSalePenalty` | `number` | 每单位流失需求的商誉惩罚 $p_l$ |
+| `initialInventory` | `number` | 第 0 期之前的期初物理库存 $I_{-1}$ |
+
+### 输出
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `production` | `number[]` | 各周期产量 $x_t \in [0, C_t]$ |
+| `sales` | `number[]` | 各周期实际交付销量 $s_t \ge 0$ |
+| `inventory` | `number[]` | 各周期期末物理库存 $I_t \ge 0$ |
+| `backlog` | `number[]` | 各周期期末延期积压量 $b_t \ge 0$（且 $b_{T-1} = 0$） |
+| `lostSales` | `number[]` | 各周期流失需求 $l_t \in [0, d_t]$ |
+| `netProfit` | `number` | 最大化后的总净利润 |
+
+<!-- section:example -->
+**输入示例**
+
+```json
+{
+  "demands": [30, 50, 20, 25],
+  "capacities": [35, 30, 40, 30],
+  "prodCosts": [10, 12, 10, 11],
+  "unitPrice": 22,
+  "holdCost": 1.5,
+  "backorderCost": 3,
+  "lostSalePenalty": 5,
+  "initialInventory": 5
+}
+```
+
+**输出示例**
+
+```json
+{
+  "production": [35, 30, 30, 25],
+  "sales": [30, 40, 30, 25],
+  "inventory": [10, 0, 0, 0],
+  "backlog": [0, 10, 0, 0],
+  "lostSales": [0, 0, 0, 0],
+  "netProfit": 1420
+}
+```
+
+第 0 期提前备货 10 件，并将第 1 期的 10 件缺口延期至第 2 期补交，满足两条守恒方程及期末积压清零，净利润为 $125(22) - (350 + 360 + 300 + 275) - 10(1.5) - 10(3) =$ **1,420**。
