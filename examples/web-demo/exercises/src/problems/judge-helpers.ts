@@ -70,6 +70,8 @@ export function applySolverStatusToVerdict(
   messages: SolverStatusMessages
 ): JudgeResult {
   if (!solverStatus) return verdict;
+  // Preserve explicit AC verdicts (e.g., SMT Unsat Core / uniqueness proofs whose final check() is Unsat).
+  if (verdict.ok) return verdict;
   if (
     solverStatus === "Infeasible" ||
     solverStatus === "Unsat" ||

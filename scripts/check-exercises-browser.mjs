@@ -67,6 +67,14 @@ function assert(cond, msg) {
   }
 }
 
+async function waitForCoiReady(page) {
+  await page.waitForFunction(
+    () => window.crossOriginIsolated === true && typeof SharedArrayBuffer !== "undefined",
+    { timeout: 15_000 }
+  );
+  await page.waitForLoadState("networkidle");
+}
+
 async function run() {
   const { server, port } = await startStaticServer(siteDist);
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -109,6 +117,14 @@ async function run() {
       fs.readFileSync(path.resolve(rootDir, "examples/web-demo/exercises/src/locales/zh.json"), "utf-8")
     );
 
+    const chaptersSrc = fs.readFileSync(
+      path.resolve(rootDir, "examples/web-demo/exercises/src/problems/chapters.ts"),
+      "utf-8"
+    );
+    const availableChapterCount = (chaptersSrc.match(/available:\s*true\b/g) || []).length;
+    const expectedTocRows = 1 + availableChapterCount * 10;
+    const expectedLazyMdChunks = (expectedTocRows * 2 + 1) * 3;
+
     // 1. Verify VitePress top nav links in EN, JA, ZH
     for (const navCase of [
       { docsPath: "/", linkText: "100 Exercises", expectedBrand: exEn.ui.brandTitle },
@@ -119,6 +135,7 @@ async function run() {
       const navLink = page.locator("header.VPNav a", { hasText: navCase.linkText }).first();
       await navLink.waitFor({ state: "visible" });
       await Promise.all([page.waitForURL(/\/exercises\//), navLink.click()]);
+      await waitForCoiReady(page);
       await page.waitForSelector("#hero-primary-cta");
       const heroTitle = await page.locator(".ex-hero-title").textContent();
       assert(
@@ -159,7 +176,10 @@ async function run() {
       `Expected crisp white Plan C canvas rgb(255, 255, 255), got ${indexLayout.bodyBg}`
     );
     assert(indexLayout.tocListCount >= 1, "Expected .toc-list on Exercise Index");
-    assert(indexLayout.tocRowCount === 11, `Expected 11 .toc-row items (#000 + 10 Chapter 1), got ${indexLayout.tocRowCount}`);
+    assert(
+      indexLayout.tocRowCount === expectedTocRows,
+      `Expected ${expectedTocRows} .toc-row items (#000 + ${availableChapterCount} chapters), got ${indexLayout.tocRowCount}`
+    );
     assert(indexLayout.problemGridCount === 0, "Expected zero .problem-grid card layouts");
     assert(indexLayout.tutorialStripCount === 0, "Expected zero .tutorial-strip callouts");
     assert(indexLayout.pillCount === 0, "Expected zero button-like capsule pills on Exercise Index");
@@ -650,6 +670,7 @@ async function run() {
       const raceCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const racePage = await raceCtx.newPage();
       await racePage.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
+      await waitForCoiReady(racePage);
       await racePage.waitForSelector("#tab-highspy");
       await racePage.click("#tab-highspy");
       const solBtn = racePage.locator('button[data-action="solution"][data-runtime="highspy"]');
@@ -676,7 +697,10 @@ async function run() {
 
     // 4b2. Verify stale #001 workspace is inert and ignores edits while delayed #002 Markdown loads
     {
-      const delayCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const delayCtx = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        serviceWorkers: "block",
+      });
       const delayPage = await delayCtx.newPage();
       delayPage.on("pageerror", (e) => pageErrors.push(`delay-nav: ${e.message}`));
       await delayPage.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
@@ -752,6 +776,7 @@ async function run() {
         `${baseUrl}/exercises/?id=010&lang=zh`,
       ]) {
         await lightPage.goto(checkUrl, { waitUntil: "networkidle" });
+        await waitForCoiReady(lightPage);
         await lightPage.waitForSelector(checkUrl.includes("?id=") ? "#ws-problem-title" : ".book-shell");
         const bgInfo = await lightPage.evaluate(() => {
           const rgb = getComputedStyle(document.body).backgroundColor;
@@ -776,8 +801,8 @@ async function run() {
       const assetFiles = fs.readdirSync(path.resolve(siteDist, "assets"));
       const lazyMdChunks = assetFiles.filter((f) => /^(en|ja|zh)-.*\.js$/.test(f));
       assert(
-        lazyMdChunks.length === 69,
-        `Expected 69 emitted lazy Markdown JS chunks ((11 statements + 11 editorials + 1 guide) x 3 locales) in dist/site/assets, got ${lazyMdChunks.length}`
+        lazyMdChunks.length === expectedLazyMdChunks,
+        `Expected ${expectedLazyMdChunks} emitted lazy Markdown JS chunks ((${expectedTocRows} statements + ${expectedTocRows} editorials + 1 guide) x 3 locales) in dist/site/assets, got ${lazyMdChunks.length}`
       );
 
       const p005Base = fs.readFileSync(
@@ -809,6 +834,7 @@ async function run() {
         });
 
         await longPage.goto(`${baseUrl}/exercises/?id=005&lang=ja`, { waitUntil: "networkidle" });
+        await waitForCoiReady(longPage);
         await longPage.waitForSelector("#ws-problem-title");
         assert(
           requestedChunks.length >= 1,
@@ -946,6 +972,7 @@ async function run() {
         `${baseUrl}/exercises/?id=010&lang=ja`,
       ]) {
         await mobPage.goto(checkUrl, { waitUntil: "networkidle" });
+        await waitForCoiReady(mobPage);
         await mobPage.waitForSelector(
           checkUrl.includes("?id=")
             ? "#ws-problem-title"

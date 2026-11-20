@@ -191,6 +191,9 @@ export async function runWashiExerciseCode(
     PumpkinSolver,
     GLPKSolver,
     Z3Solver,
+    registerPumpkinSolver,
+    registerGLPKSolver,
+    registerZ3Solver,
     Model: TrackedModel,
     console: customConsole,
   };

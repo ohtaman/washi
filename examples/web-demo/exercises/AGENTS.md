@@ -64,8 +64,8 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 - **Honest Verdict Classification (`judge.ts`)**: Never return `VIOLATION` for missing/non-finite fields or malformed output shapes — use `runtimeError(...)` (`RUNTIME_ERROR`). Reserve `VIOLATION` for broken constraints/bounds and `SUBOPTIMAL` for feasible non-optimal objectives (`sense`-aware).
 - **Source Language Purity**: Keep all `.ts`, `.py`, `cases.json`, `meta.json`, and root/docs English `.md` files free of Japanese Kana; localized content belongs exclusively under `/locales/{en,ja,zh}.{json,md}` (including `editorial/locales/` and `src/guide/locales/`).
-- **Per-Exercise Discussions**: Link each exercise's `meta.json` to its dedicated GitHub Discussions thread via `"discussionNumber"` (`#281`+ under `https://github.com/ohtaman/washi/discussions/<number>`).
-- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "highspy"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); the workbench UI hides `#tab-highspy` and displays `washiOnlyHint`.
+- **Per-Exercise Discussions**: Link finalized exercises in `meta.json` to a dedicated GitHub Discussions thread via `"discussionNumber"` (`#281`+ under `https://github.com/ohtaman/washi/discussions/<number>`). Omit `"discussionNumber"` until the problem is reviewed and finalized (the workspace omits the Discussions footer cleanly when `discussionNumber` is absent).
+- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "highspy"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); omit the `highspy/` directory when `runtimes` is `["washi"]`, and the workbench UI hides `#tab-highspy` and displays `washiOnlyHint`.
 - **Pre-PR Verification**:
   - `REQUIRE_HIGHSPY_PYTHON=1 npx vitest run test/exercises-ch1.test.ts test/exercises-platform.test.ts test/source-language-purity.test.ts`
   - `npm test`

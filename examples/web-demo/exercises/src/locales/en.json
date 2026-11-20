@@ -19,7 +19,7 @@
       },
       {
         "label": "AI-generated exercises with ongoing review",
-        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand (reviewed exercises display \"Reviewed by ...\"). Each exercise also links to its own GitHub Discussions thread for questions and feedback."
+        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand (reviewed exercises display \"Reviewed by ...\"). Finalized exercises also link to dedicated GitHub Discussions threads for questions and feedback."
       }
     ],
     "navDocs": "Docs",
@@ -41,7 +41,7 @@
     "guideTitle": "Optimization Guide & Glossary",
     "tutorialGroupTitle": "Practice",
     "mobileTocToggle": "Exercises & Progress",
-    "provenanceFootnote": "Chapter 1 exercises are Drafted by Gemini.",
+    "provenanceFootnote": "Exercises are Drafted by Gemini.",
     "difficultyLabel": "Difficulty {level}/5",
     "estimatedMinutesLabel": "~{mins} min",
     "comingSoonBadge": "Coming Soon",
