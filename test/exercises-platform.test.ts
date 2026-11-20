@@ -1125,9 +1125,14 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
 
       expect(html, `index (${locale})`).not.toMatch(GAMEY_UI_RE);
       expect(html).toContain('class="book-sidebar"');
-      expect(html).toContain('id="hero-runtime-stance"');
-      expect(decodeHtmlEntities(html)).toContain(UI_STRINGS[locale].heroStanceTitle);
-      expect(decodeHtmlEntities(html)).toContain(UI_STRINGS[locale].heroStanceBody);
+      expect(html).toContain('id="about-exercises"');
+      expect(html).toContain('<h2 id="about-heading"');
+      expect(decodeHtmlEntities(html)).toContain(UI_STRINGS[locale].aboutTitle);
+      expect(decodeHtmlEntities(html)).toContain(UI_STRINGS[locale].aboutBody);
+      for (const pt of UI_STRINGS[locale].aboutPoints) {
+        expect(decodeHtmlEntities(html)).toContain(pt.label);
+        expect(decodeHtmlEntities(html)).toContain(pt.body);
+      }
       expect(html).toContain('href="?view=guide');
       expect(html).toContain('id="hero-guide-link"');
       expect(html).toContain('data-problem-id="000"');

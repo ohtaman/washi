@@ -16,7 +16,7 @@ $$
 ## ポイント
 
 - **行和・列和 = 1 で完全マッチングを表現する**: 行制約だけでは同じタスクに複数人が集中し、列制約だけでは同じ人が複数タスクを抱えてしまいます。両方を課すことで 1 対 1 の置換が決まります。（割当問題の制約行列は全ユニモジュラ性を持つため、実は連続緩和でも端点が 0-1 になります。）
-- **配列から割当番号への変換**: 解決後に各行 `i` の中で `Math.round(cell.value!) === 1`（Python は `round(h.val(x[i][j])) == 1`）となる列インデックス `j` を取得します。
+- **配列から割当番号への変換**: 解決後に各行 `i` の中で `Math.round(cell.value!) === 1`（Python は `round(pulp.value(x[i][j])) == 1`）となる列インデックス `j` を取得します。
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [変数の種類](?view=guide&lang=ja#variable-types)
 
 ## 実装の勘所
@@ -32,16 +32,16 @@ const assignment = x.map((row) =>
 );
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
 for i in range(n):
-    h.addConstr(h.qsum(x[i][j] for j in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for j in range(n)) == 1
 for j in range(n):
-    h.addConstr(h.qsum(x[i][j] for i in range(n)) == 1)
+    prob += pulp.lpSum(x[i][j] for i in range(n)) == 1
 
 assignment = [
-    next(j for j in range(n) if round(h.val(x[i][j])) == 1)
+    next(j for j in range(n) if round(pulp.value(x[i][j])) == 1)
     for i in range(n)
 ]
 ```

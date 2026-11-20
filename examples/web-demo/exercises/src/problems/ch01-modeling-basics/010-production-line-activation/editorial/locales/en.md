@@ -38,13 +38,12 @@ m.objective(
 );
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
 for i in range(n):
-    h.addConstr(quantities[i] <= capacities[i] * open_vars[i])
-h.addConstr(h.qsum(mat_usages[i] * quantities[i] for i in range(n)) <= mat_cap)
-h.maximize(
-    h.qsum(margins[i] * quantities[i] - fixed_costs[i] * open_vars[i] for i in range(n))
-)
+    prob += quantities[i] <= capacities[i] * open_vars[i]
+prob += pulp.lpDot(mat_usages, quantities) <= mat_cap
+prob += pulp.lpDot(margins, quantities) - pulp.lpDot(fixed_costs, open_vars)
+prob.solve(pulp.HiGHS(msg=False))
 ```

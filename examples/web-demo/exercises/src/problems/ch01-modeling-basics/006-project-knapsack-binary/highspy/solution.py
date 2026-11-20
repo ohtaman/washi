@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -8,15 +8,15 @@ def solve(input_data: dict) -> dict:
     values = input_data["values"]
     n = len(costs)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("project_knapsack", pulp.LpMaximize)
 
-    selected = [h.addBinary(name=f"sel_{i}") for i in range(n)]
+    selected = [pulp.LpVariable(f"sel_{i}", cat=pulp.LpBinary) for i in range(n)]
 
-    h.addConstr(h.qsum(costs[i] * selected[i] for i in range(n)) <= budget)
-    h.maximize(h.qsum(values[i] * selected[i] for i in range(n)))
+    prob += pulp.lpDot(costs, selected) <= budget
+    prob += pulp.lpDot(values, selected)
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "selected": [round(h.val(v)) for v in selected],
-        "totalValue": float(h.getObjectiveValue()),
+        "selected": [round(pulp.value(v)) for v in selected],
+        "totalValue": float(pulp.value(prob.objective)),
     }

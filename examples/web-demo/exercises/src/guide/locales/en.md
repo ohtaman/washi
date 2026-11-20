@@ -4,20 +4,20 @@ A concise reference for reading problem statements, building optimization models
 
 ## 1. How Judging Works (`solve(input)`) {#solve-contract}
 
-- Every exercise asks you to implement a single function: `solve(input)` in **WaSHI (TypeScript)** or `solve(input_data)` in **Python (highspy)**.
-- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **Python (highspy)** runs the official HiGHS Python bindings inside Pyodide so Python users can practice in the browser and compare idioms side by side.
+- Every exercise asks you to implement a single function: `solve(input)` in **WaSHI (TypeScript)** or `solve(input_data)` in **PuLP (Python)**.
+- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **PuLP (Python)** runs PuLP backed by HiGHS inside Pyodide so Python users can practice in the browser and compare idioms side by side.
 - Pressing **Run & Judge** calls your function once per test case with a JSON input object and checks the object (or Python `dict`) you return.
 - Solving an exercise in **either** runtime marks it solved (`✓`). Console logs are shown for debugging, while grading always inspects the return value.
 
 ## 2. Core Building Blocks {#building-blocks}
 
-| Term | Meaning | WaSHI (TS) | highspy (Python) |
+| Term | Meaning | WaSHI (TS) | PuLP (Python) |
 | --- | --- | --- | --- |
-| **Decision Variable** | An unknown quantity chosen by the solver to maximize or minimize the objective. | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `h.addVariable(...)` / `h.addIntegral(...)` / `h.addBinary(...)` |
-| **Bounds** | Lower (`lb`) and upper (`ub`) limits on a single variable (for example $x \ge 0$). | `{ lb: 0, ub: cap }` | `lb=0.0, ub=cap` |
-| **Linear Expression** | A weighted sum of variables plus an optional constant, such as $2x + 3y$. | ``expr`2 * ${x} + 3 * ${y}` `` or `dot(...)` | `2 * x + 3 * y` or `h.qsum(...)` |
-| **Constraint** | A rule (`<=`, `>=`, `==`) every valid solution must satisfy. | ``m.constraint(expr`... <= ...`)`` | `h.addConstr(...)` |
-| **Objective** | The scalar quantity to minimize or maximize. | `m.objective(maximize(...))` / `minimize(...)` | `h.maximize(...)` / `h.minimize(...)` |
+| **Decision Variable** | An unknown quantity chosen by the solver to maximize or minimize the objective. | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `pulp.LpVariable(..., cat=pulp.LpContinuous / LpInteger / LpBinary)` |
+| **Bounds** | Lower (`lb`) and upper (`ub`) limits on a single variable (for example $x \ge 0$). | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
+| **Linear Expression** | A weighted sum of variables plus an optional constant, such as $2x + 3y$. | ``expr`2 * ${x} + 3 * ${y}` `` or `dot(...)` | `2 * x + 3 * y` or `pulp.lpSum(...)` |
+| **Constraint** | A rule (`<=`, `>=`, `==`) every valid solution must satisfy. | ``m.constraint(expr`... <= ...`)`` | `prob += ... <= ...` |
+| **Objective** | The scalar quantity to minimize or maximize. | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` + `prob += ...` |
 
 ### Variable Types {#variable-types}
 

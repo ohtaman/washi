@@ -1,9 +1,27 @@
 {
   "ui": {
     "brandTitle": "Optimization 100",
-    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Workbook (WaSHI & highspy)",
-    "heroStanceTitle": "About Runtimes: WaSHI (TypeScript) & Python (highspy)",
-    "heroStanceBody": "WaSHI is a TypeScript / JavaScript optimization modeler (not a Python library). We also include the official highspy Python package via Pyodide in your browser so Python practitioners can jump straight in with zero setup, compare idioms side by side, and complete exercises in either language.",
+    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Exercises (WaSHI & PuLP)",
+    "aboutTitle": "About Optimization 100",
+    "aboutBody": "Knowing optimization algorithms at a high level is rarely enough to develop an instinct for translating a problem into variables and constraints—or diagnosing why a model turns out INFEASIBLE. This 100-exercise drill lets you write models directly in the browser without local setup and practice core formulation patterns across LP, MIP, convex QP, CP, and SMT with automated grading.",
+    "aboutPoints": [
+      {
+        "label": "Zero-setup automated grading",
+        "body": "Run your model in-browser with WebAssembly solvers (HiGHS and others) and verify constraint violations (VIOLATION), optimality (SUBOPTIMAL), and infeasibility (INFEASIBLE)."
+      },
+      {
+        "label": "Formulation notes for every exercise",
+        "body": "Each exercise includes the mathematical model and implementation notes explaining why those variables and constraints are chosen."
+      },
+      {
+        "label": "PuLP (Python) runtime alongside WaSHI",
+        "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser so Python practitioners can work through the same exercises and compare idioms side by side."
+      },
+      {
+        "label": "AI-generated exercises with ongoing review",
+        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand. Reviewed exercises display \"Reviewed by ...\" near the top of the problem page."
+      }
+    ],
     "navDocs": "Docs",
     "navShowcase": "Showcase",
     "navPlayground": "Playground",
@@ -49,9 +67,9 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "Python (highspy)",
+      "highspy": "PuLP (Python)",
       "tablistLabel": "Solver runtime tabs",
-      "pythonLazyNote": "Pyodide v0.29 (highspy) loads in a background Web Worker on your first Python run."
+      "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) loads in a background Web Worker on your first Python run."
     },
     "sections": {
       "scenario": "Problem",
@@ -65,12 +83,12 @@
     },
     "editor": {
       "workbenchTitle": "Answer Workbench",
-      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or Python (highspy) to complete this exercise.",
+      "eitherRuntimeHint": "Solve in either WaSHI (TypeScript) or PuLP (Python) to complete this exercise.",
       "label": "Implement solve(input) and return the output",
       "runBtn": "Run & Judge",
       "runningBtn": "Running…",
       "loadingPyodide": "Loading Pyodide v0.29 WebAssembly…",
-      "loadingHighspy": "Loading highspy solver package…",
+      "loadingHighspy": "Loading PuLP & HiGHS solver packages…",
       "runningPython": "Running Python solver…",
       "resetBtn": "Reset",
       "solutionBtn": "Load Reference Solution",

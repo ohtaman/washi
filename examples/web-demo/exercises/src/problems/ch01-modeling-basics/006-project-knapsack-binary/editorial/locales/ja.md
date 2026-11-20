@@ -1,6 +1,6 @@
 ## アプローチ
 
-各候補プロジェクトの採否を表す 0-1 バイナリ変数（`m.binary(...)` / `h.addBinary(...)`）を宣言し、予算上限制約 `dot(costs, selected) <= budget` のもとで期待価値の合計を最大化します。
+各候補プロジェクトの採否を表す 0-1 バイナリ変数（`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`）を宣言し、予算上限制約 `dot(costs, selected) <= budget` のもとで期待価値の合計を最大化します。
 
 ## 数理モデル
 
@@ -15,7 +15,7 @@ $$
 ## ポイント
 
 - **貪欲法が最適にならない理由（0-1 ナップサック）**: コスパ（価値/費用）の高い順に選ぶだけでは、端数の予算が余ってしまい全体最適（例では価値 `36`）に届かないケースがあります。MIP ソルバーなら全組合せの中から最適集合を見つけられます。
-- **0-1 変数の丸め**: 浮動小数点の許容誤差による `0.999999999` や `-0` を防ぐため、取り出し時には `Math.round(v.value!) || 0`（Python は `round(h.val(v))`）を使います。
+- **0-1 変数の丸め**: 浮動小数点の許容誤差による `0.999999999` や `-0` を防ぐため、取り出し時には `Math.round(v.value!) || 0`（Python は `round(pulp.value(v))`）を使います。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
@@ -29,11 +29,12 @@ m.constraint(expr`dot(${input.costs}, ${selected}) <= ${input.budget}`, "budget"
 m.objective(maximize(expr`dot(${input.values}, ${selected})`));
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
-selected = [h.addBinary(name=f"sel_{i}") for i in range(n)]
+selected = [pulp.LpVariable(f"sel_{i}", cat=pulp.LpBinary) for i in range(n)]
 
-h.addConstr(h.qsum(costs[i] * selected[i] for i in range(n)) <= budget)
-h.maximize(h.qsum(values[i] * selected[i] for i in range(n)))
+prob += pulp.lpDot(costs, selected) <= budget
+prob += pulp.lpDot(values, selected)
+prob.solve(pulp.HiGHS(msg=False))
 ```

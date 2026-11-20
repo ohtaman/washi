@@ -22,7 +22,7 @@ $$
 return { sum: input.a + input.b };
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
 return {"sum": input_data["a"] + input_data["b"]}

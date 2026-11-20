@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -9,24 +9,24 @@ def solve(input_data: dict) -> dict:
     n_s = len(supplies)
     n_d = len(demands)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("transportation", pulp.LpMinimize)
 
     shipments = [
-        [h.addVariable(lb=0.0, name=f"ship_{i}_{j}") for j in range(n_d)]
+        [pulp.LpVariable(f"ship_{i}_{j}", lowBound=0) for j in range(n_d)]
         for i in range(n_s)
     ]
 
     for i in range(n_s):
-        h.addConstr(h.qsum(shipments[i][j] for j in range(n_d)) <= supplies[i])
+        prob += pulp.lpSum(shipments[i][j] for j in range(n_d)) <= supplies[i]
     for j in range(n_d):
-        h.addConstr(h.qsum(shipments[i][j] for i in range(n_s)) >= demands[j])
+        prob += pulp.lpSum(shipments[i][j] for i in range(n_s)) >= demands[j]
 
-    h.minimize(
-        h.qsum(unit_costs[i][j] * shipments[i][j] for i in range(n_s) for j in range(n_d))
+    prob += pulp.lpSum(
+        unit_costs[i][j] * shipments[i][j] for i in range(n_s) for j in range(n_d)
     )
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "shipments": [[float(h.val(v)) for v in row] for row in shipments],
-        "totalCost": float(h.getObjectiveValue()),
+        "shipments": [[float(pulp.value(v)) for v in row] for row in shipments],
+        "totalCost": float(pulp.value(prob.objective)),
     }
