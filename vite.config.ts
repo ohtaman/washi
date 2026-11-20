@@ -79,8 +79,8 @@ function z3DemoAssets(): Plugin {
   };
 }
 
-const GOOGLE_TAG_INLINE_INIT =
-  "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+const GTM_INLINE_INIT =
+  "window.dataLayer = window.dataLayer || [];\nwindow.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});";
 
 function googleAnalyticsTag(): Plugin {
   return {
@@ -90,18 +90,37 @@ function googleAnalyticsTag(): Plugin {
       if (!tagId) {
         return [];
       }
+      if (/^GTM-/i.test(tagId)) {
+        return [
+          {
+            tag: "script",
+            attrs: {
+              async: true,
+              src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}`,
+            },
+            injectTo: "head",
+          },
+          {
+            tag: "script",
+            children: GTM_INLINE_INIT,
+            injectTo: "head",
+          },
+        ];
+      }
+      const safeTagLiteral = JSON.stringify(tagId).replace(/</g, "\\u003c");
+      const gtagInlineInit = `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag("js", new Date());\ngtag("config", ${safeTagLiteral});`;
       return [
         {
           tag: "script",
           attrs: {
             async: true,
-            src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}`,
+            src: `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tagId)}`,
           },
           injectTo: "head",
         },
         {
           tag: "script",
-          children: GOOGLE_TAG_INLINE_INIT,
+          children: gtagInlineInit,
           injectTo: "head",
         },
       ];

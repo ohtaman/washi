@@ -7,8 +7,8 @@ import jaLocale from "./locales/ja.json";
 import zhLocale from "./locales/zh.json";
 
 const docsRoot = resolve(import.meta.dirname, "..");
-const GOOGLE_TAG_INLINE_INIT =
-  "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+const GTM_INLINE_INIT =
+  "window.dataLayer = window.dataLayer || [];\nwindow.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});";
 
 export function buildGoogleTagHead(...args: [rawTagId?: string]): HeadConfig[] {
   const rawTagId = args.length === 0 ? process.env.GOOGLE_TAG_ID : args[0];
@@ -16,12 +16,26 @@ export function buildGoogleTagHead(...args: [rawTagId?: string]): HeadConfig[] {
   if (!tagId) {
     return [];
   }
+  if (/^GTM-/i.test(tagId)) {
+    return [
+      [
+        "script",
+        { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}` },
+      ],
+      ["script", {}, GTM_INLINE_INIT],
+    ];
+  }
+  const safeTagLiteral = JSON.stringify(tagId).replace(/</g, "\\u003c");
+  const gtagInlineInit = `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag("js", new Date());\ngtag("config", ${safeTagLiteral});`;
   return [
     [
       "script",
-      { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}` },
+      {
+        async: "",
+        src: `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tagId)}`,
+      },
     ],
-    ["script", {}, GOOGLE_TAG_INLINE_INIT],
+    ["script", {}, gtagInlineInit],
   ];
 }
 

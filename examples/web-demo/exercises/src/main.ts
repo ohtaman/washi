@@ -1,6 +1,7 @@
 import "katex/dist/katex.min.css";
 import "./style.css";
 
+import { toAnalyticsRuntime, trackExerciseEvent } from "./analytics.js";
 import { loadGuideMarkdown } from "./guide/index.js";
 import { UI_STRINGS } from "./i18n/ui-strings.js";
 import { applySolverStatusToVerdict } from "./problems/judge-helpers.js";
@@ -123,17 +124,27 @@ function syncThemeMetaFromStorage(): void {
   }
 }
 
-class ExercisesApp {
+export interface ExercisesAppDeps {
+  runWashi?: typeof runWashiExerciseCode;
+  runHighspy?: typeof runHighspyExerciseCode;
+}
+
+export class ExercisesApp {
   private root: HTMLElement;
+  private runWashi: typeof runWashiExerciseCode;
+  private runHighspy: typeof runHighspyExerciseCode;
   private locale: Locale;
   private progress: ProgressState;
   private viewMode: "index" | "guide" | "workspace";
   private problemId: string | null;
   private problemTab: "problem" | "editorial" = "problem";
   private renderedProblemId: string | null = null;
+  private trackedViewProblemId: string | null = null;
   private activeRuntime: RuntimeId = "washi";
   private viewGeneration = 0;
   private renderSeq = 0;
+  private activeRenderPromise: Promise<void> = Promise.resolve();
+  private activeActionPromise: Promise<void> = Promise.resolve();
   private markdownCache = new Map<string, string>();
   private editorialCache = new Map<string, string>();
   private guideCache = new Map<Locale, string>();
@@ -145,8 +156,10 @@ class ExercisesApp {
   private armedClearAllTimer: ReturnType<typeof setTimeout> | null = null;
   private lastReport: RenderedRunReport | null = null;
 
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, deps: ExercisesAppDeps = {}) {
     this.root = root;
+    this.runWashi = deps.runWashi ?? runWashiExerciseCode;
+    this.runHighspy = deps.runHighspy ?? runHighspyExerciseCode;
     this.locale = detectInitialLocale();
     this.progress = loadProgress();
     const route = parseRouteState();
@@ -159,6 +172,16 @@ class ExercisesApp {
 
     this.attachGlobalEvents();
     void this.render();
+  }
+
+  public async whenIdle(): Promise<void> {
+    let prevRender: Promise<void>;
+    let prevAction: Promise<void>;
+    do {
+      prevRender = this.activeRenderPromise;
+      prevAction = this.activeActionPromise;
+      await Promise.all([prevRender, prevAction]);
+    } while (prevRender !== this.activeRenderPromise || prevAction !== this.activeActionPromise);
   }
 
   private get strings() {
@@ -230,7 +253,9 @@ class ExercisesApp {
       });
     }
 
-    this.root.addEventListener("click", (e) => void this.handleClick(e));
+    this.root.addEventListener("click", (e) => {
+      this.activeActionPromise = this.handleClick(e);
+    });
     this.root.addEventListener("input", (e) => this.handleInput(e));
     this.root.addEventListener("keydown", (e) => this.handleKeyDown(e));
     // Scroll events do not bubble, so capture scroll events from any textarea.code-editor
@@ -301,6 +326,7 @@ class ExercisesApp {
     this.problemId = resolved;
     this.viewMode = resolved ? "workspace" : "index";
     this.problemTab = "problem";
+    this.trackedViewProblemId = null;
     this.pendingHash = null;
     this.clearArmingState();
     this.lastReport = null;
@@ -376,7 +402,7 @@ class ExercisesApp {
 
   private switchRuntimeTab(next: RuntimeId, focusTab: boolean = false): void {
     const prob = this.getInteractiveProblem();
-    if (prob && !prob.meta.runtimes.includes(next)) return;
+    if (!prob || !prob.meta.runtimes.includes(next)) return;
     if (this.activeRuntime === next) return;
     this.activeRuntime = next;
     this.armedSolutionRuntime = null;
@@ -409,13 +435,22 @@ class ExercisesApp {
       b.textContent = this.strings.editor.solutionBtn;
       b.classList.remove("ex-btn-warning");
     });
+
+    trackExerciseEvent("exercise_tab_switch", {
+      problem_id: prob.meta.id,
+      tab: toAnalyticsRuntime(next),
+      locale: this.locale,
+    });
   }
 
   private async switchStatementTab(
     next: "problem" | "editorial",
     focusTab: boolean = false
   ): Promise<void> {
-    if (this.problemTab === next && !focusTab) return;
+    const activeProb = this.getInteractiveProblem();
+    if (!activeProb) return;
+    const changed = this.problemTab !== next;
+    if (!changed && !focusTab) return;
     this.problemTab = next;
 
     const probTabBtn = this.root.querySelector<HTMLButtonElement>("#stmt-tab-problem");
@@ -441,6 +476,14 @@ class ExercisesApp {
     }
 
     this.pushUrl(true);
+
+    if (changed) {
+      trackExerciseEvent("exercise_tab_switch", {
+        problem_id: activeProb.meta.id,
+        tab: next,
+        locale: this.locale,
+      });
+    }
 
     if (next === "editorial") {
       const prob = this.getInteractiveProblem();
@@ -639,6 +682,11 @@ class ExercisesApp {
       this.clearArmingState();
       actionBtn.textContent = this.strings.editor.solutionBtn;
       actionBtn.classList.remove("ex-btn-warning");
+      trackExerciseEvent("exercise_solution_reveal", {
+        problem_id: prob.meta.id,
+        exercise_runtime: toAnalyticsRuntime(runtime),
+        locale: this.locale,
+      });
     }
   }
 
@@ -707,7 +755,7 @@ class ExercisesApp {
               : this.problemTab === "problem"
                 ? "editorial"
                 : "problem";
-        void this.switchStatementTab(next, true);
+        this.activeActionPromise = this.switchStatementTab(next, true);
       }
       return;
     }
@@ -743,7 +791,7 @@ class ExercisesApp {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
         const runtime = target.dataset.runtime as RuntimeId;
-        void this.runProblem(prob, runtime);
+        this.activeActionPromise = this.runProblem(prob, runtime);
         return;
       }
 
@@ -766,6 +814,7 @@ class ExercisesApp {
     const originGeneration = this.viewGeneration;
     if (this.runningGeneration === originGeneration) return;
     this.runningGeneration = originGeneration;
+    const runLocale = this.locale;
 
     const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
     const initialRunBtn = this.root.querySelector<HTMLButtonElement>(
@@ -800,7 +849,7 @@ class ExercisesApp {
       const inputs = prob.cases.map((c) => structuredClone(c.input));
 
       if (runtime === "washi") {
-        const runRes = await runWashiExerciseCode(code, inputs);
+        const runRes = await this.runWashi(code, inputs);
         this.applyRunResult(
           prob,
           runtime,
@@ -809,6 +858,7 @@ class ExercisesApp {
           runRes.logs,
           runRes.runTimeMs,
           originGeneration,
+          runLocale,
           {
             error: runRes.error,
             lpPreview: runRes.lpPreview,
@@ -822,7 +872,7 @@ class ExercisesApp {
           return this.strings.editor.runningPython;
         };
         setStatusLabel(this.strings.editor.loadingPyodide);
-        const runRes = await runHighspyExerciseCode(code, inputs, {
+        const runRes = await this.runHighspy(code, inputs, {
           onPhase: (phase) => setStatusLabel(phaseToLabel(phase)),
         });
         this.applyRunResult(
@@ -833,6 +883,7 @@ class ExercisesApp {
           runRes.logs,
           runRes.runTimeMs,
           originGeneration,
+          runLocale,
           {
             error: runRes.error,
             metrics: runRes.metrics,
@@ -840,6 +891,10 @@ class ExercisesApp {
           }
         );
       }
+    } catch (err: unknown) {
+      this.applyRunResult(prob, runtime, false, [], [], 0, originGeneration, runLocale, {
+        error: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       if (this.runningGeneration === originGeneration) {
         this.runningGeneration = null;
@@ -864,6 +919,7 @@ class ExercisesApp {
     logs: string[],
     runTimeMs: number,
     originGeneration: number,
+    runLocale: Locale,
     extra: {
       error?: string;
       failedSolverStatus?: string;
@@ -983,6 +1039,13 @@ class ExercisesApp {
       };
     }
 
+    trackExerciseEvent("exercise_run", {
+      problem_id: prob.meta.id,
+      exercise_runtime: toAnalyticsRuntime(runtime),
+      verdict: report.overallStatus,
+      locale: runLocale,
+    });
+
     if (!isStillCurrent) {
       return;
     }
@@ -1058,7 +1121,13 @@ class ExercisesApp {
     if (mobProg) mobProg.textContent = label;
   }
 
-  private async render(): Promise<void> {
+  private render(): Promise<void> {
+    const p = this.performRender();
+    this.activeRenderPromise = p;
+    return p;
+  }
+
+  private async performRender(): Promise<void> {
     const seq = ++this.renderSeq;
     const locale = this.locale;
     const problemId = this.problemId;
@@ -1199,6 +1268,18 @@ class ExercisesApp {
     if (seq !== this.renderSeq) return;
     this.root.innerHTML = `${headerHtml}${bodyHtml}`;
     this.renderedProblemId = nextRenderedProblemId;
+    if (nextRenderedProblemId !== null) {
+      if (this.trackedViewProblemId !== nextRenderedProblemId) {
+        this.trackedViewProblemId = nextRenderedProblemId;
+        trackExerciseEvent("exercise_view", {
+          problem_id: nextRenderedProblemId,
+          exercise_runtime: toAnalyticsRuntime(this.activeRuntime),
+          locale,
+        });
+      }
+    } else {
+      this.trackedViewProblemId = null;
+    }
 
     if (this.pendingHash) {
       const targetId = this.pendingHash.replace(/^#/, "");
@@ -1218,7 +1299,7 @@ class ExercisesApp {
   }
 }
 
-const mount = document.getElementById("app");
+const mount = typeof document !== "undefined" ? document.getElementById("app") : null;
 if (mount) {
   new ExercisesApp(mount);
 }

@@ -1050,6 +1050,94 @@ async function run() {
       await mobPage.close();
     }
 
+    // 6. Verify privacy-safe GA4 gtag / dataLayer telemetry in real browser bundle
+    //    (works whether dist/site was built without GOOGLE_TAG_ID, with G-/GT-, or with GTM-)
+    {
+      const gtagCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await gtagCtx.route("https://www.googletagmanager.com/**", (route) =>
+        route.fulfill({ status: 200, contentType: "application/javascript", body: "" })
+      );
+      await gtagCtx.addInitScript(() => {
+        const captured = [];
+        window.__capturedGtagEvents = captured;
+        const rawLayer = [];
+        rawLayer.push = function (...items) {
+          for (const item of items) {
+            if (item && typeof item === "object") {
+              if (
+                typeof item.length === "number" &&
+                item[0] === "event" &&
+                typeof item[1] === "string"
+              ) {
+                captured.push({ name: item[1], params: item[2] ?? {} });
+              } else if (
+                !Array.isArray(item) &&
+                typeof item.event === "string" &&
+                item.event.startsWith("exercise_")
+              ) {
+                const { event: name, ...params } = item;
+                captured.push({ name, params });
+              }
+            }
+          }
+          return Array.prototype.push.apply(this, items);
+        };
+        window.dataLayer = rawLayer;
+        window.gtag = function () {
+          window.dataLayer.push(arguments);
+        };
+      });
+      const gtagPage = await gtagCtx.newPage();
+      gtagPage.on("pageerror", (e) => pageErrors.push(`gtag: ${e.message}`));
+      await gtagPage.goto(`${baseUrl}/exercises/?id=000&lang=en`, { waitUntil: "networkidle" });
+      await gtagPage.waitForSelector("#ws-problem-title");
+      await gtagPage.click("#stmt-tab-editorial");
+      await gtagPage.click("#tab-highspy");
+      await gtagPage.click("#tab-washi");
+      const solBtn = gtagPage.locator('button[data-action="solution"][data-runtime="washi"]');
+      await solBtn.click();
+      await solBtn.click();
+      await gtagPage.click('button[data-action="run"][data-runtime="washi"]');
+      await gtagPage.waitForSelector("#judge-results .ac-celebration", { timeout: 20_000 });
+      const captured = await gtagPage.evaluate(() => window.__capturedGtagEvents);
+      assert(
+        JSON.stringify(captured) ===
+          JSON.stringify([
+            {
+              name: "exercise_view",
+              params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
+            },
+            {
+              name: "exercise_tab_switch",
+              params: { problem_id: "000", tab: "editorial", locale: "en" },
+            },
+            {
+              name: "exercise_tab_switch",
+              params: { problem_id: "000", tab: "pulp", locale: "en" },
+            },
+            {
+              name: "exercise_tab_switch",
+              params: { problem_id: "000", tab: "washi", locale: "en" },
+            },
+            {
+              name: "exercise_solution_reveal",
+              params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
+            },
+            {
+              name: "exercise_run",
+              params: {
+                problem_id: "000",
+                exercise_runtime: "washi",
+                verdict: "AC",
+                locale: "en",
+              },
+            },
+          ]),
+        `Unexpected browser gtag events: ${JSON.stringify(captured)}`
+      );
+      await gtagCtx.close();
+    }
+
     assert(consoleErrors.length === 0, `Console errors observed: ${consoleErrors.join(" | ")}`);
     assert(pageErrors.length === 0, `Uncaught page errors observed: ${pageErrors.join(" | ")}`);
     assert(httpErrors.length === 0, `HTTP >=400 responses observed: ${httpErrors.join(" | ")}`);
