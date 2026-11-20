@@ -87,7 +87,10 @@ let activeCrossFilter: { kind: "prof" | "room"; id: string } | null = null;
 
 let isSolving = false;
 let pendingSolveRequested = false;
-let pendingSolveWaiters: Array<(res: WashiTimetableSolveOutcome | null) => void> = [];
+let pendingSolveWaiters: Array<{
+  resolve: (res: WashiTimetableSolveOutcome | null) => void;
+  reject: (err: unknown) => void;
+}> = [];
 let activeSolveAbortController: AbortController | null = null;
 let activeChatAbortController: AbortController | null = null;
 
@@ -2407,7 +2410,7 @@ export function handleGenerateSample(autoSwitchToCatalog = false): void {
   }
 }
 
-export function handleClearToBlank(skipConfirm: boolean | unknown = false): void {
+export function handleClearToBlank(skipConfirm: boolean | unknown = false): boolean {
   const confirmFn =
     typeof confirm === "function"
       ? confirm
@@ -2417,15 +2420,17 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
   const confirmed =
     skipConfirm === true ||
     (confirmFn
-      ? confirmFn(
-          pickTimetableLang(activeLang, {
-            ja: "時間割\u30FB教員\u30FB教室\u30FB科目\u306E\u30C7\u30FC\u30BF\u3092\u3059\u3079\u3066\u30AF\u30EA\u30A2\u3057\u3066、白紙状態\u306B戻\u3057\u307E\u3059\u304B？",
-            en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
-            zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
-          })
+      ? Boolean(
+          confirmFn(
+            pickTimetableLang(activeLang, {
+              ja: "時間割\u30FB教員\u30FB教室\u30FB科目\u306E\u30C7\u30FC\u30BF\u3092\u3059\u3079\u3066\u30AF\u30EA\u30A2\u3057\u3066、白紙状態\u306B戻\u3057\u307E\u3059\u304B？",
+              en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
+              zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
+            })
+          )
         )
-      : true);
-  if (!confirmed) return;
+      : false);
+  if (!confirmed) return false;
   appState = createBlankTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
@@ -2438,6 +2443,7 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
       { variant: "info" }
     );
   }
+  return true;
 }
 
 function handleExportAllCsvs(): void {
@@ -2547,11 +2553,49 @@ function executeCsvImport(): void {
   );
 }
 
-export function readConfigFromForm(): void {
-  if (typeof document === "undefined") return;
+function readValidatedConfigNumber(
+  id: string,
+  min: number,
+  max: number,
+  requireInteger: boolean
+): number | null {
+  const raw = $<HTMLInputElement>(id).value.trim();
+  if (raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || (requireInteger && !Number.isInteger(n)) || n < min || n > max) {
+    return null;
+  }
+  return n;
+}
+
+export function readConfigFromForm(): boolean {
+  if (typeof document === "undefined") return false;
   const el = document.getElementById("cfg-enforceRoomCapacity");
-  if (!el) return;
+  if (!el) return false;
   const c = appState.config;
+
+  const maxConsec = readValidatedConfigNumber("cfg-maxProfessorConsecutivePeriods", 1, 5, true);
+  const maxDaily = readValidatedConfigNumber("cfg-maxProfessorSessionsPerDay", 1, 5, true);
+  const maxCohort = readValidatedConfigNumber("cfg-maxCohortCompulsoryPerDay", 2, 5, true);
+  const weightGap = readValidatedConfigNumber("cfg-weightCohortIdleGaps", 0, 100, false);
+
+  if (maxConsec === null || maxDaily === null || maxCohort === null || weightGap === null) {
+    $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value = String(
+      c.maxProfessorConsecutivePeriods
+    );
+    $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value = String(
+      c.maxProfessorSessionsPerDay
+    );
+    $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value = String(
+      c.maxCohortCompulsoryPerDay
+    );
+    $<HTMLInputElement>("cfg-weightCohortIdleGaps").value = String(c.weightCohortIdleGaps);
+    showWorkspaceNotice(UI_TEXT_I18N[activeLang].noticeInvalidConfigInput, {
+      variant: "error",
+    });
+    return false;
+  }
+
   c.enforceRoomCapacity = $<HTMLInputElement>("cfg-enforceRoomCapacity").checked;
   c.enforceRoomEquipment = $<HTMLInputElement>("cfg-enforceRoomEquipment").checked;
   c.enforceCohortNoOverlap = $<HTMLInputElement>("cfg-enforceCohortNoOverlap").checked;
@@ -2565,16 +2609,11 @@ export function readConfigFromForm(): void {
   c.enforceMaxConsecutivePeriods = $<HTMLInputElement>(
     "cfg-enforceMaxConsecutivePeriods"
   ).checked;
-  c.maxProfessorConsecutivePeriods = Number(
-    $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value
-  );
-  c.maxProfessorSessionsPerDay = Number(
-    $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value
-  );
-  c.maxCohortCompulsoryPerDay = Number(
-    $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value
-  );
-  c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
+  c.maxProfessorConsecutivePeriods = maxConsec;
+  c.maxProfessorSessionsPerDay = maxDaily;
+  c.maxCohortCompulsoryPerDay = maxCohort;
+  c.weightCohortIdleGaps = weightGap;
+  return true;
 }
 
 export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
@@ -2593,8 +2632,8 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
 
   if (isSolving) {
     pendingSolveRequested = true;
-    return new Promise<WashiTimetableSolveOutcome | null>((resolve) => {
-      pendingSolveWaiters.push(resolve);
+    return new Promise<WashiTimetableSolveOutcome | null>((resolve, reject) => {
+      pendingSolveWaiters.push({ resolve, reject });
     });
   }
   isSolving = true;
@@ -2652,10 +2691,10 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
       const waiters = pendingSolveWaiters.splice(0);
       void triggerSolve().then(
         (queuedRes) => {
-          for (const resolve of waiters) resolve(queuedRes);
+          for (const waiter of waiters) waiter.resolve(queuedRes);
         },
-        () => {
-          for (const resolve of waiters) resolve(null);
+        (err) => {
+          for (const waiter of waiters) waiter.reject(err);
         }
       );
     }
@@ -3314,7 +3353,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       activeLang
     );
 
-    const { updatedState, appliedLogs } = applyTimetableChatOperationsToState(
+    const { updatedState, appliedLogs, rejectedOperations } = applyTimetableChatOperationsToState(
       appState,
       plan.operations,
       activeLang
@@ -3333,7 +3372,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       assistantMsg.msgEl.appendChild(opsEl);
     }
 
-    if (plan.rejectedToolCalls.length > 0) {
+    if (plan.rejectedToolCalls.length > 0 || rejectedOperations.length > 0) {
       const rejectedEl = document.createElement("div");
       rejectedEl.className = "chat-applied-ops";
       for (const tc of plan.rejectedToolCalls) {
@@ -3345,6 +3384,12 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
           zh: "⚠ 参数无效，未应用",
         });
         pill.textContent = `${label}: ${tc.tool_name} ${JSON.stringify(tc.args ?? {})}`;
+        rejectedEl.appendChild(pill);
+      }
+      for (const rej of rejectedOperations) {
+        const pill = document.createElement("div");
+        pill.className = "chat-op-pill chat-op-pill-rejected";
+        pill.textContent = `${UI_TEXT_I18N[activeLang].chatOpRejectedTarget}: ${rej.reason}`;
         rejectedEl.appendChild(pill);
       }
       assistantMsg.msgEl.appendChild(rejectedEl);
@@ -3399,16 +3444,11 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
     syncTrajectoryUI();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    const lowerMsg = msg.toLowerCase();
     const isTruncated =
-      msg.toLowerCase().includes("output limits") ||
-      msg.toLowerCase().includes("truncated") ||
-      msg.toLowerCase().includes("quota");
+      lowerMsg.includes("output limits") || lowerMsg.includes("truncated");
     const formattedError = isTruncated
-      ? pickTimetableLang(activeLang, {
-          ja: "⚠️ Gemini Nano \u306E出力\u30C8\u30FC\u30AF\u30F3上限（4096\u30C8\u30FC\u30AF\u30F3制限）\u306B達\u3057\u307E\u3057\u305F。短\u3081\u306E指示\u306B分割\u3057\u3066入力\u3059\u308B\u304B、右側\u306E「追加\u30EB\u30FC\u30EB\u30FB設定」\u30BF\u30D6\u304B\u3089直接\u30EB\u30FC\u30EB\u3092編集\u3057\u3066\u304F\u3060\u3055\u3044。",
-          en: "⚠️ Gemini Nano reached its output token limit. Please try a shorter request or configure rules directly in the Custom Rules tab.",
-          zh: "⚠️ 达到 Gemini Nano 输出 Token 上限。请尝试更简短的指令，或直接在右侧「规则设置」标签页中编辑。",
-        })
+      ? formatUiTemplate(UI_TEXT_I18N[activeLang].chatErrorOutputTruncated, { msg })
       : pickTimetableLang(activeLang, {
           ja: `⚠️ \u30A8\u30E9\u30FC\u304C発生\u3057\u307E\u3057\u305F: ${msg}`,
           en: `⚠️ Error: ${msg}`,
@@ -3692,7 +3732,7 @@ function wireEvents(): void {
   });
 
   const handleSaveConfig = () => {
-    readConfigFromForm();
+    if (!readConfigFromForm()) return;
     renderCustomRulesAndSettings();
     updateDeveloperModelInspector();
     if (currentTimetable && shouldAutoSolveOnUpdate()) {
@@ -3732,22 +3772,28 @@ function wireEvents(): void {
     const period = Number($<HTMLSelectElement>("select-new-rule-period").value) as TimetablePeriod;
     const roomId = $<HTMLSelectElement>("select-new-rule-room").value || undefined;
 
+    if (kind === "course_no_overlap" && (!c2Id || c2Id === c1Id)) {
+      showWorkspaceNotice(UI_TEXT_I18N[activeLang].noticeRuleNeedDistinctCourses, {
+        variant: "warning",
+      });
+      return;
+    }
+
+    let opResult: ReturnType<typeof applyTimetableChatOperationsToState> | null = null;
     if (kind === "pin_slot") {
-      const res = applyTimetableChatOperationsToState(appState, [
+      opResult = applyTimetableChatOperationsToState(appState, [
         { op: "pin_course_slot", courseId: c1Id, days: [day], periods: [period], roomId, isHard: true },
       ]);
-      appState = res.updatedState;
     } else if (kind === "forbid_slot") {
-      const res = applyTimetableChatOperationsToState(appState, [
+      opResult = applyTimetableChatOperationsToState(appState, [
         { op: "forbid_course_slot", courseId: c1Id, days: [day], periods: [period], isHard: true },
       ]);
-      appState = res.updatedState;
     } else if (
       kind === "course_no_overlap" ||
       kind === "course_consecutive" ||
       kind === "course_same_day"
     ) {
-      const res = applyTimetableChatOperationsToState(appState, [
+      opResult = applyTimetableChatOperationsToState(appState, [
         {
           op: "add_course_relation_rule",
           kind,
@@ -3763,7 +3809,16 @@ function wireEvents(): void {
           isHard: true,
         },
       ]);
-      appState = res.updatedState;
+    }
+    if (opResult) {
+      if (opResult.rejectedOperations.length > 0) {
+        showWorkspaceNotice(
+          opResult.rejectedOperations.map((r) => r.reason).join("; "),
+          { variant: "warning" }
+        );
+        return;
+      }
+      appState = opResult.updatedState;
     }
     renderCustomRulesAndSettings();
     if (currentTimetable && shouldAutoSolveOnUpdate()) {
@@ -3783,6 +3838,13 @@ function wireEvents(): void {
     const res = applyTimetableChatOperationsToState(appState, [
       { op: "pin_course_slot", courseId, days: [day], periods: [period], roomId, isHard: true },
     ]);
+    if (res.rejectedOperations.length > 0) {
+      showWorkspaceNotice(
+        res.rejectedOperations.map((r) => r.reason).join("; "),
+        { variant: "warning" }
+      );
+      return;
+    }
     appState = res.updatedState;
     $<HTMLDialogElement>("slot-inspector-dialog").close();
     renderCustomRulesAndSettings();
@@ -3798,6 +3860,13 @@ function wireEvents(): void {
     const res = applyTimetableChatOperationsToState(appState, [
       { op: "forbid_course_slot", courseId, days: [day], periods: [period], isHard: true },
     ]);
+    if (res.rejectedOperations.length > 0) {
+      showWorkspaceNotice(
+        res.rejectedOperations.map((r) => r.reason).join("; "),
+        { variant: "warning" }
+      );
+      return;
+    }
     appState = res.updatedState;
     $<HTMLDialogElement>("slot-inspector-dialog").close();
     renderCustomRulesAndSettings();
@@ -3900,13 +3969,38 @@ function wireEvents(): void {
   });
   $("btn-dl-all-samples").addEventListener("click", handleDownloadAllSamples);
 
-  $("file-input-profs").addEventListener("change", (e) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    file.text().then((text) => {
+  const wireCsvInput = (
+    inputId: string,
+    statusId: string,
+    onText: (text: string, stEl: HTMLElement) => void,
+    onReadError: () => void
+  ) => {
+    $(inputId).addEventListener("change", (e) => {
+      const input = e.target as HTMLInputElement;
+      const file = input.files?.[0];
+      if (!file) return;
+      file
+        .text()
+        .then((text) => {
+          onText(text, $(statusId));
+          checkImportReadiness();
+        })
+        .catch((err: unknown) => {
+          const stEl = $(statusId);
+          const errMsg = err instanceof Error ? err.message : String(err);
+          stEl.textContent = `❌ ${errMsg}`;
+          stEl.className = "csv-file-status is-error";
+          onReadError();
+          checkImportReadiness();
+        });
+    });
+  };
+
+  wireCsvInput(
+    "file-input-profs",
+    "file-status-profs",
+    (text, stEl) => {
       const res = parseProfessorsCsv(text);
-      const stEl = $("file-status-profs");
       if (res.errors.length > 0 || res.professors.length === 0) {
         stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A教員\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
@@ -3916,17 +4010,17 @@ function wireEvents(): void {
         stEl.className = "csv-file-status is-ready";
         pendingCsvProfs = res.professors;
       }
-      checkImportReadiness();
-    });
-  });
+    },
+    () => {
+      pendingCsvProfs = null;
+    }
+  );
 
-  $("file-input-rooms").addEventListener("change", (e) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    file.text().then((text) => {
+  wireCsvInput(
+    "file-input-rooms",
+    "file-status-rooms",
+    (text, stEl) => {
       const res = parseRoomsCsv(text);
-      const stEl = $("file-status-rooms");
       if (res.errors.length > 0 || res.rooms.length === 0) {
         stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A教室\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
@@ -3936,20 +4030,20 @@ function wireEvents(): void {
         stEl.className = "csv-file-status is-ready";
         pendingCsvRooms = res.rooms;
       }
-      checkImportReadiness();
-    });
-  });
+    },
+    () => {
+      pendingCsvRooms = null;
+    }
+  );
 
-  $("file-input-courses").addEventListener("change", (e) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    file.text().then((text) => {
+  wireCsvInput(
+    "file-input-courses",
+    "file-status-courses",
+    (text, stEl) => {
       const knownIds = pendingCsvProfs
         ? new Set(pendingCsvProfs.map((p) => p.id))
         : undefined;
       const res = parseCoursesCsv(text, knownIds);
-      const stEl = $("file-status-courses");
       if (res.errors.length > 0 || res.courses.length === 0) {
         stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A科目\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
@@ -3959,9 +4053,11 @@ function wireEvents(): void {
         stEl.className = "csv-file-status is-ready";
         pendingCsvCourses = res.courses;
       }
-      checkImportReadiness();
-    });
-  });
+    },
+    () => {
+      pendingCsvCourses = null;
+    }
+  );
 
   $("btn-execute-csv-import").addEventListener("click", executeCsvImport);
   // Prompt catalog modal

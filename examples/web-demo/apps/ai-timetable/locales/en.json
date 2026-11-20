@@ -508,6 +508,14 @@
     "noticeResetDefaults": "↩ Reset settings and custom rules to defaults",
     "noticeConflictCheckBaseRules": "ℹ️ No custom rules in conflict. Check base rules in the Rules tab.",
     "noticeConflictCleared": "✨ Removed {count} conflicting rule(s) and re-optimizing",
+    "noticeInvalidConfigInput": "⚠️ Invalid settings value: enter integers 1–5 for consecutive/daily caps, 2–5 for cohort compulsory cap, and 0–100 for idle gap weight.",
+    "noticeRuleNeedDistinctCourses": "⚠️ Select two different courses for a no-overlap rule.",
+    "chatOpRejectedTarget": "⚠ Not applied (unresolved target)",
+    "chatErrorOutputTruncated": "⚠️ Gemini Nano output was truncated or exceeded its limit ({msg}). Please try a shorter request or configure rules directly in the Rules tab.",
+    "nanoErrorUnavailable": "Gemini Nano (LanguageModel API) is unavailable.",
+    "nanoErrorNotJsonObject": "Model response is not a valid JSON object.",
+    "nanoErrorInvalidIntentType": "Model response has missing or invalid intentType: {intentType}.",
+    "nanoErrorInvalidToolCalls": "Model response toolCalls must be an array.",
     "nanoProgressTurn1": "⏳ Understanding your request…",
     "nanoProgressTurn2Done": "✅ Ready to apply {count} change(s)"
   },
@@ -849,53 +857,78 @@
       "large_hall": [
         "large_hall",
         "large",
-        "hall"
+        "hall",
+        "large hall",
+        "large lecture hall"
+      ],
+      "medium_room": [
+        "medium_room",
+        "medium",
+        "medium room",
+        "medium classroom"
       ],
       "pc_lab": [
         "pc_lab",
         "pc",
-        "lab"
+        "lab",
+        "pc lab"
       ],
       "seminar_room": [
         "seminar_room",
         "seminar",
-        "small"
+        "small",
+        "seminar room"
       ],
       "compulsory": [
         "compulsory",
-        "required"
+        "required",
+        "compulsory lecture"
       ],
       "elective_core": [
         "elective_core",
-        "core"
+        "core",
+        "core elective"
+      ],
+      "elective": [
+        "elective"
       ],
       "lab_exercise": [
         "lab_exercise",
         "exercise",
-        "lab"
+        "lab",
+        "pc lab & hands-on"
       ],
       "seminar": [
         "seminar",
-        "colloquium"
+        "colloquium",
+        "seminar & colloquium"
       ],
       "projector": [
         "projector"
       ],
       "mic": [
         "mic",
-        "audio"
+        "audio",
+        "wireless mic",
+        "audio & microphone"
       ],
       "pc_terminal": [
         "pc_terminal",
         "pc",
-        "workstation"
+        "workstation",
+        "pc terminals",
+        "pc workstation"
       ],
       "moveable_desks": [
         "moveable_desks",
-        "desks"
+        "desks",
+        "modular desks",
+        "movable desks"
       ],
       "recording": [
-        "recording"
+        "recording",
+        "lecture capture",
+        "lecture recording"
       ]
     }
   },
