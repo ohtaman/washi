@@ -1837,6 +1837,16 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       }
     };
 
+    const inputTarget = async (target: FakeTextArea, nextValue: string) => {
+      target.value = nextValue;
+      for (const cb of rootListeners.get("input") ?? []) {
+        await cb({ target });
+      }
+      if (attachedApp) {
+        await attachedApp.whenIdle();
+      }
+    };
+
     const makeNavLink = (navId: string) => {
       const a = new FakeElement("a", (sel) => sel === "[data-nav-id]");
       a.dataset.navId = navId;
@@ -1866,12 +1876,13 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       dataLayerEvents,
       clickTarget,
       keydownTarget,
+      inputTarget,
       makeNavLink,
       makeLangBtn,
     };
   }
 
-  it("emits exercise_view, exercise_tab_switch, exercise_run (WaSHI & PuLP across all verdicts without leaking user code), and exercise_solution_reveal via gtag", async () => {
+  it("emits full WaSHI vs PuLP funnel (exercise_view, exercise_runtime_view, exercise_code_edit, exercise_tab_switch, exercise_run_start, exercise_run, exercise_solve, exercise_solution_reveal) without leaking user code", async () => {
     const h = setupExercisesHarness({
       initialUrl: "https://washi.ohtaman.dev/exercises/?id=001&lang=en",
       analyticsMode: "gtag",
@@ -1932,16 +1943,20 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     );
     await app.whenIdle();
 
-    // 1. Initial workspace render emits exercise_view once
+    // 1. Initial workspace render emits exercise_view + exercise_runtime_view("washi") once
     expect(h.gtagEvents).toEqual([
       {
         name: "exercise_view",
         params: { problem_id: "001", exercise_runtime: "washi", locale: "en" },
       },
+      {
+        name: "exercise_runtime_view",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "en" },
+      },
     ]);
     h.gtagEvents.length = 0;
 
-    // Switching locale on the same open problem updates locale without emitting duplicate exercise_view
+    // Switching locale on the same open problem updates locale without emitting duplicate view events
     await h.clickTarget(h.makeLangBtn("ja"));
     await app.whenIdle();
     expect(h.gtagEvents).toEqual([]);
@@ -1964,11 +1979,27 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     ]);
     h.gtagEvents.length = 0;
 
-    // 3. Runtime tab switches ("pulp" <-> "washi") & no-op when clicking active tab
+    // 3. Runtime tab switches ("pulp" <-> "washi"):
+    //    exercise_runtime_view("pulp") fires once on first PuLP inspection in this #001 visit
+    //    (viewing Python without running it is directly observable, and toggling back-and-forth does not inflate runtime_view)
     await h.clickTarget(h.tabHighspy);
     await h.clickTarget(h.tabHighspy);
     await h.clickTarget(h.tabWashi);
+    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabWashi);
     expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_runtime_view",
+        params: { problem_id: "001", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "washi", locale: "ja" },
+      },
       {
         name: "exercise_tab_switch",
         params: { problem_id: "001", tab: "pulp", locale: "ja" },
@@ -1980,9 +2011,21 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     ]);
     h.gtagEvents.length = 0;
 
-    // 4. WaSHI runs across VIOLATION, RUNTIME_ERROR, SUBOPTIMAL, INFEASIBLE, and AC (+ privacy check!)
+    // 4. WaSHI code edits + runs across VIOLATION, RUNTIME_ERROR, SUBOPTIMAL, INFEASIBLE, and AC (+ privacy check!)
     const secretTsMarker = "// SECRET_USER_TS_SOURCE_98765";
     const secretErrMarker = "SECRET_USER_RUNTIME_EXCEPTION_98765";
+
+    // Multiple edits + Tab key in #001 ("washi") emit exercise_code_edit only once per problem visit
+    await h.inputTarget(h.editorWashi, `${p001.washiStarter}\n// first edit`);
+    await h.inputTarget(h.editorWashi, `${p001.washiStarter}\n${secretTsMarker}`);
+    await h.keydownTarget(h.editorWashi, "Tab");
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_code_edit",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
+      },
+    ]);
+    h.gtagEvents.length = 0;
 
     // 4a. Starter (#001) -> VIOLATION
     h.editorWashi.value = `${p001.washiStarter}\n${secretTsMarker}`;
@@ -2000,7 +2043,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     h.editorWashi.value = `${secretTsMarker}\nimport { Model, expr } from "@ohtaman/washi";\nexport async function solve() { const m = new Model("Inf"); const x = m.continuous("x", { lb: 0, ub: 1 }); m.constraint(expr\`\${x} >= 10\`); await m.solve(); return { croissants: 0, loaves: 0, totalProfit: 0 }; }`;
     await h.clickTarget(h.runWashiBtn);
 
-    // 4e. Solution reveal (1st click only arms; 2nd click loads solution & emits exercise_solution_reveal), then run -> AC
+    // 4e. Solution reveal (1st click only arms; 2nd click loads solution & emits exercise_solution_reveal), then run -> AC + exercise_solve
     await h.clickTarget(h.solWashiBtn);
     expect(h.gtagEvents.filter((e) => e.name === "exercise_solution_reveal")).toEqual([]);
     await h.clickTarget(h.solWashiBtn);
@@ -2008,8 +2051,16 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
 
     expect(h.gtagEvents).toEqual([
       {
+        name: "exercise_run_start",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
         name: "exercise_run",
         params: { problem_id: "001", exercise_runtime: "washi", verdict: "VIOLATION", locale: "ja" },
+      },
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
       },
       {
         name: "exercise_run",
@@ -2021,6 +2072,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         },
       },
       {
+        name: "exercise_run_start",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
         name: "exercise_run",
         params: {
           problem_id: "001",
@@ -2028,6 +2083,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
           verdict: "SUBOPTIMAL",
           locale: "ja",
         },
+      },
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
       },
       {
         name: "exercise_run",
@@ -2043,8 +2102,16 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
       },
       {
+        name: "exercise_run_start",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
         name: "exercise_run",
         params: { problem_id: "001", exercise_runtime: "washi", verdict: "AC", locale: "ja" },
+      },
+      {
+        name: "exercise_solve",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
       },
     ]);
 
@@ -2054,13 +2121,13 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     expect(serializedWashiEvents).not.toContain(secretErrMarker);
     h.gtagEvents.length = 0;
 
-    // 5. Switch to PuLP ("highspy") tab, test RUNTIME_ERROR, VIOLATION, solution reveal, and AC on #000
+    // 5. Switch to PuLP ("highspy") tab on #000: test code_edit, RUNTIME_ERROR, VIOLATION, solution reveal, and AC
     await h.clickTarget(h.makeNavLink("000"));
     await app.whenIdle();
     await h.clickTarget(h.tabHighspy);
 
     const secretPyMarker = "# SECRET_USER_PYTHON_SOURCE_54321";
-    h.editorHighspy.value = `${p001.highspyStarter}\n${secretPyMarker}`;
+    await h.inputTarget(h.editorHighspy, `${p001.highspyStarter}\n${secretPyMarker}`);
     pyMode = "error";
     await h.clickTarget(h.runHighspyBtn);
 
@@ -2071,10 +2138,13 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     await h.clickTarget(h.solHighspyBtn);
 
     pyMode = "ac";
-    h.editorHighspy.value = `def solve(inp):\n    ${secretPyMarker}\n    return {"sum": inp["a"] + inp["b"]}`;
+    await h.inputTarget(
+      h.editorHighspy,
+      `def solve(inp):\n    ${secretPyMarker}\n    return {"sum": inp["a"] + inp["b"]}`
+    );
     await h.clickTarget(h.runHighspyBtn);
 
-    // Navigating to another problem while PuLP tab is active records exercise_runtime: "pulp"
+    // Navigating to another problem while PuLP tab is active records exercise_runtime: "pulp" for both view events
     await h.clickTarget(h.makeNavLink("002"));
 
     expect(h.gtagEvents).toEqual([
@@ -2083,8 +2153,24 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         params: { problem_id: "000", exercise_runtime: "washi", locale: "ja" },
       },
       {
+        name: "exercise_runtime_view",
+        params: { problem_id: "000", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
         name: "exercise_tab_switch",
         params: { problem_id: "000", tab: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_runtime_view",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_code_edit",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
       },
       {
         name: "exercise_run",
@@ -2094,6 +2180,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
           verdict: "RUNTIME_ERROR",
           locale: "ja",
         },
+      },
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
       },
       {
         name: "exercise_run",
@@ -2109,6 +2199,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
       },
       {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
         name: "exercise_run",
         params: {
           problem_id: "000",
@@ -2118,7 +2212,15 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         },
       },
       {
+        name: "exercise_solve",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
         name: "exercise_view",
+        params: { problem_id: "002", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_runtime_view",
         params: { problem_id: "002", exercise_runtime: "pulp", locale: "ja" },
       },
     ]);
@@ -2126,6 +2228,91 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     const serializedPulpEvents = JSON.stringify(h.gtagEvents);
     expect(serializedPulpEvents).not.toContain("SECRET_USER_PYTHON_SOURCE_54321");
     expect(serializedPulpEvents).not.toContain("SECRET_PYTHON_TRACEBACK_MESSAGE");
+  });
+
+  it("emits exercise_run_start immediately before slow Pyodide execution finishes so mid-load drop-off is observable", async () => {
+    const h = setupExercisesHarness({
+      initialUrl: "https://washi.ohtaman.dev/exercises/?id=000&lang=en",
+      analyticsMode: "gtag",
+    });
+    let resolvePyodide: (() => void) | null = null;
+    const app = h.attachApp(
+      new ExercisesApp(h.root, {
+        runHighspy: (_code, inputs) =>
+          new Promise((resolve) => {
+            resolvePyodide = () =>
+              resolve({
+                ok: true,
+                logs: [],
+                outputs: inputs.map((inp) => {
+                  const pair = inp as { a: number; b: number };
+                  return { sum: pair.a + pair.b };
+                }),
+                metrics: [],
+                wasCached: false,
+                loadTimeMs: 2500,
+                runTimeMs: 5,
+              });
+          }),
+      })
+    );
+    await app.whenIdle();
+    await h.clickTarget(h.tabHighspy);
+    h.gtagEvents.length = 0;
+
+    // Trigger click without awaiting completion yet: exercise_run_start must already be recorded!
+    const pendingClick = h.clickTarget(h.runHighspyBtn);
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+      },
+    ]);
+
+    // Once Pyodide finishes while still on #000, exercise_run + exercise_solve follow
+    resolvePyodide!();
+    await pendingClick;
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+      },
+      {
+        name: "exercise_run",
+        params: { problem_id: "000", exercise_runtime: "pulp", verdict: "AC", locale: "en" },
+      },
+      {
+        name: "exercise_solve",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+      },
+    ]);
+    h.gtagEvents.length = 0;
+
+    // If the user abandons #000 (navigates away) before slow Pyodide finishes, only exercise_run_start is recorded for #000
+    const abandonedClick = h.clickTarget(h.runHighspyBtn);
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+      },
+    ]);
+    await h.clickTarget(h.makeNavLink("001"));
+    resolvePyodide!();
+    await abandonedClick;
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_run_start",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+      },
+      {
+        name: "exercise_view",
+        params: { problem_id: "001", exercise_runtime: "pulp", locale: "en" },
+      },
+      {
+        name: "exercise_runtime_view",
+        params: { problem_id: "001", exercise_runtime: "pulp", locale: "en" },
+      },
+    ]);
   });
 
   it("supports GTM dataLayer fallback and remains an error-free no-op when gtag and dataLayer are undefined", async () => {
@@ -2142,6 +2329,12 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     expect(hGtm.dataLayerEvents).toEqual([
       {
         event: "exercise_view",
+        problem_id: "001",
+        exercise_runtime: "washi",
+        locale: "en",
+      },
+      {
+        event: "exercise_runtime_view",
         problem_id: "001",
         exercise_runtime: "washi",
         locale: "en",
