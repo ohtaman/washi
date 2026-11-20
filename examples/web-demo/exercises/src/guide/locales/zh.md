@@ -48,3 +48,32 @@
 - **LP（线性规划）**：连续变量配合线性目标和线性约束，可在可行多面体顶点处快速求得全局最优解。
 - **MIP（混合整数规划）**：在 LP 中加入整数或 0-1 变量，用于表达离散数量、布尔选择以及固定成本开关（**Big-M**）。
 - **CP / SMT**：约束规划与可满足性模理论，擅长处理排班、逻辑规则与冲突诊断（后续章节介绍）。
+
+## 5. 相关链接与参考资料 {#resources}
+
+以下整理了建模库、求解器官方文档以及优质的英文开源教材与问题集，方便进一步系统学习与查阅：
+
+### 建模库与求解器官方文档
+
+- [WaSHI 文档（快速开始）](/zh/getting-started/) / [建模技巧](/zh/guide/formulation-tips) — WaSHI 本体 API、各求解器后端与建模指南。
+- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 Python 代数建模库文档（英文）。
+- [HiGHS](https://highs.dev/)（[文档](https://ergo-code.github.io/HiGHS/)） — 同时支撑 WaSHI 与 PuLP 求解 LP / MIP 的开源求解器（英文）。
+- [SciPy `scipy.optimize` 参考手册](https://docs.scipy.org/doc/scipy/reference/optimize.html) — Python 中的线性规划（`linprog`）、混合整数规划（`milp`）等接口参考（英文）。
+- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 LP、MIP、车辆路径与 CP-SAT 约束规划的官方指南与示例（英文）。
+- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — Julia 代数建模语言文档，包含丰富的线性、整数与非线性建模示例（英文）。
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 约束规划（CP）与全局约束建模的标准手册（英文）。
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI 约束规划（CP）后端采用的 Lazy Clause Generation 求解器（英文）。
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — 面向 SMT 求解器 Z3 的在线交互式教程与参考（英文）。
+
+### 建模技巧与开源教材
+
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 涵盖线性化、Big-M、凸二次与锥规划的经典建模手册（英文）。
+- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — 配备可运行 Jupyter Notebook 的开源教材，覆盖 LP、网络流、凸优化与 MIP（英文）。
+- [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — 斯坦福大学凸优化经典教材，提供免费 PDF（英文）。
+- [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — 康奈尔大学维护的计算优化开源教科书 Wiki（英文）。
+- [NEOS Guide](https://neos-guide.org/) — 线性规划、整数规划与各类优化问题的系统入门指南（英文）。
+
+### 习题与基准问题库
+
+- [CSPLib](https://www.csplib.org/) — 约束规划与组合优化领域的经典标准测试问题库（英文）。
+- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — 覆盖图论、物流配送、排程等实战问题的 Python 优化习题集（日语）。

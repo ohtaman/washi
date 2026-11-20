@@ -1231,6 +1231,10 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       });
       expect(guideHtml).toContain('id="guide-content"');
       expect(guideHtml).toContain('id="verdicts"');
+      expect(guideHtml).toContain('id="resources"');
+      expect(guideHtml).toContain('href="https://docs.mosek.com/modeling-cookbook/index.html" target="_blank" rel="noopener noreferrer"');
+      expect(guideHtml).toContain('href="https://mobook.github.io/MO-book/" target="_blank" rel="noopener noreferrer"');
+      expect(guideHtml).toContain('href="https://scmopt.github.io/opt100/" target="_blank" rel="noopener noreferrer"');
       expect(guideHtml).toContain('<table>');
       expect(guideHtml).not.toMatch(GAMEY_UI_RE);
 

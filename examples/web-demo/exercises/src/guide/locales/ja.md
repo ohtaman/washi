@@ -48,3 +48,32 @@
 - **LP（線形計画法 / Linear Programming）**: 連続変数のみを使い、制約・目的関数がすべて 1 次式（線形）で表せる問題。実行可能領域（多面体）の頂点を辿って高速に厳密解が求まります。
 - **MIP（混合整数計画法 / Mixed-Integer Programming）**: LP に整数変数や 0-1 変数を組み合わせた問題。個数制約・採択選択・固定費つき稼働（**Big-M**）などを表現できます。
 - **CP / SMT**: スケジューリング・論理パズル・ルール矛盾の診断などに適した制約プログラミング／充足可能性モジュロ理論（後半の章で扱います）。
+
+## 5. 関連リンク・参考リソース {#resources}
+
+定式化の理解をさらに深めたり、他言語・発展的な問題に取り組んだりする際に役立つ公式ドキュメントやオープン教材のリンク集です（多くは英語の一次情報です）。
+
+### モデリングライブラリ・ソルバー公式ドキュメント
+
+- [WaSHI ドキュメント（はじめに）](/ja/getting-started/) / [定式化のヒント](/ja/guide/formulation-tips) — WaSHI 本体の API、各ソルバーバックエンド、定式化ガイド。
+- [PuLP 公式ドキュメント](https://coin-or.github.io/pulp/) — Python タブで使用している代数モデラー PuLP のリファレンス（英語）。
+- [HiGHS](https://highs.dev/)（[Docs](https://ergo-code.github.io/HiGHS/)） — WaSHI と PuLP の双方で LP / MIP 計算を担うオープンソースソルバー（英語）。
+- [SciPy `scipy.optimize` リファレンス](https://docs.scipy.org/doc/scipy/reference/optimize.html) — Python の数値最適化・LP（`linprog`）・MILP（`milp`）リファレンス（英語）。
+- [Google OR-Tools](https://developers.google.com/optimization) — LP / MIP・配送計画・CP-SAT ソルバーの実例豊富なガイド（英語）。
+- [JuMP ドキュメント](https://jump.dev/JuMP.jl/stable/) — Julia の代数モデリング言語。線形・整数・非線形の定式化例が充実しています（英語）。
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 制約プログラミング（CP）とグローバル制約のモデリング解説書（英語）。
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI の CP バックエンドに使われている Lazy Clause Generation 型ソルバー（英語）。
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — SMT ソルバー Z3 をブラウザ上で試しながら学べる公式ガイド（英語）。
+
+### 定式化ノウハウ・オープン教科書
+
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 線形化・Big-M・凸二次・円錐計画などモデリング定石を網羅した定番クックブック（英語）。
+- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — LP・ネットワーク流・凸最適化・MIP・不確実性下最適化まで Jupyter Notebook 付きで公開されているオープン書籍（英語）。
+- [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — Stanford 大学の凸最適化・凸二次計画の名著（PDF 無料公開・英語）。
+- [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — コーネル大学による LP・MIP・定式化パターンのオープン教科書 Wiki（英語）。
+- [NEOS Guide](https://neos-guide.org/) — 線形計画・整数計画など最適化手法全般の体系的入門ガイド（英語）。
+
+### 問題集・ベンチマーク集
+
+- [CSPLib](https://www.csplib.org/) — 制約プログラミング・組合せ最適化の標準ベンチマーク問題ライブラリ（英語）。
+- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — グラフ・組合せ・物流・スケジューリングなど実務的テーマを広く扱う問題集（日本語）。
