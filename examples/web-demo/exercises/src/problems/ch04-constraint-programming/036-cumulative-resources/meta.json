@@ -1,0 +1,24 @@
+{
+  "id": "036",
+  "slug": "cumulative-resources",
+  "chapter": 4,
+  "order": 6,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "CP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

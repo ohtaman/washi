@@ -1,0 +1,26 @@
+{
+  "title": "#032. Element-Indexed Machine Assignment",
+  "subtitle": "Replace an N-by-M binary matrix with N integer variables, distinct(), and variable-indexed lookup at(row, var).",
+  "tags": [
+    "CP",
+    "Element",
+    "at",
+    "distinct"
+  ],
+  "caseNames": [
+    "3 jobs on 3 machines",
+    "4 jobs on 4 machines",
+    "4 jobs across 6 candidate machines",
+    "5 jobs on 5 machines",
+    "6 jobs across 7 candidate machines"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignment, totalCost }.",
+    "m1": "assignment[{p0}] must be an integer (received {p1}).",
+    "m2": "assignment[{p0}] = {p1} is out of bounds [0, {p2}].",
+    "m3": "Machine {p0} is assigned to multiple jobs. Apply distinct(assignment)!",
+    "m4": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
+    "m5": "Valid assignment, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m6": "Optimal Element-indexed assignment found (totalCost = {p0})!"
+  }
+}

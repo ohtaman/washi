@@ -1,0 +1,166 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "numChannels": 4,
+      "weights": [
+        10,
+        6,
+        4
+      ],
+      "adjacentConflicts": [
+        [
+          0,
+          1
+        ]
+      ]
+    },
+    "expectedOptimal": 16
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "numChannels": 5,
+      "weights": [
+        8,
+        7,
+        5,
+        3
+      ],
+      "adjacentConflicts": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          3
+        ]
+      ]
+    },
+    "expectedOptimal": 32
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "numChannels": 6,
+      "weights": [
+        12,
+        9,
+        7,
+        5,
+        3
+      ],
+      "adjacentConflicts": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    },
+    "expectedOptimal": 58
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "numChannels": 8,
+      "weights": [
+        15,
+        11,
+        9,
+        8,
+        6,
+        4
+      ],
+      "adjacentConflicts": [
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          4,
+          5
+        ]
+      ]
+    },
+    "expectedOptimal": 104
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "numChannels": 9,
+      "weights": [
+        14,
+        12,
+        10,
+        7,
+        6,
+        5,
+        3
+      ],
+      "adjacentConflicts": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          6
+        ]
+      ]
+    },
+    "expectedOptimal": 133
+  }
+]

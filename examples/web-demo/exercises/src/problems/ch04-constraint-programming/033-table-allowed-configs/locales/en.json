@@ -1,0 +1,27 @@
+{
+  "title": "#033. Compatible System Configuration (Table Constraints)",
+  "subtitle": "Enforce positive allowed(...) compatibility tables and negative not(allowed(...)) forbidden pairs directly in CP.",
+  "tags": [
+    "CP",
+    "Table Constraint",
+    "allowed",
+    "Configuration"
+  ],
+  "caseNames": [
+    "3-component server build",
+    "4-component workstation with ternary table",
+    "4-component build with forbidden cheap pair",
+    "5-component multi-table cluster node",
+    "6-component enterprise appliance"
+  ],
+  "judge": {
+    "m0": "Output must be an object { choices, totalCost }.",
+    "m1": "choices[{p0}] must be an integer (received {p1}).",
+    "m2": "choices[{p0}] = {p1} is out of bounds [0, {p2}].",
+    "m3": "Allowed rule #{p0} violated: tuple {p1} is not in allowedRules[{p0}].tuples.",
+    "m4": "Forbidden rule #{p0} violated: tuple {p1} is prohibited by forbiddenRules[{p0}].",
+    "m5": "Reported totalCost ({p0}) does not match computed component cost ({p1}).",
+    "m6": "Valid system configuration, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal compatible configuration found (totalCost = {p0})!"
+  }
+}
