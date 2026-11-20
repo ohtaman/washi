@@ -135,6 +135,24 @@ export default function OptimizerComponent() {
 }
 ```
 
+### Desktop & Mobile WebView Apps (Tauri / Capacitor / PWA)
+
+Standard Vite frontends bundle and run **HiGHS** and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) completely offline inside **Tauri** (`tauri://localhost` / `http://tauri.localhost`), **Capacitor** mobile WebViews, and offline **PWAs** with no native C/C++ solver compilation.
+
+In `tauri.conf.json`, allow WebAssembly compilation (`'wasm-unsafe-eval'` in `script-src`) and Web Workers (`worker-src 'self' blob:`), or pass `{ useWorker: false }`:
+
+```json
+{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:"
+    }
+  }
+}
+```
+
+Bundled **HiGHS** and **Pumpkin** are recommended over **Z3** in desktop and mobile WebViews because they do not require `SharedArrayBuffer` or `COOP`/`COEP` headers.
+
 ---
 
 ## 📦 Browser ESM (`<script type="module">`)
@@ -215,7 +233,8 @@ For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a stan
 ```
 
 > [!NOTE]
-> When loading from a cross-origin CDN (such as jsDelivr or unpkg), browsers block direct `new Worker("https://cdn...")` construction under the same-origin policy. On standard web origins (`https://` / `http://`), WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`). On opaque effective origins (`window.origin === "null"`, such as local `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), WaSHI automatically runs HiGHS and Pumpkin on the main thread when `useWorker` is omitted.
+> - **Cross-origin CDN workers**: On standard web origins (`https://` / `http://`), browsers block direct `new Worker("https://cdn...")`, so WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`).
+> - **Opening local `.html` files directly (`file://`)**: CDN-loaded `washi.min.js` and `solvers/pumpkin.min.js` work directly when opening a local `.html` via `file://` (double-click, no local server)—on opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), WaSHI automatically runs HiGHS and Pumpkin on the main thread when `useWorker` is omitted. Self-hosted local `.wasm` files (blocked on `file://` by browser `fetch()` CORS rules) and **Z3** (`COOP`/`COEP`) require serving over `http://` or `https://`.
 
 ---
 

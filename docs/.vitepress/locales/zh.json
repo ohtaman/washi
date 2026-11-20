@@ -16,6 +16,7 @@
       "text": "快速入门",
       "items": [
         { "text": "安装与入门", "link": "/zh/getting-started/" },
+        { "text": "使用 AI 编程助手", "link": "/zh/getting-started/coding-agents" },
         { "text": "运行时环境配置", "link": "/zh/getting-started/runtimes" },
         { "text": "跨源隔离 (COOP/COEP)", "link": "/zh/getting-started/cross-origin" }
       ]

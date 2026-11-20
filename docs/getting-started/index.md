@@ -28,15 +28,14 @@ bun add @ohtaman/washi
 
 :::
 
-Install optional peer dependencies when you need **Z3** (SMT logic and Unsat Core conflict diagnosis) or **GLPK**, or add the optional skill for AI coding agents:
+Install optional peer dependencies when you need **Z3** (SMT logic and Unsat Core conflict diagnosis) or **GLPK**:
 
 ```bash
 npm install z3-solver   # For SMT logic and Unsat Core conflict diagnosis
 npm install glpk.js     # For GLPK solver (GPL-3.0)
-
-# Optional skill for AI coding agents (Claude Code, Cursor, Codex, etc.)
-npx skills add ohtaman/washi
 ```
+
+Using an AI coding agent? See [Coding with AI Agents](./coding-agents.md) for `npx skills add ohtaman/washi`, `llms.txt`, and ready-to-use prompt templates.
 
 ---
 
@@ -75,7 +74,13 @@ if (m.hasPrimalSolution) {
 
 ## 🧭 Next Steps
 
-- **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and conflict diagnosis
+### Choose Your Workflow
+
+- **Build with an AI Coding Agent**: [Coding with AI Agents](./coding-agents.md) — Setup with `npx skills add`, `llms.txt` / Context7, ready-to-use prompt examples across problem types and deployment targets, and conflict debugging
+- **Write Models Directly in TypeScript**: [Modeling Guide](../guide/variables.md) — Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and conflict diagnosis
+
+### Reference & Examples
+
 - **[Examples & API Finder](../examples/)**: 12 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
 - **[Solvers Overview](../solvers/)**: Compare bundled HiGHS and Pumpkin with optional Z3 and GLPK adapters
-- **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, and static hosting
+- **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, standalone HTML, and desktop/mobile WebViews

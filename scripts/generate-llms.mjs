@@ -65,10 +65,17 @@ export const DOC_SECTIONS = [
 export const LLMS_FULL_SECTIONS = ["getting-started", "guide", "solvers", "examples"];
 
 /**
+ * Human-facing onboarding pages under `docs/` that are intentionally excluded from
+ * machine-oriented `llms.txt` / `llms-full.txt` sections while still published as raw `.md` on the site.
+ */
+export const HUMAN_ONLY_DOC_FILES = ["getting-started/coding-agents.md"];
+
+/**
  * Resolves the canonical ordered list of English documentation files per section,
  * appending any new `.md` files found in the directory in deterministic order.
  */
 export function getCanonicalDocSections(docsDir = resolve(defaultRootDir, "docs")) {
+  const excluded = new Set(HUMAN_ONLY_DOC_FILES);
   return DOC_SECTIONS.map((section) => {
     const absDir = resolve(docsDir, section.dir);
     const onDisk = existsSync(absDir)
@@ -78,7 +85,7 @@ export function getCanonicalDocSections(docsDir = resolve(defaultRootDir, "docs"
           .sort()
       : [];
     const seen = new Set(section.files);
-    const extras = onDisk.filter((rel) => !seen.has(rel));
+    const extras = onDisk.filter((rel) => !seen.has(rel) && !excluded.has(rel));
     return {
       title: section.title,
       dir: section.dir,
@@ -454,8 +461,10 @@ export function populateSiteLlmsAssets(
   writeFileSync(resolve(targetSiteDir, "llms-full.txt"), siteArtifacts.llmsFullTxt, "utf8");
 
   const filesToCopy = [...siteArtifacts.allDocFiles];
-  if (existsSync(resolve(docsDir, "index.md")) && !filesToCopy.includes("index.md")) {
-    filesToCopy.push("index.md");
+  for (const extraRel of ["index.md", ...HUMAN_ONLY_DOC_FILES]) {
+    if (existsSync(resolve(docsDir, extraRel)) && !filesToCopy.includes(extraRel)) {
+      filesToCopy.push(extraRel);
+    }
   }
 
   for (const relPath of filesToCopy) {

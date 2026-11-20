@@ -278,7 +278,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 32-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 33-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enHumanPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter(
@@ -296,8 +296,9 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enHumanPages).toHaveLength(32);
+    expect(enHumanPages).toHaveLength(33);
     expect(enHumanPages).not.toContain("getting-started/ecosystem.md");
+    expect(enHumanPages).toContain("getting-started/coding-agents.md");
     expect(enHumanPages).toContain("guide/constraint-programming.md");
     expect(enHumanPages).toContain("guide/formulation-tips.md");
     expect(enHumanPages).toContain("solvers/pumpkin.md");
@@ -907,6 +908,15 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(md).not.toContain("\u4e3a\u4ec0\u4e48\u9009\u62e9 TypeScript");
       expect(md).not.toContain("ecosystem.md");
       expect(md).not.toContain("/ecosystem");
+      expect(md).toContain("(./coding-agents.md)");
+      expect(md).toContain("(../guide/variables.md)");
+      const quickStartIdx = md.indexOf("```typescript");
+      const nextStepsIdx = md.indexOf("## 🧭");
+      expect(quickStartIdx).toBeGreaterThan(0);
+      expect(nextStepsIdx).toBeGreaterThan(quickStartIdx);
+      const optionalPeersBashMatch = md.match(/```bash\n(npm install z3-solver[\s\S]*?)```/);
+      expect(optionalPeersBashMatch, `Missing optional solvers bash block in ${relDoc}`).not.toBeNull();
+      expect(optionalPeersBashMatch![1]).not.toContain("npx skills add");
       const firstTsMatch = md.match(/```typescript\n([\s\S]*?)```/);
       expect(firstTsMatch, `Missing opening TypeScript snippet in ${relDoc}`).not.toBeNull();
 
@@ -957,6 +967,21 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const lp = m.toLpString();
       expect(lp).toContain("max_items: A + B + C <= 2");
       expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
+    }
+
+    for (const relDoc of [
+      "docs/getting-started/runtimes.md",
+      "docs/ja/getting-started/runtimes.md",
+      "docs/zh/getting-started/runtimes.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
+      expect(md).toContain("file://");
+      expect(md).toContain('window.origin === "null"');
+      expect(md).toContain("Tauri");
+      expect(md).toContain("Capacitor");
+      expect(md).toContain("PWA");
+      expect(md).toContain("tauri.conf.json");
+      expect(md).toContain("'wasm-unsafe-eval'");
     }
   });
 

@@ -463,6 +463,10 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
   it("verifies every relative doc path in llms.txt and llms-full.txt resolves directly from the containing root directory", () => {
     const { llmsTxt, llmsFullTxt, allDocFiles } = buildLlmsArtifacts(rootDir);
 
+    // Human-facing coding-agents.md must stay excluded from canonical LLM doc sections and llms.txt index
+    expect(allDocFiles).not.toContain("getting-started/coding-agents.md");
+    expect(llmsTxt).not.toContain("coding-agents.md");
+
     // Extract all relative Markdown link targets from root/package llms.txt and resolve directly against rootDir
     const linkTargetRegex = /\]\(([^)\s]+)\)/g;
     const linkedPaths: string[] = [];
@@ -530,6 +534,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Cross-Origin Isolation (Z3 & Browsers)");
     expect(llmsFullTxt).not.toContain("# Ecosystem & From Python (PuLP)");
     expect(llmsFullTxt).not.toContain("Why TypeScript & WebAssembly?");
+    expect(llmsFullTxt).not.toContain("# Coding with AI Agents");
     expect(llmsFullTxt).toContain("# Variables & Domains");
     expect(llmsFullTxt).toContain("# Expressions (`expr`, `sum`, `dot`)");
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
@@ -744,12 +749,55 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       "README.ja.md",
       "README.zh-CN.md",
       "docs/getting-started/ai-agents.md",
-      "docs/getting-started/index.md",
-      "docs/ja/getting-started/index.md",
-      "docs/zh/getting-started/index.md",
+      "docs/getting-started/coding-agents.md",
+      "docs/ja/getting-started/coding-agents.md",
+      "docs/zh/getting-started/coding-agents.md",
     ]) {
       const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
       expect(text).toContain("npx skills add ohtaman/washi");
+    }
+
+    // Verify human-facing coding-agents.md across EN, JA, and ZH covers required setup, problem prompts, packaging, and debugging with valid Model members
+    const sampleModel = new Washi.Model("HumanCodingAgentsMemberCheck");
+    for (const relPath of [
+      "docs/getting-started/coding-agents.md",
+      "docs/ja/getting-started/coding-agents.md",
+      "docs/zh/getting-started/coding-agents.md",
+    ]) {
+      const text = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      expect(text).toContain("npm install @ohtaman/washi");
+      expect(text).toContain("npx skills add ohtaman/washi");
+      expect(text).toContain("skills/washi/SKILL.md");
+      expect(text).toContain("https://washi.ohtaman.dev/llms.txt");
+      expect(text).toContain("https://washi.ohtaman.dev/llms-full.txt");
+      expect(text).toContain("/ohtaman/washi");
+      expect(text).toContain("@ohtaman/washi/solvers/pumpkin");
+      expect(text).toContain("https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js");
+      expect(text).toContain('window.origin === "null"');
+      expect(text).toContain("'wasm-unsafe-eval'");
+      expect(text).toContain("./runtimes.md");
+      expect(text).toContain("m.hasPrimalSolution");
+      expect(text).toContain("m.verify()");
+      expect(text).toContain("m.check(");
+      expect(text).toContain("m.toLpString()");
+      expect(text).not.toContain("ai-agents.md");
+      expect(text.toLowerCase()).not.toMatch(/\b(?:nurse|hospital|patient)\b/);
+      expect(text).not.toMatch(/看護師|病院|患者|护士|医院|患者/);
+      const textPromptBlocks = [...text.matchAll(/```text\n([\s\S]*?)```/g)];
+      expect(
+        textPromptBlocks.length,
+        `Expected at least 8 copy-pasteable \`\`\`text prompt blocks in ${relPath}`
+      ).toBeGreaterThanOrEqual(8);
+
+      const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
+      let memberMatch: RegExpExecArray | null;
+      while ((memberMatch = memberRegex.exec(text)) !== null) {
+        const member = memberMatch[1];
+        expect(
+          member in sampleModel,
+          `Expected 'm.${member}' referenced in ${relPath} to exist on Model`
+        ).toBe(true);
+      }
     }
   });
 

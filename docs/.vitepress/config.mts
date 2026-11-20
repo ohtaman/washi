@@ -269,6 +269,7 @@ export default withMermaid(
             text: "Getting Started",
             items: [
               { text: "Introduction & Installation", link: "/getting-started/" },
+              { text: "Coding with AI Agents", link: "/getting-started/coding-agents" },
               { text: "Runtime Environments", link: "/getting-started/runtimes" },
               { text: "Cross-Origin Isolation", link: "/getting-started/cross-origin" },
             ],
@@ -340,8 +341,9 @@ export default withMermaid(
             text: jaLocale.sidebar[0].text,
             items: [
               { text: jaLocale.sidebar[0].items[0].text, link: "/ja/getting-started/" },
-              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/runtimes" },
-              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/cross-origin" },
+              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/coding-agents" },
+              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/runtimes" },
+              { text: jaLocale.sidebar[0].items[3].text, link: "/ja/getting-started/cross-origin" },
             ],
           },
           {
@@ -421,8 +423,9 @@ export default withMermaid(
             text: zhLocale.sidebar[0].text,
             items: [
               { text: zhLocale.sidebar[0].items[0].text, link: "/zh/getting-started/" },
-              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/runtimes" },
-              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/cross-origin" },
+              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/coding-agents" },
+              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/runtimes" },
+              { text: zhLocale.sidebar[0].items[3].text, link: "/zh/getting-started/cross-origin" },
             ],
           },
           {

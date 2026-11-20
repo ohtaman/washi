@@ -16,6 +16,7 @@
       "text": "はじめに",
       "items": [
         { "text": "インストールと入門", "link": "/ja/getting-started/" },
+        { "text": "AI コーディングエージェント", "link": "/ja/getting-started/coding-agents" },
         { "text": "ランタイム環境設定", "link": "/ja/getting-started/runtimes" },
         { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" }
       ]
