@@ -1,0 +1,32 @@
+{
+  "title": "#027. LP Shadow Prices (Dual Variables)",
+  "subtitle": "Extract constraint shadow prices (c.dual / c.pi) from a cost-minimization LP and verify sensitivity signs.",
+  "tags": [
+    "LP",
+    "Duality",
+    "Shadow Prices",
+    "Sensitivity Analysis"
+  ],
+  "caseNames": [
+    "3-unit dispatch with binding requirement and cap",
+    "4-unit multi-requirement blend",
+    "4-unit mix with slack resource cap",
+    "5-unit mix with slack requirement and cap",
+    "6-unit large dispatch with non-binding rows"
+  ],
+  "judge": {
+    "m0": "Output must be an object { quantities, duals, optimalCost }.",
+    "m1": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m2": "quantities[{p0}] ({p1}) exceeds capacity ({p2}).",
+    "m3": "Minimum requirement {p0} achieved ({p1}) is below {p2}.",
+    "m4": "Resource cap {p0} usage ({p1}) exceeds {p2}.",
+    "m5": "Reported optimalCost ({p0}) does not match computed primal cost ({p1}).",
+    "m6": "Primal dispatch is feasible, but cost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Shadow price for >= requirement {p0} in a minimization LP cannot be negative (received {p1}).",
+    "m8": "Shadow price for <= resource cap {p0} in a minimization LP cannot be positive (received {p1}).",
+    "m9": "Constraint {p0} has positive slack ({p1}) so its shadow price must be 0 (received {p2}).",
+    "m10": "Dual vector fails KKT dual feasibility / complementary slackness on variable {p0} (implied reduced cost = {p1}).",
+    "m11": "Dual objective ({p0}) does not match primal optimal cost ({p1}) by strong duality.",
+    "m12": "Optimal dispatch and exact shadow prices verified (optimalCost = {p0})!"
+  }
+}

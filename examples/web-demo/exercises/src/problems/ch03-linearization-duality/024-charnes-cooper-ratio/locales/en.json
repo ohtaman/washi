@@ -1,0 +1,27 @@
+{
+  "title": "#024. Linear-Fractional Efficiency Ratio (Charnes-Cooper)",
+  "subtitle": "Transform a linear ratio objective into an exact LP via perspective homogenization y = t x.",
+  "tags": [
+    "LP",
+    "Linear-Fractional",
+    "Charnes-Cooper",
+    "Efficiency Ratio"
+  ],
+  "caseNames": [
+    "2-activity single-resource ratio",
+    "3-activity dual-resource with fixed overhead",
+    "3-activity tight capacity ratio",
+    "4-activity multi-resource portfolio",
+    "5-activity regional efficiency mix"
+  ],
+  "judge": {
+    "m0": "Output must be an object { x, maxRatio }.",
+    "m1": "x[{p0}] cannot be negative (received {p1}).",
+    "m2": "x[{p0}] ({p1}) exceeds upper bound {p2}.",
+    "m3": "Resource {p0} usage ({p1}) exceeds capacity ({p2}).",
+    "m4": "Denominator ({p0}) must remain strictly positive.",
+    "m5": "Reported maxRatio ({p0}) does not match computed ratio ({p1}).",
+    "m6": "Feasible point, but ratio ({p0}) is below optimal ({p1}).",
+    "m7": "Optimal linear-fractional ratio achieved (maxRatio = {p0})!"
+  }
+}

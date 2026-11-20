@@ -1,0 +1,27 @@
+{
+  "title": "#021. Minimax Server Load Balancing",
+  "subtitle": "Linearize a max-of-sums objective by introducing an epigraph peak variable.",
+  "tags": [
+    "LP",
+    "Minimax",
+    "Epigraph",
+    "Load Balancing"
+  ],
+  "caseNames": [
+    "3 jobs across 2 constrained servers",
+    "4-job chain with heavy anchor task",
+    "Balanced 4-job 3-server mesh",
+    "Asymmetric 5-job 3-server cluster",
+    "6 jobs across 4 regional servers"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignments, peakLoad }.",
+    "m1": "assignments must have {p0} rows (one per job).",
+    "m2": "assignments[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m3": "Job {p0} cannot run on incompatible server {p1} (received {p2}).",
+    "m4": "Job {p0} assignment fractions must sum to 1 (received {p1}).",
+    "m5": "Reported peakLoad ({p0}) does not match maximum server load ({p1}).",
+    "m6": "Valid assignment, but peakLoad ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal minimax server schedule found (peakLoad = {p0})!"
+  }
+}

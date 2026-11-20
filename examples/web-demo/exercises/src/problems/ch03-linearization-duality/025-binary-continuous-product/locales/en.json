@@ -1,0 +1,27 @@
+{
+  "title": "#025. Binary-Continuous Product (Glover Linearization)",
+  "subtitle": "Linearize the bilinear product z_i = b_i x_i exactly over bounded intervals [L_i, U_i].",
+  "tags": [
+    "MIP",
+    "Glover Linearization",
+    "McCormick",
+    "Bilinear Product"
+  ],
+  "caseNames": [
+    "3-supplier single-contract discount",
+    "4-supplier dual-contract procurement",
+    "4-supplier high-fee base procurement",
+    "5-supplier mixed volume commitment",
+    "6-supplier multi-tier sourcing"
+  ],
+  "judge": {
+    "m0": "Output must be an object { b, x, z, totalCost }.",
+    "m1": "b[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "x[{p0}] ({p1}) must lie in [{p2}, {p3}].",
+    "m3": "z[{p0}] ({p1}) must equal b[{p0}] * x[{p0}] = {p2}.",
+    "m4": "Total order quantity ({p0}) is below totalDemand ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
+    "m6": "Feasible contract plan, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal contract and order quantities found (totalCost = {p0})!"
+  }
+}
