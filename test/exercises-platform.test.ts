@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { transpileExerciseTsToJs } from "../examples/web-demo/exercises/src/runner/ts-transpile.js";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import {
+  trackExerciseEvent,
+  toAnalyticsRuntime,
+} from "../examples/web-demo/exercises/src/analytics.js";
+import {
+  ExercisesApp,
+  type ExercisesAppDeps,
+} from "../examples/web-demo/exercises/src/main.js";
 import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
+import { transpileExerciseTsToJs } from "../examples/web-demo/exercises/src/runner/ts-transpile.js";
 import {
   applySolverStatusToVerdict,
   violation,
@@ -1398,5 +1406,775 @@ describe("Exercises Platform — Solver Status Verdict Mapping", () => {
       message: msgs.notSolved,
     });
     expect(applySolverStatusToVerdict(baseAc, "Optimal", msgs)).toBe(baseAc);
+  });
+});
+
+describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("maps RuntimeId to analytics runtime and routes events through gtag, dataLayer fallback, or clean no-op", () => {
+    expect(toAnalyticsRuntime("washi")).toBe("washi");
+    expect(toAnalyticsRuntime("highspy")).toBe("pulp");
+
+    // 1. Clean no-op when window is undefined (Node / SSR)
+    const prevWindow = (globalThis as { window?: unknown }).window;
+    delete (globalThis as { window?: unknown }).window;
+    try {
+      expect(() =>
+        trackExerciseEvent("exercise_view", {
+          problem_id: "001",
+          exercise_runtime: "washi",
+          locale: "en",
+        })
+      ).not.toThrow();
+    } finally {
+      if (prevWindow !== undefined) {
+        (globalThis as { window?: unknown }).window = prevWindow;
+      }
+    }
+
+    // 2. Prefers window.gtag("event", name, params) when available (without duplicating raw object into dataLayer)
+    const gtagCalls: unknown[][] = [];
+    const dataLayerArr: unknown[] = [];
+    vi.stubGlobal("window", {
+      gtag: (...args: unknown[]) => {
+        gtagCalls.push(args);
+      },
+      dataLayer: dataLayerArr,
+    });
+    trackExerciseEvent("exercise_run", {
+      problem_id: "001",
+      exercise_runtime: "pulp",
+      verdict: "AC",
+      locale: "ja",
+    });
+    expect(gtagCalls).toEqual([
+      [
+        "event",
+        "exercise_run",
+        {
+          problem_id: "001",
+          exercise_runtime: "pulp",
+          verdict: "AC",
+          locale: "ja",
+        },
+      ],
+    ]);
+    expect(dataLayerArr).toEqual([]);
+
+    // 3. Falls back to window.dataLayer.push({ event: name, ...params }) when gtag is absent (GTM mode)
+    const gtmLayer: unknown[] = [];
+    vi.stubGlobal("window", { dataLayer: gtmLayer });
+    trackExerciseEvent("exercise_tab_switch", {
+      problem_id: "003",
+      tab: "editorial",
+      locale: "zh",
+    });
+    expect(gtmLayer).toEqual([
+      {
+        event: "exercise_tab_switch",
+        problem_id: "003",
+        tab: "editorial",
+        locale: "zh",
+      },
+    ]);
+
+    // 4. Clean no-op when neither gtag nor dataLayer is present (no GOOGLE_TAG_ID) or if gtag throws
+    vi.stubGlobal("window", {});
+    expect(() =>
+      trackExerciseEvent("exercise_solution_reveal", {
+        problem_id: "001",
+        exercise_runtime: "washi",
+        locale: "en",
+      })
+    ).not.toThrow();
+
+    vi.stubGlobal("window", {
+      gtag: () => {
+        throw new Error("Adblock / CSP blocked gtag");
+      },
+    });
+    expect(() =>
+      trackExerciseEvent("exercise_view", {
+        problem_id: "001",
+        exercise_runtime: "washi",
+        locale: "en",
+      })
+    ).not.toThrow();
+  });
+
+  function setupExercisesHarness(options: {
+    initialUrl: string;
+    analyticsMode: "gtag" | "dataLayer" | "none";
+    runHighspyImpl?: ExercisesAppDeps["runHighspy"];
+  }) {
+    class FakeElement {
+      tagName: string;
+      id = "";
+      textContent = "";
+      disabled = false;
+      tabIndex = 0;
+      scrollTop = 0;
+      scrollLeft = 0;
+      dataset: Record<string, string> = {};
+      private attrs = new Map<string, string>();
+      private classes = new Set<string>();
+      private html = "";
+      private selectorMatcher: (sel: string) => boolean;
+
+      constructor(
+        tagName: string,
+        selectorMatcher: (sel: string) => boolean = () => false
+      ) {
+        this.tagName = tagName.toUpperCase();
+        this.selectorMatcher = selectorMatcher;
+      }
+
+      get innerHTML(): string {
+        return this.html;
+      }
+      set innerHTML(val: string) {
+        this.html = val;
+      }
+
+      classList = {
+        add: (...tokens: string[]) => tokens.forEach((t) => this.classes.add(t)),
+        remove: (...tokens: string[]) => tokens.forEach((t) => this.classes.delete(t)),
+        contains: (token: string) => this.classes.has(token),
+        toggle: (token: string, force?: boolean) => {
+          const next = force ?? !this.classes.has(token);
+          if (next) this.classes.add(token);
+          else this.classes.delete(token);
+          return next;
+        },
+      };
+
+      setAttribute(name: string, val: string): void {
+        this.attrs.set(name, val);
+      }
+      getAttribute(name: string): string | null {
+        return this.attrs.get(name) ?? null;
+      }
+      hasAttribute(name: string): boolean {
+        return this.attrs.has(name);
+      }
+      removeAttribute(name: string): void {
+        this.attrs.delete(name);
+      }
+      focus(): void {}
+      scrollIntoView(): void {}
+      prepend(): void {}
+      appendChild(): void {}
+      remove(): void {}
+      querySelector(): FakeElement | null {
+        return null;
+      }
+      querySelectorAll(): FakeElement[] {
+        return [];
+      }
+      closest(sel: string): FakeElement | null {
+        return this.selectorMatcher(sel) ? this : null;
+      }
+    }
+
+    class FakeTextArea extends FakeElement {
+      value = "";
+      readOnly = false;
+      selectionStart = 0;
+      selectionEnd = 0;
+      constructor(runtime: "washi" | "highspy") {
+        super("textarea", (sel) => sel === "textarea.code-editor");
+        this.id = `editor-${runtime}`;
+        this.dataset.runtime = runtime;
+        this.classList.add("code-editor");
+      }
+    }
+
+    const decodeTextareaHtml = (raw: string): string =>
+      raw
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, "&");
+
+    const editorWashi = new FakeTextArea("washi");
+    const editorHighspy = new FakeTextArea("highspy");
+    const tabWashi = new FakeElement(
+      "button",
+      (sel) => sel === '[role="tab"][data-runtime]' || sel === "#tab-washi"
+    );
+    tabWashi.id = "tab-washi";
+    tabWashi.dataset.runtime = "washi";
+
+    const tabHighspy = new FakeElement(
+      "button",
+      (sel) => sel === '[role="tab"][data-runtime]' || sel === "#tab-highspy"
+    );
+    tabHighspy.id = "tab-highspy";
+    tabHighspy.dataset.runtime = "highspy";
+
+    const panelWashi = new FakeElement("div");
+    panelWashi.id = "panel-washi";
+    const panelHighspy = new FakeElement("div");
+    panelHighspy.id = "panel-highspy";
+
+    const stmtTabProblem = new FakeElement(
+      "button",
+      (sel) => sel === '[role="tab"][data-stmt-tab]' || sel === "#stmt-tab-problem"
+    );
+    stmtTabProblem.id = "stmt-tab-problem";
+    stmtTabProblem.dataset.stmtTab = "problem";
+
+    const stmtTabEditorial = new FakeElement(
+      "button",
+      (sel) => sel === '[role="tab"][data-stmt-tab]' || sel === "#stmt-tab-editorial"
+    );
+    stmtTabEditorial.id = "stmt-tab-editorial";
+    stmtTabEditorial.dataset.stmtTab = "editorial";
+
+    const stmtPanelProblem = new FakeElement("div");
+    stmtPanelProblem.id = "stmt-panel-problem";
+    const stmtPanelEditorial = new FakeElement("div");
+    stmtPanelEditorial.id = "stmt-panel-editorial";
+    const editorialContent = new FakeElement("div");
+    editorialContent.id = "editorial-content";
+
+    const solWashiBtn = new FakeElement(
+      "button",
+      (sel) => sel === "button[data-action][data-runtime]"
+    );
+    solWashiBtn.dataset.action = "solution";
+    solWashiBtn.dataset.runtime = "washi";
+
+    const solHighspyBtn = new FakeElement(
+      "button",
+      (sel) => sel === "button[data-action][data-runtime]"
+    );
+    solHighspyBtn.dataset.action = "solution";
+    solHighspyBtn.dataset.runtime = "highspy";
+
+    const runWashiBtn = new FakeElement(
+      "button",
+      (sel) => sel === "button[data-action][data-runtime]"
+    );
+    runWashiBtn.dataset.action = "run";
+    runWashiBtn.dataset.runtime = "washi";
+
+    const runHighspyBtn = new FakeElement(
+      "button",
+      (sel) => sel === "button[data-action][data-runtime]"
+    );
+    runHighspyBtn.dataset.action = "run";
+    runHighspyBtn.dataset.runtime = "highspy";
+
+    const judgeResults = new FakeElement("section");
+    judgeResults.id = "judge-results";
+    const wsSplit = new FakeElement("div");
+
+    const rootListeners = new Map<string, Array<(e: unknown) => unknown>>();
+    let rootHtml = "";
+    const root = {
+      get innerHTML() {
+        return rootHtml;
+      },
+      set innerHTML(val: string) {
+        rootHtml = val;
+        wsSplit.removeAttribute("inert");
+        wsSplit.removeAttribute("aria-busy");
+        editorWashi.readOnly = false;
+        editorHighspy.readOnly = false;
+        const washiMatch = val.match(/<textarea[^>]*id="editor-washi"[^>]*>([\s\S]*?)<\/textarea>/);
+        if (washiMatch) {
+          editorWashi.value = decodeTextareaHtml(washiMatch[1]);
+        }
+        const pyMatch = val.match(/<textarea[^>]*id="editor-highspy"[^>]*>([\s\S]*?)<\/textarea>/);
+        if (pyMatch) {
+          editorHighspy.value = decodeTextareaHtml(pyMatch[1]);
+        }
+      },
+      addEventListener: (type: string, cb: (e: unknown) => unknown) => {
+        const list = rootListeners.get(type) ?? [];
+        list.push(cb);
+        rootListeners.set(type, list);
+      },
+      querySelector: (sel: string): unknown => {
+        if (sel === "#editor-washi") return editorWashi;
+        if (sel === "#editor-highspy") return editorHighspy;
+        if (sel === "#tab-washi") return tabWashi;
+        if (sel === "#tab-highspy") return tabHighspy;
+        if (sel === "#panel-washi") return panelWashi;
+        if (sel === "#panel-highspy") return panelHighspy;
+        if (sel === "#stmt-tab-problem") return stmtTabProblem;
+        if (sel === "#stmt-tab-editorial") return stmtTabEditorial;
+        if (sel === "#stmt-panel-problem") return stmtPanelProblem;
+        if (sel === "#stmt-panel-editorial") return stmtPanelEditorial;
+        if (sel === "#editorial-content") return editorialContent;
+        if (sel === 'button[data-action="run"][data-runtime="washi"]') return runWashiBtn;
+        if (sel === 'button[data-action="run"][data-runtime="highspy"]') return runHighspyBtn;
+        if (sel === 'button[data-action="solution"][data-runtime="washi"]') return solWashiBtn;
+        if (sel === 'button[data-action="solution"][data-runtime="highspy"]') return solHighspyBtn;
+        if (sel === "#judge-results") return judgeResults;
+        if (sel === ".ws-split") return rootHtml.includes('class="ws-split"') ? wsSplit : null;
+        if (sel === ".ws-split[inert]") return wsSplit.hasAttribute("inert") ? wsSplit : null;
+        return null;
+      },
+      querySelectorAll: (sel: string): unknown[] => {
+        if (sel === 'button[data-action="solution"]') return [solWashiBtn, solHighspyBtn];
+        if (sel === "textarea.code-editor") return [editorWashi, editorHighspy];
+        return [];
+      },
+    };
+
+    const storageMap = new Map<string, string>();
+    const localStorageStub = {
+      getItem: (k: string) => storageMap.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        storageMap.set(k, String(v));
+      },
+      removeItem: (k: string) => {
+        storageMap.delete(k);
+      },
+    };
+
+    let currentUrl = new URL(options.initialUrl);
+    const gtagEvents: Array<{ name: string; params: Record<string, unknown> }> = [];
+    const dataLayerEvents: Array<Record<string, unknown>> = [];
+    const winListeners = new Map<string, Array<(e: unknown) => void>>();
+
+    const windowStub: Record<string, unknown> = {
+      get location() {
+        return currentUrl;
+      },
+      localStorage: localStorageStub,
+      history: {
+        pushState: (_s: unknown, _t: string, url: string) => {
+          currentUrl = new URL(url, currentUrl.origin);
+        },
+        replaceState: (_s: unknown, _t: string, url: string) => {
+          currentUrl = new URL(url, currentUrl.origin);
+        },
+      },
+      matchMedia: () => ({
+        matches: false,
+        addEventListener: () => {},
+      }),
+      addEventListener: (type: string, cb: (e: unknown) => void) => {
+        const list = winListeners.get(type) ?? [];
+        list.push(cb);
+        winListeners.set(type, list);
+      },
+      scrollTo: () => {},
+    };
+
+    if (options.analyticsMode === "gtag") {
+      windowStub.gtag = (cmd: string, name: string, params: Record<string, unknown>) => {
+        if (cmd === "event") {
+          gtagEvents.push({ name, params });
+        }
+      };
+    } else if (options.analyticsMode === "dataLayer") {
+      windowStub.dataLayer = dataLayerEvents;
+    }
+
+    const colorSchemeMeta = new FakeElement("meta");
+    colorSchemeMeta.setAttribute("content", "light");
+
+    const documentStub = {
+      referrer: "",
+      title: "",
+      documentElement: { lang: "en" },
+      activeElement: null,
+      getElementById: () => null,
+      querySelector: (sel: string) => (sel === 'meta[name="color-scheme"]' ? colorSchemeMeta : null),
+      createElement: (tag: string) => new FakeElement(tag),
+    };
+
+    vi.stubGlobal("HTMLTextAreaElement", FakeTextArea);
+    vi.stubGlobal("window", windowStub);
+    vi.stubGlobal("document", documentStub);
+    vi.stubGlobal("navigator", { language: "en-US" });
+
+    let attachedApp: ExercisesApp | null = null;
+    const attachApp = (app: ExercisesApp) => {
+      attachedApp = app;
+      return app;
+    };
+
+    const clickTarget = async (target: FakeElement) => {
+      for (const cb of rootListeners.get("click") ?? []) {
+        await cb({
+          target,
+          metaKey: false,
+          ctrlKey: false,
+          shiftKey: false,
+          altKey: false,
+          preventDefault: () => {},
+        });
+      }
+      if (attachedApp) {
+        await attachedApp.whenIdle();
+      }
+    };
+
+    const keydownTarget = async (target: FakeElement, key: string) => {
+      for (const cb of rootListeners.get("keydown") ?? []) {
+        await cb({
+          target,
+          key,
+          metaKey: false,
+          ctrlKey: false,
+          shiftKey: false,
+          altKey: false,
+          preventDefault: () => {},
+        });
+      }
+      if (attachedApp) {
+        await attachedApp.whenIdle();
+      }
+    };
+
+    const makeNavLink = (navId: string) => {
+      const a = new FakeElement("a", (sel) => sel === "[data-nav-id]");
+      a.dataset.navId = navId;
+      return a;
+    };
+
+    const makeLangBtn = (lang: "en" | "ja" | "zh") => {
+      const b = new FakeElement("button", (sel) => sel === "[data-lang-btn]");
+      b.dataset.langBtn = lang;
+      return b;
+    };
+
+    return {
+      root: root as unknown as HTMLElement,
+      attachApp,
+      editorWashi,
+      editorHighspy,
+      tabWashi,
+      tabHighspy,
+      stmtTabProblem,
+      stmtTabEditorial,
+      solWashiBtn,
+      solHighspyBtn,
+      runWashiBtn,
+      runHighspyBtn,
+      gtagEvents,
+      dataLayerEvents,
+      clickTarget,
+      keydownTarget,
+      makeNavLink,
+      makeLangBtn,
+    };
+  }
+
+  it("emits exercise_view, exercise_tab_switch, exercise_run (WaSHI & PuLP across all verdicts without leaking user code), and exercise_solution_reveal via gtag", async () => {
+    const h = setupExercisesHarness({
+      initialUrl: "https://washi.ohtaman.dev/exercises/?id=001&lang=en",
+      analyticsMode: "gtag",
+    });
+
+    const p001 = PROBLEMS.find((p) => p.meta.id === "001")!;
+    let pyMode: "ac" | "violation" | "error" = "ac";
+    const app = h.attachApp(
+      new ExercisesApp(h.root, {
+        runHighspy: async (_code, inputs) => {
+        if (pyMode === "error") {
+          return {
+            ok: false,
+            logs: [],
+            outputs: [],
+            metrics: [],
+            error: "Traceback: SECRET_PYTHON_TRACEBACK_MESSAGE",
+            wasCached: true,
+            loadTimeMs: 0,
+            runTimeMs: 4,
+          };
+        }
+        if (pyMode === "violation") {
+          return {
+            ok: true,
+            logs: [],
+            outputs: inputs.map(() => ({ sum: 999999 })),
+            metrics: inputs.map(() => ({
+              varCount: 0,
+              constraintCount: 0,
+              solveTimeMs: null,
+              solverStatus: null,
+            })),
+            wasCached: true,
+            loadTimeMs: 0,
+            runTimeMs: 3,
+          };
+        }
+        return {
+          ok: true,
+          logs: [],
+          outputs: inputs.map((inp) => {
+            const pair = inp as { a: number; b: number };
+            return { sum: pair.a + pair.b };
+          }),
+          metrics: inputs.map(() => ({
+            varCount: 0,
+            constraintCount: 0,
+            solveTimeMs: null,
+            solverStatus: null,
+          })),
+          wasCached: true,
+          loadTimeMs: 0,
+          runTimeMs: 5,
+        };
+      },
+      })
+    );
+    await app.whenIdle();
+
+    // 1. Initial workspace render emits exercise_view once
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_view",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "en" },
+      },
+    ]);
+    h.gtagEvents.length = 0;
+
+    // Switching locale on the same open problem updates locale without emitting duplicate exercise_view
+    await h.clickTarget(h.makeLangBtn("ja"));
+    await app.whenIdle();
+    expect(h.gtagEvents).toEqual([]);
+
+    // 2. Statement tab switches ("editorial" <-> "problem") & no-op when clicking active tab or Home on active tab
+    await h.clickTarget(h.stmtTabEditorial);
+    await h.clickTarget(h.stmtTabEditorial);
+    await h.keydownTarget(h.stmtTabEditorial, "End");
+    await h.clickTarget(h.stmtTabProblem);
+    await h.keydownTarget(h.stmtTabProblem, "Home");
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "editorial", locale: "ja" },
+      },
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "problem", locale: "ja" },
+      },
+    ]);
+    h.gtagEvents.length = 0;
+
+    // 3. Runtime tab switches ("pulp" <-> "washi") & no-op when clicking active tab
+    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabWashi);
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "001", tab: "washi", locale: "ja" },
+      },
+    ]);
+    h.gtagEvents.length = 0;
+
+    // 4. WaSHI runs across VIOLATION, RUNTIME_ERROR, SUBOPTIMAL, INFEASIBLE, and AC (+ privacy check!)
+    const secretTsMarker = "// SECRET_USER_TS_SOURCE_98765";
+    const secretErrMarker = "SECRET_USER_RUNTIME_EXCEPTION_98765";
+
+    // 4a. Starter (#001) -> VIOLATION
+    h.editorWashi.value = `${p001.washiStarter}\n${secretTsMarker}`;
+    await h.clickTarget(h.runWashiBtn);
+
+    // 4b. Thrown exception -> RUNTIME_ERROR
+    h.editorWashi.value = `${secretTsMarker}\nexport async function solve() { throw new Error("${secretErrMarker}"); }`;
+    await h.clickTarget(h.runWashiBtn);
+
+    // 4c. Feasible zero output -> SUBOPTIMAL
+    h.editorWashi.value = `${secretTsMarker}\nexport async function solve() { return { croissants: 0, loaves: 0, totalProfit: 0 }; }`;
+    await h.clickTarget(h.runWashiBtn);
+
+    // 4d. Contradictory model -> INFEASIBLE
+    h.editorWashi.value = `${secretTsMarker}\nimport { Model, expr } from "@ohtaman/washi";\nexport async function solve() { const m = new Model("Inf"); const x = m.continuous("x", { lb: 0, ub: 1 }); m.constraint(expr\`\${x} >= 10\`); await m.solve(); return { croissants: 0, loaves: 0, totalProfit: 0 }; }`;
+    await h.clickTarget(h.runWashiBtn);
+
+    // 4e. Solution reveal (1st click only arms; 2nd click loads solution & emits exercise_solution_reveal), then run -> AC
+    await h.clickTarget(h.solWashiBtn);
+    expect(h.gtagEvents.filter((e) => e.name === "exercise_solution_reveal")).toEqual([]);
+    await h.clickTarget(h.solWashiBtn);
+    await h.clickTarget(h.runWashiBtn);
+
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_run",
+        params: { problem_id: "001", exercise_runtime: "washi", verdict: "VIOLATION", locale: "ja" },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "001",
+          exercise_runtime: "washi",
+          verdict: "RUNTIME_ERROR",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "001",
+          exercise_runtime: "washi",
+          verdict: "SUBOPTIMAL",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "001",
+          exercise_runtime: "washi",
+          verdict: "INFEASIBLE",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_solution_reveal",
+        params: { problem_id: "001", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
+        name: "exercise_run",
+        params: { problem_id: "001", exercise_runtime: "washi", verdict: "AC", locale: "ja" },
+      },
+    ]);
+
+    const serializedWashiEvents = JSON.stringify(h.gtagEvents);
+    expect(serializedWashiEvents).not.toContain(secretTsMarker);
+    expect(serializedWashiEvents).not.toContain("SECRET_USER_TS_SOURCE_98765");
+    expect(serializedWashiEvents).not.toContain(secretErrMarker);
+    h.gtagEvents.length = 0;
+
+    // 5. Switch to PuLP ("highspy") tab, test RUNTIME_ERROR, VIOLATION, solution reveal, and AC on #000
+    await h.clickTarget(h.makeNavLink("000"));
+    await app.whenIdle();
+    await h.clickTarget(h.tabHighspy);
+
+    const secretPyMarker = "# SECRET_USER_PYTHON_SOURCE_54321";
+    h.editorHighspy.value = `${p001.highspyStarter}\n${secretPyMarker}`;
+    pyMode = "error";
+    await h.clickTarget(h.runHighspyBtn);
+
+    pyMode = "violation";
+    await h.clickTarget(h.runHighspyBtn);
+
+    await h.clickTarget(h.solHighspyBtn);
+    await h.clickTarget(h.solHighspyBtn);
+
+    pyMode = "ac";
+    h.editorHighspy.value = `def solve(inp):\n    ${secretPyMarker}\n    return {"sum": inp["a"] + inp["b"]}`;
+    await h.clickTarget(h.runHighspyBtn);
+
+    // Navigating to another problem while PuLP tab is active records exercise_runtime: "pulp"
+    await h.clickTarget(h.makeNavLink("002"));
+
+    expect(h.gtagEvents).toEqual([
+      {
+        name: "exercise_view",
+        params: { problem_id: "000", exercise_runtime: "washi", locale: "ja" },
+      },
+      {
+        name: "exercise_tab_switch",
+        params: { problem_id: "000", tab: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "000",
+          exercise_runtime: "pulp",
+          verdict: "RUNTIME_ERROR",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "000",
+          exercise_runtime: "pulp",
+          verdict: "VIOLATION",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_solution_reveal",
+        params: { problem_id: "000", exercise_runtime: "pulp", locale: "ja" },
+      },
+      {
+        name: "exercise_run",
+        params: {
+          problem_id: "000",
+          exercise_runtime: "pulp",
+          verdict: "AC",
+          locale: "ja",
+        },
+      },
+      {
+        name: "exercise_view",
+        params: { problem_id: "002", exercise_runtime: "pulp", locale: "ja" },
+      },
+    ]);
+
+    const serializedPulpEvents = JSON.stringify(h.gtagEvents);
+    expect(serializedPulpEvents).not.toContain("SECRET_USER_PYTHON_SOURCE_54321");
+    expect(serializedPulpEvents).not.toContain("SECRET_PYTHON_TRACEBACK_MESSAGE");
+  });
+
+  it("supports GTM dataLayer fallback and remains an error-free no-op when gtag and dataLayer are undefined", async () => {
+    // 1. Index route emits zero exercise_view events until navigating to a workspace problem; dataLayer receives pushed events
+    const hGtm = setupExercisesHarness({
+      initialUrl: "https://washi.ohtaman.dev/exercises/?lang=en",
+      analyticsMode: "dataLayer",
+    });
+    const appGtm = hGtm.attachApp(new ExercisesApp(hGtm.root));
+    await appGtm.whenIdle();
+    expect(hGtm.dataLayerEvents).toEqual([]);
+
+    await hGtm.clickTarget(hGtm.makeNavLink("001"));
+    expect(hGtm.dataLayerEvents).toEqual([
+      {
+        event: "exercise_view",
+        problem_id: "001",
+        exercise_runtime: "washi",
+        locale: "en",
+      },
+    ]);
+
+    // 2. When both window.gtag and window.dataLayer are undefined, all workspace interactions remain error-free no-ops
+    const hNone = setupExercisesHarness({
+      initialUrl: "https://washi.ohtaman.dev/exercises/?id=000&lang=en",
+      analyticsMode: "none",
+    });
+    const appNone = hNone.attachApp(
+      new ExercisesApp(hNone.root, {
+        runHighspy: async () => ({
+          ok: true,
+          logs: [],
+          outputs: [{ sum: 0 }],
+          metrics: [],
+          wasCached: true,
+          loadTimeMs: 0,
+          runTimeMs: 1,
+        }),
+      })
+    );
+    await appNone.whenIdle();
+    await expect(hNone.clickTarget(hNone.stmtTabEditorial)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.tabHighspy)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solHighspyBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solHighspyBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.runHighspyBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.tabWashi)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solWashiBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solWashiBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.runWashiBtn)).resolves.toBeUndefined();
   });
 });

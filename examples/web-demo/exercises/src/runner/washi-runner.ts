@@ -19,7 +19,13 @@ registerZ3Solver();
 let wasmConfigured = false;
 
 export function configureWashiExerciseWasmUrls(): void {
-  if (wasmConfigured || typeof window === "undefined") return;
+  if (
+    wasmConfigured ||
+    typeof window === "undefined" ||
+    (typeof process !== "undefined" && Boolean(process.versions?.node))
+  ) {
+    return;
+  }
   wasmConfigured = true;
 
   const isDev = Boolean(

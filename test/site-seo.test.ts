@@ -541,9 +541,11 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     ).toBe(false);
   });
 
-  it("injects Google Tag scripts only when GOOGLE_TAG_ID is configured and wires deploy-demo.yml via vars.GOOGLE_TAG_ID", async () => {
-    const inlineInit =
-      "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+  it("injects Google Tag scripts (gtag.js for G-/GT-, gtm.js for GTM-) only when GOOGLE_TAG_ID is configured and wires deploy-demo.yml via vars.GOOGLE_TAG_ID", async () => {
+    const buildExpectedGtagInit = (id: string) =>
+      `window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag("js", new Date());\ngtag("config", ${JSON.stringify(id)});`;
+    const expectedGtmInit =
+      "window.dataLayer = window.dataLayer || [];\nwindow.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});";
 
     const withEnvGoogleTagId = async (
       value: string | undefined,
@@ -587,6 +589,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
         return (
           serialized.includes("googletagmanager.com") ||
           serialized.includes("gtm.js") ||
+          serialized.includes("gtag/js") ||
           serialized.includes("dataLayer") ||
           serialized.includes("gtag(")
         );
@@ -611,11 +614,78 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       });
     }
 
-    // 2. Non-empty GOOGLE_TAG_ID (including surrounding whitespace) must inject expected scripts in both VitePress and Vite demo
-    for (const configuredVal of ["GTM-TEST1234", "  GTM-TEST1234  "]) {
+    // 2. GA4 / Google Tag IDs (G-... and GT-..., including surrounding whitespace) must emit gtag/js + gtag("config", id)
+    for (const [configuredVal, trimmedId] of [
+      ["G-TEST1234", "G-TEST1234"],
+      ["  G-TEST1234  ", "G-TEST1234"],
+      ["GT-TEST1234", "GT-TEST1234"],
+    ] as const) {
+      const expectedSrc = `https://www.googletagmanager.com/gtag/js?id=${trimmedId}`;
+      const expectedInit = buildExpectedGtagInit(trimmedId);
       const expectedVitepressHead: HeadConfig[] = [
-        ["script", { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" }],
-        ["script", {}, inlineInit],
+        ["script", { async: "", src: expectedSrc }],
+        ["script", {}, expectedInit],
+      ];
+      await withEnvGoogleTagId(configuredVal, async () => {
+        expect(buildGoogleTagHead()).toEqual(expectedVitepressHead);
+        expect(buildGoogleTagHead(configuredVal)).toEqual(expectedVitepressHead);
+        expect(buildGoogleTagHead(undefined)).toEqual([]);
+
+        vi.resetModules();
+        const reloadedVitepress = await import("../docs/.vitepress/config.mts");
+        expect(reloadedVitepress.default.head).toContainEqual([
+          "script",
+          { async: "", src: expectedSrc },
+        ]);
+        expect(reloadedVitepress.default.head).toContainEqual(["script", {}, expectedInit]);
+
+        const injectedTags = await invokeViteGoogleTagTransform();
+        expect(injectedTags).toEqual([
+          {
+            tag: "script",
+            attrs: { async: true, src: expectedSrc },
+            injectTo: "head",
+          },
+          {
+            tag: "script",
+            children: expectedInit,
+            injectTo: "head",
+          },
+        ]);
+
+        // Execute inline bootstrap in an isolated VM context (where window === globalThis) and confirm gtag("config", id) & custom events populate dataLayer
+        const sandbox: {
+          window?: unknown;
+          Date: typeof Date;
+          dataLayer?: unknown[];
+          gtag?: (...args: unknown[]) => void;
+        } = { Date };
+        sandbox.window = sandbox;
+        vm.runInNewContext(expectedInit, sandbox);
+        expect(Array.isArray(sandbox.dataLayer)).toBe(true);
+        expect(typeof sandbox.gtag).toBe("function");
+        const entries = Array.from(sandbox.dataLayer ?? [], (item) =>
+          Array.from(item as ArrayLike<unknown>)
+        );
+        expect(entries[0]?.[0]).toBe("js");
+        expect(entries[1]).toEqual(["config", trimmedId]);
+        sandbox.gtag!("event", "exercise_run", {
+          exercise_runtime: "washi",
+        });
+        expect(Array.from((sandbox.dataLayer ?? [])[2] as ArrayLike<unknown>)).toEqual([
+          "event",
+          "exercise_run",
+          { exercise_runtime: "washi" },
+        ]);
+      });
+    }
+
+    // 3. GTM Container IDs (GTM-..., including surrounding whitespace) must emit gtm.js + gtm.start bootstrap
+    for (const configuredVal of ["GTM-TEST1234", "  GTM-TEST1234  "]) {
+      const expectedSrc = "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234";
+      const expectedVitepressHead: HeadConfig[] = [
+        ["script", { async: "", src: expectedSrc }],
+        ["script", {}, expectedGtmInit],
       ];
       await withEnvGoogleTagId(configuredVal, async () => {
         expect(buildGoogleTagHead()).toEqual(expectedVitepressHead);
@@ -627,27 +697,34 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
         const reloadedVitepress = await import("../docs/.vitepress/config.mts");
         expect(reloadedVitepress.default.head).toContainEqual([
           "script",
-          { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" },
+          { async: "", src: expectedSrc },
         ]);
-        expect(reloadedVitepress.default.head).toContainEqual(["script", {}, inlineInit]);
+        expect(reloadedVitepress.default.head).toContainEqual(["script", {}, expectedGtmInit]);
 
         const injectedTags = await invokeViteGoogleTagTransform();
         expect(injectedTags).toEqual([
           {
             tag: "script",
-            attrs: { async: true, src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" },
+            attrs: { async: true, src: expectedSrc },
             injectTo: "head",
           },
           {
             tag: "script",
-            children: inlineInit,
+            children: expectedGtmInit,
             injectTo: "head",
           },
         ]);
+
+        const win: { dataLayer?: Array<Record<string, unknown>> } = {};
+        vm.runInNewContext(expectedGtmInit, { window: win, Date });
+        expect(Array.isArray(win.dataLayer)).toBe(true);
+        expect(win.dataLayer).toHaveLength(1);
+        expect(win.dataLayer?.[0]?.event).toBe("gtm.js");
+        expect(typeof win.dataLayer?.[0]?.["gtm.start"]).toBe("number");
       });
     }
 
-    // 3. CI workflow passes vars.GOOGLE_TAG_ID on Unified Site build, and source/workflow files contain no hardcoded container IDs
+    // 4. CI workflow passes vars.GOOGLE_TAG_ID on Unified Site build, and source/workflow files contain no hardcoded container IDs
     const deployWorkflowPath = path.resolve(rootDir, ".github/workflows/deploy-demo.yml");
     const deployWorkflow = fs.readFileSync(deployWorkflowPath, "utf-8");
     expect(deployWorkflow).toMatch(
@@ -936,13 +1013,25 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     if (requireSiteDist) {
       const configuredTagId = process.env.GOOGLE_TAG_ID?.trim();
       for (const html of [enHtml, jaHtml, zhHtml, ...entryHtmlList, demoHtml]) {
-        if (configuredTagId) {
+        if (configuredTagId && /^GTM-/i.test(configuredTagId)) {
           expect(html).toContain(
             `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(configuredTagId)}`
           );
+          expect(html).toContain("gtm.start");
+          expect(html).not.toContain("googletagmanager.com/gtag/js");
+        } else if (configuredTagId) {
+          const escapedTagRe = configuredTagId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          expect(html).toContain(
+            `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(configuredTagId)}`
+          );
           expect(html).toMatch(/gtag\(\s*['"]js['"]\s*,\s*new Date(?:\(\))?\s*\)/);
+          expect(html).toMatch(
+            new RegExp(`gtag\\(\\s*['"]config['"]\\s*,\\s*['"]${escapedTagRe}['"]\\s*\\)`)
+          );
+          expect(html).not.toContain("googletagmanager.com/gtm.js");
         } else {
           expect(html).not.toContain("googletagmanager.com/gtm.js");
+          expect(html).not.toContain("googletagmanager.com/gtag/js");
           expect(html).not.toContain("window.dataLayer");
         }
       }
