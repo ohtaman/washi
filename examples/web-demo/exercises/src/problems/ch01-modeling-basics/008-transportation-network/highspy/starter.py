@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -9,16 +9,15 @@ def solve(input_data: dict) -> dict:
     n_s = len(supplies)
     n_d = len(demands)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("transportation", pulp.LpMinimize)
 
     shipments = [
-        [h.addVariable(lb=0.0, name=f"ship_{i}_{j}") for j in range(n_d)]
+        [pulp.LpVariable(f"ship_{i}_{j}", lowBound=0) for j in range(n_d)]
         for i in range(n_s)
     ]
 
     # TODO:
     # 1. Enforce row sum <= supplies[i] and column sum >= demands[j]
-    # 2. Call h.minimize(...) on sum(unit_costs[i][j] * shipments[i][j])
-    # 3. Return {"shipments": [[float(h.val(v)) for v in row] for row in shipments], "totalCost": float(h.getObjectiveValue())}
+    # 2. Set objective `prob += ...` on sum(unit_costs[i][j] * shipments[i][j]) and call `prob.solve(pulp.HiGHS(msg=False))`
+    # 3. Return {"shipments": [[float(pulp.value(v)) for v in row] for row in shipments], "totalCost": float(pulp.value(prob.objective))}
     raise NotImplementedError("Not implemented")

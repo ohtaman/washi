@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -10,14 +10,14 @@ def solve(input_data: dict) -> dict:
     mat_cap = input_data["materialCap"]
     n = len(margins)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("line_activation", pulp.LpMaximize)
 
-    open_vars = [h.addBinary(name=f"open_{i}") for i in range(n)]
-    quantities = [h.addVariable(lb=0.0, name=f"qty_{i}") for i in range(n)]
+    open_vars = [pulp.LpVariable(f"open_{i}", cat=pulp.LpBinary) for i in range(n)]
+    quantities = [pulp.LpVariable(f"qty_{i}", lowBound=0) for i in range(n)]
 
     # TODO:
     # 1. Enforce quantities[i] <= capacities[i] * open_vars[i] for each i
     # 2. Enforce shared material budget <= mat_cap
-    # 3. Call h.maximize(...) on net profit and return {"open": ..., "quantities": ..., "netProfit": ...}
+    # 3. Set objective `prob += ...` on net profit, call `prob.solve(pulp.HiGHS(msg=False))`,
+    #    and return {"open": ..., "quantities": ..., "netProfit": ...}
     raise NotImplementedError("Not implemented")

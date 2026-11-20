@@ -9,6 +9,9 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
   return {
     brandTitle: catalog.brandTitle,
     brandSubtitle: catalog.brandSubtitle,
+    aboutTitle: catalog.aboutTitle,
+    aboutBody: catalog.aboutBody,
+    aboutPoints: catalog.aboutPoints,
     navDocs: catalog.navDocs,
     navShowcase: catalog.navShowcase,
     navPlayground: catalog.navPlayground,

@@ -3,6 +3,9 @@ import type { Locale, ProblemRole, VerdictStatus } from "../types.js";
 export interface ExercisesUiStrings {
   brandTitle: string;
   brandSubtitle: string;
+  aboutTitle: string;
+  aboutBody: string;
+  aboutPoints: Array<{ label: string; body: string }>;
   navDocs: string;
   navShowcase: string;
   navPlayground: string;
@@ -39,6 +42,8 @@ export interface ExercisesUiStrings {
     statementTablistLabel: string;
     problemTab: string;
     editorialTab: string;
+    discussionNote: string;
+    discussionBtn: string;
   };
   tabs: {
     washi: string;

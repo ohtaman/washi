@@ -8,7 +8,10 @@
   ],
   "caseNames": [
     "Morning batch",
-    "Weekend batch"
+    "Weekend batch",
+    "Flour-constrained batch",
+    "Butter-constrained batch",
+    "Fractional continuous batch"
   ],
   "judge": {
     "m0": "Return value must be an object { croissants, loaves, totalProfit }.",

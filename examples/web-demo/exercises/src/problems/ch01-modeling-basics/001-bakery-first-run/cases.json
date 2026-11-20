@@ -12,5 +12,26 @@
       "butterCap": 90
     },
     "expectedOptimal": 3300
+  },
+  {
+    "input": {
+      "flourCap": 60,
+      "butterCap": 100
+    },
+    "expectedOptimal": 1400
+  },
+  {
+    "input": {
+      "flourCap": 200,
+      "butterCap": 50
+    },
+    "expectedOptimal": 2000
+  },
+  {
+    "input": {
+      "flourCap": 100,
+      "butterCap": 57.5
+    },
+    "expectedOptimal": 2150
   }
 ]

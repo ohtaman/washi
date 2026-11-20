@@ -37,13 +37,13 @@ m.constraint(
 );
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
-h.addConstr(h.qsum(amounts) == target)
+prob += pulp.lpSum(amounts) == target
 
 for k in range(n_elem):
-    elem_expr = h.qsum(compositions[i][k] * amounts[i] for i in range(n_raw))
-    h.addConstr(elem_expr >= min_ratios[k] * target)
-    h.addConstr(elem_expr <= max_ratios[k] * target)
+    elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
+    prob += elem_expr >= min_ratios[k] * target
+    prob += elem_expr <= max_ratios[k] * target
 ```

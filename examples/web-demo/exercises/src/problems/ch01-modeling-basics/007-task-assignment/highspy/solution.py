@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -6,26 +6,27 @@ def solve(input_data: dict) -> dict:
     costs = input_data["costs"]
     n = len(costs)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("task_assignment", pulp.LpMinimize)
 
-    x = [[h.addBinary(name=f"x_{i}_{j}") for j in range(n)] for i in range(n)]
+    x = [
+        [pulp.LpVariable(f"x_{i}_{j}", cat=pulp.LpBinary) for j in range(n)]
+        for i in range(n)
+    ]
 
     for i in range(n):
-        h.addConstr(h.qsum(x[i][j] for j in range(n)) == 1)
+        prob += pulp.lpSum(x[i][j] for j in range(n)) == 1
     for j in range(n):
-        h.addConstr(h.qsum(x[i][j] for i in range(n)) == 1)
+        prob += pulp.lpSum(x[i][j] for i in range(n)) == 1
 
-    h.minimize(
-        h.qsum(costs[i][j] * x[i][j] for i in range(n) for j in range(n))
-    )
+    prob += pulp.lpSum(costs[i][j] * x[i][j] for i in range(n) for j in range(n))
+    prob.solve(pulp.HiGHS(msg=False))
 
     assignment = [
-        next(j for j in range(n) if round(h.val(x[i][j])) == 1)
+        next(j for j in range(n) if round(pulp.value(x[i][j])) == 1)
         for i in range(n)
     ]
 
     return {
         "assignment": assignment,
-        "totalCost": float(h.getObjectiveValue()),
+        "totalCost": float(pulp.value(prob.objective)),
     }

@@ -530,10 +530,39 @@ button {
 }
 
 .ex-hero-sub {
-  margin: 0 0 1.15rem;
+  margin: 0 0 0.9rem;
   color: var(--text-sub);
   font-size: 0.95rem;
   max-width: 72ch;
+}
+
+.ex-about-section {
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ex-about-body {
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-sub);
+  max-width: 72ch;
+}
+
+.ex-about-points {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.89rem;
+  line-height: 1.6;
+  color: var(--text-sub);
+  max-width: 72ch;
+}
+
+.ex-about-points strong {
+  color: var(--text);
 }
 
 .ex-hero-actions {
@@ -938,6 +967,46 @@ button {
   margin: 0 0 0.75rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+.ws-discussion-footer {
+  margin-top: 1.75rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  flex-wrap: wrap;
+}
+
+.ws-discussion-note {
+  font-size: 0.84rem;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.ws-discussion-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.38rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.83rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.ws-discussion-link:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  text-decoration: none;
 }
 
 .ws-stmt-tablist {

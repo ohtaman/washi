@@ -78,6 +78,21 @@ const PY_KEYWORDS = new Set([
 ]);
 
 const PY_LIB = new Set([
+  "pulp",
+  "LpProblem",
+  "LpVariable",
+  "LpMaximize",
+  "LpMinimize",
+  "LpContinuous",
+  "LpInteger",
+  "LpBinary",
+  "LpStatus",
+  "lpSum",
+  "lpDot",
+  "value",
+  "lowBound",
+  "upBound",
+  "cat",
   "highspy",
   "Highs",
   "addVariable",

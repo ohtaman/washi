@@ -11,6 +11,8 @@ import { CHAPTERS, PROBLEMS } from "../examples/web-demo/exercises/src/problems/
 const GAMEY_COPY_RE =
   /\bBoss\b|\u30dc\u30b9|\u{1f451}|\u30af\u30a8\u30b9\u30c8|\u6483\u7834|\u901a\u5173|\u5173\u5361|\u9053\u5834|\u9053\u573a|\u6311\u6226/ui;
 
+const EXAMPLE_SPOILER_RE = /\bgreedy\b|\u8caa\u6b32|\u8d2a\u5fc3|\boptimal\s+\d|\bnet profit\s+\d/ui;
+
 const EXPECTED_IDS = [
   "000",
   "001",
@@ -30,6 +32,16 @@ if (process.env.REQUIRE_HIGHSPY_PYTHON === "1" && !hasUv) {
   throw new Error("REQUIRE_HIGHSPY_PYTHON=1 is set but `uv` is not installed on PATH.");
 }
 const itHighspy = hasUv ? it : it.skip;
+
+function extractObjectiveValue(output: unknown): number {
+  const rec = output as Record<string, unknown>;
+  for (const key of ["sum", "totalProfit", "totalCost", "totalValue", "netProfit"]) {
+    if (typeof rec[key] === "number" && Number.isFinite(rec[key])) {
+      return rec[key] as number;
+    }
+  }
+  throw new Error(`No numeric objective field found in output: ${JSON.stringify(output)}`);
+}
 
 function runHighspyBatch(
   jobs: Array<{ id: string; code: string; inputs: unknown[] }>
@@ -78,13 +90,13 @@ for job in jobs:
         results[job["id"]] = {"ok": False, "error": traceback.format_exc()}
 print(json.dumps(results))
 `;
-  const proc = spawnSync("uv", ["run", "--with", "highspy", "python3", "-c", script], {
+  const proc = spawnSync("uv", ["run", "--with", "pulp<4", "--with", "highspy", "python3", "-c", script], {
     input: JSON.stringify(jobs),
     encoding: "utf-8",
     maxBuffer: 20 * 1024 * 1024,
   });
   if (proc.status !== 0) {
-    throw new Error(`Python highspy batch runner failed (exit ${proc.status}):\n${proc.stderr}\n${proc.stdout}`);
+    throw new Error(`Python PuLP batch runner failed (exit ${proc.status}):\n${proc.stderr}\n${proc.stdout}`);
   }
   return JSON.parse(proc.stdout);
 }
@@ -102,6 +114,7 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     }
 
     expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
+    expect(new Set(PROBLEMS.map((p) => p.meta.discussionNumber)).size).toBe(PROBLEMS.length);
 
     for (const prob of PROBLEMS) {
       const isTutorial = prob.meta.id === "000";
@@ -113,8 +126,8 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
         expect(prob.washiStarter).toContain("import ");
         expect(prob.washiStarter).toContain("new Model(");
-        expect(prob.highspyStarter).toContain("import highspy");
-        expect(prob.highspyStarter).toContain("highspy.Highs()");
+        expect(prob.highspyStarter).toContain("import pulp");
+        expect(prob.highspyStarter).toContain("pulp.LpProblem(");
       }
       expect(prob.washiStarter).not.toContain("ReducedCostBoss");
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
@@ -130,7 +143,9 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
       expect(prob.meta.provenance.reviewedBy).toEqual([]);
-      expect(prob.cases.length).toBeGreaterThanOrEqual(2);
+      expect(Number.isInteger(prob.meta.discussionNumber)).toBe(true);
+      expect(prob.meta.discussionNumber).toBeGreaterThanOrEqual(281);
+      expect(prob.cases.length).toBeGreaterThanOrEqual(isTutorial ? 3 : 5);
 
       for (const locale of ["en", "ja", "zh"] as const) {
         expect(prob.meta.title[locale].trim().length).toBeGreaterThan(0);
@@ -165,6 +180,9 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         );
         expect(exVerdict.ok, `${prob.meta.id} (${locale}) example verdict: ${exVerdict.message}`).toBe(true);
         expect(exVerdict.status, `${prob.meta.id} (${locale}) example status`).toBe("AC");
+        expect(sections.example, `${prob.meta.id} (${locale}) example should not leak greedy strategy`).not.toMatch(
+          EXAMPLE_SPOILER_RE
+        );
 
         expect(prob.loadEditorial, `${prob.meta.id} missing loadEditorial`).toBeDefined();
         const ed = await prob.loadEditorial!(locale);
@@ -182,11 +200,14 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         for (const c of prob.cases) {
           expect(c.name[locale].trim().length).toBeGreaterThan(0);
           expect(c.name[locale]).not.toMatch(GAMEY_COPY_RE);
+          expect(c.name[locale], `${prob.meta.id} (${locale}) caseName spoiler`).not.toMatch(
+            EXAMPLE_SPOILER_RE
+          );
         }
       }
     }
 
-    // Verify localized judge strings in JSON and standalone Markdown files (30 files) cleanly
+    // Verify localized judge strings in JSON and standalone Markdown files (33 files) cleanly
     const problemsRoot = path.resolve(import.meta.dirname, "../examples/web-demo/exercises/src/problems");
     const ch1Dirs = fs
       .readdirSync(path.join(problemsRoot, "ch01-modeling-basics"), { withFileTypes: true })
@@ -194,10 +215,17 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       .map((d) => d.name)
       .sort();
     expect(ch1Dirs).toHaveLength(10);
-    for (const dir of ch1Dirs) {
+    const allDirs = [
+      path.join("ch00-tutorial", "000-welcome-sum"),
+      ...ch1Dirs.map((dir) => path.join("ch01-modeling-basics", dir)),
+    ];
+    for (const relDir of allDirs) {
+      const casesArr = JSON.parse(
+        fs.readFileSync(path.join(problemsRoot, relDir, "cases.json"), "utf-8")
+      ) as unknown[];
       for (const lang of ["en", "ja", "zh"] as const) {
-        const mdPath = path.join(problemsRoot, "ch01-modeling-basics", dir, "locales", `${lang}.md`);
-        const jsonPath = path.join(problemsRoot, "ch01-modeling-basics", dir, "locales", `${lang}.json`);
+        const mdPath = path.join(problemsRoot, relDir, "locales", `${lang}.md`);
+        const jsonPath = path.join(problemsRoot, relDir, "locales", `${lang}.json`);
         expect(fs.existsSync(mdPath), `Missing ${mdPath}`).toBe(true);
         const mdText = fs.readFileSync(mdPath, "utf-8");
         expect(mdText.trim().length, `Empty ${mdPath}`).toBeGreaterThan(0);
@@ -207,6 +235,10 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(jsonText, jsonPath).not.toMatch(GAMEY_COPY_RE);
         const parsedJson = JSON.parse(jsonText) as Record<string, unknown>;
         expect("markdown" in parsedJson, `Unexpected markdown field in ${jsonPath}`).toBe(false);
+        expect(
+          Array.isArray(parsedJson.caseNames) ? parsedJson.caseNames : [],
+          `${jsonPath} caseNames count mismatch`
+        ).toHaveLength(casesArr.length);
       }
     }
   });
@@ -228,6 +260,10 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         );
         expect(verdict.ok, `${prob.meta.id} case[${i}]: ${verdict.message}`).toBe(true);
         expect(verdict.status, `${prob.meta.id} case[${i}]`).toBe("AC");
+        expect(
+          Math.abs(extractObjectiveValue(solRun.outputs[i]) - prob.cases[i].expectedOptimal),
+          `${prob.meta.id} case[${i}] objective mismatch`
+        ).toBeLessThanOrEqual(1e-2);
       }
 
       // Malformed / invalid empty object output must be classified as RUNTIME_ERROR, not VIOLAITON
@@ -322,7 +358,7 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     expect(unboundedVerdict.message).toContain("Unbounded");
   }, 60_000);
 
-  itHighspy("cross-verifies every highspy Python solution.py against identical cases.json and shared judge()", () => {
+  itHighspy("cross-verifies every PuLP Python solution.py against identical cases.json and shared judge()", () => {
     const jobs = PROBLEMS.map((p) => ({
       id: p.meta.id,
       code: p.highspySolution,
@@ -345,6 +381,10 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
           expect(verdict.ok, `${prob.meta.id} highspy (${locale}) case[${i}]: ${verdict.message}`).toBe(true);
           expect(verdict.status).toBe("AC");
         }
+        expect(
+          Math.abs(extractObjectiveValue(res.outputs![i]) - prob.cases[i].expectedOptimal),
+          `${prob.meta.id} highspy case[${i}] objective mismatch`
+        ).toBeLessThanOrEqual(1e-2);
       }
     }
 
@@ -361,8 +401,25 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     );
     for (const id of ["000", "001", "002", "003"]) {
       const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+      expect(starterBatch[id].ok, `${id} starter failed: ${starterBatch[id].error}`).toBe(true);
       const v = p.judge(p.cases[0].input, starterBatch[id].outputs![0], p.cases[0].expectedOptimal, "en");
       expect(v.status, `${id} python starter verdict`).toBe("VIOLATION");
+    }
+
+    // Verify #004-#010 PuLP starters explicitly raise NotImplementedError
+    const unimplBatch = runHighspyBatch(
+      ["004", "005", "006", "007", "008", "009", "010"].map((id) => {
+        const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
+        return {
+          id: p.meta.id,
+          code: p.highspyStarter,
+          inputs: [p.cases[0].input],
+        };
+      })
+    );
+    for (const id of ["004", "005", "006", "007", "008", "009", "010"]) {
+      expect(unimplBatch[id].ok, `${id} starter should raise`).toBe(false);
+      expect(unimplBatch[id].error).toContain("NotImplementedError");
     }
   }, 60_000);
 });

@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -14,31 +14,33 @@ def solve(input_data: dict) -> dict:
     hold_cost = input_data["holdCost"]
     T = len(demands)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("production_inventory", pulp.LpMinimize)
 
-    regular = [h.addVariable(lb=0.0, ub=reg_cap[t], name=f"reg_{t}") for t in range(T)]
-    overtime = [h.addVariable(lb=0.0, ub=ot_cap[t], name=f"ot_{t}") for t in range(T)]
+    regular = [pulp.LpVariable(f"reg_{t}", lowBound=0, upBound=reg_cap[t]) for t in range(T)]
+    overtime = [pulp.LpVariable(f"ot_{t}", lowBound=0, upBound=ot_cap[t]) for t in range(T)]
     inventory = [
-        h.addVariable(
-            lb=float(min_end_inv if t == T - 1 else 0.0),
-            ub=float(inv_cap),
-            name=f"inv_{t}",
+        pulp.LpVariable(
+            f"inv_{t}",
+            lowBound=float(min_end_inv if t == T - 1 else 0),
+            upBound=float(inv_cap),
         )
         for t in range(T)
     ]
 
     for t in range(T):
         prev = init_inv if t == 0 else inventory[t - 1]
-        h.addConstr(prev + regular[t] + overtime[t] - inventory[t] == demands[t])
+        prob += prev + regular[t] + overtime[t] - inventory[t] == demands[t]
 
-    h.minimize(
-        reg_cost * h.qsum(regular) + ot_cost * h.qsum(overtime) + hold_cost * h.qsum(inventory)
+    prob += (
+        reg_cost * pulp.lpSum(regular)
+        + ot_cost * pulp.lpSum(overtime)
+        + hold_cost * pulp.lpSum(inventory)
     )
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "regular": [float(h.val(v)) for v in regular],
-        "overtime": [float(h.val(v)) for v in overtime],
-        "inventory": [float(h.val(v)) for v in inventory],
-        "totalCost": float(h.getObjectiveValue()),
+        "regular": [float(pulp.value(v)) for v in regular],
+        "overtime": [float(pulp.value(v)) for v in overtime],
+        "inventory": [float(pulp.value(v)) for v in inventory],
+        "totalCost": float(pulp.value(prob.objective)),
     }

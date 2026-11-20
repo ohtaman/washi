@@ -1,21 +1,21 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
     """Return {"croissants": float, "loaves": float, "totalProfit": float}."""
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("Bakery", pulp.LpMaximize)
 
-    c = h.addVariable(lb=0.0, name="croissants")
-    l = h.addVariable(lb=0.0, name="loaves")
+    c = pulp.LpVariable("croissants", lowBound=0)
+    l = pulp.LpVariable("loaves", lowBound=0)
 
-    h.addConstr(2 * c + 3 * l <= input_data["flourCap"])
-    # TODO: Add butter constraint: c + 2 * l <= input_data["butterCap"]
+    prob += 2 * c + 3 * l <= input_data["flourCap"], "flour"
+    # TODO: Add butter constraint: prob += c + 2 * l <= input_data["butterCap"], "butter"
+    prob += 40 * c + 70 * l, "total_profit"
 
-    h.maximize(40 * c + 70 * l)
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "croissants": float(h.val(c)),
-        "loaves": float(h.val(l)),
-        "totalProfit": float(h.getObjectiveValue()),
+        "croissants": float(pulp.value(c)),
+        "loaves": float(pulp.value(l)),
+        "totalProfit": float(pulp.value(prob.objective)),
     }

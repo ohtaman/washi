@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -12,24 +12,24 @@ def solve(input_data: dict) -> dict:
     n_raw = len(costs)
     n_elem = len(min_ratios)
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("blending", pulp.LpMinimize)
 
     amounts = [
-        h.addVariable(lb=0.0, ub=avail, name=f"amt_{i}")
+        pulp.LpVariable(f"amt_{i}", lowBound=0, upBound=avail)
         for i, avail in enumerate(availabilities)
     ]
 
-    h.addConstr(h.qsum(amounts) == target)
+    prob += pulp.lpSum(amounts) == target
 
     for k in range(n_elem):
-        elem_expr = h.qsum(compositions[i][k] * amounts[i] for i in range(n_raw))
-        h.addConstr(elem_expr >= min_ratios[k] * target)
-        h.addConstr(elem_expr <= max_ratios[k] * target)
+        elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
+        prob += elem_expr >= min_ratios[k] * target
+        prob += elem_expr <= max_ratios[k] * target
 
-    h.minimize(h.qsum(costs[i] * amounts[i] for i in range(n_raw)))
+    prob += pulp.lpDot(costs, amounts)
+    prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "amounts": [float(h.val(v)) for v in amounts],
-        "totalCost": float(h.getObjectiveValue()),
+        "amounts": [float(pulp.value(v)) for v in amounts],
+        "totalCost": float(pulp.value(prob.objective)),
     }

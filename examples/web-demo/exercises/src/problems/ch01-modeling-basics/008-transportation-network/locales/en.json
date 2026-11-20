@@ -7,8 +7,11 @@
     "Supply & Demand"
   ],
   "caseNames": [
-    "2 warehouses to 3 stores (optimal 420)",
-    "3 warehouses to 4 regional stores (optimal 1,230)"
+    "2 warehouses to 3 stores",
+    "3 warehouses to 4 regional stores",
+    "3 × 3 balanced supply network",
+    "4 depots to 2 hubs",
+    "2 plants to 5 retail outlets"
   ],
   "judge": {
     "m0": "Output must be an object { shipments, totalCost }.",

@@ -12,5 +12,12 @@
       "b": 25
     },
     "expectedOptimal": 42
+  },
+  {
+    "input": {
+      "a": 0,
+      "b": 100
+    },
+    "expectedOptimal": 100
   }
 ]

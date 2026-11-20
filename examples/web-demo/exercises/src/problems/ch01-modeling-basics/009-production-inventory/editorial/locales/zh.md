@@ -37,14 +37,17 @@ m.objective(
 );
 ```
 
-**Python (highspy)**
+**PuLP (Python)**
 
 ```python
 for t in range(T):
     prev = init_inv if t == 0 else inventory[t - 1]
-    h.addConstr(prev + regular[t] + overtime[t] - inventory[t] == demands[t])
+    prob += prev + regular[t] + overtime[t] - inventory[t] == demands[t]
 
-h.minimize(
-    reg_cost * h.qsum(regular) + ot_cost * h.qsum(overtime) + hold_cost * h.qsum(inventory)
+prob += (
+    reg_cost * pulp.lpSum(regular)
+    + ot_cost * pulp.lpSum(overtime)
+    + hold_cost * pulp.lpSum(inventory)
 )
+prob.solve(pulp.HiGHS(msg=False))
 ```

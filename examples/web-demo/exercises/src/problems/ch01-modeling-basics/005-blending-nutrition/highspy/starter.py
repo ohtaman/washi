@@ -1,4 +1,4 @@
-import highspy
+import pulp
 
 
 def solve(input_data: dict) -> dict:
@@ -10,14 +10,14 @@ def solve(input_data: dict) -> dict:
     min_ratios = input_data["minRatios"]
     max_ratios = input_data["maxRatios"]
 
-    h = highspy.Highs()
-    h.silent()
+    prob = pulp.LpProblem("blending", pulp.LpMinimize)
 
     amounts = [
-        h.addVariable(lb=0.0, ub=avail, name=f"amt_{i}")
+        pulp.LpVariable(f"amt_{i}", lowBound=0, upBound=avail)
         for i, avail in enumerate(availabilities)
     ]
 
     # TODO: Add total weight == target constraint, element min/max ratio constraints,
-    # minimize total cost, and return {"amounts": [...], "totalCost": ...}.
+    # set total cost objective, call prob.solve(pulp.HiGHS(msg=False)),
+    # and return {"amounts": [...], "totalCost": ...}.
     raise NotImplementedError("Not implemented")

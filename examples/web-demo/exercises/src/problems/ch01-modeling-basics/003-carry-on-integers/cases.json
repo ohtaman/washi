@@ -40,5 +40,77 @@
       ]
     },
     "expectedOptimal": 192
+  },
+  {
+    "input": {
+      "maxWeight": 7,
+      "weights": [
+        4,
+        3,
+        2
+      ],
+      "values": [
+        60,
+        42,
+        25
+      ],
+      "maxCounts": [
+        2,
+        2,
+        2
+      ]
+    },
+    "expectedOptimal": 102
+  },
+  {
+    "input": {
+      "maxWeight": 18,
+      "weights": [
+        2,
+        5,
+        3,
+        6,
+        4
+      ],
+      "values": [
+        18,
+        52,
+        29,
+        64,
+        41
+      ],
+      "maxCounts": [
+        3,
+        2,
+        2,
+        1,
+        2
+      ]
+    },
+    "expectedOptimal": 186
+  },
+  {
+    "input": {
+      "maxWeight": 12,
+      "weights": [
+        7,
+        5,
+        4,
+        3
+      ],
+      "values": [
+        95,
+        62,
+        48,
+        35
+      ],
+      "maxCounts": [
+        1,
+        2,
+        2,
+        3
+      ]
+    },
+    "expectedOptimal": 157
   }
 ]

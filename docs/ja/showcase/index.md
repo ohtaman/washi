@@ -48,13 +48,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">📘</span>
-          <span class="washi-showcase-badge">WaSHI TS × Python highspy</span>
+          <span class="washi-showcase-badge">WaSHI (TS) × PuLP (Python)</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/exercises/?lang=ja" target="_self" class="washi-showcase-title-link">数理最適化100本ノック</a>
         </div>
         <p class="washi-showcase-desc">
-          TypeScript（WaSHI）と Python（Pyodide <code>highspy</code>）の両方で書いて即時に自動採点できる数理最適化の対話型100問演習問題集。チュートリアルと段階ヒント付きでブラウザ完結します。
+          WaSHI（TypeScript）と PuLP（Python / Pyodide 上の HiGHS・<code>highspy</code> バックエンド）の両方で書いて自動採点できる数理最適化の対話型100本ノック。各問の数式・解説とテストケース付きでブラウザ完結します。
         </p>
       </div>
       <div class="washi-showcase-actions">

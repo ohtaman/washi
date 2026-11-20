@@ -68,6 +68,21 @@ export function renderWorkspaceSolvedControlHtml(
   >${escapeHtml(strings.clearThisSolvedBtn)}</button>`;
 }
 
+export const GITHUB_DISCUSSIONS_BASE = "https://github.com/ohtaman/washi/discussions";
+
+export function getProblemDiscussionUrl(
+  meta: Pick<ProblemMeta, "id" | "discussionNumber">
+): string {
+  if (
+    typeof meta.discussionNumber === "number" &&
+    Number.isInteger(meta.discussionNumber) &&
+    meta.discussionNumber > 0
+  ) {
+    return `${GITHUB_DISCUSSIONS_BASE}/${meta.discussionNumber}`;
+  }
+  return `${GITHUB_DISCUSSIONS_BASE}?discussions_q=${encodeURIComponent(`#${meta.id}`)}`;
+}
+
 export function renderProvenanceText(
   meta: ProblemMeta,
   strings: ExercisesUiStrings
@@ -440,6 +455,23 @@ export function renderExerciseIndexHtml(params: {
           </div>
         </section>
 
+        <section class="chapter-section ex-about-section" id="about-exercises" aria-labelledby="about-heading">
+          <div class="chapter-head">
+            <div class="chapter-title-wrap">
+              <h2 id="about-heading" class="chapter-title">${escapeHtml(strings.aboutTitle)}</h2>
+            </div>
+          </div>
+          <p class="ex-about-body">${escapeHtml(strings.aboutBody)}</p>
+          <ul class="ex-about-points">
+            ${strings.aboutPoints
+              .map(
+                (pt) =>
+                  `<li><strong>${escapeHtml(pt.label)}</strong> — ${escapeHtml(pt.body)}</li>`
+              )
+              .join("")}
+          </ul>
+        </section>
+
         ${
           tutorialProblems.length > 0
             ? `
@@ -795,6 +827,17 @@ export function renderWorkspaceHtml(params: {
                     : ""
                 }
                 <div id="editorial-content" class="md-body editorial-body">${editorialBodyHtml}</div>
+              </div>
+
+              <div class="ws-discussion-footer">
+                <span class="ws-discussion-note">${escapeHtml(strings.workspace.discussionNote)}</span>
+                <a
+                  href="${escapeHtml(getProblemDiscussionUrl(meta))}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ws-discussion-link"
+                  id="ws-discussion-link"
+                >${escapeHtml(strings.workspace.discussionBtn)} ↗</a>
               </div>
             </article>
           </div>

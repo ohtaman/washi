@@ -51,4 +51,4 @@ Quality standards require that in the final batch, every chemical element stays 
 }
 ```
 
-Metal 0 alone is cheapest but gives only 20% of element 0 (below 35%). Blending 62.5 kg of Metal 0 and 37.5 kg of Metal 1 reaches 35% element 0, 38.75% element 1, and 21.25% element 2 for the minimum cost of **37,500**.
+Blending 62.5 kg of Metal 0 and 37.5 kg of Metal 1 totals 100 kg, yields 35% element 0, 38.75% element 1, and 21.25% element 2 (within all bounds), and costs $300 \times 62.5 + 500 \times 37.5 =$ **37,500**.

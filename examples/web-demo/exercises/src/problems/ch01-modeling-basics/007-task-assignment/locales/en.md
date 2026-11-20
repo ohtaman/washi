@@ -41,4 +41,4 @@ Find a **1-to-1 assignment** where every worker receives **exactly one** task an
 }
 ```
 
-Row-by-row greedy selection picks costs 2, 3, and 5 for a total of 10. Optimal global matching assigns `[1, 0, 2]` at cost $2 + 6 + 1 =$ **9**.
+Assigning tasks `[1, 0, 2]` gives each worker a distinct task with total cost $2 + 6 + 1 =$ **9**.

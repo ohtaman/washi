@@ -57,4 +57,4 @@ In every period, regular and overtime production cannot exceed their respective 
 }
 ```
 
-Using spare regular capacity in Period 0 stores 30 units at 3/unit holding cost instead of paying a 12/unit overtime premium in Period 1, achieving minimum cost **8,680**.
+Starting from initial inventory 10, the schedule satisfies balance equations and inventory limits (`[30, 0, 0, 10]` ≤ 60, final 10 ≥ 10) for total cost $380 \times 20 + 30 \times 32 + 40 \times 3 =$ **8,680**.
