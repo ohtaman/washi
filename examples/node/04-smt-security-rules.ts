@@ -53,6 +53,15 @@ async function main() {
 
   console.log("Checking security satisfiability with Z3...");
   const res = await m.check({ solver: "z3" });
+  if (
+    res.status !== "Sat" ||
+    sirenActive.value === null ||
+    lightsOn.value === null ||
+    frontDoorUnlocked.value === null ||
+    isNight.value === null
+  ) {
+    throw new Error(`Expected Sat security model with complete boolean values, got status "${res.status}".`);
+  }
 
   console.log(`\nStatus: ${res.status}`);
   console.log("Deduced System State:");
@@ -65,8 +74,14 @@ async function main() {
   // Prove that under this context, the siren CANNOT remain off (sirenActive === false is Unsat)
   m.constraint(not(sirenActive), "counterexample_siren_off");
   const verifyRes = await m.check({ solver: "z3" });
+  if (verifyRes.status !== "Unsat") {
+    throw new Error(`Expected Unsat counterexample proof, got status "${verifyRes.status}".`);
+  }
   console.log(`\nFormal Safety Proof (Can siren remain off?): ${verifyRes.status}`);
   console.log(`  → Proven guaranteed to sound via rules: ${(verifyRes.conflicts ?? []).join(", ")}`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

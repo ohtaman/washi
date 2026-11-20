@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import vm from "node:vm";
 import type { Plugin } from "vite";
@@ -7,7 +8,7 @@ import type { HeadConfig, PageData, SiteData } from "vitepress";
 import vitepressConfig, { buildGoogleTagHead } from "../docs/.vitepress/config.mts";
 import viteDemoConfig from "../vite.config.ts";
 // @ts-expect-error .mjs script module
-import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
+import { appendInteractiveRoutesToSitemap, assembleUnifiedSite } from "../scripts/build-site.mjs";
 // @ts-expect-error .mjs script module
 import { buildLlmsArtifacts } from "../scripts/generate-llms.mjs";
 
@@ -73,6 +74,104 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
 
     // Idempotent when called a second time
     expect(appendInteractiveRoutesToSitemap(augmented, webDemoRoot)).toBe(augmented);
+  });
+
+  it("assembleUnifiedSite succeeds when all artifacts exist and throws explicitly when any required build artifact is missing", () => {
+    const sharedFiles = [
+      "washi-logo.svg",
+      "washi-logo.png",
+      "washi-header.svg",
+      "washi-header-light.png",
+      "washi-header-dark.png",
+      "coi-serviceworker.js",
+      "z3-built.js",
+      "z3-built.wasm",
+      "highs.wasm",
+      "pumpkin.wasm",
+    ];
+
+    const createSiteFixture = () => {
+      const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "washi-build-site-"));
+      const docsDist = path.join(tmpRoot, "docs/.vitepress/dist");
+      const demoDist = path.join(tmpRoot, "dist/demo");
+      const siteDist = path.join(tmpRoot, "dist/site");
+
+      fs.mkdirSync(docsDist, { recursive: true });
+      fs.writeFileSync(path.join(docsDist, "index.html"), "<html>docs</html>");
+      fs.writeFileSync(
+        path.join(docsDist, "sitemap.xml"),
+        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://washi.ohtaman.dev/</loc></url></urlset>'
+      );
+
+      for (const dir of ["demo", "exercises", "apps/ai-shift", "games/titan-pack", "assets"]) {
+        fs.mkdirSync(path.join(demoDist, dir), { recursive: true });
+        fs.writeFileSync(
+          path.join(demoDist, dir, dir === "assets" ? "app.js" : "index.html"),
+          "fixture"
+        );
+      }
+
+      for (const f of sharedFiles) {
+        fs.writeFileSync(path.join(demoDist, f), `asset:${f}`);
+      }
+
+      return { tmpRoot, docsDist, demoDist, siteDist };
+    };
+
+    // Valid fixture succeeds and outputs unified site with updated sitemap and shared assets
+    const valid = createSiteFixture();
+    try {
+      assembleUnifiedSite({
+        rootDir,
+        docsDist: valid.docsDist,
+        demoDist: valid.demoDist,
+        siteDist: valid.siteDist,
+      });
+      expect(fs.existsSync(path.join(valid.siteDist, "demo/index.html"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "exercises/index.html"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "apps/ai-shift/index.html"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "games/titan-pack/index.html"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "assets/app.js"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "highs.wasm"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "demo/highs.wasm"))).toBe(true);
+      const sitemap = fs.readFileSync(path.join(valid.siteDist, "sitemap.xml"), "utf8");
+      expect(sitemap).toContain("https://washi.ohtaman.dev/demo/");
+      expect(sitemap).toContain("https://washi.ohtaman.dev/exercises/");
+    } finally {
+      fs.rmSync(valid.tmpRoot, { recursive: true, force: true });
+    }
+
+    // Missing any required directory or file must throw explicitly
+    const requiredRelPaths = [
+      { base: "docs", rel: "sitemap.xml" },
+      { base: "demo", rel: "demo" },
+      { base: "demo", rel: "exercises" },
+      { base: "demo", rel: "apps" },
+      { base: "demo", rel: "games" },
+      { base: "demo", rel: "assets" },
+      ...sharedFiles.map((f) => ({ base: "demo" as const, rel: f })),
+    ];
+
+    for (const item of requiredRelPaths) {
+      const broken = createSiteFixture();
+      try {
+        const targetToRemove = path.join(
+          item.base === "docs" ? broken.docsDist : broken.demoDist,
+          item.rel
+        );
+        fs.rmSync(targetToRemove, { recursive: true, force: true });
+        expect(() =>
+          assembleUnifiedSite({
+            rootDir,
+            docsDist: broken.docsDist,
+            demoDist: broken.demoDist,
+            siteDist: broken.siteDist,
+          })
+        ).toThrow();
+      } finally {
+        fs.rmSync(broken.tmpRoot, { recursive: true, force: true });
+      }
+    }
   });
 
   itSiteDist("verifies site assembly copies CNAME and robots.txt and generates well-formed sitemap.xml", () => {

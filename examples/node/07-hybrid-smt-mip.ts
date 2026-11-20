@@ -1,5 +1,6 @@
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Model, expr, minimize } from "../../src/index.js";
+import { Model, expr, minimize, type Solver } from "../../src/index.js";
 import { Z3Solver } from "../../src/modeler/solvers/z3.js";
 
 /**
@@ -14,7 +15,7 @@ import { Z3Solver } from "../../src/modeler/solvers/z3.js";
 export interface RunPipelineOptions {
   scenarioName: string;
   forceConflict?: boolean;
-  mockStatus?: "Sat" | "Unsat" | "Unknown";
+  smtSolver?: Solver | string;
 }
 
 export interface PipelineResult {
@@ -39,7 +40,7 @@ export interface PipelineResult {
 export async function runHybridPipeline({
   scenarioName,
   forceConflict = false,
-  mockStatus,
+  smtSolver,
 }: RunPipelineOptions): Promise<PipelineResult> {
   console.log(`\n--- Scenario: ${scenarioName} ---`);
 
@@ -47,7 +48,10 @@ export async function runHybridPipeline({
   // Step 1: Logical Satisfiability & Invariant Check using Z3 SMT
   // -------------------------------------------------------------
   console.log("Step 1: Checking propositional policy feasibility with Z3...");
-  const policyModel = new Model({ name: "CloudDeploymentPolicy", solver: new Z3Solver() });
+  const policyModel = new Model({
+    name: "CloudDeploymentPolicy",
+    solver: smtSolver ?? new Z3Solver(),
+  });
 
   const deployEurope = policyModel.bool("deployEurope");
   const deployUS = policyModel.bool("deployUS");
@@ -72,9 +76,7 @@ export async function runHybridPipeline({
     policyModel.constraint(budgetTierHigh, "r3_high_budget_approved");
   }
 
-  const policyCheck = mockStatus
-    ? { status: mockStatus, values: {} }
-    : await policyModel.check();
+  const policyCheck = await policyModel.check();
 
   // Guard: Only proceed to the optimization stage if SAT is confirmed.
   // Distinguish Unsat (contradiction) from Unknown (undetermined).
@@ -112,10 +114,17 @@ export async function runHybridPipeline({
   // Carry over SMT-verified deployment decisions:
   // Since SMT verified that deployEurope and deployUS are feasible together,
   // enforce both mandatory data centers to be online to satisfy the business policy (Issue #34).
-  if (deployEurope.value ?? true) {
+  const euDeployed = deployEurope.value;
+  const usDeployed = deployUS.value;
+  if (euDeployed === null || usDeployed === null) {
+    throw new Error(
+      `SMT check returned "Sat" without boolean values (deployEurope=${String(euDeployed)}, deployUS=${String(usDeployed)}).`
+    );
+  }
+  if (euDeployed) {
     mip.constraint(expr`${openEU} == 1`, "enforce_eu_deployment");
   }
-  if (deployUS.value ?? true) {
+  if (usDeployed) {
     mip.constraint(expr`${openUS} == 1`, "enforce_us_deployment");
   }
 
@@ -142,9 +151,21 @@ export async function runHybridPipeline({
   );
 
   const status = await mip.solve();
+  if (
+    status !== "Optimal" ||
+    mip.objectiveValue === null ||
+    openEU.value === null ||
+    openUS.value === null ||
+    capEU.value === null ||
+    capUS.value === null ||
+    openAPAC.value === null ||
+    capAPAC.value === null
+  ) {
+    throw new Error(`HiGHS MIP optimization did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`HiGHS MIP Status: ${status}`);
-  console.log(`Optimal Total Cost: $${mip.objectiveValue?.toLocaleString()}`);
+  console.log(`Optimal Total Cost: $${mip.objectiveValue.toLocaleString()}`);
   console.log(`US Center  : ${openUS.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capUS.value} TB/s)`);
   console.log(`EU Center  : ${openEU.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capEU.value} TB/s)`);
   console.log(`APAC Backup: ${openAPAC.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capAPAC.value} TB/s)`);
@@ -178,9 +199,12 @@ export async function run() {
 }
 
 const isDirectRun = Boolean(
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]
+  process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])
 );
 
 if (isDirectRun) {
-  run().catch(console.error);
+  run().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }
