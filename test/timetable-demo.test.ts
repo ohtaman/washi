@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   createBlankTimetableState,
   generateTimetableState,
@@ -13,11 +13,9 @@ import {
 import {
   applyTimetableChatOperationsToState,
   buildCompactStateCatalogPrompt,
-  buildUltraCompactCatalogPrompt,
   checkGeminiNanoAvailability,
   convertToolCallToTimetableOperation,
   createTimetableGeminiNanoManager,
-  repairTruncatedJson,
   resolveCourseFromText,
   resolveProfessorFromText,
   resolveRoomFromText,
@@ -611,20 +609,64 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(badPrecRes.status).toBe("Infeasible");
     expect(badPrecRes.rawConflictNames.some((n) => n.startsWith("custom_prec_"))).toBe(true);
 
-    // 7. `streamConsultationReply` produces localized output in `en` and `zh`
+    // 7. `streamConsultationReply` propagates unavailable errors for `en` and emits an explicit unsupported-language notice + summary for `zh`
     const mgr = createTimetableGeminiNanoManager();
-    let enText = "";
-    for await (const chunk of mgr.streamConsultationReply(
-      "Optimize",
-      ["Pinned C15"],
-      baseState,
-      forbidTypeRes,
-      undefined,
-      "en"
-    )) {
-      enText += chunk;
+    const consumeStream = async (iter: AsyncIterable<string>): Promise<string> => {
+      let out = "";
+      for await (const chunk of iter) out += chunk;
+      return out;
+    };
+    await expect(
+      consumeStream(
+        mgr.streamConsultationReply(
+          "Optimize",
+          ["Pinned C15"],
+          baseState,
+          forbidTypeRes,
+          undefined,
+          "en"
+        )
+      )
+    ).rejects.toThrow();
+
+    const prevLmConsult = (globalThis as any).LanguageModel;
+    try {
+      let capturedEnPrompt = "";
+      (globalThis as any).LanguageModel = {
+        availability: async () => "available",
+        create: async () => ({
+          async clone() {
+            return {
+              async *promptStreaming(prompt: string) {
+                capturedEnPrompt = prompt;
+                yield "English consultation reply";
+              },
+              destroy() {},
+            };
+          },
+          destroy() {},
+        }),
+      };
+      const enMgr = createTimetableGeminiNanoManager();
+      await enMgr.initialize(undefined, "en");
+      const enText = await consumeStream(
+        enMgr.streamConsultationReply(
+          "Optimize",
+          ["Pinned C15"],
+          baseState,
+          forbidTypeRes,
+          undefined,
+          "en"
+        )
+      );
+      expect(capturedEnPrompt).toContain("[Solve Result]");
+      expect(enText).toBe("English consultation reply");
+      enMgr.destroy();
+    } finally {
+      if (prevLmConsult === undefined) delete (globalThis as any).LanguageModel;
+      else (globalThis as any).LanguageModel = prevLmConsult;
     }
-    expect(enText).toContain("[Solve Result]");
+
     let zhText = "";
     for await (const chunk of mgr.streamConsultationReply(
       "优化",
@@ -636,6 +678,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     )) {
       zhText += chunk;
     }
+    expect(zhText).toMatch(/不支持|暂不支持/);
     expect(zhText).toContain("【求解结果】");
 
     // 8. Hard `set_professor_unavailability` is enforced even when `config.enforceProfessorAvailability` is disabled
@@ -803,17 +846,21 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       ).rejects.toThrow();
       expect(promptCallCount).toBe(0);
 
-      // Consultation in the failed language must yield summary without prompting the stale session
-      const consultChunks: string[] = [];
-      for await (const chunk of mgrRetain.streamConsultationReply(
-        "Fix course C01",
-        sampleState,
-        null,
-        undefined,
-        "en"
-      )) {
-        consultChunks.push(chunk);
-      }
+      // Consultation in the failed language must reject honestly without prompting the stale session
+      await expect(
+        (async () => {
+          for await (const _chunk of mgrRetain.streamConsultationReply(
+            "Fix course C01",
+            [],
+            sampleState,
+            null,
+            undefined,
+            "en"
+          )) {
+            // drain
+          }
+        })()
+      ).rejects.toThrow();
       expect(promptCallCount).toBe(0);
 
       (globalThis as any).LanguageModel.create = origCreate;
@@ -892,36 +939,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(detectBrowserTimetableLang({})).toBe("en");
   });
 
-  it("recovers gracefully from LLM output limits truncation and repairs truncated JSON", async () => {
-    // 1. repairTruncatedJson handles valid JSON untouched
-    expect(repairTruncatedJson('{"intentType":"modify_and_solve","toolCalls":[]}')).toBe(
-      '{"intentType":"modify_and_solve","toolCalls":[]}'
-    );
-    expect(repairTruncatedJson("")).toBe("{}");
-    expect(repairTruncatedJson("   ")).toBe("{}");
-
-    // 2. repairTruncatedJson repairs unclosed string inside object
-    const unclosedStr = '{"thought":"Prof Sato Mon';
-    const repStr = repairTruncatedJson(unclosedStr);
-    expect(() => JSON.parse(repStr)).not.toThrow();
-    expect(JSON.parse(repStr).thought).toBe("Prof Sato Mon");
-
-    // 3. repairTruncatedJson repairs truncated nested arrays and objects
-    const truncatedNested =
-      '{"intentType":"modify_and_solve","toolCalls":[{"tool_name":"set_professor_unavailability","args":{"professor":"P01","days":["Mon"]';
-    const repNested = repairTruncatedJson(truncatedNested);
-    expect(() => JSON.parse(repNested)).not.toThrow();
-    const parsedNested = JSON.parse(repNested);
-    expect(parsedNested.intentType).toBe("modify_and_solve");
-    expect(parsedNested.toolCalls[0].tool_name).toBe("set_professor_unavailability");
-    expect(parsedNested.toolCalls[0].args.professor).toBe("P01");
-    expect(parsedNested.toolCalls[0].args.days).toEqual(["Mon"]);
-
-    // 4. repairTruncatedJson repairs trailing comma and trailing colon
-    expect(() => JSON.parse(repairTruncatedJson('{"tool_name":'))).not.toThrow();
-    expect(() => JSON.parse(repairTruncatedJson('{"intentType":"consult_only",'))).not.toThrow();
-
-    // 5. buildCompactStateCatalogPrompt and buildUltraCompactCatalogPrompt
+  it("builds compact catalog prompt and fails cleanly on first truncation, parse error, or invalid intentType without retries", async () => {
     const state = generateTimetableState();
     const compactPrompt = buildCompactStateCatalogPrompt(state);
     expect(compactPrompt).toContain("C01:Intro to Computer Science");
@@ -929,20 +947,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(compactPrompt).toContain("P01:Kenichi Sato");
     expect(compactPrompt).toContain("R101:101 Large Lecture Hall");
 
-    const ultraCompactPrompt = buildUltraCompactCatalogPrompt(state);
-    expect(ultraCompactPrompt).toContain("C01:Intro to Computer Science(P07)");
-    expect(ultraCompactPrompt).not.toContain("Current Configuration"); // Omitted in ultra-compact retry
-
     // Empty state (blank slate) produces clean placeholders
     const blankState = { ...state, courses: [], professors: [], rooms: [] };
     expect(buildCompactStateCatalogPrompt(blankState)).toContain("[Courses] (None)");
-    expect(buildUltraCompactCatalogPrompt(blankState)).toContain("[Courses] (None)");
 
-    // 6. extractPlan recovers when prompt() throws output limits exceeded error
     const prevLM = (globalThis as any).LanguageModel;
     try {
+      // 1. Prompt rejection (e.g., output limits exceeded) fails on first call without retrying
       let promptCallCount = 0;
-      const promptsReceived: string[] = [];
       (globalThis as any).LanguageModel = {
         async availability() {
           return "available";
@@ -951,27 +963,9 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
           return {
             async clone() {
               return {
-                async prompt(promptText: string) {
+                async prompt() {
                   promptCallCount += 1;
-                  promptsReceived.push(promptText);
-                  if (promptCallCount === 1) {
-                    throw new Error("The response exceeded output limits and was truncated.");
-                  }
-                  return JSON.stringify({
-                    intentType: "modify_and_solve",
-                    toolCalls: [
-                      {
-                        tool_name: "set_professor_unavailability",
-                        args: {
-                          professor: "P01",
-                          days: ["Mon"],
-                          periods: [1, 2, 3, 4, 5],
-                          exclusiveAvailable: false,
-                          isHard: true,
-                        },
-                      },
-                    ],
-                  });
+                  throw new Error("The response exceeded output limits and was truncated.");
                 },
                 destroy() {},
               };
@@ -983,15 +977,71 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
 
       const mgr = createTimetableGeminiNanoManager();
       await mgr.initialize(undefined, "en");
-      const plan = await mgr.extractPlan("Prof Sato unavailable Mon", state, undefined, undefined, "en");
-
-      // Verify that retry occurred with ultra-compact prompt
-      expect(promptCallCount).toBe(2);
-      expect(promptsReceived[0]).toContain("Prof:P07"); // Initial compact prompt
-      expect(promptsReceived[1]).toContain("C01:Intro to Computer Science(P07)"); // Ultra-compact retry prompt
-      expect(plan.operations.length).toBe(1);
-      expect(plan.operations[0].op).toBe("set_professor_unavailability");
+      await expect(
+        mgr.extractPlan("Prof Sato unavailable Mon", state, undefined, undefined, "en")
+      ).rejects.toThrow(/output limits/i);
+      expect(promptCallCount).toBe(1);
       mgr.destroy();
+
+      // 2. Truncated/invalid JSON fails on first attempt without retrying or repairing
+      promptCallCount = 0;
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create() {
+          return {
+            async clone() {
+              return {
+                async prompt() {
+                  promptCallCount += 1;
+                  return '{"intentType":"modify_and_solve","toolCalls":[';
+                },
+                destroy() {},
+              };
+            },
+            destroy() {},
+          };
+        },
+      };
+      const mgrBadJson = createTimetableGeminiNanoManager();
+      await mgrBadJson.initialize(undefined, "en");
+      await expect(
+        mgrBadJson.extractPlan("Prof Sato unavailable Mon", state, undefined, undefined, "en")
+      ).rejects.toThrow();
+      expect(promptCallCount).toBe(1);
+      mgrBadJson.destroy();
+
+      // 3. Missing or unknown intentType is rejected as a parse error instead of coerced to "unsupported"
+      for (const badPayload of [
+        JSON.stringify({ toolCalls: [] }),
+        JSON.stringify({ intentType: "update", toolCalls: [] }),
+      ]) {
+        (globalThis as any).LanguageModel = {
+          async availability() {
+            return "available";
+          },
+          async create() {
+            return {
+              async clone() {
+                return {
+                  async prompt() {
+                    return badPayload;
+                  },
+                  destroy() {},
+                };
+              },
+              destroy() {},
+            };
+          },
+        };
+        const mgrBadIntent = createTimetableGeminiNanoManager();
+        await mgrBadIntent.initialize(undefined, "en");
+        await expect(
+          mgrBadIntent.extractPlan("Test request", state, undefined, undefined, "en")
+        ).rejects.toThrow(/intentType/i);
+        mgrBadIntent.destroy();
+      }
     } finally {
       (globalThis as any).LanguageModel = prevLM;
     }
@@ -2066,7 +2116,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     (globalThis as any).LanguageModel = {
       availability: async () => "available",
       create: async () => ({
-        prompt: async () => JSON.stringify({ intentType: "update", toolCalls: [] }),
+        prompt: async () => JSON.stringify({ intentType: "modify_and_solve", toolCalls: [] }),
         destroy: () => {},
       }),
     };
@@ -2554,6 +2604,613 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
+  it("enforces strict nano-client availability, session creation/cloning, error propagation, and rejected state operations", async () => {
+    const prevLM = (globalThis as any).LanguageModel;
+    try {
+      // 1. checkGeminiNanoAvailability does NOT fall back on exception to no-arg availability(), capabilities(), or create()
+      let noArgAvailCalled = false;
+      let capabilitiesCalled = false;
+      (globalThis as any).LanguageModel = {
+        async availability(opts?: unknown) {
+          if (!opts) {
+            noArgAvailCalled = true;
+            return "available";
+          }
+          throw new Error("availability(opts) unsupported");
+        },
+        async capabilities() {
+          capabilitiesCalled = true;
+          return { available: "readily" };
+        },
+        async create() {
+          return { destroy() {} };
+        },
+      };
+      expect(await checkGeminiNanoAvailability("en")).toBe("unavailable");
+      expect(noArgAvailCalled).toBe(false);
+      expect(capabilitiesCalled).toBe(false);
+
+      // Even if only capabilities() and create() exist without availability(), return "unavailable"
+      (globalThis as any).LanguageModel = {
+        async capabilities() {
+          return { available: "readily" };
+        },
+        async create() {
+          return { destroy() {} };
+        },
+      };
+      expect(await checkGeminiNanoAvailability("en")).toBe("unavailable");
+
+      // 2. createLanguageModelSession makes a single create() call without dropping temperature/topK
+      let createCalls = 0;
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create(opts: { temperature?: number; topK?: number }) {
+          createCalls += 1;
+          expect(opts.temperature).toBe(0.1);
+          expect(opts.topK).toBe(1);
+          throw new Error("Model creation rejected with decoding params");
+        },
+      };
+      const mgrCreateFail = createTimetableGeminiNanoManager();
+      expect(await mgrCreateFail.initialize(undefined, "en")).toBe("unavailable");
+      expect(createCalls).toBe(1);
+      mgrCreateFail.destroy();
+
+      // 3. getFreshExtractorSession & getFreshConsultSession propagate clone() errors and refuse self-mutating clone()
+      const state = generateTimetableState();
+      let baseExtractorPromptCount = 0;
+      let baseConsultPromptCount = 0;
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create(opts: { initialPrompts?: Array<{ content: string }> }) {
+          const isExtractor = opts.initialPrompts?.[0]?.content.includes("planner");
+          return {
+            async clone() {
+              throw new Error("Clone failed");
+            },
+            async prompt() {
+              if (isExtractor) baseExtractorPromptCount += 1;
+              return JSON.stringify({ intentType: "consult_only", toolCalls: [] });
+            },
+            async *promptStreaming() {
+              if (!isExtractor) baseConsultPromptCount += 1;
+              yield "bad";
+            },
+            destroy() {},
+          };
+        },
+      };
+      const mgrCloneFail = createTimetableGeminiNanoManager();
+      await mgrCloneFail.initialize(undefined, "en");
+      await expect(
+        mgrCloneFail.extractPlan("Test", state, undefined, undefined, "en")
+      ).rejects.toThrow(/Clone failed/);
+      await expect(
+        (async () => {
+          for await (const _c of mgrCloneFail.streamConsultationReply(
+            "Test",
+            [],
+            state,
+            null,
+            undefined,
+            "en"
+          )) {
+            // drain
+          }
+        })()
+      ).rejects.toThrow(/Clone failed/);
+      expect(baseExtractorPromptCount).toBe(0);
+      expect(baseConsultPromptCount).toBe(0);
+      mgrCloneFail.destroy();
+
+      // Self-returning clone() (`return this`) must NOT mutate shared base session
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create(opts: { initialPrompts?: Array<{ content: string }> }) {
+          const isExtractor = opts.initialPrompts?.[0]?.content.includes("planner");
+          return {
+            async clone() {
+              return this;
+            },
+            async prompt() {
+              if (isExtractor) baseExtractorPromptCount += 1;
+              return JSON.stringify({ intentType: "consult_only", toolCalls: [] });
+            },
+            async *promptStreaming() {
+              if (!isExtractor) baseConsultPromptCount += 1;
+              yield "bad";
+            },
+            destroy() {},
+          };
+        },
+      };
+      const mgrSelfClone = createTimetableGeminiNanoManager();
+      await mgrSelfClone.initialize(undefined, "en");
+      await expect(
+        mgrSelfClone.extractPlan("Test", state, undefined, undefined, "en")
+      ).rejects.toThrow();
+      await expect(
+        (async () => {
+          for await (const _c of mgrSelfClone.streamConsultationReply(
+            "Test",
+            [],
+            state,
+            null,
+            undefined,
+            "en"
+          )) {
+            // drain
+          }
+        })()
+      ).rejects.toThrow();
+      expect(baseExtractorPromptCount).toBe(0);
+      expect(baseConsultPromptCount).toBe(0);
+      mgrSelfClone.destroy();
+
+      // 4. streamConsultationReply propagates AbortError and LLM errors instead of yielding raw summaryLines
+      const abortCtrl = new AbortController();
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create() {
+          return {
+            async clone() {
+              return {
+                async *promptStreaming(_prompt: string, opts?: { signal?: AbortSignal }) {
+                  if (opts?.signal?.aborted) {
+                    const abortErr = new Error("Aborted");
+                    abortErr.name = "AbortError";
+                    throw abortErr;
+                  }
+                  throw new Error("QuotaExceededError: input too large");
+                },
+                destroy() {},
+              };
+            },
+            destroy() {},
+          };
+        },
+      };
+      const mgrStreamErr = createTimetableGeminiNanoManager();
+      await mgrStreamErr.initialize(undefined, "en");
+      await expect(
+        (async () => {
+          for await (const _c of mgrStreamErr.streamConsultationReply(
+            "Optimize",
+            ["Pinned C15"],
+            state,
+            null,
+            undefined,
+            "en"
+          )) {
+            // drain
+          }
+        })()
+      ).rejects.toThrow(/QuotaExceededError/);
+
+      abortCtrl.abort();
+      await expect(
+        (async () => {
+          for await (const _c of mgrStreamErr.streamConsultationReply(
+            "Optimize",
+            ["Pinned C15"],
+            state,
+            null,
+            abortCtrl.signal,
+            "en"
+          )) {
+            // drain
+          }
+        })()
+      ).rejects.toMatchObject({ name: "AbortError" });
+      mgrStreamErr.destroy();
+
+      // 5. applyTimetableChatOperationsToState records operations with unknown entity IDs as rejected
+      const opRes = applyTimetableChatOperationsToState(state, [
+        { op: "pin_course_slot", courseId: "C_NOPE", days: ["Mon"], periods: [1], isHard: true },
+        { op: "pin_course_slot", courseId: "C01", days: ["Mon"], periods: [1], roomId: "R_NOPE", isHard: true },
+        { op: "forbid_course_slot", courseId: "C_NOPE", days: ["Mon"], periods: [1], isHard: true },
+        { op: "set_professor_unavailability", professorId: "P_NOPE", days: ["Mon"], periods: [1], isHard: true },
+        { op: "set_professor_preference", professorId: "P_NOPE", avoidPeriod1: true },
+        { op: "set_course_room_rule", courseId: "C01", roomId: "R_NOPE", mode: "require", isHard: true },
+        { op: "add_course_relation_rule", kind: "course_no_overlap", courseId: "C01", secondCourseId: "C_NOPE", isHard: true },
+        { op: "add_room_closure", roomId: "R_NOPE", days: ["Mon"], periods: [1] },
+      ]) as ReturnType<typeof applyTimetableChatOperationsToState> & {
+        rejectedOperations?: Array<{ op: unknown; reason: string }>;
+      };
+      expect(opRes.appliedLogs).toHaveLength(0);
+      expect(opRes.updatedState.customRules).toEqual(state.customRules);
+      expect(opRes.rejectedOperations).toHaveLength(8);
+    } finally {
+      if (prevLM === undefined) delete (globalThis as any).LanguageModel;
+      else (globalThis as any).LanguageModel = prevLM;
+    }
+  });
+
+  it("rejects invalid custom rule references and empty require_room in solver.ts instead of silent relaxation or no-ops", async () => {
+    const base = generateTimetableState();
+    const baseRules = base.customRules;
+
+    // 1. pin_slot with unknown roomId must throw instead of relaxing to any room
+    expect(() =>
+      buildTimetableWashiModel({
+        ...base,
+        customRules: [
+          ...baseRules,
+          {
+            id: "bad_pin_room",
+            kind: "pin_slot",
+            enabled: true,
+            isHard: true,
+            courseId: "C01",
+            days: ["Mon"],
+            periods: [1],
+            roomId: "R_NONEXISTENT",
+            description: "Pin C01 to nonexistent room",
+          },
+        ],
+      })
+    ).toThrow(/R_NONEXISTENT/);
+
+    // 2. Other invalid custom rule references / empty require_room must throw explicit Errors
+    const invalidRules = [
+      {
+        id: "bad_pin_course",
+        kind: "pin_slot" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C_NOPE",
+        days: ["Mon" as const],
+        periods: [1 as const],
+        description: "Unknown course",
+      },
+      {
+        id: "bad_forbid_course",
+        kind: "forbid_slot" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C_NOPE",
+        days: ["Mon" as const],
+        periods: [1 as const],
+        description: "Unknown forbid course",
+      },
+      {
+        id: "bad_forbid_prof",
+        kind: "forbid_slot" as const,
+        enabled: true,
+        isHard: true,
+        professorId: "P_NOPE",
+        days: ["Mon" as const],
+        periods: [1 as const],
+        description: "Unknown forbid prof",
+      },
+      {
+        id: "empty_req_room",
+        kind: "require_room" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        description: "Empty require_room",
+      },
+      {
+        id: "bad_req_room_id",
+        kind: "require_room" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        roomId: "R_NOPE",
+        description: "Unknown room in require_room",
+      },
+      {
+        id: "bad_forbid_room_id",
+        kind: "forbid_room" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        roomId: "R_NOPE",
+        description: "Unknown room in forbid_room",
+      },
+      {
+        id: "bad_no_overlap_second",
+        kind: "course_no_overlap" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        secondCourseId: "C_NOPE",
+        description: "Unknown secondCourseId",
+      },
+      {
+        id: "bad_no_overlap_same",
+        kind: "course_no_overlap" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        secondCourseId: "C01",
+        description: "Self overlap",
+      },
+      {
+        id: "bad_prec_second",
+        kind: "course_precedence" as const,
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        secondCourseId: "C_NOPE",
+        description: "Unknown precedence secondCourseId",
+      },
+      {
+        id: "bad_closure_room",
+        kind: "room_closure" as const,
+        enabled: true,
+        isHard: true,
+        roomId: "R_NOPE",
+        days: ["Mon" as const],
+        periods: [1 as const],
+        description: "Unknown closure room",
+      },
+    ];
+
+    for (const badRule of invalidRules) {
+      expect(() =>
+        buildTimetableWashiModel({ ...base, customRules: [...baseRules, badRule] })
+      ).toThrow();
+      await expect(
+        solveTimetableWithWashi({ ...base, customRules: [...baseRules, badRule] })
+      ).rejects.toThrow();
+    }
+  });
+
+  it("validates UI config inputs, clear confirmation, self-overlap rule, file read errors, coalesced solves, and honest quota errors in main.ts", async () => {
+    const elements = new Map<string, any>();
+    const toastAppends: any[] = [];
+    const makeEl = (id: string, extra: Record<string, any> = {}): any => {
+      const children: any[] = [];
+      const listeners: Record<string, ((e?: any) => void | Promise<void>)[]> = {};
+      return {
+        id,
+        children,
+        options: [],
+        files: [],
+        listeners,
+        dataset: {},
+        style: {},
+        hidden: false,
+        disabled: false,
+        value: "",
+        textContent: "",
+        innerHTML: "",
+        checked: false,
+        className: "",
+        classList: {
+          add: () => {},
+          remove: () => {},
+          toggle: () => {},
+          contains: () => false,
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        addEventListener(evt: string, fn: (e?: any) => void | Promise<void>) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        click() {
+          listeners["click"]?.forEach((fn) => fn({ preventDefault() {} }));
+        },
+        dispatchChange() {
+          return Promise.all(
+            (listeners["change"] ?? []).map((fn) => fn({ target: this }))
+          );
+        },
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        replaceChildren: (...nodes: any[]) => {
+          children.length = 0;
+          children.push(...nodes);
+        },
+        append: (...nodes: any[]) => {
+          for (const node of nodes) {
+            children.push(node);
+            if (id === "workspace-toast-region") toastAppends.push(node);
+          }
+        },
+        appendChild: (node: any) => {
+          children.push(node);
+          if (id === "workspace-toast-region") toastAppends.push(node);
+          return node;
+        },
+        prepend: (node: any) => children.unshift(node),
+        remove: () => {},
+        focus: () => {},
+        ...extra,
+      };
+    };
+
+    const register = (id: string, extra: Record<string, any> = {}) => {
+      const el = makeEl(id, extra);
+      elements.set(id, el);
+      return el;
+    };
+
+    const prevDoc = (globalThis as any).document;
+    const prevConfirm = (globalThis as any).confirm;
+    const prevLM = (globalThis as any).LanguageModel;
+    const prevWindow = (globalThis as any).window;
+
+    try {
+      register("workspace-toast-region");
+      register("chat-messages");
+      register("cfg-enforceRoomCapacity", { checked: true });
+      register("cfg-enforceRoomEquipment", { checked: true });
+      register("cfg-enforceCohortNoOverlap", { checked: true });
+      register("cfg-forbidSameCourseSameDay", { checked: true });
+      register("cfg-enforceAdjunctDayRestrictions", { checked: true });
+      register("cfg-enforceProfessorAvailability", { checked: true });
+      register("cfg-enforceMaxConsecutivePeriods", { checked: true });
+      const inMaxConsec = register("cfg-maxProfessorConsecutivePeriods", { value: "2" });
+      const inMaxDaily = register("cfg-maxProfessorSessionsPerDay", { value: "3" });
+      const inMaxCohort = register("cfg-maxCohortCompulsoryPerDay", { value: "4" });
+      const inWeightGap = register("cfg-weightCohortIdleGaps", { value: "2" });
+
+      (globalThis as any).document = {
+        getElementById: (id: string) => elements.get(id) ?? register(id),
+        createElement: (tag: string) => makeEl(`anon_${tag}`),
+        createTextNode: (t: string) => makeEl("text", { textContent: t }),
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        addEventListener: () => {},
+        documentElement: {
+          lang: "en",
+          setAttribute: () => {},
+          getAttribute: () => null,
+        },
+      };
+      (globalThis as any).window = {
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        matchMedia: () => ({
+          matches: false,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }),
+        localStorage: {
+          getItem: () => null,
+          setItem: () => {},
+        },
+        location: { search: "?lang=en" },
+      };
+
+      vi.resetModules();
+      const mainFresh = await import("../examples/web-demo/apps/ai-timetable/main.js");
+      mainFresh.applyTimetableLang("en");
+
+      // 1. readConfigFromForm validates numeric inputs instead of writing NaN / 0
+      inMaxConsec.value = "";
+      expect(mainFresh.readConfigFromForm()).toBe(false);
+      expect(mainFresh.getAppState().config.maxProfessorConsecutivePeriods).toBe(2);
+      inMaxDaily.value = "abc";
+      expect(mainFresh.readConfigFromForm()).toBe(false);
+      expect(mainFresh.getAppState().config.maxProfessorSessionsPerDay).toBe(3);
+      inMaxCohort.value = "9";
+      expect(mainFresh.readConfigFromForm()).toBe(false);
+      expect(mainFresh.getAppState().config.maxCohortCompulsoryPerDay).toBe(4);
+      inWeightGap.value = "-1";
+      expect(mainFresh.readConfigFromForm()).toBe(false);
+      expect(mainFresh.getAppState().config.weightCohortIdleGaps).toBe(2);
+      expect(toastAppends.length).toBeGreaterThanOrEqual(4);
+
+      // Chat-supported cohort cap (1..5) must also be accepted by readConfigFromForm
+      inMaxCohort.value = "1";
+      expect(mainFresh.readConfigFromForm()).toBe(true);
+      expect(mainFresh.getAppState().config.maxCohortCompulsoryPerDay).toBe(1);
+      inMaxCohort.value = "4";
+      expect(mainFresh.readConfigFromForm()).toBe(true);
+
+      // 2. handleClearToBlank returns false and preserves data when confirm() is unavailable
+      delete (globalThis as any).confirm;
+      const beforeCoursesCount = mainFresh.getAppState().courses.length;
+      expect(beforeCoursesCount).toBeGreaterThan(0);
+      expect(mainFresh.handleClearToBlank()).toBe(false);
+      expect(mainFresh.getAppState().courses).toHaveLength(beforeCoursesCount);
+
+      // 3. course_no_overlap rejects c2Id === c1Id with visible validation notice
+      toastAppends.length = 0;
+      const ruleCountBefore = mainFresh.getAppState().customRules.length;
+      const ruleKindSel = document.getElementById("select-new-rule-kind") as any;
+      const ruleC1Sel = document.getElementById("select-new-rule-course1") as any;
+      const ruleC2Sel = document.getElementById("select-new-rule-course2") as any;
+      ruleKindSel.value = "course_no_overlap";
+      ruleC1Sel.value = "C01";
+      ruleC2Sel.value = "C01";
+      elements.get("btn-add-custom-rule").click();
+      expect(mainFresh.getAppState().customRules).toHaveLength(ruleCountBefore);
+      expect(toastAppends.length).toBeGreaterThan(0);
+
+      // 4. file.text() rejections on CSV file inputs are caught and shown in status element
+      for (const [inputId, statusId] of [
+        ["file-input-profs", "file-status-profs"],
+        ["file-input-rooms", "file-status-rooms"],
+        ["file-input-courses", "file-status-courses"],
+      ] as const) {
+        const inputEl = elements.get(inputId);
+        inputEl.files = [
+          {
+            text: () => Promise.reject(new Error("Disk read failure")),
+          },
+        ];
+        await inputEl.dispatchChange();
+        // Wait microtasks for promise rejection handler
+        await new Promise((r) => setTimeout(r, 10));
+        expect(elements.get(statusId).className).toContain("is-error");
+        expect(elements.get(statusId).textContent).toContain("Disk read failure");
+      }
+
+      // 5. Coalesced triggerSolve propagates rejection when the queued solve throws
+      const p1 = mainFresh.triggerSolve();
+      // While p1 is solving, inject an invalid custom rule so the queued second solve rejects in buildTimetableWashiModel
+      mainFresh.getAppState().customRules.push({
+        id: "queued_bad_pin",
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C01",
+        days: ["Mon"],
+        periods: [1],
+        roomId: "R_BAD_QUEUED",
+        description: "Invalid queued pin",
+      });
+      const p2 = mainFresh.triggerSolve();
+      await p1;
+      await expect(p2).rejects.toThrow(/R_BAD_QUEUED/);
+      mainFresh.getAppState().customRules = mainFresh
+        .getAppState()
+        .customRules.filter((r: any) => r.id !== "queued_bad_pin");
+
+      // 6. Chat handler reports generic "quota" errors honestly instead of rewriting to hardcoded "4096 token limit"
+      (globalThis as any).LanguageModel = {
+        availability: async () => "available",
+        create: async () => ({
+          async clone() {
+            return {
+              async prompt() {
+                throw new Error("QuotaExceededError: input context quota exceeded");
+              },
+              destroy() {},
+            };
+          },
+          destroy() {},
+        }),
+      };
+      mainFresh.applyTimetableLang("ja");
+      const chatMsgsEl = elements.get("chat-messages");
+      const msgCountBefore = chatMsgsEl.children.length;
+      elements.get("chat-input").value = "Optimize schedule";
+      elements.get("chat-form").listeners["submit"]?.[0]({ preventDefault() {} });
+      await new Promise((r) => setTimeout(r, 30));
+      const newChatText = chatMsgsEl.children
+        .slice(msgCountBefore)
+        .map((n: any) => JSON.stringify(n))
+        .join(" ");
+      expect(newChatText).toContain("QuotaExceededError");
+      expect(newChatText).not.toContain("4096");
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+      if (prevConfirm === undefined) delete (globalThis as any).confirm;
+      else (globalThis as any).confirm = prevConfirm;
+      if (prevLM === undefined) delete (globalThis as any).LanguageModel;
+      else (globalThis as any).LanguageModel = prevLM;
+      if (prevWindow === undefined) delete (globalThis as any).window;
+      else (globalThis as any).window = prevWindow;
     }
   }, 30_000);
 });

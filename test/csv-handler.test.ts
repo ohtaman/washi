@@ -58,7 +58,7 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
 
     // Rooms
     const roomsCsv = exportRoomsCsv(defaultState.rooms);
-    expect(roomsCsv).toContain("id,name,capacity");
+    expect(roomsCsv).toContain("id,name,capacity,roomType,equipment,building");
     expect(roomsCsv).toContain("R101");
     const parsedRooms = parseRoomsCsv(roomsCsv);
     expect(parsedRooms.errors).toHaveLength(0);
@@ -67,6 +67,7 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
     expect(r101?.capacity).toBe(150);
     expect(r101?.roomType).toBe("large_hall");
     expect(r101?.equipment).toContain("projector");
+    expect(r101?.building).toBe("CS Bldg 1F");
 
     // Courses
     const coursesCsv = exportCoursesCsv(defaultState.courses);
@@ -198,5 +199,83 @@ C01,Data Structures,P01
       dupCourseDataset
     );
     expect(dsErrors.some((e) => e.includes("Duplicate"))).toBe(true);
+  });
+
+  it("rejects invalid or empty present CSV fields without silent coercions or auto-inference", () => {
+    // 1. Professors CSV: invalid employment, unavailableDays, unavailableSlots, booleans, and maxSessionsPerDay
+    const badProfCsv = `
+id,name,title,employment,unavailableDays,unavailableSlots,avoidPeriod1,avoidPeriod5,maxSessionsPerDay
+P01,Prof Good,Prof,full_time,,,false,false,2
+P02,Prof Bad Emp,Prof,contractor,,,false,false,2
+P03,Prof Bad Day,Prof,full_time,Funday,,false,false,2
+P04,Prof Bad Slot,Prof,full_time,,Mon-9,false,false,2
+P05,Prof Bad Flag,Prof,full_time,,,maybe,false,2
+P06,Prof Bad Max 0,Prof,full_time,,,false,false,0
+P07,Prof Bad Max NaN,Prof,full_time,,,false,false,many
+P08,Prof Empty Max,Prof,full_time,,,false,false,
+`.trim();
+    const badProfRes = parseProfessorsCsv(badProfCsv);
+    expect(badProfRes.professors.map((p) => p.id)).toEqual(["P01"]);
+    expect(badProfRes.errors).toHaveLength(7);
+
+    // 2. Rooms CSV: reads building column, defaults omitted/empty building to "", rejects invalid roomType/equipment/substring collision
+    const roomsWithBuildingCsv = `
+id,name,capacity,roomType,equipment,building
+R101,Room 101,80,medium_room,projector;mic,North Wing 2F
+R102,Room 102,40,seminar_room,,
+`.trim();
+    const okRooms = parseRoomsCsv(roomsWithBuildingCsv);
+    expect(okRooms.errors).toHaveLength(0);
+    expect(okRooms.rooms).toHaveLength(2);
+    expect(okRooms.rooms[0].building).toBe("North Wing 2F");
+    expect(okRooms.rooms[0].roomType).toBe("medium_room");
+    expect(okRooms.rooms[1].building).toBe("");
+
+    const roomsWithoutBuildingCol = `
+id,name,capacity,roomType,equipment
+R201,Room 201,60,pc_lab,pc_terminal
+`.trim();
+    const okNoBld = parseRoomsCsv(roomsWithoutBuildingCol);
+    expect(okNoBld.errors).toHaveLength(0);
+    expect(okNoBld.rooms[0].building).toBe("");
+
+    const badRoomCsv = `
+id,name,capacity,roomType,equipment,building
+R301,Bad Type,50,auditorium,projector,Main
+R302,Substring Type,50,non_pc_lab,projector,Main
+R303,Empty Type,50,,projector,Main
+R304,Bad Equip,50,medium_room,laser_beam,Main
+R305,Zero Cap,0,medium_room,projector,Main
+`.trim();
+    const badRoomRes = parseRoomsCsv(badRoomCsv);
+    expect(badRoomRes.rooms).toHaveLength(0);
+    expect(badRoomRes.errors).toHaveLength(5);
+
+    // 3. Courses CSV: skips unknown professorId, rejects invalid cohorts/category/enrollment/sessionsPerWeek/equipment/roomType, and removes pc_lab auto-inference
+    const knownProfs = new Set(["P01"]);
+    const validLabNoReqRoomType = `
+id,title,professorId,cohorts,category,enrollment,sessionsPerWeek,requiredEquipment,requiredRoomType
+C10,Systems Lab,P01,Y2,lab_exercise,40,1,pc_terminal,
+`.trim();
+    const labRes = parseCoursesCsv(validLabNoReqRoomType, knownProfs);
+    expect(labRes.errors).toHaveLength(0);
+    expect(labRes.courses).toHaveLength(1);
+    expect(labRes.courses[0].requiredRoomType).toBeUndefined();
+
+    const badCourseCsv = `
+id,title,professorId,cohorts,category,enrollment,sessionsPerWeek,requiredEquipment,requiredRoomType
+C01,Unknown Prof,P999,Y1,compulsory,50,1,projector,
+C02,Empty Cohorts,P01,,compulsory,50,1,projector,
+C03,Invalid Cohort,P01,Y9,compulsory,50,1,projector,
+C04,Invalid Category,P01,Y1,workshop,50,1,projector,
+C05,Zero Enrollment,P01,Y1,elective,0,1,projector,
+C06,NaN Enrollment,P01,Y1,elective,many,1,projector,
+C07,Bad Sessions,P01,Y1,elective,30,3,projector,
+C08,Bad Equipment,P01,Y1,elective,30,1,quantum_rig,
+C09,Bad ReqRoomType,P01,Y1,elective,30,1,projector,gymnasium
+`.trim();
+    const badCourseRes = parseCoursesCsv(badCourseCsv, knownProfs);
+    expect(badCourseRes.courses).toHaveLength(0);
+    expect(badCourseRes.errors).toHaveLength(9);
   });
 });

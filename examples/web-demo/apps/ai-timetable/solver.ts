@@ -510,23 +510,41 @@ export function buildTimetableWashiModel(
   }
 
   // 10. Custom Rules (User-added or AI-added constraints)
+  const requireCourse = (courseId: string | undefined, ruleId: string, kind: string): CourseProfile => {
+    const found = courseId ? courseMap.get(courseId) : undefined;
+    if (!found) {
+      throw new Error(`Custom rule '${ruleId}' (${kind}) references unknown courseId '${courseId ?? ""}'.`);
+    }
+    return found;
+  };
+  const requireRoom = (roomId: string | undefined, ruleId: string, kind: string): RoomProfile => {
+    const found = roomId ? roomMap.get(roomId) : undefined;
+    if (!found) {
+      throw new Error(`Custom rule '${ruleId}' (${kind}) references unknown roomId '${roomId ?? ""}'.`);
+    }
+    return found;
+  };
+
   for (const rule of customRules) {
     if (!rule.enabled) continue;
     const isHard = rule.isHard !== false;
     const weight = rule.weight ?? 60;
 
-    if (rule.kind === "pin_slot" && rule.courseId) {
-      const c = courseMap.get(rule.courseId);
+    if (rule.kind === "pin_slot") {
+      const c = requireCourse(rule.courseId, rule.id, rule.kind);
       const pinDays = rule.days ?? [];
       const pinPeriods = rule.periods ?? [];
-      if (!c || pinDays.length === 0 || pinPeriods.length === 0) continue;
+      if (pinDays.length === 0 || pinPeriods.length === 0) {
+        throw new Error(`Custom rule '${rule.id}' (pin_slot) requires non-empty days and periods.`);
+      }
+      const pinnedRoom = rule.roomId !== undefined ? requireRoom(rule.roomId, rule.id, rule.kind) : undefined;
 
       for (const d of pinDays) {
         for (const p of pinPeriods) {
           const suffix =
             pinDays.length > 1 || pinPeriods.length > 1 ? `_${d}_P${p}` : "";
-          if (rule.roomId && roomMap.has(rule.roomId)) {
-            const targetVar = vAssign[c.id][d][p][rule.roomId];
+          if (pinnedRoom) {
+            const targetVar = vAssign[c.id][d][p][pinnedRoom.id];
             registerSoftOrHard(
               sum([targetVar]),
               ">=",
@@ -537,7 +555,7 @@ export function buildTimetableWashiModel(
                 category: "custom",
                 labelJa: `Custom Rule (Pin Slot & Room): ${rule.description}`,
                 relatedCourseIds: [c.id],
-                relatedRoomIds: [rule.roomId],
+                relatedRoomIds: [pinnedRoom.id],
                 relaxSuggestion: `Remove or modify pin rule "${rule.description}".`,
               },
               isHard,
@@ -568,10 +586,19 @@ export function buildTimetableWashiModel(
       const targetPeriods = rule.periods && rule.periods.length > 0 ? rule.periods : [...PERIODS];
 
       const targetCourses: CourseProfile[] = [];
-      if (rule.courseId && courseMap.has(rule.courseId)) {
-        targetCourses.push(courseMap.get(rule.courseId)!);
-      } else if (rule.professorId) {
+      let validatedProfId: string | undefined;
+      if (rule.courseId !== undefined) {
+        targetCourses.push(requireCourse(rule.courseId, rule.id, rule.kind));
+      } else if (rule.professorId !== undefined) {
+        if (!rule.professorId || !profMap.has(rule.professorId)) {
+          throw new Error(
+            `Custom rule '${rule.id}' (forbid_slot) references unknown professorId '${rule.professorId}'.`
+          );
+        }
+        validatedProfId = rule.professorId;
         targetCourses.push(...courses.filter((c) => c.professorId === rule.professorId));
+      } else {
+        throw new Error(`Custom rule '${rule.id}' (forbid_slot) requires courseId or professorId.`);
       }
 
       if (targetCourses.length > 0) {
@@ -594,7 +621,7 @@ export function buildTimetableWashiModel(
               category: "custom",
               labelJa: `Custom Rule (Forbid Slot): ${rule.description}`,
               relatedCourseIds: targetCourses.map((c) => c.id),
-              relatedProfessorIds: rule.professorId ? [rule.professorId] : undefined,
+              relatedProfessorIds: validatedProfId ? [validatedProfId] : undefined,
               relaxSuggestion: `Relax or remove forbid rule "${rule.description}".`,
             },
             isHard,
@@ -602,13 +629,15 @@ export function buildTimetableWashiModel(
           );
         }
       }
-    } else if (rule.kind === "require_room" && rule.courseId) {
-      const c = courseMap.get(rule.courseId);
-      if (!c) continue;
+    } else if (rule.kind === "require_room") {
+      const c = requireCourse(rule.courseId, rule.id, rule.kind);
+      const reqRoom = rule.roomId !== undefined ? requireRoom(rule.roomId, rule.id, rule.kind) : undefined;
+      if (!reqRoom && !rule.roomType) {
+        throw new Error(`Custom rule '${rule.id}' (require_room) requires roomId or roomType.`);
+      }
       const allowedRooms = rooms.filter((r) => {
-        if (rule.roomId) return r.id === rule.roomId;
-        if (rule.roomType) return r.roomType === rule.roomType;
-        return true;
+        if (reqRoom) return r.id === reqRoom.id;
+        return r.roomType === rule.roomType;
       });
       const disallowedRooms = rooms.filter((r) => !allowedRooms.some((ar) => ar.id === r.id));
       if (disallowedRooms.length > 0) {
@@ -630,24 +659,22 @@ export function buildTimetableWashiModel(
             category: "custom",
             labelJa: `Custom Rule (Require Room): ${rule.description}`,
             relatedCourseIds: [c.id],
-            relatedRoomIds: rule.roomId ? [rule.roomId] : undefined,
+            relatedRoomIds: reqRoom ? [reqRoom.id] : undefined,
             relaxSuggestion: `Remove room requirement rule "${rule.description}".`,
           },
           isHard,
           weight
         );
       }
-    } else if (
-      rule.kind === "forbid_room" &&
-      rule.courseId &&
-      (rule.roomId || rule.roomType)
-    ) {
-      const c = courseMap.get(rule.courseId);
-      if (!c) continue;
+    } else if (rule.kind === "forbid_room") {
+      const c = requireCourse(rule.courseId, rule.id, rule.kind);
+      const forbRoom = rule.roomId !== undefined ? requireRoom(rule.roomId, rule.id, rule.kind) : undefined;
+      if (!forbRoom && !rule.roomType) {
+        throw new Error(`Custom rule '${rule.id}' (forbid_room) requires roomId or roomType.`);
+      }
       const forbiddenRooms = rooms.filter((r) => {
-        if (rule.roomId) return r.id === rule.roomId;
-        if (rule.roomType) return r.roomType === rule.roomType;
-        return false;
+        if (forbRoom) return r.id === forbRoom.id;
+        return r.roomType === rule.roomType;
       });
       if (forbiddenRooms.length > 0) {
         const disVars: Var[] = [];
@@ -675,15 +702,12 @@ export function buildTimetableWashiModel(
           weight
         );
       }
-    } else if (
-      rule.kind === "course_no_overlap" &&
-      rule.courseId &&
-      rule.secondCourseId &&
-      rule.courseId !== rule.secondCourseId
-    ) {
-      const c1 = courseMap.get(rule.courseId);
-      const c2 = courseMap.get(rule.secondCourseId);
-      if (!c1 || !c2) continue;
+    } else if (rule.kind === "course_no_overlap") {
+      const c1 = requireCourse(rule.courseId, rule.id, rule.kind);
+      const c2 = requireCourse(rule.secondCourseId, rule.id, rule.kind);
+      if (c1.id === c2.id) {
+        throw new Error(`Custom rule '${rule.id}' (course_no_overlap) requires two distinct courses.`);
+      }
       for (const d of DAYS_OF_WEEK) {
         for (const p of PERIODS) {
           const bothVars = [
@@ -707,10 +731,11 @@ export function buildTimetableWashiModel(
           );
         }
       }
-    } else if (rule.kind === "course_consecutive" && rule.courseId) {
-      const c1 = courseMap.get(rule.courseId);
-      const c2 = rule.secondCourseId ? courseMap.get(rule.secondCourseId) : c1;
-      if (!c1 || !c2) continue;
+    } else if (rule.kind === "course_consecutive") {
+      const c1 = requireCourse(rule.courseId, rule.id, rule.kind);
+      const c2 = rule.secondCourseId !== undefined
+        ? requireCourse(rule.secondCourseId, rule.id, rule.kind)
+        : c1;
 
       // Require that on whichever day c1 and c2 are scheduled consecutively, they occupy adjacent periods (p, p+1) in either order.
       const pairIndicators: Var[] = [];
@@ -755,10 +780,11 @@ export function buildTimetableWashiModel(
         isHard,
         weight
       );
-    } else if (rule.kind === "course_same_day" && rule.courseId) {
-      const c1 = courseMap.get(rule.courseId);
-      const c2 = rule.secondCourseId ? courseMap.get(rule.secondCourseId) : c1;
-      if (!c1 || !c2) continue;
+    } else if (rule.kind === "course_same_day") {
+      const c1 = requireCourse(rule.courseId, rule.id, rule.kind);
+      const c2 = rule.secondCourseId !== undefined
+        ? requireCourse(rule.secondCourseId, rule.id, rule.kind)
+        : c1;
 
       const dayIndicators: Var[] = [];
       for (const d of DAYS_OF_WEEK) {
@@ -789,15 +815,12 @@ export function buildTimetableWashiModel(
         isHard,
         weight
       );
-    } else if (
-      rule.kind === "course_precedence" &&
-      rule.courseId &&
-      rule.secondCourseId &&
-      rule.courseId !== rule.secondCourseId
-    ) {
-      const c1 = courseMap.get(rule.courseId);
-      const c2 = courseMap.get(rule.secondCourseId);
-      if (!c1 || !c2) continue;
+    } else if (rule.kind === "course_precedence") {
+      const c1 = requireCourse(rule.courseId, rule.id, rule.kind);
+      const c2 = requireCourse(rule.secondCourseId, rule.id, rule.kind);
+      if (c1.id === c2.id) {
+        throw new Error(`Custom rule '${rule.id}' (course_precedence) requires two distinct courses.`);
+      }
 
       // Enforce latest scheduled day index of c1 <= earliest scheduled day index of c2 (0=Mon .. 4=Fri)
       const maxDayC1 = m.continuous(`prec_max_${rule.id}`, { lb: 0, ub: 4 });
@@ -835,14 +858,15 @@ export function buildTimetableWashiModel(
         isHard,
         weight
       );
-    } else if (rule.kind === "room_closure" && rule.roomId && roomMap.has(rule.roomId)) {
+    } else if (rule.kind === "room_closure") {
+      const closedRoom = requireRoom(rule.roomId, rule.id, rule.kind);
       const targetDays = rule.days && rule.days.length > 0 ? rule.days : [...DAYS_OF_WEEK];
       const targetPeriods = rule.periods && rule.periods.length > 0 ? rule.periods : [...PERIODS];
       const closedVars: Var[] = [];
       for (const d of targetDays) {
         for (const p of targetPeriods) {
           for (const c of courses) {
-            closedVars.push(vAssign[c.id][d][p][rule.roomId]);
+            closedVars.push(vAssign[c.id][d][p][closedRoom.id]);
           }
         }
       }
@@ -856,13 +880,33 @@ export function buildTimetableWashiModel(
             relatedRuleId: rule.id,
             category: "custom",
             labelJa: `Custom Rule (Room Maintenance Closure): ${rule.description}`,
-            relatedRoomIds: [rule.roomId],
+            relatedRoomIds: [closedRoom.id],
             relaxSuggestion: `Remove room closure rule "${rule.description}".`,
           },
           isHard,
           weight
         );
       }
+    } else if (rule.kind === "prof_max_daily") {
+      if (!rule.professorId || !profMap.has(rule.professorId)) {
+        throw new Error(
+          `Custom rule '${rule.id}' (prof_max_daily) references unknown professorId '${rule.professorId ?? ""}'.`
+        );
+      }
+      if (
+        typeof rule.maxDailySessions !== "number" ||
+        !Number.isInteger(rule.maxDailySessions) ||
+        rule.maxDailySessions < 1 ||
+        rule.maxDailySessions > 5
+      ) {
+        throw new Error(
+          `Custom rule '${rule.id}' (prof_max_daily) requires maxDailySessions integer 1–5.`
+        );
+      }
+    } else {
+      throw new Error(
+        `Custom rule '${rule.id}' has unsupported kind '${String((rule as { kind?: unknown }).kind)}'.`
+      );
     }
   }
 
@@ -1453,27 +1497,26 @@ export async function solveTimetableWithWashi(
   if (state.courses.length === 0 || state.rooms.length === 0) {
     const emptySolution: WeeklyTimetableSolution = {
       bySlot: {},
+      bySlotAndRoom: {},
       byCourse: {},
       sessions: [],
     };
     return {
       status: "Optimal",
+      solverUsed: "HiGHS (WASM)",
       objectiveValue: 0,
       buildTimeMs: 0,
       solveTimeMs: 0,
-      totalTimeMs: 0,
       numVariables: 0,
       numConstraints: 0,
       validatedByWashi: true,
       maxViolation: 0,
       timetable: emptySolution,
-      evaluation: evaluateTimetableSolution(
-        state,
-        emptySolution,
-        useRef ? options?.referenceTimetable : null
-      ),
-      lpStringPreview: "// Empty timetable (no courses or rooms registered)",
-      washiCodeSnippet: "// Empty timetable",
+      evaluation: evaluateTimetableSolution(state, emptySolution),
+      lpPreview: "// Empty timetable (no courses or rooms registered)",
+      modelCodePreview: "// Empty timetable",
+      conflicts: [],
+      rawConflictNames: [],
     };
   }
 

@@ -24,9 +24,10 @@ function matchesHeader(h: string, field: string, section: "professors" | "rooms"
 }
 
 function matchesToken(t: string, tokenKey: string): boolean {
+  const normalized = t.trim().toLowerCase();
   for (const cat of ALL_CSV_CATALOGS) {
     const list = cat.tokens?.[tokenKey];
-    if (list && list.some((k: string) => t === k || t.includes(k))) return true;
+    if (list && list.some((k: string) => normalized === k.toLowerCase())) return true;
   }
   return false;
 }
@@ -150,21 +151,66 @@ function parseCohortToken(token: string): CohortId | null {
   return null;
 }
 
-function parseRoomTypeToken(token: string): RoomType {
+function parseRoomTypeToken(token: string): RoomType | null {
   const t = token.trim().toLowerCase();
+  if (!t) return null;
   if (matchesToken(t, "large_hall")) return "large_hall";
+  if (matchesToken(t, "medium_room")) return "medium_room";
   if (matchesToken(t, "pc_lab")) return "pc_lab";
   if (matchesToken(t, "seminar_room")) return "seminar_room";
-  return "medium_room";
+  return null;
 }
 
-function parseCategoryToken(token: string): CourseCategory {
+function parseCategoryToken(token: string): CourseCategory | null {
   const t = token.trim().toLowerCase();
+  if (!t) return null;
   if (matchesToken(t, "compulsory")) return "compulsory";
   if (matchesToken(t, "elective_core")) return "elective_core";
   if (matchesToken(t, "lab_exercise")) return "lab_exercise";
   if (matchesToken(t, "seminar")) return "seminar";
-  return "elective";
+  if (matchesToken(t, "elective")) return "elective";
+  return null;
+}
+
+function parseEmploymentToken(token: string): ProfessorEmploymentType | null {
+  const t = token.trim().toLowerCase();
+  if (
+    t === "full_time" ||
+    t === "full-time" ||
+    t === "full time" ||
+    t === "regular" ||
+    t === "常勤" ||
+    t === "専任" ||
+    t === "全职" ||
+    t === "专任"
+  ) {
+    return "full_time";
+  }
+  if (
+    t === "adjunct" ||
+    t === "part_time" ||
+    t === "part-time" ||
+    t === "part time" ||
+    t === "非常勤" ||
+    t === "非常勤講師" ||
+    t === "外聘" ||
+    t === "外聘讲师" ||
+    t === "兼职"
+  ) {
+    return "adjunct";
+  }
+  return null;
+}
+
+function parseBooleanToken(token: string): boolean | null {
+  const t = token.trim().toLowerCase();
+  if (t === "true" || t === "1" || t === "yes" || t === "on" || t === "要" || t === "回避" || t === "是") {
+    return true;
+  }
+  if (t === "false" || t === "0" || t === "no" || t === "off" || t === "不要" || t === "否") {
+    return false;
+  }
+  return null;
 }
 
 function parseEquipmentToken(token: string): RoomEquipment | null {
@@ -226,45 +272,84 @@ export function parseProfessorsCsv(csvText: string): {
     }
     seenIds.add(id);
 
-    const title = titleIdx !== -1 && row[titleIdx] ? row[titleIdx].trim() : "講師";
-    const empRaw = empIdx !== -1 && row[empIdx] ? row[empIdx].trim().toLowerCase() : "";
-    const employment: ProfessorEmploymentType =
-      empRaw === "adjunct" || empRaw.includes("非常勤") ? "adjunct" : "full_time";
+    const title = titleIdx !== -1 ? (row[titleIdx] ?? "").trim() : "講師";
+
+    let employment: ProfessorEmploymentType = "full_time";
+    if (empIdx !== -1) {
+      const parsedEmp = parseEmploymentToken(row[empIdx] ?? "");
+      if (!parsedEmp) {
+        errors.push(`Row ${r + 1} (${name}): Invalid employment value '${row[empIdx] ?? ""}'`);
+        continue;
+      }
+      employment = parsedEmp;
+    }
 
     const unavailableDays: TimetableDay[] = [];
-    if (unavailIdx !== -1 && row[unavailIdx]) {
+    let hasInvalidDay = false;
+    if (unavailIdx !== -1 && (row[unavailIdx] ?? "").trim() !== "") {
       const tokens = row[unavailIdx].split(/[;,\/]/);
       for (const tok of tokens) {
-        const d = parseDayToken(tok);
-        if (d && !unavailableDays.includes(d)) {
+        const trimmedTok = tok.trim();
+        const d = trimmedTok ? parseDayToken(trimmedTok) : null;
+        if (!d) {
+          errors.push(`Row ${r + 1} (${name}): Invalid unavailable day token '${trimmedTok}'`);
+          hasInvalidDay = true;
+          break;
+        }
+        if (!unavailableDays.includes(d)) {
           unavailableDays.push(d);
         }
       }
     }
+    if (hasInvalidDay) continue;
 
     const unavailableSlots: Array<{ day: TimetableDay; period: TimetablePeriod; reason?: string }> = [];
-    if (slotIdx !== -1 && row[slotIdx]) {
+    let hasInvalidSlot = false;
+    if (slotIdx !== -1 && (row[slotIdx] ?? "").trim() !== "") {
       const tokens = row[slotIdx].split(";");
       for (const tok of tokens) {
-        const slot = parseSlotToken(tok);
-        if (slot) {
-          unavailableSlots.push(slot);
+        const trimmedTok = tok.trim();
+        const slot = trimmedTok ? parseSlotToken(trimmedTok) : null;
+        if (!slot) {
+          errors.push(`Row ${r + 1} (${name}): Invalid unavailable slot token '${trimmedTok}'`);
+          hasInvalidSlot = true;
+          break;
         }
+        unavailableSlots.push(slot);
       }
     }
+    if (hasInvalidSlot) continue;
 
-    const avoidP1 =
-      p1Idx !== -1 && row[p1Idx]
-        ? ["true", "1", "yes", "要", "回避"].includes(row[p1Idx].trim().toLowerCase())
-        : false;
-    const avoidP5 =
-      p5Idx !== -1 && row[p5Idx]
-        ? ["true", "1", "yes", "要", "回避"].includes(row[p5Idx].trim().toLowerCase())
-        : false;
-    const maxSessions =
-      maxIdx !== -1 && row[maxIdx] && !isNaN(Number(row[maxIdx]))
-        ? Math.max(1, Math.min(5, Number(row[maxIdx])))
-        : employment === "adjunct" ? 3 : 2;
+    let avoidP1 = false;
+    if (p1Idx !== -1) {
+      const parsedP1 = parseBooleanToken(row[p1Idx] ?? "");
+      if (parsedP1 === null) {
+        errors.push(`Row ${r + 1} (${name}): Invalid avoidPeriod1 boolean '${row[p1Idx] ?? ""}'`);
+        continue;
+      }
+      avoidP1 = parsedP1;
+    }
+
+    let avoidP5 = false;
+    if (p5Idx !== -1) {
+      const parsedP5 = parseBooleanToken(row[p5Idx] ?? "");
+      if (parsedP5 === null) {
+        errors.push(`Row ${r + 1} (${name}): Invalid avoidPeriod5 boolean '${row[p5Idx] ?? ""}'`);
+        continue;
+      }
+      avoidP5 = parsedP5;
+    }
+
+    let maxSessions: number = employment === "adjunct" ? 3 : 2;
+    if (maxIdx !== -1) {
+      const maxRaw = (row[maxIdx] ?? "").trim();
+      const maxNum = maxRaw === "" ? NaN : Number(maxRaw);
+      if (!Number.isInteger(maxNum) || maxNum < 1 || maxNum > 5) {
+        errors.push(`Row ${r + 1} (${name}): Invalid maxSessionsPerDay '${row[maxIdx] ?? ""}' (must be an integer 1–5)`);
+        continue;
+      }
+      maxSessions = maxNum;
+    }
 
     professors.push({
       id,
@@ -320,10 +405,11 @@ export function parseRoomsCsv(csvText: string): {
     const row = rows[r];
     const id = row[idIdx]?.trim();
     const name = row[nameIdx]?.trim();
-    const capNum = row[capIdx] ? Number(row[capIdx]) : NaN;
+    const capRaw = (row[capIdx] ?? "").trim();
+    const capNum = capRaw === "" ? NaN : Number(capRaw);
 
-    if (!id || !name || isNaN(capNum) || capNum <= 0) {
-      errors.push(`Row ${r + 1}: ID, room name, or valid positive capacity is missing`);
+    if (!id || !name || !Number.isInteger(capNum) || capNum <= 0) {
+      errors.push(`Row ${r + 1}: ID, room name, or valid positive integer capacity is missing`);
       continue;
     }
     if (seenIds.has(id)) {
@@ -332,23 +418,42 @@ export function parseRoomsCsv(csvText: string): {
     }
     seenIds.add(id);
 
-    const roomType = typeIdx !== -1 && row[typeIdx] ? parseRoomTypeToken(row[typeIdx]) : "medium_room";
+    let roomType: RoomType = "medium_room";
+    if (typeIdx !== -1) {
+      const parsedType = parseRoomTypeToken(row[typeIdx] ?? "");
+      if (!parsedType) {
+        errors.push(`Row ${r + 1} (${name}): Invalid roomType '${row[typeIdx] ?? ""}'`);
+        continue;
+      }
+      roomType = parsedType;
+    }
+
     const equipment: RoomEquipment[] = [];
-    if (eqIdx !== -1 && row[eqIdx]) {
+    let hasInvalidEquipment = false;
+    if (eqIdx !== -1 && (row[eqIdx] ?? "").trim() !== "") {
       const tokens = row[eqIdx].split(/[;,\/]/);
       for (const tok of tokens) {
-        const eq = parseEquipmentToken(tok);
-        if (eq && !equipment.includes(eq)) {
+        const trimmedTok = tok.trim();
+        const eq = trimmedTok ? parseEquipmentToken(trimmedTok) : null;
+        if (!eq) {
+          errors.push(`Row ${r + 1} (${name}): Invalid equipment token '${trimmedTok}'`);
+          hasInvalidEquipment = true;
+          break;
+        }
+        if (!equipment.includes(eq)) {
           equipment.push(eq);
         }
       }
     }
+    if (hasInvalidEquipment) continue;
+
+    const building = bldIdx !== -1 && row[bldIdx] ? row[bldIdx].trim() : "";
 
     rooms.push({
       id,
       name,
       shortName: name.length > 8 ? name.slice(0, 8) : name,
-      building: "本館",
+      building,
       capacity: capNum,
       roomType,
       equipment,
@@ -416,42 +521,90 @@ export function parseCoursesCsv(
 
     if (knownProfIds && knownProfIds.size > 0 && !knownProfIds.has(professorId)) {
       errors.push(`Row ${r + 1} (${title}): Professor ID '${professorId}' does not exist in faculty list`);
+      continue;
     }
 
     const cohorts: CohortId[] = [];
-    if (cohortIdx !== -1 && row[cohortIdx]) {
-      const tokens = row[cohortIdx].split(/[;,\/]/);
-      for (const tok of tokens) {
-        const c = parseCohortToken(tok);
-        if (c && !cohorts.includes(c)) cohorts.push(c);
+    if (cohortIdx === -1) {
+      cohorts.push("Y1");
+    } else {
+      const rawCohorts = (row[cohortIdx] ?? "").trim();
+      if (!rawCohorts) {
+        errors.push(`Row ${r + 1} (${title}): cohorts is empty`);
+        continue;
       }
+      const tokens = rawCohorts.split(/[;,\/]/);
+      let hasInvalidCohort = false;
+      for (const tok of tokens) {
+        const trimmedTok = tok.trim();
+        const c = trimmedTok ? parseCohortToken(trimmedTok) : null;
+        if (!c) {
+          errors.push(`Row ${r + 1} (${title}): Invalid cohort token '${trimmedTok}'`);
+          hasInvalidCohort = true;
+          break;
+        }
+        if (!cohorts.includes(c)) cohorts.push(c);
+      }
+      if (hasInvalidCohort || cohorts.length === 0) continue;
     }
-    if (cohorts.length === 0) cohorts.push("Y1");
 
-    const category = catIdx !== -1 && row[catIdx] ? parseCategoryToken(row[catIdx]) : "elective";
-    const enrollment =
-      enrollIdx !== -1 && row[enrollIdx] && !isNaN(Number(row[enrollIdx]))
-        ? Math.max(1, Number(row[enrollIdx]))
-        : 60;
-    const sessionsPerWeek =
-      sesIdx !== -1 && row[sesIdx] && (Number(row[sesIdx]) === 2 || Number(row[sesIdx]) === 1)
-        ? (Number(row[sesIdx]) as 1 | 2)
-        : 1;
+    let category: CourseCategory = "elective";
+    if (catIdx !== -1) {
+      const parsedCategory = parseCategoryToken(row[catIdx] ?? "");
+      if (!parsedCategory) {
+        errors.push(`Row ${r + 1} (${title}): Invalid category '${row[catIdx] ?? ""}'`);
+        continue;
+      }
+      category = parsedCategory;
+    }
+
+    let enrollment = 60;
+    if (enrollIdx !== -1) {
+      const enrollRaw = (row[enrollIdx] ?? "").trim();
+      const enrollNum = enrollRaw === "" ? NaN : Number(enrollRaw);
+      if (!Number.isInteger(enrollNum) || enrollNum <= 0) {
+        errors.push(`Row ${r + 1} (${title}): Invalid enrollment '${row[enrollIdx] ?? ""}' (must be a positive integer)`);
+        continue;
+      }
+      enrollment = enrollNum;
+    }
+
+    let sessionsPerWeek: 1 | 2 = 1;
+    if (sesIdx !== -1) {
+      const sesRaw = (row[sesIdx] ?? "").trim();
+      const sesNum = sesRaw === "" ? NaN : Number(sesRaw);
+      if (sesNum !== 1 && sesNum !== 2) {
+        errors.push(`Row ${r + 1} (${title}): Invalid sessionsPerWeek '${row[sesIdx] ?? ""}' (must be 1 or 2)`);
+        continue;
+      }
+      sessionsPerWeek = sesNum;
+    }
 
     const requiredEquipment: RoomEquipment[] = [];
-    if (eqIdx !== -1 && row[eqIdx]) {
+    let hasInvalidReqEquip = false;
+    if (eqIdx !== -1 && (row[eqIdx] ?? "").trim() !== "") {
       const tokens = row[eqIdx].split(/[;,\/]/);
       for (const tok of tokens) {
-        const eq = parseEquipmentToken(tok);
-        if (eq && !requiredEquipment.includes(eq)) requiredEquipment.push(eq);
+        const trimmedTok = tok.trim();
+        const eq = trimmedTok ? parseEquipmentToken(trimmedTok) : null;
+        if (!eq) {
+          errors.push(`Row ${r + 1} (${title}): Invalid requiredEquipment token '${trimmedTok}'`);
+          hasInvalidReqEquip = true;
+          break;
+        }
+        if (!requiredEquipment.includes(eq)) requiredEquipment.push(eq);
       }
     }
+    if (hasInvalidReqEquip) continue;
 
     let requiredRoomType: RoomType | undefined = undefined;
-    if (roomTypeIdx !== -1 && row[roomTypeIdx] && row[roomTypeIdx].trim()) {
-      requiredRoomType = parseRoomTypeToken(row[roomTypeIdx]);
-    } else if (category === "lab_exercise" || requiredEquipment.includes("pc_terminal")) {
-      requiredRoomType = "pc_lab";
+    if (roomTypeIdx !== -1 && (row[roomTypeIdx] ?? "").trim() !== "") {
+      const parsedRt = parseRoomTypeToken(row[roomTypeIdx]);
+      if (!parsedRt) {
+        errors.push(`Row ${r + 1} (${title}): Invalid requiredRoomType '${row[roomTypeIdx]}'`);
+        continue;
+      }
+      requiredRoomType = parsedRt;
     }
 
     courses.push({
@@ -515,13 +668,14 @@ export function exportProfessorsCsv(professors: ProfessorProfile[]): string {
 }
 
 export function exportRoomsCsv(rooms: RoomProfile[]): string {
-  const headers = ["id", "name", "capacity", "roomType", "equipment"];
+  const headers = ["id", "name", "capacity", "roomType", "equipment", "building"];
   const rows = rooms.map((r) => [
     escapeCsv(r.id),
     escapeCsv(r.name),
     escapeCsv(r.capacity),
     escapeCsv(r.roomType),
     escapeCsv(r.equipment.join(";")),
+    escapeCsv(r.building),
   ]);
   return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }

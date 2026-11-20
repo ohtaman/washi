@@ -508,6 +508,14 @@
     "noticeResetDefaults": "↩ 設定と追加ルールを初期状態に戻しました",
     "noticeConflictCheckBaseRules": "ℹ️ 追加ルール以外の基本条件を見直してください",
     "noticeConflictCleared": "✨ 衝突していたルール {count}件を解除して再編成します",
+    "noticeInvalidConfigInput": "⚠️ 設定値が無効です（連続・教員・学年上限は1〜5の整数、空きコマ重みは0〜100の数値で入力してください）。",
+    "noticeRuleNeedDistinctCourses": "⚠️ 同時開講禁止ルールには異なる2つの科目を選択してください。",
+    "chatOpRejectedTarget": "⚠ 対象が見つからないため未適用",
+    "chatErrorOutputTruncated": "⚠️ Gemini Nano の出力上限に達したか途中で途切れました（{msg}）。短めの指示に分割して入力するか、右側の「ルール設定」タブから直接ルールを編集してください。",
+    "nanoErrorUnavailable": "Gemini Nano (LanguageModel API) が利用できません。",
+    "nanoErrorNotJsonObject": "モデルの出力がJSONオブジェクト形式ではありません。",
+    "nanoErrorInvalidIntentType": "モデルの出力に有効な intentType が含まれていません ({intentType})。",
+    "nanoErrorInvalidToolCalls": "モデルの出力の toolCalls が配列形式ではありません。",
     "nanoProgressTurn1": "⏳ 要望を確認しています…",
     "nanoProgressTurn2Done": "✅ 条件を整理しました（{count}件）"
   },
@@ -874,17 +882,28 @@
       "large_hall": [
         "large_hall",
         "大講義",
+        "大講義室",
         "大ホール"
+      ],
+      "medium_room": [
+        "medium_room",
+        "中講義",
+        "中講義室",
+        "中教室",
+        "普通教室"
       ],
       "pc_lab": [
         "pc_lab",
         "pc",
         "演習室",
+        "pc演習室",
         "端末"
       ],
       "seminar_room": [
         "seminar_room",
         "ゼミ",
+        "ゼミ室",
+        "ゼミ・演習室",
         "小教室"
       ],
       "compulsory": [
@@ -897,39 +916,52 @@
         "選必",
         "選択必修"
       ],
+      "elective": [
+        "elective",
+        "専門選択",
+        "選択"
+      ],
       "lab_exercise": [
         "lab_exercise",
         "演習",
         "pc演習",
+        "pc演習・実験",
         "実験"
       ],
       "seminar": [
         "seminar",
         "ゼミ",
+        "少人数ゼミ",
         "輪講"
       ],
       "projector": [
         "projector",
-        "プロジェクタ"
+        "プロジェクタ",
+        "プロジェクター"
       ],
       "mic": [
         "mic",
         "マイク",
+        "ワイヤレスマイク",
         "音響"
       ],
       "pc_terminal": [
         "pc_terminal",
         "pc",
-        "端末"
+        "端末",
+        "演習用pc端末"
       ],
       "moveable_desks": [
         "moveable_desks",
         "可動",
+        "可動机",
+        "グループワーク可動机",
         "机"
       ],
       "recording": [
         "recording",
         "収録",
+        "講義収録設備",
         "録画"
       ]
     }

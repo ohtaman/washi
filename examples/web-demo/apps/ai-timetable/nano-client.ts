@@ -106,7 +106,6 @@ interface LanguageModelSessionLike {
 
 interface LanguageModelFactoryLike {
   availability?(options?: unknown): Promise<unknown>;
-  capabilities?(): Promise<{ available?: unknown }>;
   create(options?: unknown): Promise<LanguageModelSessionLike>;
 }
 
@@ -142,62 +141,35 @@ export async function checkGeminiNanoAvailability(
     return "unavailable";
   }
   const api = getLanguageModelApi();
-  if (!api) return "unavailable";
+  if (!api || typeof api.availability !== "function") return "unavailable";
 
-  if (typeof api.availability === "function") {
-    try {
-      const consultOptions = buildConsultLanguageModelOptions(lang);
-      const statusConsult = normalizeAvailabilityString(
-        await api.availability(consultOptions)
-      );
-      if (statusConsult === "unavailable") {
-        return "unavailable";
-      }
-
-      const extractorOptions = buildExtractorLanguageModelOptions();
-      const statusExtractor = normalizeAvailabilityString(
-        await api.availability(extractorOptions)
-      );
-      if (statusExtractor === "unavailable") {
-        return "unavailable";
-      }
-
-      if (statusConsult && statusExtractor) {
-        if (statusConsult === "downloading" || statusExtractor === "downloading") {
-          return "downloading";
-        }
-        if (statusConsult === "downloadable" || statusExtractor === "downloadable") {
-          return "downloadable";
-        }
-        return "available";
-      }
-      if (statusConsult) return statusConsult;
-      if (statusExtractor) return statusExtractor;
-    } catch {
-      // Fall through to legacy/default check on older Chrome
+  try {
+    const consultOptions = buildConsultLanguageModelOptions(lang);
+    const statusConsult = normalizeAvailabilityString(
+      await api.availability(consultOptions)
+    );
+    if (!statusConsult || statusConsult === "unavailable") {
+      return "unavailable";
     }
-    try {
-      const statusDefault = normalizeAvailabilityString(await api.availability());
-      if (statusDefault) return statusDefault;
-    } catch {
-      // Ignore
-    }
-  }
 
-  if (typeof api.capabilities === "function") {
-    try {
-      const caps = await api.capabilities();
-      const mapped = normalizeAvailabilityString(caps?.available);
-      if (mapped) return mapped;
-    } catch {
-      // Ignore
+    const extractorOptions = buildExtractorLanguageModelOptions();
+    const statusExtractor = normalizeAvailabilityString(
+      await api.availability(extractorOptions)
+    );
+    if (!statusExtractor || statusExtractor === "unavailable") {
+      return "unavailable";
     }
-  }
 
-  if (typeof api.create === "function") {
+    if (statusConsult === "downloading" || statusExtractor === "downloading") {
+      return "downloading";
+    }
+    if (statusConsult === "downloadable" || statusExtractor === "downloadable") {
+      return "downloadable";
+    }
     return "available";
+  } catch {
+    return "unavailable";
   }
-  return "unavailable";
 }
 
 async function createLanguageModelSession(
@@ -210,21 +182,13 @@ async function createLanguageModelSession(
   monitorFn?: (m: unknown) => void
 ): Promise<LanguageModelSessionLike> {
   const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
-  try {
-    return await api.create({
-      ...langOptions,
-      temperature: 0.1,
-      topK: 1,
-      initialPrompts: [{ role: "system", content: systemPrompt }],
-      ...baseWithMonitor,
-    });
-  } catch {
-    return await api.create({
-      ...langOptions,
-      initialPrompts: [{ role: "system", content: systemPrompt }],
-      ...baseWithMonitor,
-    });
-  }
+  return await api.create({
+    ...langOptions,
+    temperature: 0.1,
+    topK: 1,
+    initialPrompts: [{ role: "system", content: systemPrompt }],
+    ...baseWithMonitor,
+  });
 }
 
 /**
@@ -769,6 +733,11 @@ function nextCustomRuleId(
   return candidate;
 }
 
+export interface RejectedTimetableOperation {
+  op: ChatTimetableOperation;
+  reason: string;
+}
+
 /**
  * Applies a list of `ChatTimetableOperation` items to `TimetableState` with strict argument fidelity.
  */
@@ -776,7 +745,11 @@ export function applyTimetableChatOperationsToState(
   state: TimetableState,
   operations: readonly ChatTimetableOperation[],
   lang: TimetableLang = getTimetableLang()
-): { updatedState: TimetableState; appliedLogs: string[] } {
+): {
+  updatedState: TimetableState;
+  appliedLogs: string[];
+  rejectedOperations: RejectedTimetableOperation[];
+} {
   let nextState: TimetableState = {
     ...state,
     config: { ...state.config },
@@ -797,6 +770,10 @@ export function applyTimetableChatOperationsToState(
   };
 
   const appliedLogs: string[] = [];
+  const rejectedOperations: RejectedTimetableOperation[] = [];
+  const rejectOp = (op: ChatTimetableOperation, reason: string) => {
+    rejectedOperations.push({ op, reason });
+  };
 
   for (const op of operations) {
     if (op.op === "reset_all") {
@@ -859,8 +836,15 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "pin_course_slot") {
       const course = nextState.courses.find((c) => c.id === op.courseId);
-      if (!course || op.days.length === 0 || op.periods.length === 0) continue;
-      const room = op.roomId ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
+      if (!course || op.days.length === 0 || op.periods.length === 0) {
+        rejectOp(op, !course ? `Unknown course ID '${op.courseId}'` : "Days or periods are empty");
+        continue;
+      }
+      const room = op.roomId !== undefined ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
+      if (op.roomId !== undefined && !room) {
+        rejectOp(op, `Unknown room ID '${op.roomId}'`);
+        continue;
+      }
       const roomText = room ? ` in ${room.name} (${room.id})` : "";
       const slotText =
         op.days.length === 1 && op.periods.length === 1
@@ -888,7 +872,10 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "forbid_course_slot") {
       const course = nextState.courses.find((c) => c.id === op.courseId);
-      if (!course) continue;
+      if (!course || op.days.length === 0 || op.periods.length === 0) {
+        rejectOp(op, !course ? `Unknown course ID '${op.courseId}'` : "Days or periods are empty");
+        continue;
+      }
       const dayText = op.days.join("/");
       const periodText =
         op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
@@ -910,7 +897,10 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "set_professor_unavailability") {
       const prof = nextState.professors.find((p) => p.id === op.professorId);
-      if (!prof) continue;
+      if (!prof || op.days.length === 0 || op.periods.length === 0) {
+        rejectOp(op, !prof ? `Unknown professor ID '${op.professorId}'` : "Days or periods are empty");
+        continue;
+      }
 
       const dayText = op.days.join("/");
       const pText = op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
@@ -1018,7 +1008,14 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "set_professor_preference") {
       const prof = nextState.professors.find((p) => p.id === op.professorId);
-      if (!prof) continue;
+      if (!prof) {
+        rejectOp(op, `Unknown professor ID '${op.professorId}'`);
+        continue;
+      }
+      if (op.maxSessionsPerDay !== undefined && !isIntInRange(op.maxSessionsPerDay, 1, 5)) {
+        rejectOp(op, `Invalid maxSessionsPerDay '${String(op.maxSessionsPerDay)}'`);
+        continue;
+      }
       const partsJa: string[] = [];
       const partsEn: string[] = [];
       const partsZh: string[] = [];
@@ -1051,14 +1048,26 @@ export function applyTimetableChatOperationsToState(
             zh: `已更新 ${profI18n.name} (${prof.id}) 的授课偏好 (${partsZh.join(" / ")})`,
           })
         );
+      } else {
+        rejectOp(op, "No valid professor preference fields specified");
       }
       continue;
     }
 
     if (op.op === "set_course_room_rule") {
       const course = nextState.courses.find((c) => c.id === op.courseId);
-      if (!course) continue;
-      const room = op.roomId ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
+      const room = op.roomId !== undefined ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
+      if (!course || (op.roomId !== undefined && !room) || (!room && !op.roomType)) {
+        rejectOp(
+          op,
+          !course
+            ? `Unknown course ID '${op.courseId}'`
+            : op.roomId !== undefined && !room
+              ? `Unknown room ID '${op.roomId}'`
+              : "Missing roomId or roomType"
+        );
+        continue;
+      }
       const targetName = room
         ? `${room.name} (${room.id})`
         : op.roomType
@@ -1085,10 +1094,20 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "add_course_relation_rule") {
       const c1 = nextState.courses.find((c) => c.id === op.courseId);
-      if (!c1) continue;
-      const c2 = op.secondCourseId
+      const c2 = op.secondCourseId !== undefined
         ? nextState.courses.find((c) => c.id === op.secondCourseId)
         : undefined;
+      if (!c1 || (op.secondCourseId !== undefined && !c2) || (c2 && c2.id === c1.id)) {
+        rejectOp(
+          op,
+          !c1
+            ? `Unknown course ID '${op.courseId}'`
+            : op.secondCourseId !== undefined && !c2
+              ? `Unknown second course ID '${op.secondCourseId}'`
+              : "Second course must differ from first course"
+        );
+        continue;
+      }
 
       let desc = "";
       if (op.kind === "course_no_overlap" && c2) {
@@ -1104,6 +1123,7 @@ export function applyTimetableChatOperationsToState(
       } else if (op.kind === "course_precedence" && c2) {
         desc = `Curriculum Order: Schedule "${c1.shortTitle} (${c1.id})" on the same day or earlier than "${c2.shortTitle} (${c2.id})"`;
       } else {
+        rejectOp(op, `Invalid or incomplete relation rule '${op.kind}'`);
         continue;
       }
 
@@ -1123,7 +1143,10 @@ export function applyTimetableChatOperationsToState(
 
     if (op.op === "add_room_closure") {
       const room = nextState.rooms.find((r) => r.id === op.roomId);
-      if (!room) continue;
+      if (!room || op.days.length === 0 || op.periods.length === 0) {
+        rejectOp(op, !room ? `Unknown room ID '${op.roomId}'` : "Days or periods are empty");
+        continue;
+      }
       const dayText = op.days.join("/");
       const pText = op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
       const reasonText = op.reason ? ` (${op.reason})` : "";
@@ -1146,11 +1169,12 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "set_config_param") {
       const pName = op.paramName;
       const pVal = op.paramValue;
-      if (isNumericConfigParam(pName) && typeof pVal === "number") {
+      if (isNumericConfigParam(pName) && isIntInRange(pVal, 1, 5)) {
         nextState.config[pName] = pVal;
       } else if (isBooleanConfigParam(pName) && typeof pVal === "boolean") {
         nextState.config[pName] = pVal;
       } else {
+        rejectOp(op, `Invalid config param '${String(pName)}' or value '${String(pVal)}'`);
         continue;
       }
       const labels: Record<string, { ja: string; en: string; zh: string }> = {
@@ -1218,79 +1242,7 @@ export function applyTimetableChatOperationsToState(
     }
   }
 
-  return { updatedState: nextState, appliedLogs };
-}
-
-/**
- * Attempts to repair JSON truncated by LLM output limits (e.g. unclosed quotes, brackets, dangling keys).
- */
-export function repairTruncatedJson(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "{}";
-  try {
-    JSON.parse(trimmed);
-    return trimmed;
-  } catch {
-    // Attempt repair below
-  }
-
-  let inString = false;
-  let escape = false;
-  const stack: ("{" | "[")[] = [];
-
-  for (let i = 0; i < trimmed.length; i++) {
-    const ch = trimmed[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (!inString) {
-      if (ch === "{" || ch === "[") {
-        stack.push(ch);
-      } else if (ch === "}") {
-        if (stack.length > 0 && stack[stack.length - 1] === "{") {
-          stack.pop();
-        }
-      } else if (ch === "]") {
-        if (stack.length > 0 && stack[stack.length - 1] === "[") {
-          stack.pop();
-        }
-      }
-    }
-  }
-
-  let repaired = trimmed;
-  if (inString) {
-    repaired += '"';
-  }
-
-  // Clean trailing commas or incomplete key-value pairs before closing containers
-  repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
-
-  while (stack.length > 0) {
-    const last = stack.pop();
-    repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
-    if (last === "{") {
-      repaired += "}";
-    } else if (last === "[") {
-      repaired += "]";
-    }
-  }
-
-  try {
-    JSON.parse(repaired);
-    return repaired;
-  } catch {
-    return "{}";
-  }
+  return { updatedState: nextState, appliedLogs, rejectedOperations };
 }
 
 export function buildCompactStateCatalogPrompt(state: TimetableState): string {
@@ -1324,23 +1276,49 @@ export function buildCompactStateCatalogPrompt(state: TimetableState): string {
   ].join("\n");
 }
 
-export function buildUltraCompactCatalogPrompt(state: TimetableState): string {
-  const courseList =
-    state.courses.length > 0
-      ? state.courses.map((c) => `${c.id}:${c.title}(${c.professorId})`).join(", ")
-      : "(None)";
-  const profList =
-    state.professors.length > 0
-      ? state.professors.map((p) => `${p.id}:${p.name}`).join(", ")
-      : "(None)";
-  const roomList =
-    state.rooms.length > 0 ? state.rooms.map((r) => `${r.id}:${r.name}`).join(", ") : "(None)";
+function destroySessionSafely(session: LanguageModelSessionLike | null): void {
+  if (session && typeof session.destroy === "function") {
+    try {
+      session.destroy();
+    } catch {
+      // Ignore
+    }
+  }
+}
 
-  return [
-    `[Courses] ${courseList}`,
-    `[Faculty] ${profList}`,
-    `[Rooms] ${roomList}`,
-  ].join("\n");
+async function acquireFreshSession(
+  baseSession: LanguageModelSessionLike | null,
+  systemPrompt: string,
+  langOptions: {
+    expectedInputs: readonly { type: string; languages: readonly string[] }[];
+    expectedOutputs: readonly { type: string; languages: readonly string[] }[];
+  }
+): Promise<LanguageModelSessionLike> {
+  if (baseSession && typeof baseSession.clone === "function") {
+    const cloned = await baseSession.clone();
+    if (cloned === baseSession) {
+      throw new Error("LanguageModel.clone() returned the shared base session; refusing to mutate it.");
+    }
+    return cloned;
+  }
+  const api = getLanguageModelApi();
+  if (!api) {
+    throw new Error("LanguageModel API is unavailable");
+  }
+  return await createLanguageModelSession(api, systemPrompt, langOptions);
+}
+
+function toAbortError(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) {
+    return signal.reason;
+  }
+  const err = new Error(
+    typeof signal.reason === "string" && signal.reason
+      ? signal.reason
+      : "The operation was aborted."
+  );
+  err.name = "AbortError";
+  return err;
 }
 
 export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
@@ -1413,20 +1391,10 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               monitorFn
             );
             if (mySeq !== initSeq) {
-              try {
-                nextExtractor.destroy?.();
-              } catch {
-                // Ignore
-              }
+              destroySessionSafely(nextExtractor);
               return currentStatus;
             }
-            if (extractorBaseSession && typeof extractorBaseSession.destroy === "function") {
-              try {
-                extractorBaseSession.destroy();
-              } catch {
-                // Ignore
-              }
-            }
+            destroySessionSafely(extractorBaseSession);
             extractorBaseSession = nextExtractor;
           }
           if (!consultBaseSession || consultSessionLang !== lang) {
@@ -1437,20 +1405,10 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               monitorFn
             );
             if (mySeq !== initSeq) {
-              try {
-                nextConsult.destroy?.();
-              } catch {
-                // Ignore
-              }
+              destroySessionSafely(nextConsult);
               return currentStatus;
             }
-            if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
-              try {
-                consultBaseSession.destroy();
-              } catch {
-                // Ignore
-              }
-            }
+            destroySessionSafely(consultBaseSession);
             consultBaseSession = nextConsult;
             consultSessionLang = lang;
           }
@@ -1494,116 +1452,72 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         activeLabel: UI_TEXT_I18N[lang].nanoProgressTurn1,
       });
 
-      const getFreshExtractorSession = async (): Promise<{
-        session: LanguageModelSessionLike;
-        shouldDestroy: boolean;
-      }> => {
-        if (extractorBaseSession && typeof extractorBaseSession.clone === "function") {
-          try {
-            const cloned = await extractorBaseSession.clone();
-            if (cloned !== extractorBaseSession) {
-              return { session: cloned, shouldDestroy: true };
-            }
-            return { session: cloned, shouldDestroy: false };
-          } catch {
-            // Clone failed, fall back to fresh session
-          }
-        }
-        const api = getLanguageModelApi();
-        if (!api) {
-          throw new Error("LanguageModel API is unavailable");
-        }
-        const fresh = await createLanguageModelSession(
-          api,
-          EXTRACTOR_SYSTEM_PROMPT,
-          buildExtractorLanguageModelOptions()
-        );
-        return { session: fresh, shouldDestroy: true };
-      };
-
-      let { session, shouldDestroy } = await getFreshExtractorSession();
+      const session = await acquireFreshSession(
+        extractorBaseSession,
+        EXTRACTOR_SYSTEM_PROMPT,
+        buildExtractorLanguageModelOptions()
+      );
       const t0 = performance.now();
-      let usedPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nUser Request: "${userMessage}"`;
-      let rawJson = "";
+      const usedPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nUser Request: "${userMessage}"`;
 
       try {
-        try {
-          rawJson = await session.prompt(usedPrompt, {
-            responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
-            signal,
-          });
-        } catch (promptErr: unknown) {
-          const errStr = String(promptErr).toLowerCase();
-          const isTruncated =
-            errStr.includes("exceeded output limits") ||
-            errStr.includes("truncated") ||
-            errStr.includes("quota");
-          if (isTruncated && !signal?.aborted) {
-            if (shouldDestroy && typeof session.destroy === "function") {
-              try {
-                session.destroy();
-              } catch {
-                // Ignore
-              }
-            }
-            const fresh = await getFreshExtractorSession();
-            session = fresh.session;
-            shouldDestroy = fresh.shouldDestroy;
-            usedPrompt = `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
-            rawJson = await session.prompt(usedPrompt, {
-              responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
-              signal,
-            });
-          } else {
-            throw promptErr;
-          }
+        if (signal?.aborted) {
+          throw toAbortError(signal);
+        }
+        const rawJson = await session.prompt(usedPrompt, {
+          responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
+          signal,
+        });
+        if (signal?.aborted) {
+          throw toAbortError(signal);
         }
 
         const durationMs = Math.max(1, Math.round(performance.now() - t0));
-        let parsed: {
+        let parsedRaw: unknown;
+        try {
+          parsedRaw = JSON.parse(rawJson.trim());
+        } catch {
+          throw new Error(
+            pickTimetableLang(lang, {
+              ja: "\u30E2\u30C7\u30EB\u306E\u51FA\u529B\u304C\u9014\u4E2D\u3067\u9014\u5207\u308C\u307E\u3057\u305F\u3002\u6307\u793A\u3092\u77ED\u304F\u5206\u5272\u3057\u3066\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+              en: "The model response was truncated or invalid. Please split your request into shorter prompts.",
+              zh: "模型输出被截断或格式无效。请将指令缩短或拆分后重试。",
+            })
+          );
+        }
+
+        if (!parsedRaw || typeof parsedRaw !== "object" || Array.isArray(parsedRaw)) {
+          throw new Error(UI_TEXT_I18N[lang].nanoErrorNotJsonObject);
+        }
+
+        const parsed = parsedRaw as {
           thought?: string;
-          intentType?: ParsedTimetableChatPlan["intentType"];
-          toolCalls?: RawStage2ToolCall[];
+          intentType?: unknown;
+          toolCalls?: unknown;
           replyJa?: string;
         };
 
-        try {
-          parsed = JSON.parse(rawJson.trim());
-        } catch {
-          // If initial output was truncated or invalid JSON, attempt a clean retry with ultra-compact catalog.
-          // Never execute a repaired partial prefix of tool calls, as it silently drops requested operations.
-          const isInitialAttempt = usedPrompt !== `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
-          if (isInitialAttempt && !signal?.aborted) {
-            if (shouldDestroy && typeof session.destroy === "function") {
-              try {
-                session.destroy();
-              } catch {
-                // Ignore
-              }
-            }
-            const fresh = await getFreshExtractorSession();
-            session = fresh.session;
-            shouldDestroy = fresh.shouldDestroy;
-            usedPrompt = `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
-            rawJson = await session.prompt(usedPrompt, {
-              responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
-              signal,
-            });
-            parsed = JSON.parse(rawJson.trim());
-          } else {
-            throw new Error(
-              pickTimetableLang(lang, {
-                ja: "\u30E2\u30C7\u30EB\u306E\u51FA\u529B\u304C\u9014\u4E2D\u3067\u9014\u5207\u308C\u307E\u3057\u305F\u3002\u6307\u793A\u3092\u77ED\u304F\u5206\u5272\u3057\u3066\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
-                en: "The model response was truncated or invalid. Please split your request into shorter prompts.",
-                zh: "模型输出被截断或格式无效。请将指令缩短或拆分后重试。",
-              })
-            );
-          }
+        if (
+          parsed.intentType !== "modify_and_solve" &&
+          parsed.intentType !== "consult_only" &&
+          parsed.intentType !== "clarify" &&
+          parsed.intentType !== "unsupported"
+        ) {
+          throw new Error(
+            formatUiTemplate(UI_TEXT_I18N[lang].nanoErrorInvalidIntentType, {
+              intentType: String(parsed.intentType),
+            })
+          );
+        }
+        const intentType: ParsedTimetableChatPlan["intentType"] = parsed.intentType;
+
+        if (parsed.toolCalls !== undefined && !Array.isArray(parsed.toolCalls)) {
+          throw new Error(UI_TEXT_I18N[lang].nanoErrorInvalidToolCalls);
         }
 
         const operations: ChatTimetableOperation[] = [];
         const rejectedToolCalls: RawStage2ToolCall[] = [];
-        for (const tc of parsed.toolCalls ?? []) {
+        for (const tc of (parsed.toolCalls ?? []) as RawStage2ToolCall[]) {
           const op = convertToolCallToTimetableOperation(tc, state);
           if (op) {
             operations.push(op);
@@ -1628,30 +1542,16 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           }),
         });
 
-        const intentType: ParsedTimetableChatPlan["intentType"] =
-          parsed.intentType === "modify_and_solve" ||
-          parsed.intentType === "consult_only" ||
-          parsed.intentType === "clarify" ||
-          parsed.intentType === "unsupported"
-            ? parsed.intentType
-            : "unsupported";
-
         return {
           intentType,
-          thoughtJa: parsed.thought ?? "",
-          replyJa: parsed.replyJa ?? "",
+          thoughtJa: typeof parsed.thought === "string" ? parsed.thought : "",
+          replyJa: typeof parsed.replyJa === "string" ? parsed.replyJa : "",
           operations,
           rejectedToolCalls,
           llmTraces: [trace],
         };
       } finally {
-        if (shouldDestroy && typeof session.destroy === "function") {
-          try {
-            session.destroy();
-          } catch {
-            // Ignore
-          }
-        }
+        destroySessionSafely(session);
       }
     },
 
@@ -1725,7 +1625,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               zh: "解决建议",
             });
             summaryLines.push(
-              `- ${loc.label}${loc.relaxSuggestion ? ` (${hintPrefix}: ${loc.relaxSuggestion})` : ""}`
+              `- ${loc.label}${loc.suggestion ? ` (${hintPrefix}: ${loc.suggestion})` : ""}`
             );
           }
         }
@@ -1738,76 +1638,36 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       });
 
       if (!isChromeSupportedTimetableLang(lang)) {
-        yield summaryLines.join("\n");
+        const notice = "⚠️ 当前浏览器的 Chrome 内置 AI (Gemini Nano) 暂不支持简体中文自然语言回复，以下仅展示求解器生成的摘要：";
+        yield summaryLines.length > 0 ? `${notice}\n\n${summaryLines.join("\n")}` : notice;
         return;
       }
 
-      const api = getLanguageModelApi();
-      if (api && (!consultBaseSession || consultSessionLang !== lang)) {
-        try {
-          const nextConsult = await createLanguageModelSession(
-            api,
-            CONSULT_SYSTEM_PROMPT,
-            buildConsultLanguageModelOptions(lang),
-            undefined
-          );
-          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
-            try {
-              consultBaseSession.destroy();
-            } catch {
-              // Ignore
-            }
-          }
-          consultBaseSession = nextConsult;
-          consultSessionLang = lang;
-        } catch {
-          // Keep existing or null
+      if (!consultBaseSession || consultSessionLang !== lang || currentStatus !== "available") {
+        const initStatus = await this.initialize(undefined, lang);
+        if (initStatus !== "available" || !consultBaseSession || consultSessionLang !== lang) {
+          throw new Error(UI_TEXT_I18N[lang].nanoErrorUnavailable);
         }
       }
 
-      if (!consultBaseSession || consultSessionLang !== lang) {
-        yield summaryLines.join("\n");
-        return;
+      if (signal?.aborted) {
+        throw toAbortError(signal);
       }
 
-      const getFreshConsultSession = async (): Promise<{
-        session: LanguageModelSessionLike;
-        shouldDestroy: boolean;
-      }> => {
-        if (consultBaseSession && typeof consultBaseSession.clone === "function") {
-          try {
-            const cloned = await consultBaseSession.clone();
-            if (cloned !== consultBaseSession) {
-              return { session: cloned, shouldDestroy: true };
-            }
-            return { session: cloned, shouldDestroy: false };
-          } catch {
-            // Clone failed, fall back
-          }
-        }
-        if (!api) {
-          return { session: consultBaseSession, shouldDestroy: false };
-        }
-        try {
-          const fresh = await createLanguageModelSession(
-            api,
-            CONSULT_SYSTEM_PROMPT,
-            buildConsultLanguageModelOptions(lang)
-          );
-          return { session: fresh, shouldDestroy: true };
-        } catch {
-          return { session: consultBaseSession, shouldDestroy: false };
-        }
-      };
-
-      const { session, shouldDestroy } = await getFreshConsultSession();
+      const session = await acquireFreshSession(
+        consultBaseSession,
+        CONSULT_SYSTEM_PROMPT,
+        buildConsultLanguageModelOptions(lang)
+      );
       const t0 = performance.now();
       let accumulated = "";
       try {
         if (typeof session.promptStreaming === "function") {
           const stream = session.promptStreaming(fullPrompt, { signal });
           for await (const chunk of stream) {
-            if (signal?.aborted) break;
+            if (signal?.aborted) {
+              throw toAbortError(signal);
+            }
             if (typeof chunk === "string") {
               if (chunk.startsWith(accumulated) && chunk.length >= accumulated.length) {
                 const delta = chunk.slice(accumulated.length);
@@ -1821,11 +1681,9 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           }
         } else {
           accumulated = await session.prompt(fullPrompt, { signal });
-          yield accumulated;
-        }
-      } catch {
-        if (!accumulated) {
-          accumulated = summaryLines.join("\n");
+          if (signal?.aborted) {
+            throw toAbortError(signal);
+          }
           yield accumulated;
         }
       } finally {
@@ -1836,13 +1694,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           rawOutput: accumulated,
           durationMs: Math.max(1, Math.round(performance.now() - t0)),
         };
-        if (shouldDestroy && typeof session.destroy === "function") {
-          try {
-            session.destroy();
-          } catch {
-            // Ignore
-          }
-        }
+        destroySessionSafely(session);
       }
     },
 

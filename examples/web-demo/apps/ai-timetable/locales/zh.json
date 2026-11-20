@@ -508,6 +508,14 @@
     "noticeResetDefaults": "↩ 已重置设置与自定义规则",
     "noticeConflictCheckBaseRules": "ℹ️ 冲突中不包含追加规则，请在规则设置中检查基本条件。",
     "noticeConflictCleared": "✨ 已移除 {count} 条冲突规则并重新编排",
+    "noticeInvalidConfigInput": "⚠️ 参数设置无效（连续与单日上限需为 1–5 的整数，空堂权重需为 0–100 的数值）。",
+    "noticeRuleNeedDistinctCourses": "⚠️ 禁止同时段冲突规则请选择两门不同的课程。",
+    "chatOpRejectedTarget": "⚠ 目标未找到，未应用",
+    "chatErrorOutputTruncated": "⚠️ Gemini Nano 输出被截断或达到输出上限（{msg}）。请尝试更简短的指令，或直接在右侧「规则设置」标签页中编辑。",
+    "nanoErrorUnavailable": "Gemini Nano (LanguageModel API) 不可用。",
+    "nanoErrorNotJsonObject": "模型输出不是有效的 JSON 对象。",
+    "nanoErrorInvalidIntentType": "模型输出缺少有效 intentType 或值无效 ({intentType})。",
+    "nanoErrorInvalidToolCalls": "模型输出的 toolCalls 必须为数组。",
     "nanoProgressTurn1": "⏳ 正在理解您的排课需求…",
     "nanoProgressTurn2Done": "✅ 已整理排课条件（{count} 项）"
   },
@@ -848,12 +856,20 @@
       "large_hall": [
         "large_hall",
         "大阶梯",
+        "大阶梯教室",
         "大礼堂"
+      ],
+      "medium_room": [
+        "medium_room",
+        "中型教室",
+        "中教室",
+        "普通教室"
       ],
       "pc_lab": [
         "pc_lab",
         "机房",
-        "实验机房"
+        "实验机房",
+        "pc机房"
       ],
       "seminar_room": [
         "seminar_room",
@@ -863,21 +879,31 @@
       "compulsory": [
         "compulsory",
         "必修",
-        "必修课"
+        "必修课",
+        "必修理论课"
       ],
       "elective_core": [
         "elective_core",
         "选必",
-        "专业必修"
+        "专业必修",
+        "专业限选"
+      ],
+      "elective": [
+        "elective",
+        "专业选修",
+        "选修"
       ],
       "lab_exercise": [
         "lab_exercise",
         "实验",
-        "上机"
+        "上机",
+        "pc上机实验"
       ],
       "seminar": [
         "seminar",
         "研讨",
+        "研讨课",
+        "小班研讨课",
         "讨论班"
       ],
       "projector": [
@@ -887,21 +913,25 @@
       "mic": [
         "mic",
         "麦克风",
+        "无线麦克风",
         "扩音"
       ],
       "pc_terminal": [
         "pc_terminal",
         "电脑",
-        "终端"
+        "终端",
+        "实验用pc终端"
       ],
       "moveable_desks": [
         "moveable_desks",
         "分组桌椅",
+        "可移动分组桌椅",
         "桌椅"
       ],
       "recording": [
         "recording",
         "录播",
+        "录播设备",
         "录制"
       ]
     }
