@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
 import { getWashiClient } from "./washiClient";
 import { useComponentTranslations } from "../locales/index";
+import type { SolverStatus } from "../../../../src/modeler/types.js";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
@@ -62,12 +63,14 @@ const fillers = [
 
 const isSolving = ref(false);
 const isDirty = ref(false);
+const status = ref<SolverStatus>("NotSolved");
+const solveError = ref<string | null>(null);
 const solveTimeMs = ref(0);
-const solvedBaseTotal = ref(240);
+const solvedBaseTotal = ref<number | null>(null);
 const appliedCoupons = ref<string[]>([]);
 const chosenFillerId = ref<string | null>(null);
-const netPayableWithFiller = ref(180);
-const netPayableWithoutFiller = ref(185);
+const netPayableWithFiller = ref<number | null>(null);
+const netPayableWithoutFiller = ref<number | null>(null);
 
 const liveSelectedTotal = computed(() =>
   catalog
@@ -79,17 +82,27 @@ const chosenFiller = computed(() =>
   fillers.find((f) => f.id === chosenFillerId.value) || null
 );
 
-const finalCartMerchandise = computed(
-  () => solvedBaseTotal.value + (chosenFiller.value ? chosenFiller.value.price : 0)
+const finalCartMerchandise = computed(() =>
+  solvedBaseTotal.value === null
+    ? null
+    : solvedBaseTotal.value + (chosenFiller.value ? chosenFiller.value.price : 0)
 );
 
 const totalDiscount = computed(() =>
-  coupons
-    .filter((c) => appliedCoupons.value.includes(c.id))
-    .reduce((acc, c) => acc + c.discount, 0)
+  status.value !== "Optimal"
+    ? null
+    : coupons
+        .filter((c) => appliedCoupons.value.includes(c.id))
+        .reduce((acc, c) => acc + c.discount, 0)
 );
 
-const cashToPay = computed(() => finalCartMerchandise.value - totalDiscount.value);
+const cashToPay = computed(() =>
+  finalCartMerchandise.value === null || totalDiscount.value === null
+    ? null
+    : finalCartMerchandise.value - totalDiscount.value
+);
+
+let editVersion = 0;
 
 function toggleCartItem(id: string) {
   const next = new Set(selectedItems.value);
@@ -99,10 +112,12 @@ function toggleCartItem(id: string) {
     next.add(id);
   }
   selectedItems.value = next;
+  editVersion++;
   isDirty.value = true;
 }
 
 function markDirty() {
+  editVersion++;
   isDirty.value = true;
 }
 
@@ -153,13 +168,22 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
   const fillerCostExpr = dot(netCostMap, addFiller);
 
   m.objective(minimize(fillerCostExpr.sub(totalDiscExpr).add(cartVal)));
-  await m.solve();
+  const solveStatus = await m.solve();
+
+  if (solveStatus !== "Optimal") {
+    return {
+      status: solveStatus,
+      activeCpns: [] as string[],
+      activeFiller: null as string | null,
+      cashPayable: null as number | null,
+    };
+  }
 
   const activeCpns = coupons
-    .filter((c) => useCoupon[c.id].value === 1)
+    .filter((c) => Math.round(useCoupon[c.id].value ?? 0) === 1)
     .map((c) => c.id);
   const activeFiller =
-    fillers.find((f) => addFiller[f.id].value === 1)?.id ?? null;
+    fillers.find((f) => Math.round(addFiller[f.id].value ?? 0) === 1)?.id ?? null;
 
   const merch = cartVal + (fillers.find((f) => f.id === activeFiller)?.price ?? 0);
   const disc = coupons
@@ -167,6 +191,7 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
     .reduce((a, c) => a + c.discount, 0);
 
   return {
+    status: solveStatus,
     activeCpns,
     activeFiller,
     cashPayable: merch - disc,
@@ -174,23 +199,54 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
 }
 
 async function solveCart() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || isSolving.value) return;
   isSolving.value = true;
+  const versionAtStart = editVersion;
   try {
     const cartVal = liveSelectedTotal.value;
     const t0 = performance.now();
-    const [resMain, resNoFiller] = await Promise.all([
-      runSingleCartModel(cartVal, allowFiller.value),
-      runSingleCartModel(cartVal, false),
-    ]);
+    const [resMain, resNoFiller] = allowFiller.value
+      ? await Promise.all([
+          runSingleCartModel(cartVal, true),
+          runSingleCartModel(cartVal, false),
+        ])
+      : await runSingleCartModel(cartVal, false).then((r) => [r, r] as const);
     solveTimeMs.value = performance.now() - t0;
 
-    solvedBaseTotal.value = cartVal;
-    appliedCoupons.value = resMain.activeCpns;
-    chosenFillerId.value = resMain.activeFiller;
-    netPayableWithFiller.value = resMain.cashPayable;
-    netPayableWithoutFiller.value = resNoFiller.cashPayable;
-    isDirty.value = false;
+    const nonOptimalStatus =
+      resMain.status !== "Optimal"
+        ? resMain.status
+        : resNoFiller.status !== "Optimal"
+          ? resNoFiller.status
+          : null;
+
+    if (nonOptimalStatus !== null) {
+      status.value = nonOptimalStatus;
+      solveError.value = null;
+      solvedBaseTotal.value = null;
+      appliedCoupons.value = [];
+      chosenFillerId.value = null;
+      netPayableWithFiller.value = null;
+      netPayableWithoutFiller.value = null;
+    } else {
+      status.value = "Optimal";
+      solveError.value = null;
+      solvedBaseTotal.value = cartVal;
+      appliedCoupons.value = resMain.activeCpns;
+      chosenFillerId.value = resMain.activeFiller;
+      netPayableWithFiller.value = resMain.cashPayable;
+      netPayableWithoutFiller.value = resNoFiller.cashPayable;
+    }
+    isDirty.value = editVersion !== versionAtStart;
+  } catch (err) {
+    status.value = "Error";
+    solveError.value = err instanceof Error ? err.message : String(err);
+    solvedBaseTotal.value = null;
+    appliedCoupons.value = [];
+    chosenFillerId.value = null;
+    netPayableWithFiller.value = null;
+    netPayableWithoutFiller.value = null;
+    isDirty.value = editVersion !== versionAtStart;
   } finally {
     isSolving.value = false;
   }
@@ -280,7 +336,10 @@ onMounted(() => {
         </div>
 
         <!-- Smart Filler Callout -->
-        <div v-if="chosenFiller" class="smart-filler-banner">
+        <div
+          v-if="status === 'Optimal' && chosenFiller && netPayableWithoutFiller !== null && cashToPay !== null"
+          class="smart-filler-banner"
+        >
           <div style="font-weight: 700; font-size: 0.84rem; margin-bottom: 2px;">
             💡 {{ i18n.smartTip }}
           </div>
@@ -298,7 +357,7 @@ onMounted(() => {
             v-for="c in coupons"
             :key="c.id"
             class="receipt-coupon-row"
-            :class="{ applied: appliedCoupons.includes(c.id) }"
+            :class="{ applied: status === 'Optimal' && appliedCoupons.includes(c.id) }"
           >
             <div>
               <code class="cpn-code">{{ c.id }}</code>
@@ -306,9 +365,11 @@ onMounted(() => {
             </div>
             <span class="cpn-status">
               {{
-                appliedCoupons.includes(c.id)
-                  ? `-$${c.discount}`
-                  : i18n.skipped
+                status !== "Optimal"
+                  ? "—"
+                  : appliedCoupons.includes(c.id)
+                    ? `-$${c.discount}`
+                    : i18n.skipped
               }}
             </span>
           </div>
@@ -318,21 +379,38 @@ onMounted(() => {
         <div class="receipt-totals">
           <div class="receipt-line">
             <span>{{ i18n.subtotal }}</span>
-            <span class="mono">${{ solvedBaseTotal }}</span>
+            <span class="mono">{{ solvedBaseTotal !== null ? `$${solvedBaseTotal}` : "—" }}</span>
           </div>
-          <div v-if="chosenFiller" class="receipt-line filler-line">
+          <div v-if="status === 'Optimal' && chosenFiller" class="receipt-line filler-line">
             <span>+ {{ i18n.products[chosenFiller.id] || chosenFiller.id }} (Filler)</span>
             <span class="mono">+${{ chosenFiller.price }}</span>
           </div>
           <div class="receipt-line discount-line">
             <span>{{ i18n.discount }}</span>
-            <span class="mono">-${{ totalDiscount }}</span>
+            <span class="mono">{{ totalDiscount !== null ? `-$${totalDiscount}` : "—" }}</span>
           </div>
           <div class="receipt-line grand-total">
             <span>{{ i18n.totalPayable }}</span>
-            <span class="grand-num">${{ cashToPay }}</span>
+            <span class="grand-num">{{ cashToPay !== null ? `$${cashToPay}` : "—" }}</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="status !== 'Optimal' && status !== 'NotSolved'"
+      role="alert"
+      class="washi-result-bar conflict"
+    >
+      <div class="conflict-header">
+        <span class="status-dot conflict"></span>
+        <strong>{{ i18n.nonOptimalTitle }} ({{ status }})</strong>
+      </div>
+      <div v-if="solveError" class="conflict-diag-notice">
+        {{ solveError }}
+      </div>
+      <div v-else class="conflict-hint">
+        {{ i18n.nonOptimalHint }}
       </div>
     </div>
 

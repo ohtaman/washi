@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
 import { getWashiClient } from "./washiClient";
 import { useComponentTranslations } from "../locales/index";
+import type { SolverStatus } from "../../../../src/modeler/types.js";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
@@ -12,8 +13,10 @@ const i18n = computed(() => useComponentTranslations(lang.value).dict.portfolioQ
 const minReturnPct = ref(7.5);
 const isSolving = ref(false);
 const isDirty = ref(false);
+const status = ref<SolverStatus>("NotSolved");
+const solveError = ref<string | null>(null);
 const solveTimeMs = ref(0);
-const varianceVal = ref(0.0088);
+const varianceVal = ref<number | null>(null);
 
 const assets = [
   { id: "Tech", ret: 0.12, color: "#c23b22" },
@@ -31,25 +34,23 @@ const cov = [
   [0.002, 0.002, 0.002,  0.001, 0.004],
 ];
 
-const weights = ref<Record<string, number>>({
-  Tech: 0.25,
-  Global: 0.30,
-  REIT: 0.15,
-  Gold: 0.10,
-  Bonds: 0.20,
-});
+const weights = ref<Record<string, number>>({});
+let editVersion = 0;
 
 function markDirty() {
+  editVersion++;
   isDirty.value = true;
 }
 
 async function solvePortfolio() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || isSolving.value) return;
   isSolving.value = true;
+  let versionAtBuild = editVersion;
   try {
     const t0 = performance.now();
     const { Model, sum, dot, expr, minimize, QuadExpr } = await getWashiClient(false);
 
+    versionAtBuild = editVersion;
     const m = new Model("PortfolioQP5");
     const assetIds = assets.map((a) => a.id);
     const w = m.continuous(assetIds, { lb: 0, ub: 0.6 });
@@ -70,18 +71,29 @@ async function solvePortfolio() {
     }
 
     m.objective(minimize(risk));
-    const status = await m.solve();
+    const solveStatus = await m.solve();
     solveTimeMs.value = performance.now() - t0;
+    status.value = solveStatus;
+    solveError.value = null;
 
-    if (status === "Optimal") {
+    if (solveStatus === "Optimal") {
       varianceVal.value = m.objectiveValue ?? 0;
       const nextW: Record<string, number> = {};
       assets.forEach((a) => {
         nextW[a.id] = w[a.id].value ?? 0;
       });
       weights.value = nextW;
+    } else {
+      varianceVal.value = null;
+      weights.value = {};
     }
-    isDirty.value = false;
+    isDirty.value = editVersion !== versionAtBuild;
+  } catch (err) {
+    status.value = "Error";
+    solveError.value = err instanceof Error ? err.message : String(err);
+    varianceVal.value = null;
+    weights.value = {};
+    isDirty.value = editVersion !== versionAtBuild;
   } finally {
     isSolving.value = false;
   }
@@ -140,7 +152,7 @@ onMounted(() => {
       <div class="solve-meta">
         HiGHS QP · {{ solveTimeMs.toFixed(1) }} ms ·
         {{ i18n.minVariance }}
-        <strong>{{ varianceVal.toFixed(5) }}</strong>
+        <strong>{{ varianceVal !== null ? varianceVal.toFixed(5) : "—" }}</strong>
       </div>
     </div>
 
@@ -154,7 +166,7 @@ onMounted(() => {
         <div
           v-for="a in assets"
           :key="a.id"
-          :style="{ width: `${(weights[a.id] || 0) * 100}%`, background: a.color }"
+          :style="{ width: `${status === 'Optimal' ? (weights[a.id] || 0) * 100 : 0}%`, background: a.color }"
           :title="i18n.assets[a.id]"
         ></div>
       </div>
@@ -167,11 +179,28 @@ onMounted(() => {
           </div>
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
             <span class="qp-pct" :style="{ color: a.color, marginTop: 0 }">
-              {{ ((weights[a.id] || 0) * 100).toFixed(1) }}%
+              {{ status === 'Optimal' && weights[a.id] !== undefined ? `${(weights[a.id] * 100).toFixed(1)}%` : "—" }}
             </span>
             <span class="qp-ret">E[R]={{ (a.ret * 100).toFixed(1) }}%</span>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="status !== 'Optimal' && status !== 'NotSolved'"
+      role="alert"
+      class="washi-result-bar conflict"
+    >
+      <div class="conflict-header">
+        <span class="status-dot conflict"></span>
+        <strong>{{ i18n.nonOptimalTitle }} ({{ status }})</strong>
+      </div>
+      <div v-if="solveError" class="conflict-diag-notice">
+        {{ solveError }}
+      </div>
+      <div v-else class="conflict-hint">
+        {{ i18n.nonOptimalHint }}
       </div>
     </div>
 

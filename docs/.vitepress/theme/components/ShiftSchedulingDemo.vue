@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
 import { getWashiClient } from "./washiClient";
 import { useComponentTranslations } from "../locales/index";
+import type { SolverStatus } from "../../../../src/modeler/types.js";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
@@ -57,19 +58,27 @@ const requestedOff = ref<Set<string>>(
   ])
 );
 
+type DiagStatus = "none" | "unsat_core" | "coi_required" | "empty_core" | "error";
+
 const isSolving = ref(false);
 const isDirty = ref(false);
-const status = ref<"Optimal" | "Infeasible">("Optimal");
+const status = ref<SolverStatus>("NotSolved");
 const totalCost = ref<number | null>(null);
 const solveTimeMs = ref<number>(0);
 const assignments = ref<Record<string, number>>({});
 const unsatCore = ref<string[]>([]);
+const diagStatus = ref<DiagStatus>("none");
+const diagErrorDetail = ref<string | null>(null);
+const solveError = ref<string | null>(null);
+
+let editVersion = 0;
 
 function keyOf(staffId: string, day: string) {
   return `${staffId}_${day}`;
 }
 
 function markDirty() {
+  editVersion++;
   isDirty.value = true;
 }
 
@@ -82,6 +91,7 @@ function toggleDayOff(staffId: string, day: string) {
     next.add(k);
   }
   requestedOff.value = next;
+  editVersion++;
   isDirty.value = true;
 }
 
@@ -150,6 +160,7 @@ function selectPreset(preset: "standard" | "weekend_peak" | "two_days_off" | "co
       "Frank_Mon",
     ]);
   }
+  editVersion++;
   isDirty.value = true;
 }
 
@@ -198,13 +209,15 @@ function buildConstraints(m: any, sum: any, expr: any) {
 }
 
 async function solveRoster() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || isSolving.value) return;
   isSolving.value = true;
+  let versionAtBuild = editVersion;
 
   try {
     const t0 = performance.now();
     const { Model, sum, dot, expr, minimize } = await getWashiClient(false);
 
+    versionAtBuild = editVersion;
     const m = new Model("ShiftRoster8x7");
     const shift = buildConstraints(m, sum, expr);
 
@@ -219,10 +232,14 @@ async function solveRoster() {
     const elapsed = performance.now() - t0;
     solveTimeMs.value = elapsed;
 
+    status.value = solveStatus;
+    solveError.value = null;
+
     if (solveStatus === "Optimal") {
-      status.value = "Optimal";
       totalCost.value = m.objectiveValue;
       unsatCore.value = [];
+      diagStatus.value = "none";
+      diagErrorDetail.value = null;
       const nextAssign: Record<string, number> = {};
       for (const s of staffList) {
         for (const d of days) {
@@ -231,58 +248,47 @@ async function solveRoster() {
       }
       assignments.value = nextAssign;
     } else {
-      status.value = "Infeasible";
       totalCost.value = null;
       assignments.value = {};
+      unsatCore.value = [];
+      diagStatus.value = "none";
+      diagErrorDetail.value = null;
 
-      if ((window as any).crossOriginIsolated) {
-        try {
-          const { Model: Z3Model, sum: z3Sum, expr: z3Expr } = await getWashiClient(true);
-          const diag = new Z3Model({ name: "ShiftConflict", solver: "z3" });
-          buildConstraints(diag, z3Sum, z3Expr);
-          await diag.check("z3");
-          unsatCore.value =
-            diag.unsatCore && diag.unsatCore.length > 0
-              ? diag.unsatCore
-              : inferLocalConflict();
-        } catch {
-          unsatCore.value = inferLocalConflict();
+      if (solveStatus === "Infeasible") {
+        if ((window as { crossOriginIsolated?: boolean }).crossOriginIsolated) {
+          try {
+            const { Model: Z3Model, sum: z3Sum, expr: z3Expr } = await getWashiClient(true);
+            const diag = new Z3Model({ name: "ShiftConflict", solver: "z3" });
+            buildConstraints(diag, z3Sum, z3Expr);
+            await diag.check("z3");
+            if (diag.unsatCore && diag.unsatCore.length > 0) {
+              unsatCore.value = [...diag.unsatCore];
+              diagStatus.value = "unsat_core";
+            } else {
+              diagStatus.value = "empty_core";
+            }
+          } catch (err) {
+            diagStatus.value = "error";
+            diagErrorDetail.value = err instanceof Error ? err.message : String(err);
+          }
+        } else {
+          diagStatus.value = "coi_required";
         }
-      } else {
-        unsatCore.value = inferLocalConflict();
       }
     }
-    isDirty.value = false;
+    isDirty.value = editVersion !== versionAtBuild;
+  } catch (err) {
+    status.value = "Error";
+    totalCost.value = null;
+    assignments.value = {};
+    unsatCore.value = [];
+    diagStatus.value = "none";
+    diagErrorDetail.value = null;
+    solveError.value = err instanceof Error ? err.message : String(err);
+    isDirty.value = editVersion !== versionAtBuild;
   } finally {
     isSolving.value = false;
   }
-}
-
-function inferLocalConflict(): string[] {
-  for (const d of days) {
-    const avail = staffList.filter((s) => !requestedOff.value.has(keyOf(s.id, d)));
-    const reqCount = dailyDemand.value[d] ?? 4;
-    if (avail.length < reqCount) {
-      return [
-        `coverage_${d}`,
-        ...staffList
-          .filter((s) => requestedOff.value.has(keyOf(s.id, d)))
-          .map((s) => `day_off_${s.id}_${d}`),
-      ];
-    }
-    if (minSeniorPerDay.value > 0) {
-      const availSeniors = avail.filter((s) => s.isSenior);
-      if (availSeniors.length < minSeniorPerDay.value) {
-        return [
-          `senior_${d}`,
-          ...staffList
-            .filter((s) => s.isSenior && requestedOff.value.has(keyOf(s.id, d)))
-            .map((s) => `day_off_${s.id}_${d}`),
-        ];
-      }
-    }
-  }
-  return ["max_shifts_limit", "coverage_weekly"];
 }
 
 function isConflictingCell(staffId: string, day: string) {
@@ -491,7 +497,7 @@ onMounted(() => {
     </div>
 
     <!-- Status / Diagnosis Footer -->
-    <div v-if="status === 'Optimal'" class="washi-result-bar optimal">
+    <div v-if="status === 'Optimal'" role="status" aria-live="polite" class="washi-result-bar optimal">
       <div class="result-main">
         <span class="status-dot optimal"></span>
         <strong>{{ i18n.optimalTitle }}</strong>
@@ -505,18 +511,49 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else class="washi-result-bar conflict">
+    <div v-else-if="status === 'Infeasible'" role="alert" class="washi-result-bar conflict">
       <div class="conflict-header">
         <span class="status-dot conflict"></span>
         <strong>
-          {{ i18n.infeasibleTitle }}
+          {{ unsatCore.length > 0 ? i18n.infeasibleTitle : i18n.infeasibleNoCoreTitle }}
         </strong>
       </div>
-      <div class="unsat-chips">
-        <code v-for="c in unsatCore" :key="c" class="unsat-chip">{{ c }}</code>
+      <template v-if="unsatCore.length > 0">
+        <div class="unsat-chips">
+          <code v-for="c in unsatCore" :key="c" class="unsat-chip">{{ c }}</code>
+        </div>
+        <div class="conflict-hint">
+          {{ i18n.infeasibleTip }}
+        </div>
+      </template>
+      <template v-else>
+        <div v-if="diagStatus === 'coi_required'" class="conflict-diag-notice">
+          {{ i18n.coiRequiredNotice }}
+        </div>
+        <div v-else-if="diagStatus === 'empty_core'" class="conflict-diag-notice">
+          {{ i18n.z3EmptyCoreNotice }}
+        </div>
+        <div v-else-if="diagStatus === 'error'" class="conflict-diag-notice">
+          {{ i18n.z3DiagErrorPrefix }} {{ diagErrorDetail }}
+        </div>
+        <div class="conflict-hint">
+          {{ i18n.infeasibleAdjustTip }}
+        </div>
+      </template>
+    </div>
+
+    <div v-else-if="status !== 'NotSolved'" role="alert" class="washi-result-bar conflict">
+      <div class="conflict-header">
+        <span class="status-dot conflict"></span>
+        <strong>
+          {{ i18n.nonOptimalTitle }} ({{ status }})
+        </strong>
       </div>
-      <div class="conflict-hint">
-        {{ i18n.infeasibleTip }}
+      <div v-if="solveError" class="conflict-diag-notice">
+        {{ solveError }}
+      </div>
+      <div v-else class="conflict-hint">
+        {{ i18n.nonOptimalHint }}
       </div>
     </div>
 

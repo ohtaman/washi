@@ -385,19 +385,30 @@ export function initApp() {
       const result = await executeModelCode(codeTextarea.value);
 
       if (!result.success) {
+        currentModel = null;
         logOutput.textContent = `Execution Error:\n${result.error}\n\nStack:\n${result.logs.join("\n")}`;
         showTab("tab-logs");
         metricStatus.textContent = "Error";
-        metricStatus.className = "metric-value status-infeasible";
+        metricStatus.className = "metric-value status-error";
+        metricObj.textContent = "--";
+        metricTime.textContent = result.runTime
+          ? `${(result.runTime * 1000).toFixed(1)} ms`
+          : "--";
+        metricVars.textContent = "--";
+        lpOutput.textContent = "// Execution error: LP unavailable.";
+        renderVariablesTable();
+        renderVisualizer();
         return;
       }
 
       currentModel = result.model || null;
 
       // Update metrics
-      const status = currentModel?.status || "Optimal";
+      const status = currentModel ? currentModel.status : "--";
       metricStatus.textContent = status;
-      metricStatus.className = `metric-value status-${status.toLowerCase()}`;
+      metricStatus.className = currentModel
+        ? `metric-value status-${status.toLowerCase()}`
+        : "metric-value";
 
       const objVal = currentModel?.objectiveValue;
       metricObj.textContent =
@@ -408,8 +419,9 @@ export function initApp() {
       metricTime.textContent = result.runTime
         ? `${(result.runTime * 1000).toFixed(1)} ms`
         : "--";
-      const totalVars = currentModel?.variables.size ?? 0;
-      metricVars.textContent = String(totalVars);
+      metricVars.textContent = currentModel
+        ? String(currentModel.variables.size)
+        : "--";
 
       // Render Conflicts / Unsat Core if conflicting constraints detected
       const isUnsatCore = Boolean(
@@ -443,7 +455,9 @@ export function initApp() {
       logOutput.textContent =
         result.logs.length > 0
           ? result.logs.join("\n")
-          : "Solve completed successfully with no warnings.";
+          : currentModel
+            ? `Model status: ${status}`
+            : "Execution completed (no Model created).";
 
       // Render LP String
       if (currentModel) {
@@ -452,6 +466,8 @@ export function initApp() {
         } catch (err) {
           lpOutput.textContent = `// CPLEX LP export unavailable: ${err instanceof Error ? err.message : String(err)}`;
         }
+      } else {
+        lpOutput.textContent = "// No Model was created.";
       }
 
       // Render variables table & visualizer
@@ -557,7 +573,15 @@ export function initApp() {
   filterNonZero.addEventListener("change", renderVariablesTable);
 
   function renderVisualizer() {
-    if (!currentModel || currentModel.status === "Infeasible" || currentModel.status === "Unsat") {
+    if (
+      !currentModel ||
+      !currentModel.hasPrimalSolution ||
+      currentModel.status === "NotSolved" ||
+      currentModel.status === "Infeasible" ||
+      currentModel.status === "Unsat" ||
+      currentModel.status === "Unbounded" ||
+      currentModel.status === "Error"
+    ) {
       visualizerContainer.innerHTML = `<p style="color: var(--text-sumi-muted); font-size: 0.85rem; padding: 12px 0;">No primal feasible solution to display.</p>`;
       return;
     }
