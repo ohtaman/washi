@@ -243,7 +243,21 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
       const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "washi-highs-build-sh-"));
       try {
         const scriptsDir = path.join(tmpRoot, "scripts");
+        const stubBinDir = path.join(tmpRoot, "stub-bin");
         fs.mkdirSync(scriptsDir, { recursive: true });
+        fs.mkdirSync(stubBinDir, { recursive: true });
+
+        const emccStub = path.join(stubBinDir, "emcc");
+        fs.writeFileSync(emccStub, "#!/usr/bin/env bash\necho 'emcc stub 3.1.50'\n", {
+          mode: 0o755,
+        });
+        const gitStub = path.join(stubBinDir, "git");
+        fs.writeFileSync(
+          gitStub,
+          "#!/usr/bin/env bash\necho \"GIT_STUB:$*\"\nexit 42\n",
+          { mode: 0o755 }
+        );
+
         const scriptCopy = path.join(scriptsDir, "build-highs-wasm.sh");
         fs.copyFileSync(buildScriptSrc, scriptCopy);
         if (configContent !== null) {
@@ -252,8 +266,10 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
         return spawnSync("bash", [scriptCopy], {
           cwd: tmpRoot,
           env: {
-            PATH: process.env.PATH ?? "",
+            PATH: `${stubBinDir}:${process.env.PATH ?? ""}`,
             HOME: process.env.HOME ?? tmpRoot,
+            HIGHS_DIR: path.join(tmpRoot, "highs-src"),
+            HIGHS_BUILD_DIR: path.join(tmpRoot, "highs-build"),
           },
           encoding: "utf8",
         });
@@ -281,10 +297,14 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
       expect(badRes.stdout).not.toContain("v1.15.1");
     }
 
-    // 3. Valid highs.config.json parses version & repo accurately before checking emcc
+    // 3. Valid highs.config.json parses version & repo accurately before reaching isolated git stub
     const validRes = runBuildScriptInTempRoot(
       JSON.stringify({ version: "v9.8.7", repo: "https://example.com/HiGHS.git" })
     );
+    expect(validRes.status).toBe(42);
     expect(validRes.stdout).toContain("Version:   v9.8.7");
+    expect(validRes.stdout).toContain(
+      "GIT_STUB:clone --depth 1 --branch v9.8.7 https://example.com/HiGHS.git"
+    );
   });
 });

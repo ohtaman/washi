@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
@@ -454,8 +454,12 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
   });
 
   it("reads HiGHS version strictly from highs.config.json and rejects missing/malformed package metadata", () => {
+    const repoHighsConfig = JSON.parse(
+      readFileSync(path.resolve(process.cwd(), "highs.config.json"), "utf8")
+    ) as { version: string };
+    const expectedRepoHighsVersion = repoHighsConfig.version.trim().replace(/^v/, "").trim();
     const repoVersions = readPackageVersions();
-    expect(repoVersions.highsVersion).toBe("1.15.1");
+    expect(repoVersions.highsVersion).toBe(expectedRepoHighsVersion);
     expect(repoVersions.washiVersion).toMatch(/^\d+\.\d+\.\d+/);
     expect(repoVersions.glpkVersion).not.toBe("unknown");
     expect(repoVersions.playwrightVersion).not.toBe("unknown");
