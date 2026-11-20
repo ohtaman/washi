@@ -1,0 +1,27 @@
+{
+  "id": "053",
+  "slug": "rcsp-shortest-path",
+  "chapter": 6,
+  "order": 3,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

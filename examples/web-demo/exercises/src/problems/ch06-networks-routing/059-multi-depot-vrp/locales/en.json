@@ -1,0 +1,33 @@
+{
+  "title": "#059. Multi-Depot Vehicle Routing Problem (MDVRP)",
+  "subtitle": "Route vehicles from D capacitated depots so every route returns to its origin depot without exceeding fleet or supply caps.",
+  "tags": [
+    "MIP",
+    "MDVRP",
+    "Multi-Depot",
+    "Applied"
+  ],
+  "caseNames": [
+    "2 depots, 4 customers balanced split",
+    "2 depots, tight depot 0 supply",
+    "2 depots, 5 customers multi-route",
+    "2 depots, 6 customers asymmetric fleets",
+    "2 depots, 6 customers tight balance"
+  ],
+  "judge": {
+    "m0": "Output must be an object { routes, totalDistance }.",
+    "m1": "Field \"routes\" must be an array of routes.",
+    "m2": "Route {p0} must be an integer array of length at least 3 ([d, ..., d]).",
+    "m3": "Route {p0} starts at invalid depot {p1} (expected [0, {p2}]).",
+    "m4": "Route {p0} started at depot {p1} but ended at {p2}; each route must return to its origin depot.",
+    "m5": "Depot {p0} dispatched {p1} vehicles, exceeding depotMaxVehicles = {p2}.",
+    "m6": "Customer index {p0} is out of valid range [{p1}, {p2}].",
+    "m7": "Customer {p0} is visited more than once.",
+    "m8": "Route {p0} load ({p1}) exceeds vehicleCapacity ({p2}).",
+    "m9": "Depot {p0} total demand ({p1}) exceeds depotCapacities ({p2}).",
+    "m10": "Customer {p0} was not visited by any route.",
+    "m11": "Reported totalDistance ({p0}) does not match computed route distance ({p1}).",
+    "m12": "Feasible MDVRP routes, but totalDistance ({p0}) exceeds minimum ({p1}).",
+    "m13": "Minimum-distance multi-depot vehicle routes found (totalDistance = {p0})!"
+  }
+}

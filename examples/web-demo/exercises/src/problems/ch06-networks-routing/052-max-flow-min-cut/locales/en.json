@@ -1,0 +1,31 @@
+{
+  "title": "#052. Maximum Flow & Minimum s-t Cut",
+  "subtitle": "Maximize s-to-t throughput via continuous LP and extract a matching minimum s-t cut from the residual graph.",
+  "tags": [
+    "LP",
+    "Max-Flow Min-Cut",
+    "Residual Graph",
+    "Core"
+  ],
+  "caseNames": [
+    "4-node diamond cut",
+    "6-node interior bottleneck",
+    "6-node cross-channel network",
+    "7-node multi-layer network",
+    "8-node dense bottleneck"
+  ],
+  "judge": {
+    "m0": "Output must be an object { flows, cutEdges, maxFlow }.",
+    "m1": "Field \"cutEdges\" must be an array of edge indices.",
+    "m2": "cutEdges[{p0}] = {p1} is not a valid integer edge index in [0, {p2}].",
+    "m3": "cutEdges contains duplicate edge index {p0}.",
+    "m4": "flows[{p0}] cannot be negative (received {p1}).",
+    "m5": "flows[{p0}] = {p1} exceeds edge capacity {p2}.",
+    "m6": "Flow conservation failed at intermediate node {p0}: net outflow is {p1}, expected 0.",
+    "m7": "Reported maxFlow ({p0}) does not match net source flow ({p1}).",
+    "m8": "cutEdges is not a valid s-t cut: sink remains reachable from source after removing cutEdges.",
+    "m9": "Cut capacity sum ({p0}) does not equal flow value ({p1}).",
+    "m10": "Valid s-t flow and cut, but maxFlow ({p0}) is below maximum ({p1}).",
+    "m11": "Maximum flow and matching minimum s-t cut verified (maxFlow = {p0})!"
+  }
+}

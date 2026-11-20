@@ -1,0 +1,34 @@
+{
+  "title": "#060. Connected Territory Design & Hub Routing",
+  "subtitle": "Chapter 6 synthesis: partition zones into balanced connected territories with flow connectivity, hub selection, and intra-territory TSP tours.",
+  "tags": [
+    "MIP",
+    "Territory Design",
+    "Connectivity Flow",
+    "TSP",
+    "Capstone"
+  ],
+  "caseNames": [
+    "5-zone 2-district corridor",
+    "6-zone 2x3 contiguity grid",
+    "6-zone ring with chord",
+    "7-zone twin-bridge region",
+    "8-zone 2x4 metro grid"
+  ],
+  "judge": {
+    "m0": "Output must be an object { territories, totalCost }.",
+    "m1": "Field \"territories\" must be an array.",
+    "m2": "Expected {p1} territories, received {p0}.",
+    "m3": "Territory {p0} must specify an integer \"hub\".",
+    "m4": "Territory {p0} \"tour\" must be an integer cycle of length at least 3 ([hub, ..., hub]).",
+    "m5": "Zone index {p0} is out of valid range [0, {p1}].",
+    "m6": "Territory {p0} tour must start and end at its chosen hub {p1}.",
+    "m7": "Zone {p0} appears multiple times across territory tours.",
+    "m8": "Territory {p0} total demand ({p1}) violates balance bounds [{p2}, {p3}].",
+    "m9": "Territory {p0} is disconnected on the adjacency graph (island zones detected).",
+    "m10": "Zone {p0} was not assigned to any territory.",
+    "m11": "Reported totalCost ({p0}) does not match computed hub + tour cost ({p1}).",
+    "m12": "Valid connected territories and tours, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m13": "Optimal connected territory partition, hubs, and routing tours found (totalCost = {p0})!"
+  }
+}
