@@ -1,0 +1,28 @@
+{
+  "title": "#086. Rolling-Horizon Planning (MPC)",
+  "subtitle": "Execute Model Predictive Control over sliding forecast windows, committing only period t before observing actual demand.",
+  "tags": [
+    "LP",
+    "Rolling Horizon",
+    "MPC",
+    "Multi-Period"
+  ],
+  "caseNames": [
+    "4-period exact-forecast demand spike",
+    "5-period forecast mismatch with 2-step lookahead",
+    "6-period demand surge with 3-step window",
+    "6-period opening inventory with price swings",
+    "8-period long horizon with forecast noise"
+  ],
+  "judge": {
+    "m0": "Output must be an object { produced, inventories, shortfalls, totalCost }.",
+    "m1": "produced[{p0}] = {p1} falls outside [0, {p2}].",
+    "m2": "inventories[{p0}] ({p1}) does not match realized inventory balance ({p2}).",
+    "m3": "shortfalls[{p0}] ({p1}) does not match realized demand shortfall ({p2}).",
+    "m4": "Reported totalCost ({p0}) does not match accumulated realized cost ({p1}).",
+    "m5": "Realized cost ({p0}) deviates below the rolling-horizon MPC cost ({p1}); check that each step plans only over windowLen using forecastDemands.",
+    "m6": "Realized cost ({p0}) exceeds the rolling-horizon MPC cost ({p1}).",
+    "m7": "Rolling-horizon MPC schedule verified (totalCost = {p0}).",
+    "m8": "Period {p0} action produced[{p0}] = {p1} is not optimal for the {p0}-th forecast window (window cost {p2} vs optimum {p3})."
+  }
+}

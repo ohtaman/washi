@@ -1,0 +1,287 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "nodeCount": 4,
+      "source": 0,
+      "sink": 3,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 10
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 5
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "cap": 4
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 4
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 10
+        }
+      ]
+    },
+    "expectedOptimal": 13
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "nodeCount": 6,
+      "source": 0,
+      "sink": 5,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 12
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 11
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 7
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cap": 4
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "cap": 2
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 6
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cap": 10
+        },
+        {
+          "from": 4,
+          "to": 3,
+          "cap": 5
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "cap": 9
+        }
+      ]
+    },
+    "expectedOptimal": 17
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "nodeCount": 6,
+      "source": 0,
+      "sink": 5,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 12
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 8
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 5
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "cap": 3
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 7
+        },
+        {
+          "from": 3,
+          "to": 2,
+          "cap": 4
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cap": 11
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "cap": 6
+        }
+      ]
+    },
+    "expectedOptimal": 11
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "nodeCount": 7,
+      "source": 0,
+      "sink": 6,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 15
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 12
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 7
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cap": 6
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 8
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cap": 5
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cap": 3
+        },
+        {
+          "from": 3,
+          "to": 6,
+          "cap": 9
+        },
+        {
+          "from": 4,
+          "to": 6,
+          "cap": 10
+        },
+        {
+          "from": 5,
+          "to": 4,
+          "cap": 4
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cap": 6
+        }
+      ]
+    },
+    "expectedOptimal": 22
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "nodeCount": 8,
+      "source": 0,
+      "sink": 7,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 11
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 9
+        },
+        {
+          "from": 0,
+          "to": 3,
+          "cap": 7
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cap": 6
+        },
+        {
+          "from": 1,
+          "to": 5,
+          "cap": 5
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 4
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cap": 6
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cap": 3
+        },
+        {
+          "from": 3,
+          "to": 6,
+          "cap": 5
+        },
+        {
+          "from": 4,
+          "to": 7,
+          "cap": 9
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cap": 2
+        },
+        {
+          "from": 5,
+          "to": 7,
+          "cap": 8
+        },
+        {
+          "from": 6,
+          "to": 7,
+          "cap": 7
+        }
+      ]
+    },
+    "expectedOptimal": 24
+  }
+]

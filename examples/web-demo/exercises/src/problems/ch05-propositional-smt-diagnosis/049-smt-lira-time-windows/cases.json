@@ -1,0 +1,196 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "shipments": [
+        {
+          "stdWindow": [0, 6],
+          "expWindow": [0, 6],
+          "stdDuration": 2.5,
+          "expDuration": 1.5,
+          "expFee": 20,
+          "dueTime": 3,
+          "tardinessPenalty": 10
+        },
+        {
+          "stdWindow": [0, 5],
+          "expWindow": [0, 5],
+          "stdDuration": 2,
+          "expDuration": 1,
+          "expFee": 15,
+          "dueTime": 3,
+          "tardinessPenalty": 12
+        }
+      ],
+      "blackout": [3, 4],
+      "maxExpress": 1
+    },
+    "expectedOptimal": 39
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "shipments": [
+        {
+          "stdWindow": [0, 7],
+          "expWindow": [0, 7],
+          "stdDuration": 2.5,
+          "expDuration": 1.5,
+          "expFee": 18,
+          "dueTime": 3,
+          "tardinessPenalty": 10
+        },
+        {
+          "stdWindow": [1, 8],
+          "expWindow": [0, 8],
+          "stdDuration": 2,
+          "expDuration": 1.25,
+          "expFee": 14,
+          "dueTime": 5.5,
+          "tardinessPenalty": 8
+        },
+        {
+          "stdWindow": [3.5, 9],
+          "expWindow": [3.5, 9],
+          "stdDuration": 1.75,
+          "expDuration": 1,
+          "expFee": 25,
+          "dueTime": 7.5,
+          "tardinessPenalty": 12
+        }
+      ],
+      "blackout": [3.5, 4.5],
+      "maxExpress": 1
+    },
+    "expectedOptimal": 16
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "shipments": [
+        {
+          "stdWindow": [2, 8],
+          "expWindow": [0, 6],
+          "stdDuration": 2.25,
+          "expDuration": 1.25,
+          "expFee": 16,
+          "dueTime": 2.5,
+          "tardinessPenalty": 10
+        },
+        {
+          "stdWindow": [1, 7],
+          "expWindow": [0, 6],
+          "stdDuration": 2,
+          "expDuration": 1.5,
+          "expFee": 22,
+          "dueTime": 3,
+          "tardinessPenalty": 12
+        },
+        {
+          "stdWindow": [4, 9],
+          "expWindow": [3.5, 8],
+          "stdDuration": 2.5,
+          "expDuration": 1.5,
+          "expFee": 18,
+          "dueTime": 6,
+          "tardinessPenalty": 9
+        }
+      ],
+      "blackout": [3, 4],
+      "maxExpress": 2
+    },
+    "expectedOptimal": 42.5
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "shipments": [
+        {
+          "stdWindow": [0, 6],
+          "expWindow": [0, 6],
+          "stdDuration": 2,
+          "expDuration": 1,
+          "expFee": 15,
+          "dueTime": 2.5,
+          "tardinessPenalty": 10
+        },
+        {
+          "stdWindow": [0, 7],
+          "expWindow": [0, 7],
+          "stdDuration": 2.5,
+          "expDuration": 1.5,
+          "expFee": 12,
+          "dueTime": 4,
+          "tardinessPenalty": 8
+        },
+        {
+          "stdWindow": [3, 9.5],
+          "expWindow": [3, 9.5],
+          "stdDuration": 2,
+          "expDuration": 1.25,
+          "expFee": 20,
+          "dueTime": 7,
+          "tardinessPenalty": 14
+        },
+        {
+          "stdWindow": [4.5, 11],
+          "expWindow": [4.5, 11],
+          "stdDuration": 1.5,
+          "expDuration": 1,
+          "expFee": 18,
+          "dueTime": 8.5,
+          "tardinessPenalty": 10
+        }
+      ],
+      "blackout": [4, 5],
+      "maxExpress": 1
+    },
+    "expectedOptimal": 12
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "shipments": [
+        {
+          "stdWindow": [0, 5],
+          "expWindow": [0, 5],
+          "stdDuration": 2.25,
+          "expDuration": 1.25,
+          "expFee": 14,
+          "dueTime": 2,
+          "tardinessPenalty": 12
+        },
+        {
+          "stdWindow": [1, 7],
+          "expWindow": [0.5, 7],
+          "stdDuration": 2.5,
+          "expDuration": 1.5,
+          "expFee": 18,
+          "dueTime": 3.5,
+          "tardinessPenalty": 10
+        },
+        {
+          "stdWindow": [2, 9],
+          "expWindow": [2, 9],
+          "stdDuration": 2.75,
+          "expDuration": 1.75,
+          "expFee": 16,
+          "dueTime": 6,
+          "tardinessPenalty": 8
+        },
+        {
+          "stdWindow": [5, 11],
+          "expWindow": [4, 11],
+          "stdDuration": 2,
+          "expDuration": 1,
+          "expFee": 20,
+          "dueTime": 7.5,
+          "tardinessPenalty": 15
+        }
+      ],
+      "blackout": [3.5, 5],
+      "maxExpress": 2
+    },
+    "expectedOptimal": 79.75
+  }
+]

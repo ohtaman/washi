@@ -1,0 +1,24 @@
+{
+  "id": "032",
+  "slug": "element-indexing",
+  "chapter": 4,
+  "order": 2,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 8,
+  "paradigms": [
+    "CP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

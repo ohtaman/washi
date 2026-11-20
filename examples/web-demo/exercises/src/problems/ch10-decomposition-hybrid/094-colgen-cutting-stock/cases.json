@@ -1,0 +1,47 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "rollWidth": 100,
+      "widths": [45, 36, 16],
+      "demands": [10, 14, 20]
+    },
+    "expectedOptimal": 14
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "rollWidth": 50,
+      "widths": [21, 17, 11],
+      "demands": [7, 9, 12]
+    },
+    "expectedOptimal": 9
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "rollWidth": 120,
+      "widths": [50, 42, 31, 18],
+      "demands": [8, 10, 11, 15]
+    },
+    "expectedOptimal": 13
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "rollWidth": 80,
+      "widths": [35, 25, 20, 12],
+      "demands": [6, 8, 9, 14]
+    },
+    "expectedOptimal": 10
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "rollWidth": 100,
+      "widths": [48, 34, 27, 19, 13],
+      "demands": [5, 8, 10, 12, 16]
+    },
+    "expectedOptimal": 13
+  }
+]

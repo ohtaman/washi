@@ -1,0 +1,32 @@
+{
+  "title": "#100. Integrated S&OP Audit & Rescheduling (Capstone)",
+  "subtitle": "Combine Z3 unsatCore conflict repair with HiGHS minimum-disruption MIP rescheduling across an enterprise S&OP pipeline.",
+  "tags": [
+    "Capstone",
+    "Z3 Unsat Core",
+    "MaxSAT Repair",
+    "Hybrid SMT+MIP"
+  ],
+  "caseNames": [
+    "4-line backup mandate conflict",
+    "4-line fully consistent S&OP policy",
+    "5-line cascading implication deadlock",
+    "5-line multi-idle vs backup repair",
+    "6-line dual conflict network rescheduling"
+  ],
+  "judge": {
+    "m0": "Output must be an object { droppedPolicies, activeAssignments, quantities, totalCost }.",
+    "m1": "Field \"droppedPolicies\" must be an array of string policy rule IDs.",
+    "m2": "Dropped policy ID \"{p0}\" does not exist in softRules (hardRules cannot be dropped).",
+    "m3": "Duplicate dropped policy ID \"{p0}\" in droppedPolicies.",
+    "m4": "Policy rules remain unsatisfiable after dropping [{p0}].",
+    "m5": "Total weight of dropped policies ({p0}) exceeds minimum repair weight ({p1}).",
+    "m6": "activeAssignments[{p0}] must be binary (0 or 1, received {p1}).",
+    "m7": "quantities[{p0}] = {p1} violates capacity bounds [0, {p2}].",
+    "m8": "Active assignment violates retained policy rule \"{p0}\".",
+    "m9": "Total production ({p0}) fails to satisfy demand ({p1}).",
+    "m10": "Reported totalCost ({p0}) does not match recomputed fixed + production + disruption cost ({p1}).",
+    "m11": "Policy repair and rescheduling plan are valid, but totalCost ({p0}) exceeds optimum ({p1}).",
+    "m12": "Capstone S&OP audit, repair, and rescheduling verified (totalCost = {p0})."
+  }
+}

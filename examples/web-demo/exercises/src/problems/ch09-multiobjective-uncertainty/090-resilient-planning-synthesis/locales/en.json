@@ -1,0 +1,28 @@
+{
+  "title": "#090. Resilient Planning & Recovery Synthesis",
+  "subtitle": "Chapter 9 capstone: combine Bertsimas-Sim robust commitment with stochastic two-stage minimum-disruption recourse recovery.",
+  "tags": [
+    "MIP",
+    "Robust + Stochastic",
+    "Rescheduling",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4-unit single-outage resilient synthesis",
+    "5-unit fractional robust budget with dual outages",
+    "5-unit high switching-cost pre-positioning",
+    "6-unit elastic shortfall vs reserve trade-off",
+    "7-unit multi-shock network recovery"
+  ],
+  "judge": {
+    "m0": "Output must be an object { committed, recovered, totalCost }.",
+    "m1": "Field \"recovered\" must be an array of length {p0}.",
+    "m2": "committed[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m3": "Surviving Stage-1 capacity ({p0}) under gamma = {p2} is below robustMinCap ({p1}).",
+    "m4": "recovered[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m5": "Unit {p1} is offline in scenario {p0} and cannot be activated in recovered.",
+    "m6": "Reported totalCost ({p0}) does not match computed fixed plus expected recovery cost ({p1}).",
+    "m7": "Resilient constraints satisfied, but expected totalCost ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal resilient planning & recovery synthesis verified (totalCost = {p0})."
+  }
+}

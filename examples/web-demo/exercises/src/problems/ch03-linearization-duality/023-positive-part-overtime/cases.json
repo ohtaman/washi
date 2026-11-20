@@ -1,0 +1,197 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [
+        40,
+        60,
+        50
+      ],
+      "minRegular": [
+        10,
+        10,
+        10
+      ],
+      "maxRegular": [
+        50,
+        50,
+        50
+      ],
+      "regularCosts": [
+        20,
+        25,
+        18
+      ],
+      "overtimePenalties": [
+        50,
+        45,
+        55
+      ],
+      "totalRegularCap": 100
+    },
+    "expectedOptimal": 4200
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [
+        50,
+        20,
+        60,
+        45
+      ],
+      "minRegular": [
+        15,
+        30,
+        15,
+        10
+      ],
+      "maxRegular": [
+        45,
+        45,
+        55,
+        40
+      ],
+      "regularCosts": [
+        22,
+        18,
+        24,
+        20
+      ],
+      "overtimePenalties": [
+        48,
+        40,
+        54,
+        42
+      ],
+      "totalRegularCap": 120
+    },
+    "expectedOptimal": 5550
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [
+        35,
+        40,
+        45,
+        30
+      ],
+      "minRegular": [
+        10,
+        5,
+        10,
+        5
+      ],
+      "maxRegular": [
+        40,
+        40,
+        40,
+        40
+      ],
+      "regularCosts": [
+        18,
+        35,
+        20,
+        15
+      ],
+      "overtimePenalties": [
+        42,
+        28,
+        48,
+        38
+      ],
+      "totalRegularCap": 130
+    },
+    "expectedOptimal": 3275
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [
+        30,
+        55,
+        70,
+        25,
+        60
+      ],
+      "minRegular": [
+        10,
+        15,
+        20,
+        30,
+        15
+      ],
+      "maxRegular": [
+        45,
+        50,
+        60,
+        45,
+        50
+      ],
+      "regularCosts": [
+        20,
+        22,
+        25,
+        19,
+        21
+      ],
+      "overtimePenalties": [
+        45,
+        52,
+        60,
+        40,
+        49
+      ],
+      "totalRegularCap": 175
+    },
+    "expectedOptimal": 7370
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [
+        45,
+        60,
+        35,
+        75,
+        50,
+        40
+      ],
+      "minRegular": [
+        10,
+        15,
+        10,
+        20,
+        10,
+        15
+      ],
+      "maxRegular": [
+        50,
+        55,
+        45,
+        60,
+        50,
+        45
+      ],
+      "regularCosts": [
+        22,
+        24,
+        18,
+        26,
+        21,
+        19
+      ],
+      "overtimePenalties": [
+        48,
+        55,
+        40,
+        65,
+        50,
+        42
+      ],
+      "totalRegularCap": 210
+    },
+    "expectedOptimal": 9335
+  }
+]

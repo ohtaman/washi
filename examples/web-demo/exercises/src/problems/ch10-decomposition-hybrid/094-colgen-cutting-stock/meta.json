@@ -1,0 +1,25 @@
+{
+  "id": "094",
+  "slug": "colgen-cutting-stock",
+  "chapter": 10,
+  "order": 4,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 22,
+  "paradigms": [
+    "LP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

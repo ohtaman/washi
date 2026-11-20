@@ -1,0 +1,30 @@
+{
+  "title": "#028. LP Reduced Costs & Entry Thresholds",
+  "subtitle": "Read variable reduced costs (v.reducedCost / v.dj) to quantify how much non-basic activity costs must drop to enter the mix.",
+  "tags": [
+    "LP",
+    "Reduced Cost",
+    "Duality",
+    "Sensitivity Analysis"
+  ],
+  "caseNames": [
+    "4-process 2-requirement blend",
+    "5-process 3-requirement blend",
+    "5-process asymmetric yield mix",
+    "6-process 3-requirement blend",
+    "7-process mix with slack requirement"
+  ],
+  "judge": {
+    "m0": "Output must be an object { quantities, reducedCosts, optimalCost }.",
+    "m1": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m2": "Requirement {p0} achieved ({p1}) is below {p2}.",
+    "m3": "Reported optimalCost ({p0}) does not match computed cost ({p1}).",
+    "m4": "Primal solution is feasible, but cost ({p0}) exceeds optimal ({p1}).",
+    "m5": "Reduced cost reducedCosts[{p0}] in a >= 0 minimization LP cannot be negative (received {p1}).",
+    "m6": "Active basic variable quantities[{p0}] = {p1} > 0 must have reduced cost 0 (received {p2}).",
+    "m7": "Active constraint count ({p0}) and positive basic variable count ({p1}) do not form a non-degenerate basis.",
+    "m8": "Optimal basis dual system failed feasibility.",
+    "m9": "reducedCosts[{p0}] received {p1}, expected exact dual reduced cost {p2}.",
+    "m10": "Optimal solution and exact reduced costs verified (optimalCost = {p0})!"
+  }
+}

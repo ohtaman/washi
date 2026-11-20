@@ -1,0 +1,103 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "boolVars": ["prod", "mfa", "legacy", "audit"],
+      "intVars": [{ "name": "tier", "lb": 1, "ub": 3 }],
+      "hardRules": [
+        { "id": "H1", "expr": { "implies": ["prod", "mfa"] } },
+        { "id": "H2", "expr": { "not": { "and": ["mfa", "legacy"] } } },
+        { "id": "H3", "expr": { "implies": ["prod", { "terms": { "tier": 1 }, "sense": ">=", "rhs": 2 }] } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 6, "expr": "prod" },
+        { "id": "S2", "weight": 2, "expr": "legacy" },
+        { "id": "S3", "weight": 4, "expr": "audit" }
+      ]
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "boolVars": ["eu", "encrypted", "masked", "archive"],
+      "intVars": [{ "name": "replicas", "lb": 1, "ub": 4 }],
+      "hardRules": [
+        { "id": "H1", "expr": { "implies": ["eu", { "and": ["encrypted", "masked"] }] } },
+        { "id": "H2", "expr": { "terms": { "replicas": 1 }, "sense": ">=", "rhs": 2 } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 5, "expr": "eu" },
+        { "id": "S2", "weight": 3, "expr": "archive" },
+        { "id": "S3", "weight": 4, "expr": { "terms": { "replicas": 1 }, "sense": "<=", "rhs": 3 } }
+      ]
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "boolVars": ["a", "b", "c", "d"],
+      "intVars": [],
+      "hardRules": [
+        { "id": "H1", "expr": { "implies": ["a", "b"] } },
+        { "id": "H2", "expr": { "implies": ["a", "c"] } },
+        { "id": "H3", "expr": { "implies": ["d", { "not": "a" }] } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 5, "expr": "a" },
+        { "id": "S2", "weight": 4, "expr": { "not": "b" } },
+        { "id": "S3", "weight": 3, "expr": { "not": "c" } },
+        { "id": "S4", "weight": 6, "expr": "d" }
+      ]
+    },
+    "expectedOptimal": 5
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "boolVars": ["vip", "fast", "strict"],
+      "intVars": [
+        { "name": "x", "lb": 1, "ub": 4 },
+        { "name": "y", "lb": 1, "ub": 4 }
+      ],
+      "hardRules": [
+        { "id": "H1", "expr": { "implies": ["vip", { "terms": { "x": 1, "y": -1 }, "sense": "==", "rhs": 0 }] } },
+        { "id": "H2", "expr": { "implies": ["fast", { "terms": { "x": 1 }, "sense": ">=", "rhs": 3 }] } },
+        { "id": "H3", "expr": { "implies": ["strict", { "terms": { "y": 1 }, "sense": "<=", "rhs": 2 }] } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 7, "expr": "vip" },
+        { "id": "S2", "weight": 3, "expr": "fast" },
+        { "id": "S3", "weight": 4, "expr": "strict" },
+        { "id": "S4", "weight": 2, "expr": { "terms": { "x": 1, "y": 1 }, "sense": "<=", "rhs": 5 } }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "boolVars": ["cloud", "onPrem", "sso", "vpn", "backup"],
+      "intVars": [
+        { "name": "nodes", "lb": 1, "ub": 6 },
+        { "name": "tier", "lb": 1, "ub": 3 }
+      ],
+      "hardRules": [
+        { "id": "H1", "expr": { "xor": ["cloud", "onPrem"] } },
+        { "id": "H2", "expr": { "implies": ["cloud", "sso"] } },
+        { "id": "H3", "expr": { "implies": ["onPrem", "vpn"] } },
+        { "id": "H4", "expr": { "implies": ["backup", { "terms": { "nodes": 1 }, "sense": ">=", "rhs": 3 }] } },
+        { "id": "H5", "expr": { "implies": [{ "terms": { "tier": 1 }, "sense": ">=", "rhs": 3 }, { "not": "vpn" }] } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 8, "expr": "cloud" },
+        { "id": "S2", "weight": 3, "expr": "onPrem" },
+        { "id": "S3", "weight": 5, "expr": "backup" },
+        { "id": "S4", "weight": 4, "expr": { "terms": { "nodes": 1 }, "sense": "<=", "rhs": 2 } },
+        { "id": "S5", "weight": 2, "expr": { "terms": { "tier": 1 }, "sense": ">=", "rhs": 3 } }
+      ]
+    },
+    "expectedOptimal": 7
+  }
+]

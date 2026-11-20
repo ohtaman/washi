@@ -1,0 +1,28 @@
+{
+  "title": "#083. Epsilon-Constraint Pareto Frontier",
+  "subtitle": "Trace the exact profit-vs-emissions Pareto curve across emission thresholds, including non-convex integer frontier points.",
+  "tags": [
+    "MIP",
+    "Pareto Frontier",
+    "Epsilon-Constraint",
+    "Multi-Objective"
+  ],
+  "caseNames": [
+    "4-project frontier starting at zero cap",
+    "5-project non-convex Pareto curve",
+    "6-project shared budget saturation",
+    "8-project multi-step emission ramp",
+    "10-project full frontier sweep"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selections, frontierProfits, frontierSum }.",
+    "m1": "Field \"selections\" must be an array of length {p0}.",
+    "m2": "selections[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "Frontier point {p0} uses budget {p1}, exceeding budgetCap {p2}.",
+    "m4": "Frontier point {p0} emits {p1}, exceeding cap epsilons[{p0}] = {p2}.",
+    "m5": "frontierProfits[{p0}] ({p1}) does not match selected profit ({p2}).",
+    "m6": "Reported frontierSum ({p0}) does not match sum of frontierProfits ({p1}).",
+    "m7": "All frontier points are feasible, but frontierSum ({p0}) is below exact Pareto sum ({p1}).",
+    "m8": "Exact epsilon-constraint Pareto frontier verified (frontierSum = {p0})."
+  }
+}

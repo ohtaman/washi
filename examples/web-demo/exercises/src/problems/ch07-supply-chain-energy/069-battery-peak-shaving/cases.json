@@ -1,0 +1,82 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "baseLoads": [40, 50, 80, 110, 95, 55],
+      "prices": [0.10, 0.12, 0.25, 0.35, 0.28, 0.12],
+      "demandCharge": 8.0,
+      "capacity": 80,
+      "minSoc": 10,
+      "initSoc": 30,
+      "minFinalSoc": 30,
+      "maxPower": 30,
+      "etaCharge": 0.8,
+      "etaDischarge": 0.8
+    },
+    "expectedOptimal": 733.968
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "baseLoads": [35, 45, 65, 100, 115, 85, 95, 50],
+      "prices": [0.08, 0.10, 0.22, 0.32, 0.36, 0.24, 0.30, 0.12],
+      "demandCharge": 10.0,
+      "capacity": 100,
+      "minSoc": 10,
+      "initSoc": 40,
+      "minFinalSoc": 40,
+      "maxPower": 35,
+      "etaCharge": 0.92,
+      "etaDischarge": 0.9
+    },
+    "expectedOptimal": 933.392939
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "baseLoads": [60, 65, 70, 130, 125, 75, 65, 60],
+      "prices": [0.14, 0.14, 0.15, 0.16, 0.16, 0.15, 0.14, 0.14],
+      "demandCharge": 15.0,
+      "capacity": 90,
+      "minSoc": 0,
+      "initSoc": 45,
+      "minFinalSoc": 20,
+      "maxPower": 40,
+      "etaCharge": 0.95,
+      "etaDischarge": 0.95
+    },
+    "expectedOptimal": 1443.475762
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "baseLoads": [30, 35, 55, 85, 110, 105, 75, 95, 120, 45],
+      "prices": [0.07, 0.08, 0.18, 0.35, 0.45, 0.40, 0.20, 0.38, 0.42, 0.10],
+      "demandCharge": 9.0,
+      "capacity": 120,
+      "minSoc": 15,
+      "initSoc": 50,
+      "minFinalSoc": 50,
+      "maxPower": 45,
+      "etaCharge": 0.9,
+      "etaDischarge": 0.88
+    },
+    "expectedOptimal": 961.849865
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "baseLoads": [32.5, 38.0, 48.5, 76.0, 98.5, 114.0, 108.5, 82.0, 94.5, 112.0, 74.0, 42.5],
+      "prices": [0.09, 0.09, 0.12, 0.24, 0.34, 0.42, 0.38, 0.22, 0.28, 0.36, 0.16, 0.10],
+      "demandCharge": 11.5,
+      "capacity": 110,
+      "minSoc": 10,
+      "initSoc": 35,
+      "minFinalSoc": 35,
+      "maxPower": 38,
+      "etaCharge": 0.92,
+      "etaDischarge": 0.88
+    },
+    "expectedOptimal": 1232.26533
+  }
+]

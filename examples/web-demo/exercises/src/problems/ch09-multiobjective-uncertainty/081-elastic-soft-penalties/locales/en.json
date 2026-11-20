@@ -1,0 +1,27 @@
+{
+  "title": "#081. Elastic Programming & Tiered Soft Penalties",
+  "subtitle": "Keep base capacity and minimum output hard while absorbing target deviations via weighted slack and surplus variables.",
+  "tags": [
+    "LP",
+    "Elastic Programming",
+    "Goal Programming",
+    "Soft Constraints"
+  ],
+  "caseNames": [
+    "3-product tight machine capacity",
+    "4-product feasible target schedule",
+    "4-product forced minimum-output surplus",
+    "5-product multi-tier shortfall priority",
+    "6-product binding capacity and output floor"
+  ],
+  "judge": {
+    "m0": "Output must be an object { quantities, shortfalls, excesses, totalCost }.",
+    "m1": "quantities[{p0}], shortfalls[{p0}], and excesses[{p0}] must all be non-negative.",
+    "m2": "Target balance failed for product {p0}: quantities[{p0}] + shortfalls[{p0}] - excesses[{p0}] = {p1}, expected {p2}.",
+    "m3": "Total machine hours used ({p0}) exceed capacity ({p1}).",
+    "m4": "Total output ({p0}) is below required minimum ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed production and penalty cost ({p1}).",
+    "m6": "All constraints satisfied, but totalCost ({p0}) exceeds minimum possible ({p1}).",
+    "m7": "Optimal elastic production schedule found (totalCost = {p0})."
+  }
+}

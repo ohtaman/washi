@@ -1,0 +1,25 @@
+{
+  "title": "#016. Minimum-Cost Set Partitioning",
+  "subtitle": "Partition all tasks into disjoint chosen routes so every task is covered exactly once at minimum cost.",
+  "tags": [
+    "MIP",
+    "Set Partitioning",
+    "Crew Pairing",
+    "Exact Cover"
+  ],
+  "caseNames": [
+    "5-task crew pairing partition",
+    "6-task non-overlapping routes",
+    "4-task tight disjoint pairing",
+    "7-task regional shift blocks",
+    "9-task grid route partition"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, totalCost }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Task {p0} is covered {p1} times (must be covered exactly once).",
+    "m3": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
+    "m4": "Valid exact partition, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m5": "Optimal minimum-cost set partition found (totalCost = {p0})!"
+  }
+}

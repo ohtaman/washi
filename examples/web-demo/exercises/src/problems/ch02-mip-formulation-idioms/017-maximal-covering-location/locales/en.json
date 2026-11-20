@@ -1,0 +1,27 @@
+{
+  "title": "#017. Maximal Covering Location (MCLP)",
+  "subtitle": "Open at most p candidate sites to maximize total demand within service radius via coverage-linking inequalities.",
+  "tags": [
+    "MIP",
+    "MCLP",
+    "Facility Location",
+    "Coverage Linking"
+  ],
+  "caseNames": [
+    "5-zone 4-site coverage (p=2)",
+    "6-zone 4-site with unreachable zone",
+    "4-zone 5-site boundary radius",
+    "8-zone 6-site decimal distances",
+    "10-zone 7-site regional planning"
+  ],
+  "judge": {
+    "m0": "Output must be an object { open, covered, totalCoveredDemand }.",
+    "m1": "open[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Opened {p0} facilities, exceeding limit {p1}.",
+    "m3": "covered[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m4": "Zone {p0} is marked covered without any open facility within coverageRadius.",
+    "m5": "Reported totalCoveredDemand ({p0}) does not match computed covered demand ({p1}).",
+    "m6": "Feasible placement, but totalCoveredDemand ({p0}) is below optimal ({p1}).",
+    "m7": "Optimal maximal covering location plan found (totalCoveredDemand = {p0})!"
+  }
+}

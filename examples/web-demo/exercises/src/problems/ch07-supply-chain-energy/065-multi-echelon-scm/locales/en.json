@@ -1,0 +1,30 @@
+{
+  "title": "#065. Multi-Echelon Supply Chain Design",
+  "subtitle": "Jointly select which plants and distribution centers to open while routing flows from plants through DCs to customers.",
+  "tags": [
+    "MIP",
+    "Supply Chain",
+    "Facility Location",
+    "Network Flow"
+  ],
+  "caseNames": [
+    "2 plants, 3 DCs, 4 customers",
+    "3 plants, 3 DCs, 5 customers",
+    "3 plants, 4 DCs, 6 customers",
+    "4 plants, 4 DCs, 6 customers (fractional)",
+    "4 plants, 5 DCs, 7 customers"
+  ],
+  "judge": {
+    "m0": "Output must be an object { openPlants, openDcs, plantToDc, dcToCustomer, totalCost }.",
+    "m1": "Field \"{p0}\" has invalid outer array length (expected {p1}).",
+    "m2": "{p0}[{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "{p0}[{p1}][{p2}] cannot be negative (received {p3}).",
+    "m4": "Plant {p0} shipped {p1} units exceeding allowed capacity {p2}.",
+    "m5": "Flow conservation violated at DC {p0}: inflow={p1} vs outflow={p2}.",
+    "m6": "DC {p0} handled {p1} units exceeding allowed capacity {p2}.",
+    "m7": "Customer {p0} received {p1} units, below demand {p2}.",
+    "m8": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
+    "m9": "Valid supply chain network, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m10": "Optimal multi-echelon supply chain network found (totalCost = {p0})!"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "title": "#092. Symmetry Breaking & Cover Cuts",
+  "subtitle": "Strengthen 1D bin packing with prefix bin ordering and extended minimal cover inequalities to tighten the LP relaxation.",
+  "tags": [
+    "MIP",
+    "Symmetry Breaking",
+    "Cover Cuts",
+    "Bin Packing"
+  ],
+  "caseNames": [
+    "3 large items with 1 small item",
+    "5 equal medium items",
+    "4 incompatible items and 2 small items",
+    "7 uniform medium items",
+    "7 two-tier mixed items"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignments, binsUsed, lpBound }.",
+    "m1": "binsUsed must be an integer (received {p0}).",
+    "m2": "assignments[{p0}] must be an integer bin index in 0..{p2} (received {p1}).",
+    "m3": "Symmetry breaking requires item 0 to be placed in bin 0 (received assignments[0] = {p0}).",
+    "m4": "Symmetry breaking requires used bins to form a contiguous prefix starting at 0 (bin {p0} is empty before a used bin).",
+    "m5": "Reported binsUsed ({p0}) does not match distinct used bins ({p1}).",
+    "m6": "Bin {p0} load ({p1}) exceeds binCapacity ({p2}).",
+    "m7": "LP relaxation bound ({p0}) is below the strengthened LP optimum ({p1}). Add symmetry breaking, capacity, and extended cover cuts.",
+    "m8": "Reported lpBound ({p0}) exceeds the strengthened LP relaxation optimum ({p1}).",
+    "m9": "Valid symmetry-broken packing, but binsUsed ({p0}) exceeds minimum ({p1}).",
+    "m10": "Strengthened bin packing verified: binsUsed = {p0}, lpBound = {p1}.",
+    "m11": "Symmetry breaking restricts item {p0} to bins 0..{p0} (received {p1})."
+  }
+}

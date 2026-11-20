@@ -1,0 +1,26 @@
+{
+  "title": "#074. Resource-Constrained Project Scheduling (RCPSP)",
+  "subtitle": "Schedule DAG-ordered tasks sharing renewable resource pools via Pumpkin cumulative global constraints to minimize makespan.",
+  "tags": [
+    "CP",
+    "Pumpkin",
+    "RCPSP",
+    "Cumulative"
+  ],
+  "caseNames": [
+    "5-task single-resource diamond",
+    "6-task hardware prototype",
+    "7-task dual-resource DAG",
+    "8-task sparse multi-resource project",
+    "10-task multi-stage bottleneck"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, makespan }.",
+    "m1": "starts[{p0}] must be a non-negative integer (received {p1}).",
+    "m2": "Precedence violated: task {p0} finishes at {p1}, after successor {p2} starts at {p3}.",
+    "m3": "Resource {p0} overloaded at t={p1}: demand {p2} exceeds capacity {p3}.",
+    "m4": "Reported makespan ({p0}) does not match maximum task completion ({p1}).",
+    "m5": "Valid project schedule, but makespan ({p0}) exceeds minimum ({p1}).",
+    "m6": "Optimal RCPSP schedule found (makespan = {p0})!"
+  }
+}

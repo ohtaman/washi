@@ -1,0 +1,30 @@
+{
+  "title": "#040. Integrated Factory Cell Scheduling (CP Synthesis)",
+  "subtitle": "Chapter 4 synthesis: couple machine disjoint(), power cumulative(), mode-table allowed(), and setup/post lookups at() to minimize makespan.",
+  "tags": [
+    "CP",
+    "MIP",
+    "Scheduling Synthesis",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4-job dual-machine cell",
+    "5-job 3-mode factory cell",
+    "6-job power-limited cell",
+    "7-job 3-machine multi-mode cell",
+    "8-job full CP scheduling cell"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, modes, makespan }.",
+    "m1": "Job {p0} start ({p1}) and mode ({p2}) must be integers.",
+    "m2": "Job {p0} mode ({p1}) is out of bounds [0, {p2}].",
+    "m3": "Job {p0} starts at {p1}, before required setupTime ({p2}) for mode {p3}.",
+    "m4": "Precedence violated: job {p0} finishes post-processing at {p1}, after job {p2} starts at {p3}.",
+    "m5": "Machine {p0} overlap between job {p1} {p3} and job {p2} {p4}. Add disjoint() per machine!",
+    "m6": "Power limit exceeded at t = {p0}: active load {p1} > powerCap {p2}. Add cumulative(..., powerCap)!",
+    "m7": "Mode rule #{p0} violated for jobs ({p1}, {p2}): mode pair ({p3}, {p4}) is not allowed.",
+    "m8": "Reported makespan ({p0}) does not match computed completion time ({p1}).",
+    "m9": "Valid factory schedule, but makespan ({p0}) exceeds optimal ({p1}).",
+    "m10": "Optimal integrated CP factory schedule found (makespan = {p0})!"
+  }
+}

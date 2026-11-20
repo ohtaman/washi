@@ -1,0 +1,32 @@
+{
+  "title": "#068. Thermal Power Unit Commitment",
+  "subtitle": "Schedule generator on/off commitments and hourly dispatch subject to startup costs, ramp limits, and minimum up/down times.",
+  "tags": [
+    "MIP",
+    "Unit Commitment",
+    "Energy",
+    "Ramping & Min Up/Down"
+  ],
+  "caseNames": [
+    "3 generators x 6 hours",
+    "3 generators x 8 hours (double peak)",
+    "4 generators x 8 hours (tight ramping)",
+    "4 generators x 10 hours (baseload startup cap)",
+    "5 generators x 10 hours (fractional load)"
+  ],
+  "judge": {
+    "m0": "Output must be an object { commitment, generation, totalCost }.",
+    "m1": "Field \"{p0}\" must have {p1} rows (one per generator).",
+    "m2": "commitment[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "generation[{p0}][{p1}] ({p2}) must lie in [{p3}, {p4}] for its commitment status.",
+    "m4": "Total generation at hour {p0} ({p1}) does not equal demand ({p2}).",
+    "m5": "Generator {p0} ramp change at hour {p1} ({p2}) exceeds rampLimit ({p3}).",
+    "m6": "Generator {p0} startup output at hour {p1} ({p2}) exceeds startup limit ({p3}).",
+    "m7": "Generator {p0} output before shutdown at hour {p1} ({p2}) exceeds shutdown limit ({p3}).",
+    "m8": "Generator {p0} started at hour {p1} must stay ON for at least {p2} hours (turned off at hour {p3}).",
+    "m9": "Generator {p0} shut down at hour {p1} must stay OFF for at least {p2} hours (turned on at hour {p3}).",
+    "m10": "Reported totalCost ({p0}) does not match recomputed startup + fuel cost ({p1}).",
+    "m11": "Valid unit commitment schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m12": "Optimal unit commitment schedule found (totalCost = {p0})!"
+  }
+}

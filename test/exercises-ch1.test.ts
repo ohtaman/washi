@@ -113,10 +113,11 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(ch.description.zh.trim().length).toBeGreaterThan(0);
     }
 
-    expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
-    expect(new Set(PROBLEMS.map((p) => p.meta.discussionNumber)).size).toBe(PROBLEMS.length);
+    const ch1Problems = PROBLEMS.filter((p) => p.meta.chapter <= 1);
+    expect(ch1Problems.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
+    expect(new Set(ch1Problems.map((p) => p.meta.discussionNumber)).size).toBe(ch1Problems.length);
 
-    for (const prob of PROBLEMS) {
+    for (const prob of ch1Problems) {
       const isTutorial = prob.meta.id === "000";
       if (isTutorial) {
         expect(prob.meta.chapter).toBe(0);
@@ -244,7 +245,8 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
   });
 
   it("solves every problem via WaSHI solution.ts across all test cases and catches starter/broken solutions honestly", async () => {
-    for (const prob of PROBLEMS) {
+    const ch1Problems = PROBLEMS.filter((p) => p.meta.chapter <= 1);
+    for (const prob of ch1Problems) {
       const inputs = prob.cases.map((c) => structuredClone(c.input));
       const solRun = await runWashiExerciseCode(prob.washiSolution, inputs);
       expect(solRun.error, `${prob.meta.id} solution error: ${solRun.error}`).toBeUndefined();
@@ -359,14 +361,15 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
   }, 60_000);
 
   itHighspy("cross-verifies every PuLP Python solution.py against identical cases.json and shared judge()", () => {
-    const jobs = PROBLEMS.map((p) => ({
+    const ch1Problems = PROBLEMS.filter((p) => p.meta.chapter <= 1);
+    const jobs = ch1Problems.map((p) => ({
       id: p.meta.id,
       code: p.highspySolution,
       inputs: p.cases.map((c) => c.input),
     }));
 
     const batch = runHighspyBatch(jobs);
-    for (const prob of PROBLEMS) {
+    for (const prob of ch1Problems) {
       const res = batch[prob.meta.id];
       expect(res?.ok, `${prob.meta.id} highspy error: ${res?.error}`).toBe(true);
       expect(res.outputs).toHaveLength(prob.cases.length);

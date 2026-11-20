@@ -1,0 +1,25 @@
+{
+  "title": "#089. 预算不确定性鲁棒优化（Bertsimas-Sim 对偶重构）",
+  "subtitle": "利用线性规划对偶理论精准保护至多 Gamma 个产品同时发生资源消耗上浮时的产能约束，求取最大鲁棒利润。",
+  "tags": [
+    "LP",
+    "鲁棒优化",
+    "Bertsimas-Sim",
+    "LP 对偶"
+  ],
+  "caseNames": [
+    "3 产品 gamma=1 预算鲁棒组合",
+    "4 产品名义边界（gamma=0）",
+    "4 产品全盒式最坏保护（gamma=4）",
+    "5 产品小数不确定性预算（gamma=2.5）",
+    "6 产品高波动产品风险权衡"
+  ],
+  "judge": {
+    "m0": "返回值必须是包含 { quantities, totalProfit } 的对象。",
+    "m1": "quantities[{p0}] = {p1} 超出允许范围 [0, {p2}]。",
+    "m2": "在 gamma = {p2} 下的最坏资源消耗 ({p0}) 超过产能上限 capacityCap ({p1})。",
+    "m3": "返回的 totalProfit ({p0}) 与实际利润计算值 ({p1}) 不一致。",
+    "m4": "满足鲁棒产能保护，但总利润 ({p0}) 低于鲁棒最优值 ({p1})。",
+    "m5": "正确！已求得最优 Bertsimas-Sim 鲁棒生产方案（totalProfit = {p0}）。"
+  }
+}

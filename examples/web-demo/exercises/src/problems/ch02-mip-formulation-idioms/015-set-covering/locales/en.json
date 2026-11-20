@@ -1,0 +1,25 @@
+{
+  "title": "#015. Minimum-Cost Set Covering",
+  "subtitle": "Select the cheapest collection of subsets so every required element is covered at least once.",
+  "tags": [
+    "MIP",
+    "Set Covering",
+    "Binary Matrix",
+    "Location"
+  ],
+  "caseNames": [
+    "5-element overlapping cover",
+    "6-element multi-set cover",
+    "4-element singleton vs combo mix",
+    "8-element coupled subset cover",
+    "10-element regional sensor cover"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, totalCost }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Element {p0} is uncovered (covered by 0 selected sets; at least 1 required).",
+    "m3": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
+    "m4": "Valid cover, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m5": "Optimal minimum-cost set cover found (totalCost = {p0})!"
+  }
+}

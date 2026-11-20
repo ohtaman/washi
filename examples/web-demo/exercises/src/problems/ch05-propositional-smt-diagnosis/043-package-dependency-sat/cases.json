@@ -1,0 +1,114 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "packages": {
+        "app": ["1.0"],
+        "http": ["1.0", "2.0"],
+        "tls": ["1.2"],
+        "legacy": ["1.0"]
+      },
+      "roots": ["app"],
+      "requires": [
+        { "pkg": "app", "ver": "1.0", "depPkg": "http", "depVersions": ["1.0", "2.0"] },
+        { "pkg": "http", "ver": "1.0", "depPkg": "legacy", "depVersions": ["1.0"] },
+        { "pkg": "http", "ver": "2.0", "depPkg": "tls", "depVersions": ["1.2"] }
+      ],
+      "conflicts": [
+        [["app", "1.0"], ["legacy", "1.0"]]
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "packages": {
+        "cli": ["1.0"],
+        "core": ["1.0", "2.0"],
+        "logger": ["1.0"],
+        "telemetry": ["1.0"],
+        "plugin": ["1.0"]
+      },
+      "roots": ["cli"],
+      "requires": [
+        { "pkg": "cli", "ver": "1.0", "depPkg": "core", "depVersions": ["1.0", "2.0"] },
+        { "pkg": "core", "ver": "1.0", "depPkg": "logger", "depVersions": ["1.0"] },
+        { "pkg": "core", "ver": "2.0", "depPkg": "logger", "depVersions": ["1.0"] },
+        { "pkg": "core", "ver": "2.0", "depPkg": "telemetry", "depVersions": ["1.0"] },
+        { "pkg": "plugin", "ver": "1.0", "depPkg": "core", "depVersions": ["2.0"] }
+      ],
+      "conflicts": []
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "packages": {
+        "web": ["1.0"],
+        "worker": ["1.0"],
+        "ssl": ["1.1", "3.0"],
+        "cache": ["1.0"]
+      },
+      "roots": ["web", "worker"],
+      "requires": [
+        { "pkg": "web", "ver": "1.0", "depPkg": "ssl", "depVersions": ["1.1"] },
+        { "pkg": "worker", "ver": "1.0", "depPkg": "ssl", "depVersions": ["3.0"] },
+        { "pkg": "worker", "ver": "1.0", "depPkg": "cache", "depVersions": ["1.0"] }
+      ],
+      "conflicts": []
+    },
+    "expectedOptimal": -1
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "packages": {
+        "api": ["1.0"],
+        "worker": ["1.0"],
+        "auth": ["1.0", "2.0"],
+        "queue": ["1.0", "2.0"],
+        "metrics": ["1.0"]
+      },
+      "roots": ["api", "worker"],
+      "requires": [
+        { "pkg": "api", "ver": "1.0", "depPkg": "auth", "depVersions": ["1.0", "2.0"] },
+        { "pkg": "worker", "ver": "1.0", "depPkg": "queue", "depVersions": ["1.0", "2.0"] },
+        { "pkg": "queue", "ver": "1.0", "depPkg": "metrics", "depVersions": ["1.0"] }
+      ],
+      "conflicts": [
+        [["auth", "1.0"], ["queue", "2.0"]]
+      ]
+    },
+    "expectedOptimal": 4
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "packages": {
+        "portal": ["1.0", "2.0"],
+        "router": ["1.0", "2.0"],
+        "orm": ["1.0", "2.0"],
+        "compat": ["1.0"],
+        "driver": ["1.0"],
+        "profiler": ["1.0"]
+      },
+      "roots": ["portal"],
+      "requires": [
+        { "pkg": "portal", "ver": "1.0", "depPkg": "router", "depVersions": ["1.0"] },
+        { "pkg": "portal", "ver": "2.0", "depPkg": "router", "depVersions": ["2.0"] },
+        { "pkg": "router", "ver": "1.0", "depPkg": "orm", "depVersions": ["1.0"] },
+        { "pkg": "router", "ver": "2.0", "depPkg": "orm", "depVersions": ["1.0", "2.0"] },
+        { "pkg": "orm", "ver": "1.0", "depPkg": "compat", "depVersions": ["1.0"] },
+        { "pkg": "orm", "ver": "1.0", "depPkg": "driver", "depVersions": ["1.0"] },
+        { "pkg": "orm", "ver": "2.0", "depPkg": "driver", "depVersions": ["1.0"] },
+        { "pkg": "profiler", "ver": "1.0", "depPkg": "compat", "depVersions": ["1.0"] }
+      ],
+      "conflicts": [
+        [["portal", "1.0"], ["driver", "1.0"]]
+      ]
+    },
+    "expectedOptimal": 4
+  }
+]

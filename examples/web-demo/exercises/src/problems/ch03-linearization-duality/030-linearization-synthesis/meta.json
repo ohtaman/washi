@@ -1,0 +1,27 @@
+{
+  "id": "030",
+  "slug": "linearization-synthesis",
+  "chapter": 3,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 16,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

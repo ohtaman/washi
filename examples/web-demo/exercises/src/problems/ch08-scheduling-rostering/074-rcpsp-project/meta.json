@@ -1,0 +1,25 @@
+{
+  "id": "074",
+  "slug": "rcpsp-project",
+  "chapter": 8,
+  "order": 4,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 16,
+  "paradigms": [
+    "CP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

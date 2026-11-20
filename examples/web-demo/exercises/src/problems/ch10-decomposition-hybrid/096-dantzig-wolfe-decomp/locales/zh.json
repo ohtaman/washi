@@ -1,0 +1,27 @@
+{
+  "title": "#096. 基于 Dantzig-Wolfe 分解的块角结构规划",
+  "subtitle": "利用全局耦合约束与各部门凸组合约束构建主问题，并通过 WaSHI solveColumnGeneration 独立定价各部门极点。",
+  "tags": [
+    "Dantzig-Wolfe 分解",
+    "列生成",
+    "块角线性规划",
+    "分解算法"
+  ],
+  "caseNames": [
+    "2 部门 3 产品协同计划",
+    "3 部门 2 产品共享资源分配",
+    "2 部门宽松共享产能调度",
+    "3 部门 4 产品多厂网络",
+    "4 部门共享瓶颈协调"
+  ],
+  "judge": {
+    "m0": "返回值必须是包含 { allocations, totalProfit } 的对象。",
+    "m1": "字段 \"allocations\" 必须是长度为 {p0} 的部门产量向量列表。",
+    "m2": "allocations[{p0}][{p1}] = {p2} 超出合法区间 [0, {p3}]。",
+    "m3": "部门 {p0} 的本地资源消耗 ({p1}) 超过 localCap ({p2})。",
+    "m4": "全局共享资源消耗 ({p0}) 超过 sharedCap ({p1})。",
+    "m5": "返回的 totalProfit ({p0}) 与重新计算的利润 ({p1}) 不一致。",
+    "m6": "生产方案可行，但总利润 ({p0}) 低于最优利润 ({p1})。",
+    "m7": "正确！已验证 Dantzig-Wolfe 分解最优资源分配方案（totalProfit = {p0}）。"
+  }
+}

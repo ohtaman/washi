@@ -1,0 +1,25 @@
+{
+  "id": "060",
+  "slug": "connected-territory-routing",
+  "chapter": 6,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 20,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

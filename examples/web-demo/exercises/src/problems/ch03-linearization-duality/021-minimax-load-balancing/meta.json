@@ -1,0 +1,27 @@
+{
+  "id": "021",
+  "slug": "minimax-load-balancing",
+  "chapter": 3,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 8,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

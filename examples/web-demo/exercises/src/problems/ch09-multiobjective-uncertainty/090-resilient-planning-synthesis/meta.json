@@ -1,0 +1,25 @@
+{
+  "id": "090",
+  "slug": "resilient-planning-synthesis",
+  "chapter": 9,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 18,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

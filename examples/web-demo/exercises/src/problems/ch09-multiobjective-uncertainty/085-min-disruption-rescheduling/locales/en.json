@@ -1,0 +1,29 @@
+{
+  "title": "#085. Minimum-Disruption Rescheduling",
+  "subtitle": "Repair a disrupted binary shift schedule while minimizing Hamming distance from the baseline plan plus assignment costs.",
+  "tags": [
+    "MIP",
+    "Rescheduling",
+    "Hamming Distance",
+    "Stability"
+  ],
+  "caseNames": [
+    "3-worker ripple swap after single outage",
+    "4-worker dual disruption recovery",
+    "4-worker zero-disruption baseline retention",
+    "5-worker multi-slot cascading shifts",
+    "6-worker cost-driven reassignment"
+  ],
+  "judge": {
+    "m0": "Output must be an object { schedule, hammingDistance, totalObjective }.",
+    "m1": "Field \"schedule\" must be a {p0}-row matrix.",
+    "m2": "schedule[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m3": "Worker {p0} is unavailable in slot {p1} and cannot be assigned.",
+    "m4": "Worker {p0} is assigned {p1} shifts, exceeding maxShifts ({p2}).",
+    "m5": "Slot {p0} has {p1} assigned workers, expected exact demand {p2}.",
+    "m6": "Reported hammingDistance ({p0}) does not match actual flips from baseline ({p1}).",
+    "m7": "Reported totalObjective ({p0}) does not match computed disruption plus worker cost ({p1}).",
+    "m8": "Valid repair schedule, but totalObjective ({p0}) exceeds minimum ({p1}).",
+    "m9": "Minimum-disruption repair schedule verified (totalObjective = {p0})."
+  }
+}

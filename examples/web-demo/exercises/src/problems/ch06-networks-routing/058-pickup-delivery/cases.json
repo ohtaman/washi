@@ -1,0 +1,432 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "dist": [
+        [
+          0,
+          2,
+          7,
+          4,
+          8
+        ],
+        [
+          2,
+          0,
+          5,
+          1,
+          6
+        ],
+        [
+          7,
+          5,
+          0,
+          4,
+          1
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          5
+        ],
+        [
+          8,
+          6,
+          1,
+          5,
+          0
+        ]
+      ],
+      "requests": [
+        {
+          "pickup": 1,
+          "delivery": 2,
+          "demand": 3
+        },
+        {
+          "pickup": 3,
+          "delivery": 4,
+          "demand": 4
+        }
+      ],
+      "capacity": 7,
+      "maxVehicles": 1,
+      "maxStopsPerVehicle": 4
+    },
+    "expectedOptimal": 16
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "dist": [
+        [
+          0,
+          3,
+          7,
+          4,
+          7
+        ],
+        [
+          3,
+          0,
+          4,
+          6,
+          10
+        ],
+        [
+          7,
+          4,
+          0,
+          10,
+          14
+        ],
+        [
+          4,
+          6,
+          10,
+          0,
+          4
+        ],
+        [
+          7,
+          10,
+          14,
+          4,
+          0
+        ]
+      ],
+      "requests": [
+        {
+          "pickup": 1,
+          "delivery": 2,
+          "demand": 4
+        },
+        {
+          "pickup": 3,
+          "delivery": 4,
+          "demand": 4
+        }
+      ],
+      "capacity": 6,
+      "maxVehicles": 2,
+      "maxStopsPerVehicle": 2
+    },
+    "expectedOptimal": 29
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "dist": [
+        [
+          0,
+          3,
+          8,
+          4,
+          8,
+          4,
+          8
+        ],
+        [
+          3,
+          0,
+          5,
+          1,
+          6,
+          7,
+          10
+        ],
+        [
+          8,
+          5,
+          0,
+          4,
+          1,
+          12,
+          15
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          5,
+          8,
+          12
+        ],
+        [
+          8,
+          6,
+          1,
+          5,
+          0,
+          12,
+          16
+        ],
+        [
+          4,
+          7,
+          12,
+          8,
+          12,
+          0,
+          4
+        ],
+        [
+          8,
+          10,
+          15,
+          12,
+          16,
+          4,
+          0
+        ]
+      ],
+      "requests": [
+        {
+          "pickup": 1,
+          "delivery": 2,
+          "demand": 3
+        },
+        {
+          "pickup": 3,
+          "delivery": 4,
+          "demand": 3
+        },
+        {
+          "pickup": 5,
+          "delivery": 6,
+          "demand": 4
+        }
+      ],
+      "capacity": 6,
+      "maxVehicles": 2,
+      "maxStopsPerVehicle": 4
+    },
+    "expectedOptimal": 33
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "dist": [
+        [
+          0,
+          2,
+          5,
+          7,
+          5,
+          4,
+          6
+        ],
+        [
+          2,
+          0,
+          3,
+          5,
+          4,
+          6,
+          9
+        ],
+        [
+          5,
+          3,
+          0,
+          2,
+          4,
+          9,
+          12
+        ],
+        [
+          7,
+          5,
+          2,
+          0,
+          4,
+          10,
+          13
+        ],
+        [
+          5,
+          4,
+          4,
+          4,
+          0,
+          7,
+          11
+        ],
+        [
+          4,
+          6,
+          9,
+          10,
+          7,
+          0,
+          4
+        ],
+        [
+          6,
+          9,
+          12,
+          13,
+          11,
+          4,
+          0
+        ]
+      ],
+      "requests": [
+        {
+          "pickup": 1,
+          "delivery": 2,
+          "demand": 3
+        },
+        {
+          "pickup": 3,
+          "delivery": 4,
+          "demand": 3
+        },
+        {
+          "pickup": 5,
+          "delivery": 6,
+          "demand": 4
+        }
+      ],
+      "capacity": 5,
+      "maxVehicles": 2,
+      "maxStopsPerVehicle": 4
+    },
+    "expectedOptimal": 30
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "dist": [
+        [
+          0,
+          3,
+          8,
+          4,
+          8,
+          3,
+          8,
+          4,
+          8
+        ],
+        [
+          3,
+          0,
+          5,
+          1,
+          6,
+          6,
+          10,
+          7,
+          11
+        ],
+        [
+          8,
+          5,
+          0,
+          4,
+          1,
+          10,
+          15,
+          12,
+          16
+        ],
+        [
+          4,
+          1,
+          4,
+          0,
+          5,
+          7,
+          12,
+          8,
+          12
+        ],
+        [
+          8,
+          6,
+          1,
+          5,
+          0,
+          11,
+          16,
+          12,
+          16
+        ],
+        [
+          3,
+          6,
+          10,
+          7,
+          11,
+          0,
+          5,
+          1,
+          6
+        ],
+        [
+          8,
+          10,
+          15,
+          12,
+          16,
+          5,
+          0,
+          4,
+          1
+        ],
+        [
+          4,
+          7,
+          12,
+          8,
+          12,
+          1,
+          4,
+          0,
+          5
+        ],
+        [
+          8,
+          11,
+          16,
+          12,
+          16,
+          6,
+          1,
+          5,
+          0
+        ]
+      ],
+      "requests": [
+        {
+          "pickup": 1,
+          "delivery": 2,
+          "demand": 3
+        },
+        {
+          "pickup": 3,
+          "delivery": 4,
+          "demand": 4
+        },
+        {
+          "pickup": 5,
+          "delivery": 6,
+          "demand": 3
+        },
+        {
+          "pickup": 7,
+          "delivery": 8,
+          "demand": 4
+        }
+      ],
+      "capacity": 7,
+      "maxVehicles": 2,
+      "maxStopsPerVehicle": 4
+    },
+    "expectedOptimal": 34
+  }
+]

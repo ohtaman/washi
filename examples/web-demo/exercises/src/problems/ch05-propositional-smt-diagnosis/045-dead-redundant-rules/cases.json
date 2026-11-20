@@ -1,0 +1,87 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "vars": ["guest", "admin", "mfa", "audit"],
+      "baseRules": [
+        { "implies": ["guest", { "not": "admin" }] },
+        { "implies": ["admin", "mfa"] }
+      ],
+      "rules": [
+        { "id": "R1", "condition": "admin", "effect": "audit" },
+        { "id": "R2", "condition": { "and": ["guest", "admin"] }, "effect": "audit" },
+        { "id": "R3", "condition": "admin", "effect": { "and": ["mfa", "audit"] } }
+      ]
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "vars": ["tls", "vpn", "corp", "allow"],
+      "baseRules": [
+        { "implies": ["corp", "vpn"] }
+      ],
+      "rules": [
+        { "id": "R1", "condition": "tls", "effect": "allow" },
+        { "id": "R2", "condition": { "and": ["corp", { "not": "tls" }] }, "effect": { "not": "allow" } },
+        { "id": "R3", "condition": { "and": ["vpn", { "not": "corp" }] }, "effect": "tls" }
+      ]
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "vars": ["prod", "staging", "debug", "alert", "lock"],
+      "baseRules": [
+        { "xor": ["prod", "staging"] }
+      ],
+      "rules": [
+        { "id": "R1", "condition": "prod", "effect": { "not": "debug" } },
+        { "id": "R2", "condition": { "and": ["prod", "debug"] }, "effect": "alert" },
+        { "id": "R3", "condition": "staging", "effect": "alert" },
+        { "id": "R4", "condition": { "and": ["staging", "debug"] }, "effect": "alert" },
+        { "id": "R5", "condition": "alert", "effect": "lock" },
+        { "id": "R6", "condition": "staging", "effect": "lock" }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "vars": ["day", "night", "armed", "siren"],
+      "baseRules": [
+        { "xor": ["day", "night"] },
+        { "implies": ["day", { "not": "armed" }] }
+      ],
+      "rules": [
+        { "id": "R1", "condition": { "and": ["day", "armed"] }, "effect": "siren" },
+        { "id": "R2", "condition": { "and": ["night", "armed"] }, "effect": "siren" },
+        { "id": "R3", "condition": { "and": ["day", "night"] }, "effect": { "not": "siren" } }
+      ]
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "vars": ["vip", "trial", "verified", "eu", "gdpr", "exportOk", "throttle"],
+      "baseRules": [
+        { "not": { "and": ["vip", "trial"] } },
+        { "implies": ["eu", "gdpr"] },
+        { "implies": ["vip", "verified"] }
+      ],
+      "rules": [
+        { "id": "R1", "condition": "trial", "effect": "throttle" },
+        { "id": "R2", "condition": { "and": ["vip", { "not": "verified" }] }, "effect": { "not": "exportOk" } },
+        { "id": "R3", "condition": "gdpr", "effect": "exportOk" },
+        { "id": "R4", "condition": "eu", "effect": "exportOk" },
+        { "id": "R5", "condition": { "and": ["vip", "trial"] }, "effect": { "not": "throttle" } },
+        { "id": "R6", "condition": { "and": ["trial", "eu"] }, "effect": { "and": ["throttle", "exportOk"] } }
+      ]
+    },
+    "expectedOptimal": 4
+  }
+]

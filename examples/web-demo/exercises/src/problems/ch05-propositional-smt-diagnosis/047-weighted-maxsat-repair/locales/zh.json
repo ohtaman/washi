@@ -1,0 +1,27 @@
+{
+  "title": "#047. 加权 MaxSAT 策略修复",
+  "subtitle": "在严格满足所有硬规则的前提下，利用 Z3 优化使被违背软规则的权重惩罚总和最小。",
+  "tags": [
+    "SMT",
+    "MaxSAT",
+    "软约束",
+    "策略修复"
+  ],
+  "caseNames": [
+    "4 变量协议偏好权衡",
+    "4 变量无冲突软策略",
+    "5 变量分支代价权衡",
+    "6 变量多重软规则冲突",
+    "8 变量企业安全配置修复"
+  ],
+  "judge": {
+    "m0": "返回值必须是 { assignment, violatedRules, totalPenalty } 对象。",
+    "m1": "返回的赋值违反了硬规则 {p0}。",
+    "m2": "violatedRules 中包含重复规则 ID \"{p0}\"。",
+    "m3": "violatedRules 中包含未知软规则 ID \"{p0}\"。",
+    "m4": "violatedRules（[{p0}]）与赋值实际违背的软规则集合（[{p1}]）不一致。",
+    "m5": "返回的 totalPenalty（{p0}）与实际违背软规则的总权重（{p1}）不符。",
+    "m6": "满足全部硬规则，但 totalPenalty（{p0}）高于最优最小值（{p1}）。",
+    "m7": "已找到最优 MaxSAT 修复方案（totalPenalty = {p0}）！"
+  }
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "actualDemands": [10, 10, 30, 10],
+      "forecastDemands": [10, 10, 30, 10],
+      "prodCosts": [9, 13, 25, 11],
+      "prodCap": 20,
+      "holdCost": 2,
+      "shortfallPenalty": 100,
+      "initialInventory": 0,
+      "windowLen": 2
+    },
+    "expectedOptimal": 860
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "actualDemands": [12, 24, 18, 26, 15],
+      "forecastDemands": [10, 22, 20, 25, 15],
+      "prodCosts": [9, 12, 16, 11, 14],
+      "prodCap": 20,
+      "holdCost": 1.5,
+      "shortfallPenalty": 90,
+      "initialInventory": 4,
+      "windowLen": 2
+    },
+    "expectedOptimal": 1150
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "actualDemands": [10, 14, 34, 16, 12, 18],
+      "forecastDemands": [10, 15, 32, 18, 12, 16],
+      "prodCosts": [8, 11, 17, 13, 9.5, 14],
+      "prodCap": 20,
+      "holdCost": 1.8,
+      "shortfallPenalty": 110,
+      "initialInventory": 0,
+      "windowLen": 3
+    },
+    "expectedOptimal": 1668.4
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "actualDemands": [16, 12, 28, 22, 14, 10],
+      "forecastDemands": [14, 14, 26, 22, 15, 12],
+      "prodCosts": [7, 13, 18, 10, 15, 9],
+      "prodCap": 18,
+      "holdCost": 2.2,
+      "shortfallPenalty": 100,
+      "initialInventory": 6,
+      "windowLen": 2
+    },
+    "expectedOptimal": 1411.4
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "actualDemands": [12, 18, 30, 25, 14, 28, 16, 12],
+      "forecastDemands": [12, 16, 28, 26, 15, 26, 16, 14],
+      "prodCosts": [9, 12, 21, 15, 8, 20, 13, 11],
+      "prodCap": 20,
+      "holdCost": 1.7,
+      "shortfallPenalty": 120,
+      "initialInventory": 2,
+      "windowLen": 4
+    },
+    "expectedOptimal": 2716.4
+  }
+]

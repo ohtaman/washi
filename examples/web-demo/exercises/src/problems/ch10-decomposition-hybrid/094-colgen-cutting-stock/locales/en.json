@@ -1,0 +1,28 @@
+{
+  "title": "#094. Cutting Stock via Column Generation",
+  "subtitle": "Solve the 1D Cutting Stock Problem using WaSHI solveColumnGeneration with bounded knapsack pricing and MIP finalization.",
+  "tags": [
+    "Column Generation",
+    "Cutting Stock",
+    "Knapsack Pricing",
+    "LP / MIP"
+  ],
+  "caseNames": [
+    "Classic 3-width 100-cm stock roll",
+    "Compact 3-width 50-cm stock roll",
+    "4-width 120-cm industrial roll",
+    "4-width 80-cm medium roll",
+    "5-width 100-cm multi-cut stock"
+  ],
+  "judge": {
+    "m0": "Output must be an object { patterns, counts, totalRolls }.",
+    "m1": "Field \"patterns\" must be an array of pattern vectors.",
+    "m2": "counts[{p0}] must be a non-negative integer (received {p1}).",
+    "m3": "patterns[{p0}][{p1}] must be a non-negative integer (received {p2}).",
+    "m4": "Pattern {p0} uses total width {p1}, exceeding rollWidth ({p2}).",
+    "m5": "Total cut count for item {p0} ({p1}) does not meet demand ({p2}).",
+    "m6": "Reported totalRolls ({p0}) does not match sum of counts ({p1}).",
+    "m7": "All item demands are fulfilled, but totalRolls ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal cutting stock plan verified (totalRolls = {p0})."
+  }
+}

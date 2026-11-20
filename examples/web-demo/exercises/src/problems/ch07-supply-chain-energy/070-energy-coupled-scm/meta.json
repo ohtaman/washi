@@ -1,0 +1,25 @@
+{
+  "id": "070",
+  "slug": "energy-coupled-scm",
+  "chapter": 7,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "scratch",
+  "difficulty": 5,
+  "estimatedMinutes": 20,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

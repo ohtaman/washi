@@ -72,7 +72,7 @@ export const GITHUB_DISCUSSIONS_BASE = "https://github.com/ohtaman/washi/discuss
 
 export function getProblemDiscussionUrl(
   meta: Pick<ProblemMeta, "id" | "discussionNumber">
-): string {
+): string | null {
   if (
     typeof meta.discussionNumber === "number" &&
     Number.isInteger(meta.discussionNumber) &&
@@ -80,7 +80,7 @@ export function getProblemDiscussionUrl(
   ) {
     return `${GITHUB_DISCUSSIONS_BASE}/${meta.discussionNumber}`;
   }
-  return `${GITHUB_DISCUSSIONS_BASE}?discussions_q=${encodeURIComponent(`#${meta.id}`)}`;
+  return null;
 }
 
 export function renderProvenanceText(
@@ -406,8 +406,7 @@ export function renderExerciseIndexHtml(params: {
     mainSolved === 0 ? strings.startFirstBtn : strings.resumeBtn(nextId);
 
   const tutorialProblems = problems.filter((p) => p.meta.chapter === 0);
-  const ch1Problems = problems.filter((p) => p.meta.chapter === 1);
-  const ch1Info = chapters.find((c) => c.chapter === 1);
+  const availableChapters = chapters.filter((c) => c.available);
   const upcomingChapters = chapters.filter((c) => !c.available);
   const pct = Math.min(100, Math.round((mainSolved / 100) * 100));
 
@@ -489,27 +488,37 @@ export function renderExerciseIndexHtml(params: {
             : ""
         }
 
-        ${
-          ch1Info
-            ? `
-          <section class="chapter-section" aria-labelledby="ch1-heading">
+        ${availableChapters
+          .map((ch) => {
+            const chProblems = problems.filter((p) => p.meta.chapter === ch.chapter);
+            const headingId = `ch${ch.chapter}-heading`;
+            return `
+          <section class="chapter-section" aria-labelledby="${headingId}">
             <div class="chapter-head">
               <div class="chapter-title-wrap">
-                <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(1))} (${escapeHtml(ch1Info.idRange)})</span>
-                <h2 id="ch1-heading" class="chapter-title">${escapeHtml(ch1Info.title[locale])}</h2>
+                <span class="chapter-kicker">${escapeHtml(strings.chapterPrefix(ch.chapter))} (${escapeHtml(ch.idRange)})</span>
+                <h2 id="${headingId}" class="chapter-title">${escapeHtml(ch.title[locale])}</h2>
               </div>
-              <span class="chapter-count">${countChapterSolved(progress, summaries, 1)} / ${ch1Problems.length}</span>
+              <span class="chapter-count">${countChapterSolved(progress, summaries, ch.chapter)} / ${chProblems.length}</span>
             </div>
-            <p class="chapter-desc">${escapeHtml(ch1Info.description[locale])}</p>
+            <p class="chapter-desc">${escapeHtml(ch.description[locale])}</p>
             <ol class="toc-list">
-              ${ch1Problems.map((p) => renderTocRowHtml(p, locale, strings, progress)).join("")}
+              ${chProblems.map((p) => renderTocRowHtml(p, locale, strings, progress)).join("")}
             </ol>
-            <p class="provenance-footnote">${escapeHtml(strings.provenanceFootnote)}</p>
           </section>
-        `
+        `;
+          })
+          .join("")}
+
+        ${
+          availableChapters.length > 0
+            ? `<p class="provenance-footnote">${escapeHtml(strings.provenanceFootnote)}</p>`
             : ""
         }
 
+        ${
+          upcomingChapters.length > 0
+            ? `
         <section class="chapter-section chapter-syllabus" aria-label="Upcoming chapters">
           <ol class="toc-list toc-list-upcoming">
             ${upcomingChapters
@@ -531,6 +540,9 @@ export function renderExerciseIndexHtml(params: {
               .join("")}
           </ol>
         </section>
+        `
+            : ""
+        }
       </main>
     </div>
   `;
@@ -609,6 +621,7 @@ export function renderWorkspaceHtml(params: {
   const washiSolved = solvedRuntimes.includes("washi");
   const highspySolved = solvedRuntimes.includes("highspy");
   const supportsHighspy = meta.runtimes.includes("highspy");
+  const discussionUrl = getProblemDiscussionUrl(meta);
   const effectiveRuntime: RuntimeId = meta.runtimes.includes(activeRuntime)
     ? activeRuntime
     : (meta.runtimes[0] ?? "washi");
@@ -833,16 +846,22 @@ export function renderWorkspaceHtml(params: {
                 <div id="editorial-content" class="md-body editorial-body">${editorialBodyHtml}</div>
               </div>
 
+              ${
+                discussionUrl
+                  ? `
               <div class="ws-discussion-footer">
                 <span class="ws-discussion-note">${escapeHtml(strings.workspace.discussionNote)}</span>
                 <a
-                  href="${escapeHtml(getProblemDiscussionUrl(meta))}"
+                  href="${escapeHtml(discussionUrl)}"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="ws-discussion-link"
                   id="ws-discussion-link"
                 >${escapeHtml(strings.workspace.discussionBtn)} ↗</a>
               </div>
+              `
+                  : ""
+              }
             </article>
           </div>
 

@@ -1259,6 +1259,25 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       expect(washiOnlyHtml).not.toMatch(/id="panel-washi"[^>]*\bhidden\b/);
       expect(decodeHtmlEntities(washiOnlyHtml)).toContain(UI_STRINGS[locale].editor.washiOnlyHint);
 
+      // Exercise without discussionNumber must omit the discussion footer cleanly
+      const { discussionNumber: _omitted, ...metaWithoutDiscussion } = p010.meta;
+      const noDiscussionHtml = renderWorkspaceHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: PROBLEMS,
+        problem: { ...p010, meta: metaWithoutDiscussion },
+        problemMarkdown,
+        prevProblem: PROBLEMS.find((p) => p.meta.id === "009") ?? null,
+        nextProblem: null,
+        progress: state,
+        activeRuntime: "washi",
+        washiCode: p010.washiStarter,
+        highspyCode: p010.highspyStarter,
+      });
+      expect(noDiscussionHtml).not.toContain('class="ws-discussion-footer"');
+      expect(noDiscussionHtml).not.toContain('id="ws-discussion-link"');
+
       const guideMd = await loadGuideMarkdown(locale);
       const guideCached = await loadGuideMarkdown(locale);
       expect(guideCached).toBe(guideMd);
@@ -1303,12 +1322,42 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
     expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 282 })).toBe(
       "https://github.com/ohtaman/washi/discussions/282"
     );
-    expect(getProblemDiscussionUrl({ id: "099" })).toBe(
-      "https://github.com/ohtaman/washi/discussions?discussions_q=%23099"
-    );
-    expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 0 })).toBe(
-      "https://github.com/ohtaman/washi/discussions?discussions_q=%23001"
-    );
+    expect(getProblemDiscussionUrl({ id: "099" })).toBeNull();
+    expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 0 })).toBeNull();
+
+    // Multi-chapter Overview rendering & hiding upcoming syllabus when all chapters are available
+    const ch1And2Chapters = CHAPTERS.map((ch) => ({
+      ...ch,
+      available: ch.chapter <= 2,
+    }));
+    const ch2DummyProb = {
+      ...PROBLEMS[1],
+      meta: { ...PROBLEMS[1].meta, id: "011", chapter: 2, order: 1 },
+    };
+    const sampleProblems = [
+      ...PROBLEMS.filter((p) => p.meta.chapter <= 1),
+      ch2DummyProb,
+    ];
+    const multiChapterHtml = renderExerciseIndexHtml({
+      locale: "en",
+      strings: UI_STRINGS.en,
+      chapters: ch1And2Chapters,
+      problems: sampleProblems,
+      progress: state,
+    });
+    expect(multiChapterHtml).toContain('id="ch1-heading"');
+    expect(multiChapterHtml).toContain('id="ch2-heading"');
+    expect(multiChapterHtml).toContain('data-problem-id="011"');
+    expect(multiChapterHtml).toContain('class="chapter-section chapter-syllabus"');
+
+    const allAvailableHtml = renderExerciseIndexHtml({
+      locale: "en",
+      strings: UI_STRINGS.en,
+      chapters: CHAPTERS.map((ch) => ({ ...ch, available: true })),
+      problems: sampleProblems,
+      progress: state,
+    });
+    expect(allAvailableHtml).not.toContain('class="chapter-section chapter-syllabus"');
   });
 });
 
@@ -1406,6 +1455,8 @@ describe("Exercises Platform — Solver Status Verdict Mapping", () => {
       message: msgs.notSolved,
     });
     expect(applySolverStatusToVerdict(baseAc, "Optimal", msgs)).toBe(baseAc);
+    expect(applySolverStatusToVerdict(baseAc, "Unsat", msgs)).toBe(baseAc);
+    expect(applySolverStatusToVerdict(baseAc, "Infeasible", msgs)).toBe(baseAc);
   });
 });
 

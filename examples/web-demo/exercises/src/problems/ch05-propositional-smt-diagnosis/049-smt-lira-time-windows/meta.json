@@ -1,0 +1,24 @@
+{
+  "id": "049",
+  "slug": "smt-lira-time-windows",
+  "chapter": 5,
+  "order": 9,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 4,
+  "estimatedMinutes": 15,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

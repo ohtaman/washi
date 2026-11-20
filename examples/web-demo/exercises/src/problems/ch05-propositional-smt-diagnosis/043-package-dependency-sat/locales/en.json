@@ -1,0 +1,31 @@
+{
+  "title": "#043. Package Dependency Resolution (SAT)",
+  "subtitle": "Resolve package versions under root requirements, dependency implications, and version conflicts while minimizing installed packages.",
+  "tags": [
+    "SMT",
+    "SAT",
+    "Dependencies",
+    "Cardinality"
+  ],
+  "caseNames": [
+    "4-package version-conflict graph",
+    "5-package multi-version dependency graph",
+    "4-package diamond version conflict",
+    "5-package dual-root conflict resolution",
+    "6-package transitive dependency cascade"
+  ],
+  "judge": {
+    "m0": "Output must be an object { feasible, selected, installedCount }.",
+    "m1": "When feasible is false, both selected and installedCount must be null.",
+    "m2": "A valid dependency resolution exists, yet feasible: false was returned.",
+    "m3": "selected[\"{p0}\"] must be a version string or null (received {p1}).",
+    "m4": "selected[\"{p0}\"] chose unknown version \"{p1}\".",
+    "m5": "Required root package \"{p0}\" was not installed.",
+    "m6": "Dependency violated: {p0}@{p1} requires {p2} in [{p3}].",
+    "m7": "Conflict violated: {p0}@{p1} and {p2}@{p3} cannot both be installed.",
+    "m8": "installedCount must be an integer matching the number of installed packages ({p0} vs {p1}).",
+    "m9": "Valid dependency installation, but installedCount ({p0}) exceeds minimum ({p1}).",
+    "m10": "Verified unsatisfiable dependency graph (diamond conflict).",
+    "m11": "Optimal dependency installation found ({p0} packages)!"
+  }
+}

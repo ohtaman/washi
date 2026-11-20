@@ -1,0 +1,50 @@
+## アプローチ
+
+施設の開設を決める 0-1 ベクトル `open[i]` と配送量を表す連続行列 `shipments[i][j]` を組み、施設ごとの総出荷量に `sum(shipments[i]) <= capacities[i] * open[i]` を課したうえで、顧客需要を満たしながら固定費＋輸送費を最小化します。
+
+## 数理モデル
+
+$$
+\begin{aligned}
+\min \quad & \sum_{i=0}^{F-1} f_i y_i + \sum_{i=0}^{F-1} \sum_{j=0}^{D-1} c_{i,j} x_{i,j} \\
+\text{s.t.} \quad & \sum_{j=0}^{D-1} x_{i,j} \le C_i y_i && \forall i \in \{0, \dots, F-1\} \\
+& \sum_{i=0}^{F-1} x_{i,j} \ge d_j && \forall j \in \{0, \dots, D-1\} \\
+& x_{i,j} \ge 0,\; y_i \in \{0, 1\} && \forall i, j
+\end{aligned}
+$$
+
+## ポイント
+
+- **枝単位固定費（#012）との違い**: #012 では輸送ルートごとに 0-1 変数を置きましたが、CFLP では拠点ノードに 0-1 変数を置き、その拠点からの出荷総和 $\sum_j x_{i,j}$ を $C_i y_i$ に連動させます。
+- **LP 緩和を強める妥当不等式**: 輸送単価 $c_{i,j} \ge 0$ のもとでは、分解リンク制約 $x_{i,j} \le \min(C_i, d_j) y_i$ を併記しても過剰供給を排除しつつ最適な整数解は保たれます（需要制約を等式 `==` とする場合は整数実行可能解集合そのものが不変です）。これにより根ノードでの分数緩和（$y_i = d_j / C_i$）を防いで分岐を大幅に減らせます。
+- 用語の確認: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
+
+## 実装の勘所
+
+**WaSHI (TypeScript)**
+
+```ts
+m.constraint(
+  shipments.map((row, i) => expr`${sum(row)} <= ${input.capacities[i]} * ${open[i]}`)
+);
+m.constraint(
+  input.demands.map(
+    (demand, j) => expr`${sum(shipments.map((row) => row[j]))} >= ${demand}`
+  )
+);
+m.objective(
+  minimize(expr`dot(${input.fixedCosts}, ${open}) + dot(${input.unitCosts}, ${shipments})`)
+);
+```
+
+**PuLP (Python)**
+
+```python
+for i in range(n_f):
+    prob += pulp.lpSum(shipments[i][j] for j in range(n_d)) <= capacities[i] * open_vars[i]
+for j in range(n_d):
+    prob += pulp.lpSum(shipments[i][j] for i in range(n_f)) >= demands[j]
+prob += pulp.lpDot(fixed_costs, open_vars) + pulp.lpSum(
+    unit_costs[i][j] * shipments[i][j] for i in range(n_f) for j in range(n_d)
+)
+```

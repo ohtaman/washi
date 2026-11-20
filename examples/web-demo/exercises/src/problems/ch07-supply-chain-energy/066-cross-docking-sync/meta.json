@@ -1,0 +1,25 @@
+{
+  "id": "066",
+  "slug": "cross-docking-sync",
+  "chapter": 7,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 4,
+  "estimatedMinutes": 16,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

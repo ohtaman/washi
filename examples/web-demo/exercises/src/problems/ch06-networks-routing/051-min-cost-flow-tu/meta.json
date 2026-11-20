@@ -1,0 +1,25 @@
+{
+  "id": "051",
+  "slug": "min-cost-flow-tu",
+  "chapter": 6,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 8,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

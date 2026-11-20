@@ -1,0 +1,25 @@
+{
+  "id": "084",
+  "slug": "fairness-metrics-qp",
+  "chapter": 9,
+  "order": 4,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 11,
+  "paradigms": [
+    "QP",
+    "LP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

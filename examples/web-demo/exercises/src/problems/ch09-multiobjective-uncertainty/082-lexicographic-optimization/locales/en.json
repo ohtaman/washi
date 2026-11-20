@@ -1,0 +1,27 @@
+{
+  "title": "#082. Two-Stage Lexicographic Optimization",
+  "subtitle": "Minimize primary unmet demand first, then lock that Stage-1 performance within slack while minimizing secondary operating cost.",
+  "tags": [
+    "MIP",
+    "Lexicographic",
+    "Multi-Objective",
+    "Two-Stage"
+  ],
+  "caseNames": [
+    "4-unit exact demand tie-breaking",
+    "5-unit unavoidable shortfall minimum",
+    "6-unit bounded slack degradation",
+    "8-unit strict Stage-1 priority",
+    "10-unit slack-enabled cost reduction"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, obj1, obj2 }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Total crew requirement ({p0}) exceeds limit ({p1}).",
+    "m3": "Reported obj1 ({p0}) does not match computed unmet demand ({p1}).",
+    "m4": "Unmet demand obj1 ({p0}) exceeds allowed threshold ({p1}) from Stage-1 minimum ({p2}).",
+    "m5": "Reported obj2 ({p0}) does not match computed operating cost ({p1}).",
+    "m6": "Stage-1 requirement met, but secondary cost obj2 ({p0}) exceeds minimum ({p1}).",
+    "m7": "Lexicographic optimum verified (obj2 = {p0})."
+  }
+}

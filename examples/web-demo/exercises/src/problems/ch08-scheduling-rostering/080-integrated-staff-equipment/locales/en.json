@@ -1,0 +1,30 @@
+{
+  "title": "#080. Integrated Staff, Slot & Shared Equipment Scheduling",
+  "subtitle": "Chapter 8 synthesis: jointly schedule procedures to timeslots, certified staff shifts, and shared limited equipment minimizing cost and overtime.",
+  "tags": [
+    "MIP",
+    "Integrated Scheduling",
+    "Shared Equipment",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4-procedure 3-staff 2-slot synthesis",
+    "5-procedure 4-staff equipment bottleneck",
+    "6-procedure tight slot preference",
+    "7-procedure 4-slot multi-shift plan",
+    "8-procedure 5-staff full synthesis"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignedStaff, assignedSlot, overtime, totalCost }.",
+    "m1": "assignedStaff[{p0}] must be an integer in [0, {p2}] (received {p1}).",
+    "m2": "assignedSlot[{p0}] must be an integer in [0, {p2}] (received {p1}).",
+    "m3": "Staff {p0} is not certified for procedure {p1}.",
+    "m4": "Staff {p0} is double-booked in slot {p1}.",
+    "m5": "Slot {p0} equipment demand ({p1}) exceeds capacity ({p2}).",
+    "m6": "Staff {p0} works {p1} slots, exceeding maxLimits ({p2}).",
+    "m7": "Staff {p0} reported overtime ({p1}) is below required minimum ({p2}).",
+    "m8": "Reported totalCost ({p0}) does not match computed staff, overtime, and slot cost ({p1}).",
+    "m9": "Valid integrated schedule, but total cost ({p0}) exceeds minimum ({p1}).",
+    "m10": "Optimal integrated staff and equipment schedule found (totalCost = {p0})!"
+  }
+}

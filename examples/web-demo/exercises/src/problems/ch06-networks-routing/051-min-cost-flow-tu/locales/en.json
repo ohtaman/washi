@@ -1,0 +1,27 @@
+{
+  "title": "#051. Minimum-Cost Flow & Total Unimodularity",
+  "subtitle": "Model directed capacitated network flows as a pure continuous LP and observe automatic integrality from total unimodularity.",
+  "tags": [
+    "LP",
+    "Network Flow",
+    "Total Unimodularity",
+    "Intro"
+  ],
+  "caseNames": [
+    "4-node diamond bottleneck",
+    "5-node transshipment bypass",
+    "6-node multi-source distribution",
+    "6-node shortcut network",
+    "8-node hub-and-spoke supply"
+  ],
+  "judge": {
+    "m0": "Output must be an object { flows, totalCost }.",
+    "m1": "flows[{p0}] cannot be negative (received {p1}).",
+    "m2": "flows[{p0}] = {p1} exceeds edge capacity {p2}.",
+    "m3": "flows[{p0}] = {p1} is fractional; with integer supplies and capacities, an extreme-point flow must be integral by total unimodularity.",
+    "m4": "Flow conservation failed at node {p0}: net outflow is {p1}, expected {p2}.",
+    "m5": "Reported totalCost ({p0}) does not match computed flow cost ({p1}).",
+    "m6": "Valid integral flow, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m7": "Minimum-cost integral network flow found via continuous LP (totalCost = {p0})!"
+  }
+}

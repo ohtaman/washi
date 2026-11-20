@@ -1,0 +1,74 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "fixedCosts": [100, 120],
+      "capacities": [50, 60],
+      "demands": [30, 25, 20],
+      "shippingCosts": [
+        [2, 5, 3],
+        [4, 2, 4]
+      ]
+    },
+    "expectedOptimal": 390
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "fixedCosts": [180, 150, 200],
+      "capacities": [60, 50, 70],
+      "demands": [25, 30, 20, 25],
+      "shippingCosts": [
+        [3, 6, 4, 2],
+        [5, 2, 3, 4],
+        [2, 4, 5, 3]
+      ]
+    },
+    "expectedOptimal": 575
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "fixedCosts": [140, 220, 160],
+      "capacities": [80, 90, 75],
+      "demands": [20, 30, 15],
+      "shippingCosts": [
+        [4, 3, 5],
+        [2, 5, 2],
+        [3, 4, 3]
+      ]
+    },
+    "expectedOptimal": 385
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "fixedCosts": [210, 190, 240, 175],
+      "capacities": [70, 65, 80, 55],
+      "demands": [25, 20, 30, 22, 18],
+      "shippingCosts": [
+        [3, 5, 4, 6, 2],
+        [4, 2, 5, 3, 4],
+        [5, 3, 2, 4, 5],
+        [2, 6, 4, 2, 3]
+      ]
+    },
+    "expectedOptimal": 703
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "fixedCosts": [250, 210, 280, 230, 195],
+      "capacities": [80, 70, 90, 75, 65],
+      "demands": [30, 25, 35, 28, 22, 30],
+      "shippingCosts": [
+        [2, 5, 4, 6, 3, 5],
+        [4, 2, 5, 3, 4, 2],
+        [5, 4, 2, 4, 2, 4],
+        [3, 6, 3, 2, 5, 3],
+        [6, 3, 4, 5, 3, 2]
+      ]
+    },
+    "expectedOptimal": 1080
+  }
+]

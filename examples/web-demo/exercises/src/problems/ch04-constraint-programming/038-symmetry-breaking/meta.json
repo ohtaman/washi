@@ -1,0 +1,24 @@
+{
+  "id": "038",
+  "slug": "symmetry-breaking",
+  "chapter": 4,
+  "order": 8,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "CP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

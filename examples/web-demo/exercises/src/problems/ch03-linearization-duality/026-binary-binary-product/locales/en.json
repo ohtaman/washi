@@ -1,0 +1,26 @@
+{
+  "title": "#026. Quadratic Binary Synergy & Conflict Selection",
+  "subtitle": "Linearize pairwise binary products w_{ij} = x_i x_j with both positive synergies and negative conflict penalties.",
+  "tags": [
+    "MIP",
+    "Quadratic Binary",
+    "McCormick",
+    "Synergy"
+  ],
+  "caseNames": [
+    "4-feature roadmap with budget 60",
+    "5-feature suite with synergy and conflict",
+    "Tight-budget 4-feature single pick",
+    "6-module mixed interaction portfolio",
+    "7-module enterprise bundle"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, pairProducts, totalValue }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Total cost ({p0}) exceeds budget ({p1}).",
+    "m3": "pairProducts[{p0}] for pair ({p1}, {p2}) received {p3}, expected x[{p1}] * x[{p2}] = {p4}.",
+    "m4": "Reported totalValue ({p0}) does not match computed standalone plus pair value ({p1}).",
+    "m5": "Valid portfolio, but totalValue ({p0}) is below optimal ({p1}).",
+    "m6": "Optimal quadratic binary selection found (totalValue = {p0})!"
+  }
+}

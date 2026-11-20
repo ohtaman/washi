@@ -1,0 +1,26 @@
+{
+  "id": "012",
+  "slug": "fixed-charge-network",
+  "chapter": 2,
+  "order": 2,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

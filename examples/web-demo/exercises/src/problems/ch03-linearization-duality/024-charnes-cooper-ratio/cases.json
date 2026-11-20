@@ -1,0 +1,210 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "numCoeffs": [
+        12,
+        9
+      ],
+      "numConst": 10,
+      "denCoeffs": [
+        4,
+        2
+      ],
+      "denConst": 8,
+      "usages": [
+        [
+          1,
+          1
+        ]
+      ],
+      "capacities": [
+        8
+      ],
+      "upperBounds": [
+        5,
+        6
+      ]
+    },
+    "expectedOptimal": 3.2
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "numCoeffs": [
+        18,
+        14,
+        10
+      ],
+      "numConst": -24,
+      "denCoeffs": [
+        5,
+        3,
+        2
+      ],
+      "denConst": 8,
+      "usages": [
+        [
+          2,
+          1,
+          1
+        ],
+        [
+          1,
+          2,
+          1
+        ]
+      ],
+      "capacities": [
+        16,
+        15
+      ],
+      "upperBounds": [
+        6,
+        7,
+        5
+      ]
+    },
+    "expectedOptimal": 2.978723404255319
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "numCoeffs": [
+        22,
+        17,
+        13
+      ],
+      "numConst": -20,
+      "denCoeffs": [
+        6,
+        3,
+        2
+      ],
+      "denConst": 7,
+      "usages": [
+        [
+          2,
+          1,
+          1
+        ],
+        [
+          1,
+          2,
+          2
+        ]
+      ],
+      "capacities": [
+        13,
+        14
+      ],
+      "upperBounds": [
+        5,
+        6,
+        4
+      ]
+    },
+    "expectedOptimal": 3.518518518518518
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "numCoeffs": [
+        25,
+        18,
+        22,
+        14
+      ],
+      "numConst": -30,
+      "denCoeffs": [
+        6,
+        4,
+        5,
+        3
+      ],
+      "denConst": 12,
+      "usages": [
+        [
+          2,
+          1,
+          2,
+          1
+        ],
+        [
+          1,
+          3,
+          1,
+          2
+        ]
+      ],
+      "capacities": [
+        22,
+        20
+      ],
+      "upperBounds": [
+        6,
+        5,
+        6,
+        7
+      ]
+    },
+    "expectedOptimal": 3.2777777777777777
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "numCoeffs": [
+        30,
+        22,
+        19,
+        26,
+        15
+      ],
+      "numConst": -40,
+      "denCoeffs": [
+        8,
+        5,
+        4,
+        7,
+        3
+      ],
+      "denConst": 15,
+      "usages": [
+        [
+          2,
+          1,
+          1,
+          2,
+          1
+        ],
+        [
+          1,
+          2,
+          2,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          2,
+          2
+        ]
+      ],
+      "capacities": [
+        23,
+        21,
+        24
+      ],
+      "upperBounds": [
+        5,
+        6,
+        7,
+        5,
+        6
+      ]
+    },
+    "expectedOptimal": 3.180602006688963
+  }
+]

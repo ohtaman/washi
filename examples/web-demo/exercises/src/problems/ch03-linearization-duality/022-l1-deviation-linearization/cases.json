@@ -1,0 +1,170 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "targets": [
+        40,
+        30,
+        30
+      ],
+      "weights": [
+        3,
+        2,
+        1
+      ],
+      "upperBounds": [
+        60,
+        60,
+        60
+      ],
+      "costs": [
+        5,
+        2,
+        1
+      ],
+      "budget": 230,
+      "totalOutput": 100
+    },
+    "expectedOptimal": 60
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "targets": [
+        20,
+        30,
+        25,
+        15
+      ],
+      "weights": [
+        4,
+        2,
+        3,
+        1
+      ],
+      "upperBounds": [
+        30,
+        35,
+        40,
+        50
+      ],
+      "costs": [
+        3,
+        4,
+        2,
+        5
+      ],
+      "budget": 380,
+      "totalOutput": 110
+    },
+    "expectedOptimal": 36.666666666666664
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "targets": [
+        25,
+        35,
+        20,
+        20
+      ],
+      "weights": [
+        2,
+        5,
+        3,
+        4
+      ],
+      "upperBounds": [
+        40,
+        40,
+        30,
+        30
+      ],
+      "costs": [
+        2,
+        3,
+        1,
+        4
+      ],
+      "budget": 300,
+      "totalOutput": 100
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "targets": [
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "weights": [
+        5,
+        3,
+        4,
+        2,
+        1
+      ],
+      "upperBounds": [
+        20,
+        40,
+        35,
+        30,
+        40
+      ],
+      "costs": [
+        4,
+        3,
+        5,
+        2,
+        1
+      ],
+      "budget": 300,
+      "totalOutput": 105
+    },
+    "expectedOptimal": 77.5
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "targets": [
+        25,
+        20,
+        30,
+        15,
+        18,
+        12
+      ],
+      "weights": [
+        3,
+        5,
+        2,
+        4,
+        3,
+        1
+      ],
+      "upperBounds": [
+        35,
+        30,
+        40,
+        25,
+        25,
+        30
+      ],
+      "costs": [
+        6,
+        4,
+        5,
+        3,
+        2,
+        1
+      ],
+      "budget": 310,
+      "totalOutput": 95
+    },
+    "expectedOptimal": 79.4
+  }
+]

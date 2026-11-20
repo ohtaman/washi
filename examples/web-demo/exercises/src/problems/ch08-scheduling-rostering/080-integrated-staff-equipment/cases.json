@@ -1,0 +1,132 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "certified": [
+        [1, 1, 0, 1],
+        [0, 1, 1, 0],
+        [1, 0, 1, 1]
+      ],
+      "equipNeeds": [1, 2, 1, 1],
+      "equipCap": 3,
+      "slotPenalties": [
+        [0, 6],
+        [2, 5],
+        [0, 4],
+        [5, 0]
+      ],
+      "staffCosts": [20, 22, 18],
+      "regularLimits": [1, 1, 1],
+      "maxLimits": [2, 2, 2],
+      "overtimeCosts": [15, 14, 16]
+    },
+    "expectedOptimal": 99
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "certified": [
+        [1, 1, 1, 0, 0],
+        [0, 1, 1, 1, 1],
+        [1, 0, 1, 1, 0],
+        [1, 1, 0, 0, 1]
+      ],
+      "equipNeeds": [2, 1, 2, 1, 1],
+      "equipCap": 3,
+      "slotPenalties": [
+        [0, 5, 12],
+        [3, 0, 6],
+        [0, 4, 9],
+        [4, 2, 0],
+        [6, 0, 4]
+      ],
+      "staffCosts": [24, 20, 22, 19],
+      "regularLimits": [1, 1, 1, 1],
+      "maxLimits": [2, 2, 2, 2],
+      "overtimeCosts": [12, 16, 14, 15]
+    },
+    "expectedOptimal": 126
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "certified": [
+        [1, 0, 1, 1, 0, 1],
+        [1, 1, 0, 1, 1, 0],
+        [0, 1, 1, 0, 1, 1],
+        [1, 1, 1, 0, 0, 1]
+      ],
+      "equipNeeds": [1, 2, 1, 2, 1, 1],
+      "equipCap": 3,
+      "slotPenalties": [
+        [0, 4, 10],
+        [2, 0, 8],
+        [5, 1, 0],
+        [0, 6, 12],
+        [4, 0, 5],
+        [8, 3, 0]
+      ],
+      "staffCosts": [18, 21, 20, 23],
+      "regularLimits": [1, 1, 2, 1],
+      "maxLimits": [2, 2, 2, 2],
+      "overtimeCosts": [15, 14, 18, 12]
+    },
+    "expectedOptimal": 135
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "certified": [
+        [1, 1, 0, 1, 0, 1, 0],
+        [0, 1, 1, 0, 1, 1, 1],
+        [1, 0, 1, 1, 1, 0, 1],
+        [1, 1, 1, 0, 0, 1, 0]
+      ],
+      "equipNeeds": [2, 1, 2, 1, 2, 1, 1],
+      "equipCap": 4,
+      "slotPenalties": [
+        [0, 5, 9, 14],
+        [3, 0, 4, 8],
+        [0, 6, 10, 12],
+        [4, 0, 3, 7],
+        [6, 2, 0, 5],
+        [8, 4, 0, 2],
+        [10, 5, 2, 0]
+      ],
+      "staffCosts": [22, 20, 24, 19],
+      "regularLimits": [2, 1, 1, 2],
+      "maxLimits": [3, 3, 2, 3],
+      "overtimeCosts": [14, 16, 18, 15]
+    },
+    "expectedOptimal": 160
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "certified": [
+        [1, 1, 0, 1, 0, 1, 0, 1],
+        [0, 1, 1, 0, 1, 1, 1, 0],
+        [1, 0, 1, 1, 1, 0, 1, 1],
+        [1, 1, 1, 0, 0, 1, 0, 1],
+        [0, 0, 1, 1, 1, 0, 1, 1]
+      ],
+      "equipNeeds": [2, 2, 1, 1, 2, 1, 2, 1],
+      "equipCap": 4,
+      "slotPenalties": [
+        [0, 4, 9, 15],
+        [2, 0, 6, 11],
+        [5, 0, 3, 8],
+        [0, 5, 8, 12],
+        [6, 2, 0, 5],
+        [4, 0, 4, 9],
+        [9, 3, 0, 4],
+        [10, 6, 2, 0]
+      ],
+      "staffCosts": [25, 21, 23, 20, 18],
+      "regularLimits": [1, 2, 1, 1, 2],
+      "maxLimits": [3, 3, 3, 2, 3],
+      "overtimeCosts": [16, 15, 14, 18, 17]
+    },
+    "expectedOptimal": 181
+  }
+]

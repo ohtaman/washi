@@ -1,0 +1,27 @@
+{
+  "title": "#023. Positive-Part Overtime Staffing",
+  "subtitle": "Linearize a one-sided hinge penalty max(0, d_t - x_t) across multi-period regular capacity limits.",
+  "tags": [
+    "LP",
+    "Positive Part",
+    "Hinge Penalty",
+    "Staffing"
+  ],
+  "caseNames": [
+    "3-period regular budget trade-off",
+    "4-period horizon with off-peak floor",
+    "4-period mixed overtime rate",
+    "5-period seasonal ramp",
+    "6-period tight workforce cap"
+  ],
+  "judge": {
+    "m0": "Output must be an object { regular, shortage, totalCost }.",
+    "m1": "regular[{p0}] ({p1}) must lie in [{p2}, {p3}].",
+    "m2": "shortage[{p0}] cannot be negative (received {p1}).",
+    "m3": "shortage[{p0}] ({p1}) must be at least max(0, demand - regular) = {p2}.",
+    "m4": "Total regular output ({p0}) exceeds totalRegularCap ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed regular plus penalty cost ({p1}).",
+    "m6": "Feasible schedule, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal staffing and overtime plan found (totalCost = {p0})!"
+  }
+}

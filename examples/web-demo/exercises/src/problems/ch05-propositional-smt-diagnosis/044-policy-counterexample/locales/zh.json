@@ -1,0 +1,26 @@
+{
+  "title": "#044. 安全策略反例搜索 (SMT)",
+  "subtitle": "利用反驳证明检验安全不变量：将全部策略规则与 not(safeInvariant) 联合送入 Z3 求解具体违规状态。",
+  "tags": [
+    "SMT",
+    "形式化验证",
+    "反例搜索",
+    "安全策略"
+  ],
+  "caseNames": [
+    "遗漏 MFA 校验的 SSH 防火墙规则",
+    "修补后的 SSH 防火墙策略",
+    "API 突发配额越权漏洞",
+    "数据库导出密级权限策略",
+    "云平台跨账号 IAM 角色扮演策略"
+  ],
+  "judge": {
+    "m0": "返回值必须是 { hasViolation, counterexample } 对象。",
+    "m1": "当 hasViolation 为 false 时，counterexample 必须为 null。",
+    "m2": "存在违反安全不变量的反例状态，但输出返回了 hasViolation: false。",
+    "m3": "返回的反例未满足策略规则 {p0}。",
+    "m4": "返回的反例实际满足 safeInvariant，未构成违规反例。",
+    "m5": "安全不变量证明成立：不存在满足全部规则却违反 safeInvariant 的状态！",
+    "m6": "已找到满足所有策略规则并违反安全不变量的有效反例！"
+  }
+}
