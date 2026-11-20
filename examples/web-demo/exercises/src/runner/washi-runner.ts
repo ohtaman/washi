@@ -178,11 +178,19 @@ export async function runWashiExerciseCode(
   };
 
   let createdModels: Modeler.Model[] = [];
+  const verifiedWithValues = new WeakSet<Modeler.Model>();
 
   class TrackedModel extends Modeler.Model {
     constructor(...args: ConstructorParameters<typeof Modeler.Model>) {
       super(...args);
       createdModels.push(this);
+    }
+
+    override verify(options?: Modeler.VerifyOptions): Modeler.VerificationReport {
+      if (options && options.values !== undefined) {
+        verifiedWithValues.add(this);
+      }
+      return super.verify(options);
     }
   }
 
@@ -233,11 +241,15 @@ export async function runWashiExerciseCode(
             firstLpPreview = null;
           }
         }
+        const solverStatus =
+          primary.status === "NotSolved" && verifiedWithValues.has(primary)
+            ? null
+            : primary.status ?? null;
         metrics.push({
           varCount: primary.variables.size,
           constraintCount: primary.constraints.size,
           solveTimeMs: Number.isFinite(primary.runTime) ? primary.runTime * 1000 : null,
-          solverStatus: primary.status ?? null,
+          solverStatus,
         });
       } else {
         metrics.push({ varCount: 0, constraintCount: 0, solveTimeMs: null, solverStatus: null });

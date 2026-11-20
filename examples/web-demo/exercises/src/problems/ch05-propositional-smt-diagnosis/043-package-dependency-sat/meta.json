@@ -1,0 +1,24 @@
+{
+  "id": "043",
+  "slug": "package-dependency-sat",
+  "chapter": 5,
+  "order": 3,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

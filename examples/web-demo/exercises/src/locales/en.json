@@ -179,6 +179,14 @@
   "judgeHelpers": {
     "expectFiniteNumber": "Field \"{field}\" must be a finite number (received {actual}).",
     "expectArrayLength": "Field \"{field}\" must be an array of length {length}.",
-    "expectArrayElementFinite": "{field}[{index}] must be a finite number (received {actual})."
+    "expectArrayElementFinite": "{field}[{index}] must be a finite number (received {actual}).",
+    "expectRecord": "Field \"{field}\" must be an object.",
+    "expectBoolean": "Field \"{field}\" must be a boolean (received {actual}).",
+    "expectBooleanEntry": "{field}[\"{key}\"] must be a boolean (received {actual}).",
+    "expectNumberEntry": "{field}[\"{key}\"] must be a finite number (received {actual}).",
+    "expectStringArray": "Field \"{field}\" must be an array of strings.",
+    "expectStringElement": "{field}[{index}] must be a string (received {actual}).",
+    "intIntegrality": "{field}[\"{key}\"] must be an integer (received {actual}).",
+    "intBounds": "{field}[\"{key}\"] ({actual}) violates bounds [{lb}, {ub}]."
   }
 }

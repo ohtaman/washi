@@ -1,0 +1,24 @@
+{
+  "id": "046",
+  "slug": "minimal-unsat-core",
+  "chapter": 5,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 4,
+  "estimatedMinutes": 15,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

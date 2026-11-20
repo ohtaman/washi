@@ -1,0 +1,26 @@
+{
+  "title": "#045. Dead & Redundant Rule Detection",
+  "subtitle": "Audit an ordered policy rulebase with Z3 to classify unreachable dead rules and logically implied redundant rules.",
+  "tags": [
+    "SMT",
+    "Rule Audit",
+    "Redundancy",
+    "Unsat"
+  ],
+  "caseNames": [
+    "4-variable access policy with dead and redundant rules",
+    "4-variable clean policy with no anomalies",
+    "5-variable cascading environment rules",
+    "4-variable mutually exclusive mode dead rules",
+    "7-variable compliance rulebase audit"
+  ],
+  "judge": {
+    "m0": "Output must be an object { deadRules, redundantRules }.",
+    "m1": "Duplicate rule ID \"{p0}\" in {p1}.",
+    "m2": "Unknown rule ID \"{p0}\" in {p1}.",
+    "m3": "deadRules mismatch (expected [{p0}], received [{p1}]).",
+    "m4": "redundantRules mismatch (expected [{p0}], received [{p1}]).",
+    "m5": "deadRules and redundantRules must be sorted lexicographically.",
+    "m6": "Audit matched all {p0} dead/redundant rule classifications!"
+  }
+}

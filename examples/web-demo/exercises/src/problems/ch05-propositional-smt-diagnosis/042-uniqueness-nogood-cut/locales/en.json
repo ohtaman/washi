@@ -1,0 +1,29 @@
+{
+  "title": "#042. Solution Uniqueness via No-Good Cuts",
+  "subtitle": "Add a blocking no-good clause after finding a satisfying assignment to prove whether a SAT solution is unique.",
+  "tags": [
+    "SMT",
+    "SAT",
+    "No-Good Cut",
+    "Uniqueness"
+  ],
+  "caseNames": [
+    "4-variable unique chain",
+    "4-variable multi-solution rules",
+    "4-variable unsatisfiable parity cycle",
+    "6-variable forced cascade",
+    "6-variable symmetric alternatives"
+  ],
+  "judge": {
+    "m0": "Output must be an object { satisfiable, assignment, unique }.",
+    "m1": "When satisfiable is false, assignment must be null.",
+    "m2": "An unsatisfiable formula cannot have unique = true.",
+    "m3": "Formula is satisfiable, yet output returned satisfiable: false.",
+    "m4": "Rule {p0} evaluated to false under the returned assignment.",
+    "m5": "Returned unique = true, but at least two distinct satisfying assignments exist.",
+    "m6": "Returned unique = false, but the satisfying assignment is provably unique.",
+    "m7": "Verified unsatisfiable (unique = false).",
+    "m8": "Verified unique satisfying assignment (no-good cut returned Unsat)!",
+    "m9": "Verified satisfiable with multiple distinct solutions (unique = false)."
+  }
+}

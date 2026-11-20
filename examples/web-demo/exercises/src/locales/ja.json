@@ -179,6 +179,14 @@
   "judgeHelpers": {
     "expectFiniteNumber": "フィールド「{field}」は有限な数値である必要があります（実際: {actual}）。",
     "expectArrayLength": "フィールド「{field}」は長さ {length} の配列である必要があります。",
-    "expectArrayElementFinite": "{field}[{index}] は有限な数値である必要があります（実際: {actual}）。"
+    "expectArrayElementFinite": "{field}[{index}] は有限な数値である必要があります（実際: {actual}）。",
+    "expectRecord": "フィールド「{field}」はオブジェクトである必要があります。",
+    "expectBoolean": "フィールド「{field}」は真偽値（boolean）である必要があります（実際: {actual}）。",
+    "expectBooleanEntry": "{field}[\"{key}\"] は真偽値（boolean）である必要があります（実際: {actual}）。",
+    "expectNumberEntry": "{field}[\"{key}\"] は有限な数値である必要があります（実際: {actual}）。",
+    "expectStringArray": "フィールド「{field}」は文字列の配列である必要があります。",
+    "expectStringElement": "{field}[{index}] は文字列である必要があります（実際: {actual}）。",
+    "intIntegrality": "{field}[\"{key}\"] は整数である必要があります（実際: {actual}）。",
+    "intBounds": "{field}[\"{key}\"]（{actual}）が範囲 [{lb}, {ub}] を外れています。"
   }
 }

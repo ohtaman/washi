@@ -1,0 +1,26 @@
+{
+  "title": "#046. Minimal Unsatisfiable Core Extraction (MUS)",
+  "subtitle": "Combine Z3 unsatCore with deletion-based contraction to extract an irreducible minimal unsatisfiable subset of rules.",
+  "tags": [
+    "SMT",
+    "Unsat Core",
+    "MUS",
+    "Conflict Diagnosis"
+  ],
+  "caseNames": [
+    "4-variable propositional conflict with decoys",
+    "3-variable integer equality transitivity conflict",
+    "Shortcut implication inside non-minimal core",
+    "Odd-parity XOR cycle with irrelevant rules",
+    "Mixed boolean and integer tier threshold conflict"
+  ],
+  "judge": {
+    "m0": "Output must be an object { coreRules }.",
+    "m1": "Duplicate rule ID \"{p0}\" in coreRules.",
+    "m2": "Unknown rule ID \"{p0}\" in coreRules.",
+    "m3": "coreRules cannot be empty.",
+    "m4": "Returned subset [{p0}] is actually satisfiable (not an unsatisfiable core).",
+    "m5": "Returned core [{p0}] is NOT minimal: removing rule \"{p1}\" still leaves an unsatisfiable subset.",
+    "m6": "Verified minimal unsatisfiable subset (MUS) of size {p0}!"
+  }
+}

@@ -1,0 +1,129 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "boolVars": ["nightShift", "seniorOnDuty", "hazardFlag"],
+      "intVars": [
+        { "name": "crewCount", "lb": 1, "ub": 10 },
+        { "name": "overtimeHours", "lb": 0, "ub": 12 }
+      ],
+      "rules": [
+        { "id": "R1", "expr": { "implies": ["nightShift", "seniorOnDuty"] } },
+        { "id": "R2", "expr": { "implies": ["hazardFlag", { "terms": { "crewCount": 1 }, "sense": ">=", "rhs": 4 }] } },
+        { "id": "R3", "expr": { "terms": { "overtimeHours": 1 }, "sense": "<=", "rhs": 4 } }
+      ],
+      "candidateValues": {
+        "nightShift": true,
+        "seniorOnDuty": true,
+        "hazardFlag": false,
+        "crewCount": 3,
+        "overtimeHours": 2
+      }
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "boolVars": ["weekend", "remoteOk", "onCall"],
+      "intVars": [
+        { "name": "regularHours", "lb": 0, "ub": 12 },
+        { "name": "overtimeHours", "lb": 0, "ub": 8 }
+      ],
+      "rules": [
+        { "id": "R1", "expr": { "implies": ["weekend", "onCall"] } },
+        { "id": "R2", "expr": { "terms": { "regularHours": 1, "overtimeHours": 1 }, "sense": "<=", "rhs": 10 } },
+        { "id": "R3", "expr": { "implies": [{ "not": "remoteOk" }, { "terms": { "overtimeHours": 1 }, "sense": "<=", "rhs": 2 }] } }
+      ],
+      "candidateValues": {
+        "weekend": true,
+        "remoteOk": false,
+        "onCall": true,
+        "regularHours": 8,
+        "overtimeHours": 4
+      }
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "boolVars": ["prodDeploy", "freezeWindow", "vpSignoff", "canaryOk"],
+      "intVars": [
+        { "name": "approvals", "lb": 0, "ub": 5 },
+        { "name": "errorBudget", "lb": 0, "ub": 100 }
+      ],
+      "rules": [
+        { "id": "R1", "expr": { "implies": [{ "and": ["prodDeploy", "freezeWindow"] }, "vpSignoff"] } },
+        { "id": "R2", "expr": { "implies": ["prodDeploy", "canaryOk"] } },
+        { "id": "R3", "expr": { "implies": ["prodDeploy", { "terms": { "approvals": 1 }, "sense": ">=", "rhs": 2 }] } },
+        { "id": "R4", "expr": { "terms": { "errorBudget": 1 }, "sense": ">=", "rhs": 20 } }
+      ],
+      "candidateValues": {
+        "prodDeploy": true,
+        "freezeWindow": true,
+        "vpSignoff": false,
+        "canaryOk": true,
+        "approvals": 1,
+        "errorBudget": 15
+      }
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "boolVars": ["dayRun", "nightRun", "backupPower", "highLoad"],
+      "intVars": [
+        { "name": "activeNodes", "lb": 0, "ub": 12 },
+        { "name": "standbyNodes", "lb": 0, "ub": 12 }
+      ],
+      "rules": [
+        { "id": "R1", "expr": { "xor": ["dayRun", "nightRun"] } },
+        { "id": "R2", "expr": { "terms": { "activeNodes": 1, "standbyNodes": 1 }, "sense": "<=", "rhs": 10 } },
+        { "id": "R3", "expr": { "implies": ["highLoad", { "and": ["backupPower", { "terms": { "standbyNodes": 1 }, "sense": ">=", "rhs": 2 }] }] } },
+        { "id": "R4", "expr": { "terms": { "activeNodes": 1 }, "sense": ">=", "rhs": 3 } }
+      ],
+      "candidateValues": {
+        "dayRun": true,
+        "nightRun": true,
+        "backupPower": false,
+        "highLoad": true,
+        "activeNodes": 6,
+        "standbyNodes": 4
+      }
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "boolVars": ["euRegion", "encrypted", "piiMasked", "auditLog", "externalShare", "tokenExpiry"],
+      "intVars": [
+        { "name": "retentionDays", "lb": 1, "ub": 365 },
+        { "name": "replicas", "lb": 1, "ub": 5 },
+        { "name": "keyBits", "lb": 128, "ub": 512 }
+      ],
+      "rules": [
+        { "id": "R1", "expr": { "implies": ["euRegion", { "and": ["encrypted", "piiMasked", "auditLog"] }] } },
+        { "id": "R2", "expr": { "implies": ["externalShare", { "and": ["tokenExpiry", "piiMasked"] }] } },
+        { "id": "R3", "expr": { "terms": { "retentionDays": 1 }, "sense": "<=", "rhs": 90 } },
+        { "id": "R4", "expr": { "terms": { "replicas": 1 }, "sense": ">=", "rhs": 2 } },
+        { "id": "R5", "expr": { "implies": ["encrypted", { "terms": { "keyBits": 1 }, "sense": ">=", "rhs": 256 }] } },
+        { "id": "R6", "expr": { "terms": { "replicas": 10, "retentionDays": 1 }, "sense": "<=", "rhs": 120 } }
+      ],
+      "candidateValues": {
+        "euRegion": true,
+        "encrypted": true,
+        "piiMasked": true,
+        "auditLog": true,
+        "externalShare": true,
+        "tokenExpiry": true,
+        "retentionDays": 60,
+        "replicas": 3,
+        "keyBits": 256
+      }
+    },
+    "expectedOptimal": 0
+  }
+]

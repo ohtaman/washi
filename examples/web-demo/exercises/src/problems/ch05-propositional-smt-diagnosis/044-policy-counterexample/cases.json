@@ -1,0 +1,104 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "boolVars": ["isAdmin", "mfaVerified", "external", "allowSsh"],
+      "intVars": [{ "name": "portTier", "lb": 1, "ub": 4 }],
+      "rules": [
+        { "implies": ["allowSsh", { "terms": { "portTier": 1 }, "sense": "==", "rhs": 1 }] },
+        { "implies": [{ "and": ["external", { "terms": { "portTier": 1 }, "sense": "==", "rhs": 1 }] }, "allowSsh"] },
+        { "implies": [{ "and": ["isAdmin", "mfaVerified"] }, "allowSsh"] }
+      ],
+      "safeInvariant": { "implies": [{ "and": ["allowSsh", "external"] }, "mfaVerified"] }
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "boolVars": ["isAdmin", "mfaVerified", "external", "allowSsh"],
+      "intVars": [{ "name": "portTier", "lb": 1, "ub": 4 }],
+      "rules": [
+        { "implies": ["allowSsh", { "terms": { "portTier": 1 }, "sense": "==", "rhs": 1 }] },
+        { "implies": [{ "and": ["allowSsh", "external"] }, { "and": ["isAdmin", "mfaVerified"] }] },
+        { "implies": [{ "and": ["isAdmin", "mfaVerified", { "terms": { "portTier": 1 }, "sense": "==", "rhs": 1 }] }, "allowSsh"] }
+      ],
+      "safeInvariant": { "implies": [{ "and": ["allowSsh", "external"] }, "mfaVerified"] }
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "boolVars": ["isPaid", "isInternal", "throttled", "allowBurst"],
+      "intVars": [
+        { "name": "reqLevel", "lb": 0, "ub": 6 },
+        { "name": "roleTier", "lb": 0, "ub": 2 }
+      ],
+      "rules": [
+        { "implies": [{ "terms": { "reqLevel": 1 }, "sense": ">=", "rhs": 5 }, { "or": ["throttled", "allowBurst"] }] },
+        { "implies": ["isPaid", { "not": "throttled" }] },
+        { "implies": ["isInternal", { "terms": { "roleTier": 1 }, "sense": ">=", "rhs": 1 }] },
+        { "implies": ["allowBurst", { "or": ["isPaid", "isInternal", { "terms": { "roleTier": 1 }, "sense": "==", "rhs": 0 }] }] }
+      ],
+      "safeInvariant": {
+        "implies": [
+          { "and": ["allowBurst", { "not": "isPaid" }] },
+          { "and": ["isInternal", { "terms": { "roleTier": 1 }, "sense": ">=", "rhs": 1 }] }
+        ]
+      }
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "boolVars": ["encrypted", "approved", "allowExport"],
+      "intVars": [
+        { "name": "clearance", "lb": 1, "ub": 4 },
+        { "name": "sensitivity", "lb": 1, "ub": 4 }
+      ],
+      "rules": [
+        { "implies": ["allowExport", { "terms": { "clearance": 1, "sensitivity": -1 }, "sense": ">=", "rhs": 0 }] },
+        {
+          "implies": [
+            { "and": ["allowExport", { "terms": { "sensitivity": 1 }, "sense": ">=", "rhs": 3 }] },
+            { "and": ["encrypted", "approved"] }
+          ]
+        }
+      ],
+      "safeInvariant": {
+        "implies": [
+          { "and": ["allowExport", { "terms": { "sensitivity": 1 }, "sense": ">=", "rhs": 3 }] },
+          { "and": ["encrypted", "approved", { "terms": { "clearance": 1 }, "sense": ">=", "rhs": 3 }] }
+        ]
+      }
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "boolVars": ["crossAccount", "assumeRole", "hasExternalId", "auditEnabled", "readOnly"],
+      "intVars": [{ "name": "sessionMins", "lb": 15, "ub": 120 }],
+      "rules": [
+        { "implies": [{ "and": ["crossAccount", "assumeRole"] }, "hasExternalId"] },
+        { "implies": ["readOnly", { "terms": { "sessionMins": 1 }, "sense": "<=", "rhs": 60 }] },
+        { "implies": [{ "xor": ["readOnly", "auditEnabled"] }, "assumeRole"] },
+        {
+          "implies": [
+            { "and": ["assumeRole", { "not": "readOnly" }] },
+            { "terms": { "sessionMins": 1 }, "sense": "<=", "rhs": 90 }
+          ]
+        }
+      ],
+      "safeInvariant": {
+        "implies": [
+          { "and": ["crossAccount", "assumeRole", { "not": "readOnly" }] },
+          "auditEnabled"
+        ]
+      }
+    },
+    "expectedOptimal": 1
+  }
+]

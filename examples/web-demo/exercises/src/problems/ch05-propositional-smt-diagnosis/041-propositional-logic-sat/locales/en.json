@@ -1,0 +1,25 @@
+{
+  "title": "#041. Propositional Logic & Access Interlock SAT",
+  "subtitle": "Model Boolean flags and propositional rules (and, or, not, implies, xor) and check satisfiability with Z3.",
+  "tags": [
+    "SMT",
+    "SAT",
+    "Propositional Logic",
+    "Intro"
+  ],
+  "caseNames": [
+    "4-flag security access gate",
+    "5-flag release pipeline interlock",
+    "6-flag feature toggle configuration",
+    "5-flag contradictory alarm interlock",
+    "8-flag dual-region failover routing"
+  ],
+  "judge": {
+    "m0": "Output must be an object { satisfiable, assignment }.",
+    "m1": "When satisfiable is false, assignment must be null.",
+    "m2": "Formula is satisfiable, yet output returned satisfiable: false.",
+    "m3": "Rule {p0} evaluated to false under the returned assignment.",
+    "m4": "Verified unsatisfiable: no assignment satisfies all propositional rules.",
+    "m5": "Valid satisfying Boolean assignment found!"
+  }
+}

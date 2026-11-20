@@ -1,0 +1,30 @@
+{
+  "title": "#049. SMT-LIRA Mode Selection & Time Windows",
+  "subtitle": "Couple Boolean courier-mode switches, integer express quotas, and continuous arrival times with disjunctive dock constraints in Z3.",
+  "tags": [
+    "SMT",
+    "SMT-LIRA",
+    "Disjunctive Scheduling",
+    "Time Windows"
+  ],
+  "caseNames": [
+    "2-shipment blackout & express quota",
+    "3-shipment fractional time windows",
+    "3-shipment shifted express windows",
+    "4-shipment single-dock cascade",
+    "4-shipment heterogeneous tardiness scheduling"
+  ],
+  "judge": {
+    "m0": "Output must be an object { express, startTimes, endTimes, totalCost }.",
+    "m1": "express must be an array of {p0} booleans.",
+    "m2": "express[{p0}] must be a boolean (received {p1}).",
+    "m3": "Selected {p0} express shipments, exceeding maxExpress ({p1}).",
+    "m4": "Shipment {p0} endTimes ({p1}) != startTimes + duration ({p2}).",
+    "m5": "Shipment {p0} interval [{p1}, {p2}] violates its mode time window [{p3}, {p4}].",
+    "m6": "Shipment {p0} interval [{p1}, {p2}] overlaps dock blackout [{p3}, {p4}].",
+    "m7": "Shipments {p0} and {p1} overlap on the single dock ([{p2}, {p3}] vs [{p4}, {p5}]).",
+    "m8": "Reported totalCost ({p0}) does not match computed express fees + tardiness penalties ({p1}).",
+    "m9": "Schedule satisfies all time-window and dock constraints, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m10": "Optimal SMT-LIRA schedule found (totalCost = {p0})!"
+  }
+}

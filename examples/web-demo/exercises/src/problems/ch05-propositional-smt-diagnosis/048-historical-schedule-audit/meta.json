@@ -1,0 +1,24 @@
+{
+  "id": "048",
+  "slug": "historical-schedule-audit",
+  "chapter": 5,
+  "order": 8,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}
