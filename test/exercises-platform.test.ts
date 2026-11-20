@@ -1009,6 +1009,11 @@ $$
 
     const nestedCode = renderSafeMarkdown("Use `` expr`dot(${w}, ${x}) <= ${B}` `` here.");
     expect(nestedCode).toContain("<code>expr`dot(${w}, ${x}) &lt;= ${B}`</code>");
+
+    const escapedHeaderTable = renderSafeMarkdown('| A" onclick="alert(1) | `B` |\n| --- | --- |\n| 1 | 2 |');
+    expect(escapedHeaderTable).toContain('data-label="A&quot; onclick=&quot;alert(1)"');
+    expect(escapedHeaderTable).toContain('data-label="B"');
+    expect(escapedHeaderTable).not.toContain('onclick="alert(1)"');
   });
 
   it("parses localized problem markdown sections cleanly", () => {
