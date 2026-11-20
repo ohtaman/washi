@@ -29,6 +29,7 @@ import {
   applyShiftTransitionToConfig,
   type CustomConstraintRule,
   type CustomShiftDef,
+  type NurseProfile,
   type NurseSchedulingState,
 } from "../examples/web-demo/apps/ai-shift/types.js";
 import {
@@ -3155,7 +3156,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // 2. Reject unknown/unregistered shift names in add_request / add_calendar_request (4359929248)
     const unknownCalendarOp = convertStage2ToolToOperation(
-      { action: "add_calendar_request", nurseName: "N01", day: 5, shift: "早番" } as any,
+      // @ts-expect-error intentional legacy action-based payload for negative validation test
+      { action: "add_calendar_request", nurseName: "N01", day: 5, shift: "早番" },
       baseState
     );
     expect(unknownCalendarOp).toBeNull();
@@ -4145,7 +4147,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(doesNurseMatchAttribute(n01, "all")).toBe(true);
 
     // 4. applyContractPresetToNurse throws on unknown presetId
-    expect(() => applyContractPresetToNurse(n01, "nonexistent_preset" as never)).toThrow();
+    // @ts-expect-error intentional unknown presetId to verify strict runtime rejection
+    expect(() => applyContractPresetToNurse(n01, "nonexistent_preset")).toThrow();
   });
 
   it("enforces strict solver diagnosis, zero overtime default, unclamped bounds, and staffing_rule shift validation (Issue #321)", async () => {
@@ -4203,14 +4206,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // 3. Missing yearly36Stats defaults past11MonthsOvertimeHours to 0 (never 180)
     const noStatsState: NurseSchedulingState = {
       ...baseState,
-      nurses: baseState.nurses.map((n) =>
-        n.id === "N01"
-          ? {
-              ...n,
-              yearly36Stats: undefined as unknown as NurseSchedulingState["nurses"][number]["yearly36Stats"],
-            }
-          : n
-      ),
+      nurses: baseState.nurses.map((n): NurseProfile => {
+        if (n.id !== "N01") return n;
+        return {
+          ...n,
+          // @ts-expect-error intentional missing-stats runtime fixture to verify 0h fallback (no 180h guess)
+          yearly36Stats: undefined,
+        };
+      }),
     };
     const builtNoStats = buildNurseWashiModel(noStatsState, { solver: "highs" });
     const laborMeta = builtNoStats.constraintMeta.get("labor36_overtime_N01");
@@ -4241,7 +4244,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
   });
 
   it("enforces strict LanguageModel availability, single create(), clone(), and honest Turn 1/2/3 error propagation (Issue #321)", async () => {
-    const g = globalThis as any;
+    interface MockCreateOpts {
+      initialPrompts?: Array<{ role: string; content: string }>;
+      expectedOutputs?: Array<{ type: string; languages: string[] }>;
+    }
+    const g = globalThis as Record<string, unknown>;
     const origLM = g.LanguageModel;
     try {
       const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
@@ -4270,13 +4277,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // 2. initialize() sends language options + initialPrompts in a single strict create(), and rejects without re-calling availability()
       let availCalls = 0;
-      const createCalls: any[] = [];
+      const createCalls: MockCreateOpts[] = [];
       g.LanguageModel = {
         async availability() {
           availCalls++;
           return "available";
         },
-        async create(opts: any) {
+        async create(opts: MockCreateOpts) {
           createCalls.push(opts);
           throw new Error("create failed strictly");
         },
@@ -4295,7 +4302,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         async availability() {
           return "available";
         },
-        async create(opts: any) {
+        async create(opts: MockCreateOpts) {
           const isRouter = String(opts?.initialPrompts?.[0]?.content ?? "").includes("\u30d7\u30e9\u30f3\u30ca\u30fc");
           if (initStage === "no_consult_clone" && !isRouter) {
             return {
@@ -4344,7 +4351,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         },
         async create() {
           const makeSession = () => ({
-            async prompt(_input: string, opts?: any) {
+            async prompt(_input: string, opts?: { responseConstraint?: unknown }) {
               if (opts?.responseConstraint === STAGE1_ROUTER_SCHEMA) {
                 if (mode === "turn1_err") throw new Error("router boom");
                 return JSON.stringify({
@@ -4534,7 +4541,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       { op: "add_custom_shift", shiftName: "特別研修", shift: "SP_TR", shortLabel: "特", baseShift: "D" },
       { op: "remove_skill_def", skillName: "呼吸" }, // partial substring must NOT match 人工呼吸器管理
       { op: "allow_prev_month_shift", shiftName: "UNREGISTERED" }, // must NOT log fake success
-      { op: "add_date_coverage", day: 5, shift: "X" as unknown as "D", minStaff: 2 },
+      // @ts-expect-error intentional invalid shift token to verify rejection instead of coercing to "D"
+      { op: "add_date_coverage", day: 5, shift: "X", minStaff: 2 },
     ]);
     expect(opExec.updatedState.shiftAliases?.some((a) => a.code === "CUSTOM_ALIAS")).toBe(true);
     expect(opExec.updatedState.skillDefs?.some((s) => s.code === "ventilator")).toBe(true);
