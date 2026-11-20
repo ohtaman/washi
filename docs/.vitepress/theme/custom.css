@@ -805,6 +805,17 @@
   color: var(--vp-c-text-2);
 }
 
+.conflict-diag-notice {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #be123c;
+  line-height: 1.5;
+}
+
+:root.dark .conflict-diag-notice {
+  color: #fda4af;
+}
+
 /* E-Commerce Cart Simulator */
 .washi-cart-grid {
   display: grid;

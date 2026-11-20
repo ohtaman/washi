@@ -27,6 +27,8 @@
     "targetReturn": "Target Expected Return:",
     "minVariance": "Min Variance:",
     "dirtyBanner": "Target return changed. Click '▶ Run Optimization' above to recompute.",
+    "nonOptimalTitle": "Optimization did not reach Optimal",
+    "nonOptimalHint": "Lower the target return or click '▶ Run Optimization' to retry.",
     "openPlayground": "Edit Code in Playground →",
     "assets": {
       "Tech": "US Tech Equity",
@@ -57,6 +59,8 @@
     "discount": "Discounts Applied",
     "totalPayable": "Total Cash to Pay",
     "skipped": "Skipped",
+    "nonOptimalTitle": "Optimization did not reach Optimal",
+    "nonOptimalHint": "Check your cart selection or click '▶ Run Optimization' to retry.",
     "openPlayground": "Edit Code in Playground →",
     "products": {
       "headphones": "Wireless ANC Headphones",
@@ -112,7 +116,14 @@
     "optimalSub": "56 Binary Variables",
     "payroll": "Total Weekly Payroll (Minimized):",
     "infeasibleTitle": "Infeasible Schedule — Z3 Unsat Core Diagnosis:",
+    "infeasibleNoCoreTitle": "Infeasible Schedule (Status: Infeasible)",
+    "coiRequiredNotice": "Z3 Unsat Core diagnosis requires Cross-Origin Isolation (crossOriginIsolated === true via COOP/COEP headers). Unavailable in this browser context.",
+    "z3EmptyCoreNotice": "Z3 conflict diagnosis completed without returning an Unsat Core.",
+    "z3DiagErrorPrefix": "Z3 conflict diagnosis failed:",
     "infeasibleTip": "💡 Click any red-bordered 'Off Req' cell to remove that request, then click '▶ Run Optimization' to restore feasibility.",
+    "infeasibleAdjustTip": "💡 Adjust day-off requests or rule constraints above, then click '▶ Run Optimization' to restore feasibility.",
+    "nonOptimalTitle": "Optimization did not reach Optimal",
+    "nonOptimalHint": "Adjust constraints or click '▶ Run Optimization' to retry.",
     "openPlayground": "Edit Code in Playground →",
     "roles": {
       "Senior": "Senior",

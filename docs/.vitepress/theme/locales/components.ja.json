@@ -27,6 +27,8 @@
     "targetReturn": "目標期待リターン:",
     "minVariance": "最小分散:",
     "dirtyBanner": "目標リターンが変更されました。右上の「▶ 最適化を実行」を押して再計算してください。",
+    "nonOptimalTitle": "最適解が得られませんでした",
+    "nonOptimalHint": "目標期待リターンを下げるか、「▶ 最適化を実行」を再度お試しください。",
     "openPlayground": "Playground でコードを編集する →",
     "assets": {
       "Tech": "ハイテク株",
@@ -57,6 +59,8 @@
     "discount": "クーポン割引適用",
     "totalPayable": "最終支払額",
     "skipped": "未適用",
+    "nonOptimalTitle": "最適解が得られませんでした",
+    "nonOptimalHint": "商品の選択を確認するか、「▶ 最適化を実行」を再度お試しください。",
     "openPlayground": "Playground でコードを編集する →",
     "products": {
       "headphones": "ワイヤレスヘッドホン",
@@ -112,7 +116,14 @@
     "optimalSub": "56 バイナリ変数",
     "payroll": "週間総人件費 (最小化):",
     "infeasibleTitle": "シフト編成不可 (Infeasible) — Z3 が特定した原因制約 (Unsat Core):",
+    "infeasibleNoCoreTitle": "シフト編成不可 (Status: Infeasible)",
+    "coiRequiredNotice": "Z3 による原因制約 (Unsat Core) の診断には Cross-Origin Isolation（COOP/COEP ヘッダー等による crossOriginIsolated === true）が必要です。現在のブラウザ環境では診断を利用できません。",
+    "z3EmptyCoreNotice": "Z3 による競合診断を実行しましたが、Unsat Core が返されませんでした。",
+    "z3DiagErrorPrefix": "Z3 による競合診断に失敗しました:",
     "infeasibleTip": "💡 赤枠の「希望休」セルを1つクリックして解除し、「▶ 最適化を実行」を押すと再び最適シフトが組めるようになります。",
+    "infeasibleAdjustTip": "💡 上記の希望休セルやルール条件を調整し、「▶ 最適化を実行」を押して再試行してください。",
+    "nonOptimalTitle": "最適解が得られませんでした",
+    "nonOptimalHint": "条件を調整するか、「▶ 最適化を実行」を再度お試しください。",
     "openPlayground": "Playground でコードを編集する →",
     "roles": {
       "Senior": "シニア",

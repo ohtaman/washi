@@ -27,6 +27,8 @@
     "targetReturn": "目标期望收益率:",
     "minVariance": "最小方差:",
     "dirtyBanner": "目标收益率已更改，请点击右上角“▶ 运行优化”重新计算。",
+    "nonOptimalTitle": "未能求得最优解",
+    "nonOptimalHint": "请降低目标期望收益率，或再次点击“▶ 运行优化”重试。",
     "openPlayground": "在 Playground 中编辑代码 →",
     "assets": {
       "Tech": "美股科技",
@@ -57,6 +59,8 @@
     "discount": "已抵扣优惠券",
     "totalPayable": "实付金额",
     "skipped": "未使用",
+    "nonOptimalTitle": "未能求得最优解",
+    "nonOptimalHint": "请检查购物车商品选择，或再次点击“▶ 运行优化”重试。",
     "openPlayground": "在 Playground 中编辑代码 →",
     "products": {
       "headphones": "无线降噪耳机",
@@ -112,7 +116,14 @@
     "optimalSub": "56 个二元变量",
     "payroll": "周总人力成本 (最小化):",
     "infeasibleTitle": "无法排班 (Infeasible) — Z3 定位的冲突约束子集 (Unsat Core):",
+    "infeasibleNoCoreTitle": "无法排班 (Status: Infeasible)",
+    "coiRequiredNotice": "Z3 冲突约束子集 (Unsat Core) 诊断需要跨源隔离（通过 COOP/COEP 响应头启用 crossOriginIsolated === true）。当前浏览器环境不支持，因此无法提取冲突约束。",
+    "z3EmptyCoreNotice": "已执行 Z3 冲突诊断，但未返回 Unsat Core。",
+    "z3DiagErrorPrefix": "Z3 冲突诊断失败:",
     "infeasibleTip": "💡 点击任意红框“请假”单元格取消该休假申请，再点击“▶ 运行优化”即可恢复可行排班。",
+    "infeasibleAdjustTip": "💡 请调整上方的请假申请或排班约束，然后点击“▶ 运行优化”重新求解。",
+    "nonOptimalTitle": "未能求得最优解",
+    "nonOptimalHint": "请调整约束条件或再次点击“▶ 运行优化”重试。",
     "openPlayground": "在 Playground 中编辑代码 →",
     "roles": {
       "Senior": "资深",

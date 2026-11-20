@@ -593,15 +593,23 @@ body {
   color: var(--text-sumi);
 }
 
-.metric-value.status-optimal {
+.metric-value.status-optimal,
+.metric-value.status-sat {
   color: var(--color-seiji);
 }
 
-.metric-value.status-infeasible {
+.metric-value.status-infeasible,
+.metric-value.status-unsat,
+.metric-value.status-error {
   color: var(--color-beni);
 }
 
-.metric-value.status-unbounded {
+.metric-value.status-unbounded,
+.metric-value.status-timelimit,
+.metric-value.status-iterationlimit,
+.metric-value.status-feasible,
+.metric-value.status-notsolved,
+.metric-value.status-unknown {
   color: var(--color-amber);
 }
 
