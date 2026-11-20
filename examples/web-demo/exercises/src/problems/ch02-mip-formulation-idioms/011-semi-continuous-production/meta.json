@@ -1,0 +1,26 @@
+{
+  "id": "011",
+  "slug": "semi-continuous-production",
+  "chapter": 2,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 8,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

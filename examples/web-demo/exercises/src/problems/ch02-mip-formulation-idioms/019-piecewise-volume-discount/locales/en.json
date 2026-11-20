@@ -1,0 +1,30 @@
+{
+  "title": "#019. Piecewise All-Units Volume Discounts",
+  "subtitle": "Model discontinuous all-units supplier discount brackets as mutually exclusive semi-continuous MIP segments.",
+  "tags": [
+    "MIP",
+    "Volume Discount",
+    "Non-Convex Piecewise",
+    "Procurement"
+  ],
+  "caseNames": [
+    "2-supplier dual bulk-tier split",
+    "2-supplier bulk threshold jump",
+    "3-supplier MOQ and tier gaps",
+    "3-supplier fractional demand split",
+    "4-supplier multi-bracket procurement"
+  ],
+  "judge": {
+    "m0": "Output must be an object { tierSelected, tierQuantities, totalCost }.",
+    "m1": "Field \"tierSelected\" must be an array with {p0} rows.",
+    "m2": "Field \"tierQuantities\" must be an array with {p0} rows.",
+    "m3": "tierSelected[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
+    "m4": "tierQuantities[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m5": "Supplier {p0} tier {p1} quantity ({p2}) violates bounds [{p4}, {p5}] for tierSelected = {p3}.",
+    "m6": "Supplier {p0} activated {p1} tiers (at most 1 tier may be selected per supplier).",
+    "m7": "Total purchased quantity ({p0}) is below demand ({p1}).",
+    "m8": "Reported totalCost ({p0}) does not match computed procurement cost ({p1}).",
+    "m9": "Feasible procurement plan, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m10": "Optimal all-units volume-discount procurement found (totalCost = {p0})!"
+  }
+}

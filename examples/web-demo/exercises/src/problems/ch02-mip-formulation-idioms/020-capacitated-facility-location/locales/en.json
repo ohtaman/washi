@@ -1,0 +1,28 @@
+{
+  "title": "#020. Capacitated Facility Location (CFLP)",
+  "subtitle": "Chapter 2 synthesis: jointly choose which capacitated facilities to open and route continuous shipments to satisfy customer demands.",
+  "tags": [
+    "MIP",
+    "CFLP",
+    "Facility Location",
+    "Capstone"
+  ],
+  "caseNames": [
+    "3-facility 4-customer distribution",
+    "4-facility 3-customer tight capacity",
+    "3-facility hub consolidation",
+    "4-facility 5-customer decimal network",
+    "5-facility 6-customer regional CFLP"
+  ],
+  "judge": {
+    "m0": "Output must be an object { open, shipments, totalCost }.",
+    "m1": "Field \"shipments\" must be an array with {p0} rows.",
+    "m2": "open[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m3": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
+    "m4": "Facility {p0} total outflow ({p1}) exceeds allowed capacity {p2} for open[{p0}] = {p3}.",
+    "m5": "Customer {p0} total received flow ({p1}) is below demand ({p2}).",
+    "m6": "Reported totalCost ({p0}) does not match computed fixed plus shipping cost ({p1}).",
+    "m7": "Feasible facility location plan, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m8": "Optimal capacitated facility location plan found (totalCost = {p0})!"
+  }
+}

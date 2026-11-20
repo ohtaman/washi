@@ -1,0 +1,57 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "margins": [30, 24, 18],
+      "minBatches": [8, 15, 5],
+      "maxBatches": [20, 30, 15],
+      "resourceUsages": [1, 1, 1],
+      "resourceCap": 30
+    },
+    "expectedOptimal": 810
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "margins": [50, 36, 26, 18],
+      "minBatches": [17, 10, 8, 5],
+      "maxBatches": [20, 18, 22, 16],
+      "resourceUsages": [2, 1.5, 1, 0.8],
+      "resourceCap": 32
+    },
+    "expectedOptimal": 802
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "margins": [25, 35, 20, 28],
+      "minBatches": [0, 10, 12, 8],
+      "maxBatches": [12, 10, 24, 16],
+      "resourceUsages": [1, 1.5, 1.2, 1.4],
+      "resourceCap": 35
+    },
+    "expectedOptimal": 794
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "margins": [18, 22, 15, 26, 19],
+      "minBatches": [20, 18, 25, 16, 22],
+      "maxBatches": [35, 30, 40, 28, 36],
+      "resourceUsages": [1.5, 1.6, 1.2, 2.0, 1.4],
+      "resourceCap": 20
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "margins": [50, 44, 38, 33, 27, 21],
+      "minBatches": [10, 12, 8, 15, 6, 9],
+      "maxBatches": [24, 28, 22, 30, 18, 25],
+      "resourceUsages": [2.2, 1.9, 1.6, 1.3, 1.1, 0.9],
+      "resourceCap": 65
+    },
+    "expectedOptimal": 1618.3636363636363
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "title": "#013. Cardinality-Constrained Portfolio Selection",
+  "subtitle": "Express mutually exclusive, exact-k, and at-least-one selection rules as linear sums over binary decision variables.",
+  "tags": [
+    "MIP",
+    "Cardinality",
+    "Binary Selection",
+    "Portfolio"
+  ],
+  "caseNames": [
+    "6-project mixed cardinality portfolio",
+    "7-project overlapping group constraints",
+    "5-project exact-zero and exact-one mix",
+    "8-project multi-group selection",
+    "10-project multi-tier portfolio"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, totalValue }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Total cost ({p0}) exceeds budget ({p1}).",
+    "m3": "Mutually exclusive group {p0} selected {p1} projects (maximum 1 allowed).",
+    "m4": "Exact-k group {p0} selected {p1} projects (expected {p2}).",
+    "m5": "At-least-one group {p0} selected {p1} projects (minimum 1 required).",
+    "m6": "Reported totalValue ({p0}) does not match computed value ({p1}).",
+    "m7": "Feasible selection, but totalValue ({p0}) is below optimal ({p1}).",
+    "m8": "Optimal cardinality-constrained selection found (totalValue = {p0})!"
+  }
+}
