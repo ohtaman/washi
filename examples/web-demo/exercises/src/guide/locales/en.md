@@ -48,3 +48,29 @@ A concise reference for reading problem statements, building optimization models
 - **LP (Linear Programming)**: Linear objective and linear constraints over continuous variables. Solved directly at a corner point (vertex) of the feasible polytope without integer branching.
 - **MIP (Mixed-Integer Programming)**: LP extended with `integer` or `binary` variables to model indivisible units, yes/no selection, or fixed-charge activation (**Big-M**).
 - **CP / SMT**: Constraint Programming and Satisfiability Modulo Theories for combinatorial scheduling, logical rules, and conflict diagnosis (covered in later chapters).
+
+## 5. Related Documentation & Learning Resources {#resources}
+
+Official documentation and reference materials centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**):
+
+### Choosing the Right Resource
+
+For foundational modeling techniques and practical formulations, MO-book, MOSEK Modeling Cookbook, and opt100 are great references. For constraint programming (CP), see The MiniZinc Handbook; for logical constraints and SMT solving, try the Online Z3 Guide. For implementing models in WaSHI itself, see the WaSHI Official Docs.
+
+### Modeling Libraries & Solvers
+
+- [WaSHI Official Docs](https://washi.ohtaman.dev/) — API reference, solver backends, formulation guides, and runnable examples for WaSHI.
+- [PuLP Documentation](https://coin-or.github.io/pulp/) — Reference for the Python LP/MIP modeling library used in the `PuLP (Python)` tab.
+- [HiGHS](https://highs.dev/) ([Docs](https://ergo-code.github.io/HiGHS/dev/)) — High-performance open-source LP/MIP/QP solver powering WaSHI's default backend and accessible from PuLP.
+- [Google OR-Tools](https://developers.google.com/optimization) — Official guides with practical examples across MIP, vehicle routing, scheduling, and the CP-SAT solver.
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — Systematic guide to constraint programming (CP) modeling techniques and global constraints.
+- [JuMP Documentation](https://jump.dev/JuMP.jl/stable/) — Algebraic modeling library for Julia covering LP, MIP, and many standard formulation patterns.
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — Lazy clause generation (LCG) constraint programming solver used as WaSHI's CP backend.
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — Interactive guide for learning logical constraints and SMT satisfiability checking with Z3 in the browser.
+
+### Combinatorial Optimization Guides & Problem Libraries
+
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Practical formulation recipes including Big-M, indicator constraints, and logical linearizations (the Mixed Integer Optimization chapter is especially useful).
+- [Hands-On Mathematical Optimization with Python (MO-book)](https://mobook.github.io/MO-book/) — Open textbook for learning LP, MIP, network flows, and optimization modeling with interactive Jupyter notebooks.
+- [CSPLib](https://www.csplib.org/) — Standard benchmark library of constraint programming and combinatorial optimization problems.
+- [SCMOPT opt100 (100+ Optimization Problems with Python)](https://scmopt.github.io/opt100/) — Formulations and solution approaches for over 100 problems across graphs, assignment, facility location, logistics, and scheduling, including companion material for the Japanese textbook series.

@@ -48,3 +48,29 @@
 - **LP（线性规划）**：连续变量配合线性目标和线性约束，可在可行多面体顶点处快速求得全局最优解。
 - **MIP（混合整数规划）**：在 LP 中加入整数或 0-1 变量，用于表达离散数量、布尔选择以及固定成本开关（**Big-M**）。
 - **CP / SMT**：约束规划与可满足性模理论，擅长处理排班、逻辑规则与冲突诊断（后续章节介绍）。
+
+## 5. 相关链接与参考资料 {#resources}
+
+本节汇总以组合优化为核心、围绕数学优化与约束规划（LP / MIP / CP / SMT）问题理解与建模的官方文档与参考资料：
+
+### 参考资料选择建议
+
+学习建模基础与实用技巧时，可参考 MO-book、MOSEK Modeling Cookbook 与 opt100；了解约束规划（CP）可查阅 MiniZinc Handbook；学习逻辑约束与 SMT 可尝试 Online Z3 Guide；关于在 WaSHI 中的具体实现方式，请参阅 WaSHI 官方文档。
+
+### 建模库与求解器官方文档
+
+- [WaSHI 官方文档](https://washi.ohtaman.dev/zh/) — 收录 WaSHI 的 API、各求解器后端、建模指南与代码示例。
+- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 Python LP / MIP 代数建模库参考文档。
+- [HiGHS](https://highs.dev/)（[Docs](https://ergo-code.github.io/HiGHS/dev/)） — WaSHI 默认的 LP / MIP / QP 求解器，也是可在 PuLP 中直接调用的高性能开源求解器。
+- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 MIP、车辆路径、排程与 CP-SAT 等丰富实战示例的官方指南。
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 系统讲解约束规划（CP）建模方法与全局约束的标准手册。
+- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — 面向 Julia 的数学优化建模库，收录 LP / MIP 等常见建模模式与实现示例。
+- [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI 约束规划（CP）后端采用的 Lazy Clause Generation（LCG）约束编程求解器。
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — 可直接在浏览器中动手练习 SMT 求解器 Z3 逻辑约束与可满足性判定的官方教程。
+
+### 组合优化指南与问题库
+
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 汇集 Big-M、指示约束、逻辑条件线性化等实用建模技巧，其中 Mixed Integer Optimization 章节尤为实用。
+- [Hands-On Mathematical Optimization with Python（MO-book）](https://mobook.github.io/MO-book/) — 结合 Jupyter Notebook 实战代码讲解 LP / MIP 与网络优化的开源教材。
+- [CSPLib](https://www.csplib.org/) — 收录约束规划与组合优化领域经典标准测试问题的题库。
+- [Python 实战优化问题 100+（SCMOPT opt100）](https://scmopt.github.io/opt100/) — 涵盖图论、指派、选址、物流配送与排程等 100 余道优化问题的建模与求解介绍，并附有相关日文书籍的配套支持内容。

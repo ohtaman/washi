@@ -102,6 +102,7 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     }
 
     expect(PROBLEMS.map((p) => p.meta.id)).toEqual(EXPECTED_IDS);
+    expect(new Set(PROBLEMS.map((p) => p.meta.discussionNumber)).size).toBe(PROBLEMS.length);
 
     for (const prob of PROBLEMS) {
       const isTutorial = prob.meta.id === "000";
@@ -130,6 +131,8 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
       expect(prob.meta.provenance.reviewedBy).toEqual([]);
+      expect(Number.isInteger(prob.meta.discussionNumber)).toBe(true);
+      expect(prob.meta.discussionNumber).toBeGreaterThanOrEqual(281);
       expect(prob.cases.length).toBeGreaterThanOrEqual(2);
 
       for (const locale of ["en", "ja", "zh"] as const) {

@@ -42,6 +42,8 @@ export interface ExercisesUiStrings {
     statementTablistLabel: string;
     problemTab: string;
     editorialTab: string;
+    discussionNote: string;
+    discussionBtn: string;
   };
   tabs: {
     washi: string;

@@ -54,6 +54,7 @@ export interface ProblemMeta {
   subtitle: LocalizedString;
   tags: Record<Locale, string[]>;
   provenance: ProvenanceMeta;
+  discussionNumber?: number;
 }
 
 export interface ChapterInfo {
