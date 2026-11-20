@@ -9,7 +9,10 @@
   ],
   "caseNames": [
     "Compact carry-on bag",
-    "Field kit pack"
+    "Field kit pack",
+    "Small tight pouch",
+    "5-item expedition pack",
+    "4-item camera case"
   ],
   "judge": {
     "m0": "Output must be an object { counts, totalValue }.",

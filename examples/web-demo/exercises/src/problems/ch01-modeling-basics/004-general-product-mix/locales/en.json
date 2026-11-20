@@ -7,8 +7,11 @@
     "Matrix Formulation"
   ],
   "caseNames": [
-    "Two-flavor creamery (greedy Trap: 15,000 vs LP: 19,000)",
-    "Three-product artisan factory (fractional continuous LP)"
+    "Two-flavor creamery (2 × 2)",
+    "Three-product factory (3 × 3)",
+    "Four-resource workshop (2 × 4)",
+    "Four-product line (4 × 2)",
+    "Three-product mixed plant (3 × 3)"
   ],
   "judge": {
     "m0": "Output must be an object { quantities, totalProfit }.",

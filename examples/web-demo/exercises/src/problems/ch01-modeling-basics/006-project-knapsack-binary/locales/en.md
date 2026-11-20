@@ -41,4 +41,4 @@ Select a subset of projects to **maximize total value** without exceeding the av
 }
 ```
 
-Greedy selection by value-to-cost ratio leaves 3 units of budget stranded at value 30. Choosing projects 1, 2, and 3 spends $5 + 7 + 3 = 15$ for maximum value **36**.
+Selecting projects 1, 2, and 3 (`[0, 1, 1, 1, 0]`) uses $5 + 7 + 3 = 15$ of the 15 budget and gives total value $12 + 16 + 8 =$ **36**.

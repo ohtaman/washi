@@ -47,4 +47,4 @@ Each unit produced on an active line earns a unit contribution margin and draws 
 }
 ```
 
-Line 0 has the highest unit margin (50) but yields only 25 per unit of material alongside a steep 600 fixed cost. Leaving Line 0 closed and producing 30 and 25 on Lines 1 and 2 achieves maximum net profit **1,525**.
+Opening Lines 1 and 2 with `quantities = [0, 30, 25]` satisfies activation capacities and consumes $30 \times 1.5 + 25 \times 1 = 70 \le 70$ material, yielding net profit $(40 \times 30 + 35 \times 25) - (300 + 250) =$ **1,525**.

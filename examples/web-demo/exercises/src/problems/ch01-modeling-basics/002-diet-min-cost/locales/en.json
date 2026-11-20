@@ -8,7 +8,10 @@
   ],
   "caseNames": [
     "Standard day",
-    "High-protein day"
+    "High-protein day",
+    "Protein-heavy target",
+    "Fiber-heavy target",
+    "Continuous fractional blend"
   ],
   "judge": {
     "m0": "Return value must be an object { oats, beans, totalCost }.",

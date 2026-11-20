@@ -7,8 +7,11 @@
     "2D Matrix"
   ],
   "caseNames": [
-    "3x3 sprint assignment (greedy 10 vs optimal 9)",
-    "4x4 shift matching matrix (optimal 26)"
+    "3 × 3 sprint assignment",
+    "4 × 4 shift matching",
+    "5 × 5 engineering roster",
+    "6 × 6 operations dispatch",
+    "2 × 2 pair matching"
   ],
   "judge": {
     "m0": "Output must be an object { assignment, totalCost }.",

@@ -7,7 +7,8 @@
   ],
   "caseNames": [
     "Small pair",
-    "Two-digit pair"
+    "Two-digit pair",
+    "Zero and round number"
   ],
   "judge": {
     "m0": "Return value must be an object { sum }.",

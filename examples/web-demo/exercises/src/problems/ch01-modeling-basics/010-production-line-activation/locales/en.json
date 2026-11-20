@@ -8,8 +8,11 @@
     "Capstone"
   ],
   "caseNames": [
-    "3-line plant setup optimization (net profit 1,525)",
-    "4-line factory expansion (net profit 2,110)"
+    "3-line plant setup",
+    "4-line factory expansion",
+    "4 high-fixed-cost candidate lines",
+    "5-line mid-size facility",
+    "6-line multi-tier plant"
   ],
   "judge": {
     "m0": "Output must be an object { open, quantities, netProfit }.",
