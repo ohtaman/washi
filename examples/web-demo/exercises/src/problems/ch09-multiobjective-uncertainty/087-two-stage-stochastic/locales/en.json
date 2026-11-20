@@ -1,0 +1,25 @@
+{
+  "title": "#087. Two-Stage Stochastic Programming with Recourse",
+  "subtitle": "Commit first-stage inventory before demand is revealed, balancing expected emergency shortages and end-of-season salvage.",
+  "tags": [
+    "LP",
+    "Stochastic Programming",
+    "Two-Stage Recourse",
+    "Expected Cost"
+  ],
+  "caseNames": [
+    "2-product 2-scenario capacity-limited newsvendor",
+    "3-product 3-scenario recourse allocation",
+    "3-product skewed tail-surge scenarios",
+    "4-product zero-salvage warehouse budget",
+    "5-product 5-scenario supply planning"
+  ],
+  "judge": {
+    "m0": "Output must be an object { orders, expectedCost }.",
+    "m1": "orders[{p0}] cannot be negative (received {p1}).",
+    "m2": "Total first-stage orders ({p0}) exceed warehouseCap ({p1}).",
+    "m3": "Reported expectedCost ({p0}) does not match computed first-stage plus expected recourse cost ({p1}).",
+    "m4": "Valid order vector, but expectedCost ({p0}) exceeds stochastic minimum ({p1}).",
+    "m5": "Optimal two-stage stochastic orders verified (expectedCost = {p0})."
+  }
+}

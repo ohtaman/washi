@@ -674,6 +674,10 @@ async function run() {
         { id: "042", expectHighspy: false },
         { id: "046", expectHighspy: false },
         { id: "048", expectHighspy: false },
+        { id: "054", expectHighspy: true },
+        { id: "068", expectHighspy: true },
+        { id: "073", expectHighspy: false },
+        { id: "084", expectHighspy: false },
       ];
       for (const mc of milestoneCases) {
         await page.goto(`${baseUrl}/exercises/?id=${mc.id}&lang=en`, { waitUntil: "networkidle" });

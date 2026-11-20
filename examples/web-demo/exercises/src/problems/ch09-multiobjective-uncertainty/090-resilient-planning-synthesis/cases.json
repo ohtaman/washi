@@ -1,0 +1,103 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "fixedCosts": [120, 150, 90, 110],
+      "capacities": [18, 22, 12, 16],
+      "dropAmounts": [8, 10, 4, 6],
+      "gamma": 1,
+      "robustMinCap": 28,
+      "probs": [0.6, 0.4],
+      "demands": [24, 34],
+      "offline": [
+        [0, 0, 0, 0],
+        [0, 1, 0, 0]
+      ],
+      "disruptionCost": 45,
+      "shortfallPenalty": 30
+    },
+    "expectedOptimal": 296
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "fixedCosts": [100, 140, 115, 85, 130],
+      "capacities": [16, 20, 18, 12, 19],
+      "dropAmounts": [6, 9, 7, 3, 8],
+      "gamma": 1.5,
+      "robustMinCap": 34,
+      "probs": [0.4, 0.35, 0.25],
+      "demands": [28, 36, 42],
+      "offline": [
+        [0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0],
+        [1, 0, 0, 0, 1]
+      ],
+      "disruptionCost": 50,
+      "shortfallPenalty": 35
+    },
+    "expectedOptimal": 325
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "fixedCosts": [95, 125, 110, 80, 135],
+      "capacities": [15, 20, 18, 12, 21],
+      "dropAmounts": [5, 8, 7, 4, 9],
+      "gamma": 2,
+      "robustMinCap": 30,
+      "probs": [0.5, 0.3, 0.2],
+      "demands": [26, 34, 40],
+      "offline": [
+        [0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 0]
+      ],
+      "disruptionCost": 90,
+      "shortfallPenalty": 28
+    },
+    "expectedOptimal": 310
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "fixedCosts": [110, 130, 95, 145, 85, 120],
+      "capacities": [18, 20, 14, 24, 12, 19],
+      "dropAmounts": [7, 8, 5, 11, 4, 7],
+      "gamma": 2,
+      "robustMinCap": 38,
+      "probs": [0.4, 0.25, 0.2, 0.15],
+      "demands": [30, 38, 44, 62],
+      "offline": [
+        [0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 0, 1]
+      ],
+      "disruptionCost": 40,
+      "shortfallPenalty": 18
+    },
+    "expectedOptimal": 375
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "fixedCosts": [100, 135, 115, 90, 150, 125, 80],
+      "capacities": [16, 22, 18, 14, 24, 20, 12],
+      "dropAmounts": [6, 10, 7, 5, 11, 8, 4],
+      "gamma": 2,
+      "robustMinCap": 44,
+      "probs": [0.35, 0.25, 0.25, 0.15],
+      "demands": [36, 46, 52, 60],
+      "offline": [
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0],
+        [1, 0, 1, 0, 0, 0, 0]
+      ],
+      "disruptionCost": 55,
+      "shortfallPenalty": 32
+    },
+    "expectedOptimal": 411.5
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "id": "087",
+  "slug": "two-stage-stochastic",
+  "chapter": 9,
+  "order": 7,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 11,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "#088. Linearized CVaR Portfolio Optimization",
+  "subtitle": "Optimize expected return against Conditional Value-at-Risk (CVaR) using Rockafellar-Uryasev's exact linear formulation.",
+  "tags": [
+    "LP",
+    "CVaR",
+    "Risk Management",
+    "Portfolio"
+  ],
+  "caseNames": [
+    "3-asset 4-scenario tail crash",
+    "3-asset strictly positive returns (negative VaR)",
+    "4-asset low risk-aversion allocation",
+    "4-asset 8-scenario systematic shock",
+    "5-asset 10-scenario non-uniform tail"
+  ],
+  "judge": {
+    "m0": "Output must be an object { weights, varThreshold, cvar, totalObjective }.",
+    "m1": "weights[{p0}] = {p1} falls outside [0, {p2}].",
+    "m2": "Portfolio weights must sum to 1 (received {p0}).",
+    "m3": "varThreshold ({p0}) yields Rockafellar-Uryasev value {p1}, not matching minimum CVaR {p2}. Check that eta is unconstrained (lb: -Infinity).",
+    "m4": "Reported cvar ({p0}) does not match exact CVaR ({p1}) for the returned weights.",
+    "m5": "Reported totalObjective ({p0}) does not match expected loss plus riskWeight * CVaR ({p1}).",
+    "m6": "Feasible portfolio, but totalObjective ({p0}) exceeds minimum ({p1}).",
+    "m7": "Optimal CVaR portfolio verified (totalObjective = {p0})."
+  }
+}
