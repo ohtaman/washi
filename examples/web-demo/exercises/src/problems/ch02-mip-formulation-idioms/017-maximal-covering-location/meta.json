@@ -1,0 +1,27 @@
+{
+  "id": "017",
+  "slug": "maximal-covering-location",
+  "chapter": 2,
+  "order": 7,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

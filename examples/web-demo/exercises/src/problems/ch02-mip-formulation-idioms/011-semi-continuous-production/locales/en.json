@@ -1,0 +1,27 @@
+{
+  "title": "#011. Semi-Continuous Batch Production",
+  "subtitle": "Model either-zero-or-range production lots L[i] <= q[i] <= U[i] by coupling continuous quantities with binary activation switches.",
+  "tags": [
+    "MIP",
+    "Semi-Continuous",
+    "Minimum Batch",
+    "Linking Constraints"
+  ],
+  "caseNames": [
+    "3-product batch split",
+    "4-product minimum lot threshold",
+    "Zero-min and fixed-lot mix",
+    "5-product tight capacity shutdown",
+    "6-product fractional resource mix"
+  ],
+  "judge": {
+    "m0": "Output must be an object { active, quantities, totalMargin }.",
+    "m1": "active[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m3": "Product {p0} quantity ({p1}) violates semi-continuous bounds [{p3}, {p4}] for active[{p0}] = {p2}.",
+    "m4": "Total resource usage ({p0}) exceeds capacity ({p1}).",
+    "m5": "Reported totalMargin ({p0}) does not match computed margin ({p1}).",
+    "m6": "Feasible production plan, but totalMargin ({p0}) is below optimal ({p1}).",
+    "m7": "Optimal semi-continuous production plan found (totalMargin = {p0})!"
+  }
+}

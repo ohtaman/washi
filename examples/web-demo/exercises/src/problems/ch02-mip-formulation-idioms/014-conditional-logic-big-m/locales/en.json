@@ -1,0 +1,30 @@
+{
+  "title": "#014. Conditional Logic & Tight Big-M Activation",
+  "subtitle": "Linearize prerequisites, conjunction triggers, and conditional continuous ranges inside a single mixed-integer model.",
+  "tags": [
+    "MIP",
+    "Big-M",
+    "Logical Constraints",
+    "Implication"
+  ],
+  "caseNames": [
+    "5-unit mixed logic portfolio",
+    "5-unit expensive conjunction trigger",
+    "4-unit triggered support module",
+    "6-unit chained dependencies",
+    "7-unit multi-clause facility network"
+  ],
+  "judge": {
+    "m0": "Output must be an object { active, levels, netProfit }.",
+    "m1": "active[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "levels[{p0}] cannot be negative (received {p1}).",
+    "m3": "Facility {p0} level ({p1}) violates conditional range [{p3}, {p4}] for active[{p0}] = {p2}.",
+    "m4": "Total allocated level ({p0}) exceeds budget ({p1}).",
+    "m5": "Prerequisite violated: active[{p0}] = 1 requires active[{p1}] = 1.",
+    "m6": "Conjunction trigger violated: activating both {p0} and {p1} requires active[{p2}] = 1.",
+    "m7": "Conflict violated: facilities {p0} and {p1} cannot both be active.",
+    "m8": "Reported netProfit ({p0}) does not match computed net profit ({p1}).",
+    "m9": "Feasible activation plan, but netProfit ({p0}) is below optimal ({p1}).",
+    "m10": "Optimal conditional activation plan found (netProfit = {p0})!"
+  }
+}

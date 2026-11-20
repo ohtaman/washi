@@ -10,7 +10,7 @@ const CHAPTER_SPEC: ReadonlyArray<{
   paradigms: ParadigmId[];
 }> = [
   { chapter: 1, idRange: "001–010", available: true, paradigms: ["LP", "MIP"] },
-  { chapter: 2, idRange: "011–020", available: false, paradigms: ["MIP"] },
+  { chapter: 2, idRange: "011–020", available: true, paradigms: ["MIP"] },
   { chapter: 3, idRange: "021–030", available: false, paradigms: ["LP", "MIP"] },
   { chapter: 4, idRange: "031–040", available: false, paradigms: ["CP", "MIP"] },
   { chapter: 5, idRange: "041–050", available: false, paradigms: ["SMT"] },

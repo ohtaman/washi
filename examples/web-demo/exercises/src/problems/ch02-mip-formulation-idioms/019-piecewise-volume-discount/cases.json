@@ -1,0 +1,109 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demand": 60,
+      "suppliers": [
+        [
+          { "minQty": 10, "maxQty": 30, "unitPrice": 11 },
+          { "minQty": 35, "maxQty": 50, "unitPrice": 8.5 }
+        ],
+        [
+          { "minQty": 5, "maxQty": 20, "unitPrice": 10 },
+          { "minQty": 25, "maxQty": 45, "unitPrice": 8.8 }
+        ]
+      ]
+    },
+    "expectedOptimal": 517.5
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demand": 45,
+      "suppliers": [
+        [
+          { "minQty": 10, "maxQty": 29, "unitPrice": 11 },
+          { "minQty": 30, "maxQty": 44, "unitPrice": 9.8 },
+          { "minQty": 50, "maxQty": 90, "unitPrice": 7.0 }
+        ],
+        [
+          { "minQty": 0, "maxQty": 25, "unitPrice": 10.5 },
+          { "minQty": 26, "maxQty": 60, "unitPrice": 9.2 }
+        ]
+      ]
+    },
+    "expectedOptimal": 350
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demand": 85,
+      "suppliers": [
+        [
+          { "minQty": 25, "maxQty": 50, "unitPrice": 10.0 },
+          { "minQty": 55, "maxQty": 100, "unitPrice": 7.8 }
+        ],
+        [
+          { "minQty": 20, "maxQty": 45, "unitPrice": 9.0 },
+          { "minQty": 50, "maxQty": 80, "unitPrice": 7.6 }
+        ],
+        [
+          { "minQty": 15, "maxQty": 35, "unitPrice": 8.4 },
+          { "minQty": 40, "maxQty": 65, "unitPrice": 7.9 }
+        ]
+      ]
+    },
+    "expectedOptimal": 658
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demand": 92.5,
+      "suppliers": [
+        [
+          { "minQty": 5, "maxQty": 30, "unitPrice": 11.2 },
+          { "minQty": 31, "maxQty": 55, "unitPrice": 8.9 },
+          { "minQty": 60, "maxQty": 90, "unitPrice": 7.5 }
+        ],
+        [
+          { "minQty": 10, "maxQty": 25, "unitPrice": 10.4 },
+          { "minQty": 26, "maxQty": 50, "unitPrice": 8.7 },
+          { "minQty": 51, "maxQty": 80, "unitPrice": 7.8 }
+        ],
+        [
+          { "minQty": 8, "maxQty": 20, "unitPrice": 9.5 },
+          { "minQty": 21, "maxQty": 40, "unitPrice": 8.2 },
+          { "minQty": 45, "maxQty": 70, "unitPrice": 7.6 }
+        ]
+      ]
+    },
+    "expectedOptimal": 708.45
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demand": 140,
+      "suppliers": [
+        [
+          { "minQty": 15, "maxQty": 45, "unitPrice": 9.6 },
+          { "minQty": 50, "maxQty": 90, "unitPrice": 7.4 }
+        ],
+        [
+          { "minQty": 10, "maxQty": 30, "unitPrice": 10.2 },
+          { "minQty": 35, "maxQty": 65, "unitPrice": 8.1 },
+          { "minQty": 70, "maxQty": 110, "unitPrice": 7.1 }
+        ],
+        [
+          { "minQty": 12, "maxQty": 35, "unitPrice": 9.4 },
+          { "minQty": 40, "maxQty": 75, "unitPrice": 7.9 },
+          { "minQty": 80, "maxQty": 120, "unitPrice": 7.2 }
+        ],
+        [
+          { "minQty": 20, "maxQty": 50, "unitPrice": 8.8 },
+          { "minQty": 55, "maxQty": 85, "unitPrice": 7.7 }
+        ]
+      ]
+    },
+    "expectedOptimal": 1009
+  }
+]
