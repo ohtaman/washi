@@ -34,17 +34,32 @@ async function main() {
 
   console.log("Solving with GLPK...");
   const status = await model.solve();
+  if (
+    status !== "Optimal" ||
+    model.objectiveValue === null ||
+    bread.value === null ||
+    milk.value === null ||
+    cheese.value === null ||
+    calories.dual === null ||
+    protein.dual === null ||
+    calcium.dual === null
+  ) {
+    throw new Error(`GLPK diet model did not solve to Optimal with duals (status: ${status}).`);
+  }
 
   console.log(`Status: ${status}`);
-  console.log(`Optimal Cost: $${model.objectiveValue?.toFixed(2)}`);
-  console.log(`Bread:  ${bread.value?.toFixed(2)} loaves`);
-  console.log(`Milk:   ${milk.value?.toFixed(2)} bottles`);
-  console.log(`Cheese: ${cheese.value?.toFixed(2)} packs`);
+  console.log(`Optimal Cost: $${model.objectiveValue.toFixed(2)}`);
+  console.log(`Bread:  ${bread.value.toFixed(2)} loaves`);
+  console.log(`Milk:   ${milk.value.toFixed(2)} bottles`);
+  console.log(`Cheese: ${cheese.value.toFixed(2)} packs`);
 
   console.log("\nShadow Prices (Duals):");
-  console.log(`Calories dual: ${calories.dual?.toFixed(4)}`);
-  console.log(`Protein dual:  ${protein.dual?.toFixed(4)}`);
-  console.log(`Calcium dual:  ${calcium.dual?.toFixed(4)}`);
+  console.log(`Calories dual: ${calories.dual.toFixed(4)}`);
+  console.log(`Protein dual:  ${protein.dual.toFixed(4)}`);
+  console.log(`Calcium dual:  ${calcium.dual.toFixed(4)}`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

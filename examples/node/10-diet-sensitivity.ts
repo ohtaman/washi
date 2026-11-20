@@ -65,9 +65,12 @@ async function main() {
   const buildMs = performance.now() - t0;
   const status = await m.solve();
   const solveMs = m.runTime * 1000;
+  if (status !== "Optimal" || m.objectiveValue === null) {
+    throw new Error(`Diet LP did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`\nStatus: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);
-  console.log(`Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}\n`);
+  console.log(`Minimum Daily Cost: $${m.objectiveValue.toFixed(2)}\n`);
 
   // 1. Variable Primal Values & Reduced Costs
   console.log("1. Food Basket & Reduced Costs (var.value, var.reducedCost):");
@@ -75,8 +78,11 @@ async function main() {
   console.log("----------+----------+-----------+--------------+-------------------------------------------");
   for (const f of foods) {
     const v = servings[f.name];
-    const val = v.value ?? 0;
-    const rc = v.reducedCost ?? 0;
+    const val = v.value;
+    const rc = v.reducedCost;
+    if (val === null || rc === null) {
+      throw new Error(`Missing primal value or reduced cost for food "${f.name}".`);
+    }
     let note = "In optimal menu";
     if (val < 1e-5 && rc > 1e-5) {
       note = `Needs -$${rc.toFixed(2)} price drop to enter menu`;
@@ -92,9 +98,12 @@ async function main() {
   console.log("\n2. Nutritional Constraints & Shadow Prices (constr.dual, constr.slack):");
   console.log("Requirement      | Target |  Slack (Surplus) | Shadow Price (Dual) | Status");
   console.log("-----------------+--------+------------------+---------------------+--------------------");
-  for (const { label, rhs, constr } of reqConstrs) {
-    const slack = Math.abs(constr.slack ?? 0);
-    const dual = constr.dual ?? 0;
+  for (const { name, label, rhs, constr } of reqConstrs) {
+    if (constr.slack === null || constr.dual === null) {
+      throw new Error(`Missing slack or dual value for constraint "${name}".`);
+    }
+    const slack = Math.abs(constr.slack);
+    const dual = constr.dual;
     const isBinding = slack < 1e-4;
     const statusText = isBinding ? "BINDING (Bottleneck)" : "Non-binding (Surplus)";
     console.log(
@@ -103,4 +112,7 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

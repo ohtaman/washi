@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { MockSolver } from "../src/index.js";
 import { runHybridPipeline } from "../examples/node/07-hybrid-smt-mip.js";
 
 describe("07-hybrid-smt-mip.ts Pipeline Direct Verification (TDD)", () => {
@@ -30,13 +31,26 @@ describe("07-hybrid-smt-mip.ts Pipeline Direct Verification (TDD)", () => {
     expect(result.objectiveValue).toBe(15700); // 5000*2 + 18*50 + 12*400 = 15700
   });
 
-  it("halts execution safely when SMT check status is Unknown", async () => {
+  it("halts execution safely when SMT check status is Unknown via real Model.check() path", async () => {
     const result = await runHybridPipeline({
       scenarioName: "Test: Unknown Status",
-      mockStatus: "Unknown",
+      smtSolver: new MockSolver({ status: "Unknown" }),
     });
 
     expect(result.status).toBe("Unknown");
     expect(result.executedMIP).toBe(false);
+  });
+
+  it("throws when Sat is returned without boolean variable assignments", async () => {
+    await expect(
+      runHybridPipeline({
+        scenarioName: "Test: Sat Without Booleans",
+        smtSolver: new MockSolver({
+          status: "Sat",
+          hasPrimalSolution: true,
+          values: {},
+        }),
+      })
+    ).rejects.toThrow(/deployEurope|deployUS|boolean/i);
   });
 });

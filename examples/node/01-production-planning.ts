@@ -31,6 +31,14 @@ async function main() {
 
   console.log("Solving with default HiGHS WebAssembly solver...");
   const status = await m.solve();
+  if (
+    status !== "Optimal" ||
+    m.objectiveValue === null ||
+    chairs.value === null ||
+    tables.value === null
+  ) {
+    throw new Error(`Production planning did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`\nStatus: ${status}`);
   console.log(`Optimal Profit: $${m.objectiveValue}`);
@@ -38,4 +46,7 @@ async function main() {
   console.log(`  Tables: ${tables.value}`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

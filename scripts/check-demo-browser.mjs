@@ -8,8 +8,6 @@ import { chromium } from "playwright";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const distDemoDir = resolve(__dirname, "../dist/demo");
 
-assert(existsSync(distDemoDir), `dist/demo directory not found at ${distDemoDir}. Run "npm run build:demo" first.`);
-
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
@@ -100,7 +98,28 @@ async function runAndWait(page) {
   );
 }
 
-async function runBrowserVerification() {
+export async function launchDemoBrowser(launch = (opts) => chromium.launch(opts)) {
+  try {
+    return await launch({ headless: true, args: ["--no-sandbox"] });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const isMissingBinary =
+      message.includes("Executable doesn't exist") ||
+      message.includes("Please run the following command to download new browsers") ||
+      message.includes("playwright install");
+
+    if (isMissingBinary) {
+      throw new Error(
+        `Playwright Chromium binary is not installed. Run "npx playwright install chromium" and re-run verification.\n${message}`,
+        { cause: err }
+      );
+    }
+    throw err;
+  }
+}
+
+export async function runBrowserVerification() {
+  assert(existsSync(distDemoDir), `dist/demo directory not found at ${distDemoDir}. Run "npm run build:demo" first.`);
   console.log("=== WaSHI Web Demo GitHub Pages Cross-Origin Isolation Verification ===");
 
   const { server, port } = await startStaticPagesServer();
@@ -109,26 +128,10 @@ async function runBrowserVerification() {
 
   let browser;
   try {
-    browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+    browser = await launchDemoBrowser();
   } catch (err) {
-    try {
-      browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--no-sandbox"] });
-    } catch {
-      await new Promise((res) => server.close(res));
-      const isMissingBinary =
-        err.message?.includes("Executable doesn't exist") ||
-        err.message?.includes("Please run the following command to download new browsers") ||
-        err.message?.includes("playwright install");
-
-      if (isMissingBinary && !process.env.CI && process.env.RUN_DEMO_BROWSER !== "1") {
-        console.warn(
-          `\n[Notice] Playwright Chromium binary is not installed locally.\n` +
-          `Skipping demo browser verification. To run locally, install Chromium with: npx playwright install chromium\n`
-        );
-        process.exit(0);
-      }
-      throw err;
-    }
+    await new Promise((res) => server.close(res));
+    throw err;
   }
 
   try {
@@ -538,7 +541,13 @@ async function runBrowserVerification() {
   }
 }
 
-runBrowserVerification().catch((err) => {
-  console.error("Verification failed:", err);
-  process.exit(1);
-});
+const isMain =
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMain) {
+  runBrowserVerification().catch((err) => {
+    console.error("Verification failed:", err);
+    process.exit(1);
+  });
+}

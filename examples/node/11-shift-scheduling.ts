@@ -140,6 +140,9 @@ async function runShiftSchedulingWorkflow(
   );
 
   if (status === "Optimal") {
+    if (model.objectiveValue === null) {
+      throw new Error(`Shift scheduling returned Optimal without objectiveValue.`);
+    }
     // Feasible: print roster and cost (no UNSAT diagnosis needed)
     console.log(`Optimal Weekly Payroll Cost: $${model.objectiveValue}\n`);
     const header = "Staff (Role)   | " + days.map((d) => d.padStart(4)).join(" ") + " | Total";
@@ -148,7 +151,11 @@ async function runShiftSchedulingWorkflow(
     for (const s of staffList) {
       let worked = 0;
       const cells = days.map((d) => {
-        const on = shift[s.name][d].value === 1;
+        const val = shift[s.name][d].value;
+        if (val === null) {
+          throw new Error(`Missing solved shift value for ${s.name} on ${d}.`);
+        }
+        const on = val === 1;
         if (on) worked++;
         return on ? "  ON" : "   ·";
       });
@@ -163,22 +170,23 @@ async function runShiftSchedulingWorkflow(
 
     const checkRes = await model.check({ solver: "z3" });
     console.log(`Z3 Feasibility Check Status: ${checkRes.status}`);
-
-    if (checkRes.status === "Unsat") {
-      console.log("⚠️ Conflicting Constraint Subset (conflicts / unsatCore):");
-      for (const cName of model.conflicts ?? []) {
-        console.log(`  ❌ ${cName}`);
-      }
-      console.log(
-        "\nExplanation of Conflict:\n" +
-          "  The core identifies that 'senior_duty_Sat' (requiring >= 1 senior on duty on Saturday)\n" +
-          "  directly conflicts with 'day_off_Alice_Sat' and 'day_off_Bob_Sat' (both available seniors off).\n" +
-          "  (Note: unsatCore returns a conflicting constraint subset; minimality and order are not guaranteed,\n" +
-          "   while independent requests like Diana's Wednesday request are excluded from the core)\n"
-      );
+    if (checkRes.status !== "Unsat") {
+      throw new Error(`Expected Z3 diagnosis status "Unsat", got "${checkRes.status}".`);
     }
+
+    console.log("⚠️ Conflicting Constraint Subset (conflicts / unsatCore):");
+    for (const cName of model.conflicts ?? []) {
+      console.log(`  ❌ ${cName}`);
+    }
+    console.log(
+      "\nExplanation of Conflict:\n" +
+        "  The core identifies that 'senior_duty_Sat' (requiring >= 1 senior on duty on Saturday)\n" +
+        "  directly conflicts with 'day_off_Alice_Sat' and 'day_off_Bob_Sat' (both available seniors off).\n" +
+        "  (Note: unsatCore returns a conflicting constraint subset; minimality and order are not guaranteed,\n" +
+        "   while independent requests like Diana's Wednesday request are excluded from the core)\n"
+    );
   } else {
-    console.log(`Solver ended with unexpected status: ${status}\n`);
+    throw new Error(`Solver ended with unexpected status: ${status}`);
   }
 }
 
@@ -242,10 +250,22 @@ async function main() {
   // Treat each vacation request as a soft preference: penalize working on a requested day off by $500
   const requestedShiftVars = conflictingRequests.map((req) => shiftSoft[req.staff][req.day]);
   mSoft.objective(minimize(expr`dot(${costMatrix}, ${shiftSoft}) + 500 * sum(${requestedShiftVars})`));
-  await mSoft.solve();
-  const overridden = conflictingRequests.filter((r) => shiftSoft[r.staff][r.day].value === 1);
+  const softStatus = await mSoft.solve();
+  if (softStatus !== "Optimal" || mSoft.objectiveValue === null) {
+    throw new Error(`Soft-repair shift scheduling did not solve to Optimal (status: ${softStatus}).`);
+  }
+  const overridden = conflictingRequests.filter((r) => {
+    const val = shiftSoft[r.staff][r.day].value;
+    if (val === null) {
+      throw new Error(`Missing solved shift value for ${r.staff} on ${r.day}.`);
+    }
+    return val === 1;
+  });
   console.log(`Status: ${mSoft.status}, Total Objective (Payroll + Penalty): $${mSoft.objectiveValue}`);
   console.log(`Minimum Vacation Overrides (${overridden.length}): ${overridden.map((r) => `${r.staff} (${r.day})`).join(", ")}\n`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

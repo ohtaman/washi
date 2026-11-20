@@ -192,7 +192,13 @@ export async function runCVRP() {
     pricing: async () => {
       // 1. Collect positive dual values (shadow prices) from master visit constraints
       const candidates = customers
-        .map((c, i) => ({ id: c.id, demand: c.demand, dual: visitConstrs[i].dual ?? 0 }))
+        .map((c, i) => {
+          const dual = visitConstrs[i].dual;
+          if (dual === null) {
+            throw new Error(`Missing dual value for visit constraint "visit_${c.id}".`);
+          }
+          return { id: c.id, demand: c.demand, dual };
+        })
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
@@ -230,8 +236,12 @@ export async function runCVRP() {
     },
   });
 
+  if (result.status !== "Optimal" || result.objectiveValue === null) {
+    throw new Error(`CVRP column generation did not solve to Optimal (status: ${result.status}).`);
+  }
+
   console.log(`\nStatus: ${result.status}`);
-  console.log(`Fleet Size: ${Math.round(result.objectiveValue ?? 0)} vehicles (heuristic column generation)`);
+  console.log(`Fleet Size: ${Math.round(result.objectiveValue)} vehicles (heuristic column generation)`);
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
   console.log(`Total Iterations: ${result.iterations}`);
 
@@ -255,5 +265,8 @@ export async function runCVRP() {
 }
 
 if (process.argv[1]?.includes("13-vehicle-routing-column-generation")) {
-  runCVRP().catch(console.error);
+  runCVRP().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }

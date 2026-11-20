@@ -19,13 +19,33 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 CONFIG_FILE="${REPO_ROOT}/highs.config.json"
-DEFAULT_VERSION="v1.15.1"
-DEFAULT_REPO="https://github.com/ERGO-Code/HiGHS.git"
 
-if [ -f "${CONFIG_FILE}" ] && command -v node >/dev/null 2>&1; then
-  DEFAULT_VERSION="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).version||"v1.15.1")}catch{console.log("v1.15.1")}' "${CONFIG_FILE}")"
-  DEFAULT_REPO="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).repo||"https://github.com/ERGO-Code/HiGHS.git")}catch{console.log("https://github.com/ERGO-Code/HiGHS.git")}' "${CONFIG_FILE}")"
+if [ ! -f "${CONFIG_FILE}" ]; then
+  echo "Error: highs.config.json not found at ${CONFIG_FILE}." >&2
+  exit 1
 fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node is required to parse ${CONFIG_FILE}." >&2
+  exit 1
+fi
+
+read_highs_config_field() {
+  local field="$1"
+  node -e '
+    const fs = require("fs");
+    const [configPath, field] = process.argv.slice(1);
+    const cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const value = cfg?.[field];
+    if (typeof value !== "string" || !value.trim()) {
+      throw new Error(`Invalid highs.config.json at ${configPath}: missing valid "${field}".`);
+    }
+    process.stdout.write(value.trim());
+  ' "${CONFIG_FILE}" "${field}"
+}
+
+DEFAULT_VERSION="$(read_highs_config_field version)"
+DEFAULT_REPO="$(read_highs_config_field repo)"
 
 HIGHS_VERSION="${HIGHS_VERSION:-${DEFAULT_VERSION}}"
 HIGHS_REPO="${HIGHS_REPO:-${DEFAULT_REPO}}"

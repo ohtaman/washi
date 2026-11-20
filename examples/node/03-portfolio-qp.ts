@@ -51,16 +51,30 @@ async function main() {
   m.objective(minimize(risk));
 
   const status = await m.solve();
+  if (
+    status !== "Optimal" ||
+    m.objectiveValue === null ||
+    expectedReturnExpr.value === null
+  ) {
+    throw new Error(`Portfolio QP did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`\nStatus: ${status}`);
-  console.log(`Optimal Variance (Risk): ${m.objectiveValue?.toFixed(6)}`);
-  console.log(`Portfolio Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
-  console.log(`Achieved Expected Return: ${((expectedReturnExpr.value ?? 0) * 100).toFixed(2)}% (target >= 8.50%)`);
+  console.log(`Optimal Variance (Risk): ${m.objectiveValue.toFixed(6)}`);
+  console.log(`Portfolio Volatility (Std Dev): ${(Math.sqrt(m.objectiveValue) * 100).toFixed(2)}%`);
+  console.log(`Achieved Expected Return: ${(expectedReturnExpr.value * 100).toFixed(2)}% (target >= 8.50%)`);
   console.log("\nAsset Allocations:");
   assets.forEach((name) => {
-    const pct = ((w[name].value || 0) * 100).toFixed(2);
+    const weight = w[name].value;
+    if (weight === null) {
+      throw new Error(`Missing solved allocation weight for asset "${name}".`);
+    }
+    const pct = (weight * 100).toFixed(2);
     console.log(`  ${name.padEnd(12)}: ${pct}%`);
   });
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

@@ -49,6 +49,85 @@ export function appendInteractiveRoutesToSitemap(
   return sitemapXml;
 }
 
+const SHARED_PUBLIC_ASSETS = [
+  "washi-logo.svg",
+  "washi-logo.png",
+  "washi-header.svg",
+  "washi-header-light.png",
+  "washi-header-dark.png",
+  "coi-serviceworker.js",
+  "z3-built.js",
+  "z3-built.wasm",
+  "highs.wasm",
+  "pumpkin.wasm",
+];
+
+function assertRequiredArtifact(targetPath, description) {
+  if (!existsSync(targetPath)) {
+    throw new Error(`[WaSHI] Missing required ${description}: ${targetPath}`);
+  }
+}
+
+/**
+ * Assembles the unified static site (`docs/.vitepress/dist` + `dist/demo` + `llms` assets)
+ * into `siteDist`, failing loudly if any required build artifact or WASM file is missing.
+ */
+export function assembleUnifiedSite({
+  rootDir: targetRootDir = rootDir,
+  docsDist: targetDocsDist = docsDist,
+  demoDist: targetDemoDist = demoDist,
+  siteDist: targetSiteDist = siteDist,
+} = {}) {
+  assertRequiredArtifact(targetDocsDist, "docs build directory");
+  assertRequiredArtifact(targetDemoDist, "demo build directory");
+
+  if (existsSync(targetSiteDist)) {
+    rmSync(targetSiteDist, { recursive: true, force: true });
+  }
+  mkdirSync(targetSiteDist, { recursive: true });
+
+  // Copy all documentation assets to site root
+  cpSync(targetDocsDist, targetSiteDist, { recursive: true });
+
+  // Write llms.txt, llms-full.txt, and raw English .md endpoints into dist/site
+  const llmsArtifacts = generateLlms(targetRootDir);
+  populateSiteLlmsAssets(targetSiteDist, targetRootDir, llmsArtifacts);
+
+  // Copy required interactive directories (demo, exercises, apps, games) into site root
+  for (const section of ["demo", "exercises", "apps", "games"]) {
+    const src = resolve(targetDemoDist, section);
+    assertRequiredArtifact(src, `demo build section "${section}"`);
+    const target = resolve(targetSiteDist, section);
+    mkdirSync(target, { recursive: true });
+    cpSync(src, target, { recursive: true });
+  }
+
+  // Append standalone interactive routes (demo, exercises, apps/*, games/*) to sitemap.xml
+  const sitemapPath = resolve(targetSiteDist, "sitemap.xml");
+  assertRequiredArtifact(sitemapPath, "sitemap.xml");
+  const rawSitemap = readFileSync(sitemapPath, "utf-8");
+  const updatedSitemap = appendInteractiveRoutesToSitemap(rawSitemap, targetSiteDist);
+  writeFileSync(sitemapPath, updatedSitemap, "utf-8");
+
+  // Copy demo built assets (CSS, JS, Web Workers, WASM) into site /assets/
+  const demoAssetsSrc = resolve(targetDemoDist, "assets");
+  assertRequiredArtifact(demoAssetsSrc, "demo assets directory");
+  cpSync(demoAssetsSrc, resolve(targetSiteDist, "assets"), { recursive: true });
+
+  // Copy shared public assets from demo (wasm files, workers, icons, header logos)
+  const demoTarget = resolve(targetSiteDist, "demo");
+  for (const file of SHARED_PUBLIC_ASSETS) {
+    const src = resolve(targetDemoDist, file);
+    assertRequiredArtifact(src, `shared public asset "${file}"`);
+    cpSync(src, resolve(targetSiteDist, file), { recursive: true });
+
+    const destDemo = resolve(demoTarget, file);
+    if (!existsSync(destDemo)) {
+      cpSync(src, destDemo, { recursive: true });
+    }
+  }
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   console.log("=== Building WaSHI Unified Site (Docs + Demo) ===");
 
@@ -66,89 +145,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 
   // 3. Assemble unified site into dist/site
   console.log("\n3. Assembling unified site into dist/site...");
-  if (existsSync(siteDist)) {
-    rmSync(siteDist, { recursive: true, force: true });
-  }
-  mkdirSync(siteDist, { recursive: true });
-
-  // Copy all documentation assets to site root
-  cpSync(docsDist, siteDist, { recursive: true });
-
-  // Write llms.txt, llms-full.txt, and raw English .md endpoints into dist/site
-  const llmsArtifacts = generateLlms(rootDir);
-  populateSiteLlmsAssets(siteDist, rootDir, llmsArtifacts);
-
-  // Copy demo directory into site /demo/
-  const demoTarget = resolve(siteDist, "demo");
-  mkdirSync(demoTarget, { recursive: true });
-  if (existsSync(resolve(demoDist, "demo"))) {
-    cpSync(resolve(demoDist, "demo"), demoTarget, { recursive: true });
-  }
-
-  // Copy exercises directory into site /exercises/
-  const exercisesTarget = resolve(siteDist, "exercises");
-  if (existsSync(resolve(demoDist, "exercises"))) {
-    mkdirSync(exercisesTarget, { recursive: true });
-    cpSync(resolve(demoDist, "exercises"), exercisesTarget, { recursive: true });
-  }
-
-  // Copy apps showcase directory into site /apps/
-  const appsTarget = resolve(siteDist, "apps");
-  if (existsSync(resolve(demoDist, "apps"))) {
-    mkdirSync(appsTarget, { recursive: true });
-    cpSync(resolve(demoDist, "apps"), appsTarget, { recursive: true });
-  }
-
-  // Copy games showcase directory into site /games/
-  const gamesTarget = resolve(siteDist, "games");
-  if (existsSync(resolve(demoDist, "games"))) {
-    mkdirSync(gamesTarget, { recursive: true });
-    cpSync(resolve(demoDist, "games"), gamesTarget, { recursive: true });
-  }
-
-  // Append standalone interactive routes (demo, apps/*, games/*) to sitemap.xml
-  const sitemapPath = resolve(siteDist, "sitemap.xml");
-  if (existsSync(sitemapPath)) {
-    const rawSitemap = readFileSync(sitemapPath, "utf-8");
-    const updatedSitemap = appendInteractiveRoutesToSitemap(rawSitemap, siteDist);
-    writeFileSync(sitemapPath, updatedSitemap, "utf-8");
-  }
-
-  // Copy demo built assets (CSS, JS, Web Workers, WASM) into site /assets/
-  if (existsSync(resolve(demoDist, "assets"))) {
-    cpSync(resolve(demoDist, "assets"), resolve(siteDist, "assets"), { recursive: true });
-  }
-
-  // Copy shared public assets from demo (wasm files, workers, icons, header logos)
-  const filesToCopy = [
-    "washi-logo.svg",
-    "washi-logo.png",
-    "washi-header.svg",
-    "washi-header-light.png",
-    "washi-header-dark.png",
-    "coi-serviceworker.js",
-    "z3-built.js",
-    "z3-built.wasm",
-    "highs.wasm",
-    "pumpkin.wasm",
-  ];
-
-  for (const file of filesToCopy) {
-    const src = resolve(demoDist, file);
-    const dest = resolve(siteDist, file);
-    if (existsSync(src)) {
-      cpSync(src, dest, { recursive: true });
-    }
-  }
-
-  // Also ensure demo has copies of shared assets if needed
-  for (const file of filesToCopy) {
-    const src = resolve(demoDist, file);
-    const destDemo = resolve(demoTarget, file);
-    if (existsSync(src) && !existsSync(destDemo)) {
-      cpSync(src, destDemo, { recursive: true });
-    }
-  }
+  assembleUnifiedSite();
 
   console.log("\n✅ Successfully assembled unified site at dist/site!");
 }

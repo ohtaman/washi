@@ -75,10 +75,17 @@ export async function runProjectSchedulingCP() {
   const status = await m.solve();
   const report = m.verify();
   const makespanValue = m.objectiveValue;
+  if (status !== "Optimal" || makespanValue === null) {
+    throw new Error(`Project scheduling did not solve to Optimal (status: ${status}).`);
+  }
 
   const starts: Record<string, number> = {};
   for (const t of tasks) {
-    starts[t.id] = start[t.id].value ?? -1;
+    const startVal = start[t.id].value;
+    if (startVal === null) {
+      throw new Error(`Missing solved start time for task "${t.id}".`);
+    }
+    starts[t.id] = startVal;
   }
 
   console.log(`Status: ${status} (valid: ${report.valid})`);
@@ -114,5 +121,8 @@ export async function runProjectSchedulingCP() {
 }
 
 if (process.argv[1]?.includes("15-project-scheduling-cp")) {
-  runProjectSchedulingCP().catch(console.error);
+  runProjectSchedulingCP().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }

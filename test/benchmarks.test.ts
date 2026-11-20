@@ -1,4 +1,5 @@
-import { statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import * as washi from "../src/index.js";
@@ -14,6 +15,7 @@ import {
   rebuildBenchmarkArtifacts,
   parseCliArgs,
   formatReportText,
+  readPackageVersions,
   runBenchmarks,
 } from "../scripts/run-benchmarks.mjs";
 
@@ -449,6 +451,127 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
     await rebuildBenchmarkArtifacts({ includeBrowser: false });
     const afterMtime = statSync(distWashiPath).mtimeMs;
     expect(afterMtime).toBeGreaterThan(beforeMtime);
+  });
+
+  it("reads HiGHS version strictly from highs.config.json and rejects missing/malformed package metadata", () => {
+    const repoHighsConfig = JSON.parse(
+      readFileSync(path.resolve(process.cwd(), "highs.config.json"), "utf8")
+    ) as { version: string };
+    const expectedRepoHighsVersion = repoHighsConfig.version.trim().replace(/^v/, "").trim();
+    const repoVersions = readPackageVersions();
+    expect(repoVersions.highsVersion).toBe(expectedRepoHighsVersion);
+    expect(repoVersions.washiVersion).toMatch(/^\d+\.\d+\.\d+/);
+    expect(repoVersions.glpkVersion).not.toBe("unknown");
+    expect(repoVersions.playwrightVersion).not.toBe("unknown");
+
+    const createFixture = ({
+      pkg = {
+        version: "1.2.3",
+        devDependencies: { "glpk.js": "^5.0.0", playwright: "^1.63.0" },
+      },
+      highsConfig = { version: "v2.4.6", repo: "https://example.com/highs.git" },
+      glpkPkg = { version: "5.0.1" },
+      playwrightPkg = { version: "1.63.1" },
+      staleHighsNodeModulesPkg = null,
+    }: {
+      pkg?: unknown;
+      highsConfig?: unknown;
+      glpkPkg?: unknown;
+      playwrightPkg?: unknown;
+      staleHighsNodeModulesPkg?: unknown;
+    }) => {
+      const dir = mkdtempSync(path.join(os.tmpdir(), "washi-bench-versions-"));
+      if (pkg !== null) {
+        writeFileSync(
+          path.join(dir, "package.json"),
+          typeof pkg === "string" ? pkg : JSON.stringify(pkg)
+        );
+      }
+      if (highsConfig !== null) {
+        writeFileSync(
+          path.join(dir, "highs.config.json"),
+          typeof highsConfig === "string" ? highsConfig : JSON.stringify(highsConfig)
+        );
+      }
+      if (glpkPkg !== null) {
+        mkdirSync(path.join(dir, "node_modules/glpk.js"), { recursive: true });
+        writeFileSync(
+          path.join(dir, "node_modules/glpk.js/package.json"),
+          typeof glpkPkg === "string" ? glpkPkg : JSON.stringify(glpkPkg)
+        );
+      }
+      if (playwrightPkg !== null) {
+        mkdirSync(path.join(dir, "node_modules/playwright"), { recursive: true });
+        writeFileSync(
+          path.join(dir, "node_modules/playwright/package.json"),
+          typeof playwrightPkg === "string" ? playwrightPkg : JSON.stringify(playwrightPkg)
+        );
+      }
+      if (staleHighsNodeModulesPkg !== null) {
+        mkdirSync(path.join(dir, "node_modules/highs"), { recursive: true });
+        writeFileSync(
+          path.join(dir, "node_modules/highs/package.json"),
+          JSON.stringify(staleHighsNodeModulesPkg)
+        );
+      }
+      return dir;
+    };
+
+    const tempDirs: string[] = [];
+    try {
+      // Valid config without node_modules/highs, and ignoring stale node_modules/highs if present
+      const validDir = createFixture({
+        highsConfig: { version: "v2.4.6" },
+        staleHighsNodeModulesPkg: { version: "9.9.9" },
+      });
+      tempDirs.push(validDir);
+      expect(readPackageVersions(validDir)).toEqual({
+        washiVersion: "1.2.3",
+        highsVersion: "2.4.6",
+        glpkVersion: "5.0.1",
+        playwrightVersion: "1.63.1",
+      });
+
+      // Version without leading 'v' also works
+      const noVDir = createFixture({ highsConfig: { version: "1.16.0" } });
+      tempDirs.push(noVDir);
+      expect(readPackageVersions(noVDir).highsVersion).toBe("1.16.0");
+
+      // Missing highs.config.json must throw
+      const missingHighsDir = createFixture({ highsConfig: null });
+      tempDirs.push(missingHighsDir);
+      expect(() => readPackageVersions(missingHighsDir)).toThrow(/highs\.config\.json/);
+
+      // Invalid highs.config.json (malformed JSON, missing version, or bare "v") must throw
+      for (const badCfg of ["{not-json", {}, { version: "" }, { version: "v" }]) {
+        const badDir = createFixture({ highsConfig: badCfg });
+        tempDirs.push(badDir);
+        expect(() => readPackageVersions(badDir)).toThrow();
+      }
+
+      // Malformed package.json metadata (missing version or missing dep metadata) must throw instead of returning "unknown"
+      const missingDepMetaDir = createFixture({
+        pkg: { version: "1.0.0", devDependencies: {} },
+        glpkPkg: null,
+        playwrightPkg: null,
+      });
+      tempDirs.push(missingDepMetaDir);
+      expect(() => readPackageVersions(missingDepMetaDir)).toThrow();
+
+      const missingPkgVersionDir = createFixture({
+        pkg: { devDependencies: { "glpk.js": "^5.0.0", playwright: "^1.63.0" } },
+      });
+      tempDirs.push(missingPkgVersionDir);
+      expect(() => readPackageVersions(missingPkgVersionDir)).toThrow(/package\.json/);
+
+      const malformedGlpkPkgDir = createFixture({ glpkPkg: "{invalid-json" });
+      tempDirs.push(malformedGlpkPkgDir);
+      expect(() => readPackageVersions(malformedGlpkPkgDir)).toThrow();
+    } finally {
+      for (const d of tempDirs) {
+        rmSync(d, { recursive: true, force: true });
+      }
+    }
   });
 });
 

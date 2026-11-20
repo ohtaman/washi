@@ -69,6 +69,9 @@ async function solveTransportation(
   const buildMs = performance.now() - t0;
   const status = await m.solve();
   const solveMs = m.runTime * 1000;
+  if (status !== "Optimal" || m.objectiveValue === null) {
+    throw new Error(`Transportation LP did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`Status: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);
   console.log(`Total Shipping Cost: $${m.objectiveValue}`);
@@ -81,17 +84,29 @@ async function solveTransportation(
   for (const f of factories) {
     let used = 0;
     const rowCells = stores.map((s) => {
-      const val = ship[f][s].value ?? 0;
+      const val = ship[f][s].value;
+      if (val === null) {
+        throw new Error(`Missing solved shipment value for ${f} -> ${s}.`);
+      }
       used += val;
       return (val > 1e-6 ? val.toFixed(0) : "·").padStart(8);
     });
-    const supplyDual = supplyConstrs[f].dual ?? 0;
+    const supplyDual = supplyConstrs[f].dual;
+    if (supplyDual === null) {
+      throw new Error(`Missing dual value for supply constraint "${f}".`);
+    }
     console.log(
       `${f.padEnd(16)}${rowCells.join("")}  | ${String(Math.round(used)).padStart(3)} / ${supplies[f]} (dual: $${supplyDual.toFixed(1)})`
     );
   }
   const storeDuals = stores
-    .map((s) => `${s}: $${(demandConstrs[s].dual ?? 0).toFixed(1)}/u`)
+    .map((s) => {
+      const dual = demandConstrs[s].dual;
+      if (dual === null) {
+        throw new Error(`Missing dual value for demand constraint "${s}".`);
+      }
+      return `${s}: $${dual.toFixed(1)}/u`;
+    })
     .join(", ");
   console.log(`Marginal Delivered Cost (Demand Duals): ${storeDuals}`);
 }
@@ -115,4 +130,7 @@ async function main() {
   });
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

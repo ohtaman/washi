@@ -110,8 +110,12 @@ export async function runTSP() {
     },
   });
 
+  if (result.status !== "Optimal" || result.objectiveValue === null) {
+    throw new Error(`TSP Benders decomposition did not solve to Optimal (status: ${result.status}).`);
+  }
+
   console.log(`\nStatus: ${result.status}`);
-  console.log(`Optimal Tour Distance: ${result.objectiveValue?.toFixed(3)}`);
+  console.log(`Optimal Tour Distance: ${result.objectiveValue.toFixed(3)}`);
   console.log(`Total Benders Cuts Added: ${result.cutsAdded}`);
   console.log(`Iterations: ${result.iterations}`);
 
@@ -127,5 +131,8 @@ export async function runTSP() {
 }
 
 if (process.argv[1]?.includes("14-traveling-salesperson-benders")) {
-  runTSP().catch(console.error);
+  runTSP().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }

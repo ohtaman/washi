@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import {
@@ -232,5 +234,77 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
     expect(status).toBe("Optimal");
     expect(model.objectiveValue).toBeCloseTo(9, 6);
     expect(model.verify().valid).toBe(true);
+  });
+
+  it("build-highs-wasm.sh fails non-zero when highs.config.json is missing or malformed without falling back to v1.15.1", () => {
+    const buildScriptSrc = path.resolve(repoRoot, "scripts/build-highs-wasm.sh");
+
+    const runBuildScriptInTempRoot = (configContent: string | null) => {
+      const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "washi-highs-build-sh-"));
+      try {
+        const scriptsDir = path.join(tmpRoot, "scripts");
+        const stubBinDir = path.join(tmpRoot, "stub-bin");
+        fs.mkdirSync(scriptsDir, { recursive: true });
+        fs.mkdirSync(stubBinDir, { recursive: true });
+
+        const emccStub = path.join(stubBinDir, "emcc");
+        fs.writeFileSync(emccStub, "#!/usr/bin/env bash\necho 'emcc stub 3.1.50'\n", {
+          mode: 0o755,
+        });
+        const gitStub = path.join(stubBinDir, "git");
+        fs.writeFileSync(
+          gitStub,
+          "#!/usr/bin/env bash\necho \"GIT_STUB:$*\"\nexit 42\n",
+          { mode: 0o755 }
+        );
+
+        const scriptCopy = path.join(scriptsDir, "build-highs-wasm.sh");
+        fs.copyFileSync(buildScriptSrc, scriptCopy);
+        if (configContent !== null) {
+          fs.writeFileSync(path.join(tmpRoot, "highs.config.json"), configContent, "utf8");
+        }
+        return spawnSync("bash", [scriptCopy], {
+          cwd: tmpRoot,
+          env: {
+            PATH: `${stubBinDir}:${process.env.PATH ?? ""}`,
+            HOME: process.env.HOME ?? tmpRoot,
+            HIGHS_DIR: path.join(tmpRoot, "highs-src"),
+            HIGHS_BUILD_DIR: path.join(tmpRoot, "highs-build"),
+          },
+          encoding: "utf8",
+        });
+      } finally {
+        fs.rmSync(tmpRoot, { recursive: true, force: true });
+      }
+    };
+
+    // 1. Missing highs.config.json must fail immediately without printing v1.15.1
+    const missingRes = runBuildScriptInTempRoot(null);
+    expect(missingRes.status).not.toBe(0);
+    expect(missingRes.stdout).not.toContain("v1.15.1");
+    expect(missingRes.stderr).toContain("highs.config.json");
+
+    // 2. Malformed JSON or missing version/repo must fail immediately without falling back to v1.15.1
+    for (const badConfig of [
+      "{not-valid-json",
+      JSON.stringify({ repo: "https://github.com/ERGO-Code/HiGHS.git" }),
+      JSON.stringify({ version: "v1.15.1" }),
+      JSON.stringify({ version: "   ", repo: "https://github.com/ERGO-Code/HiGHS.git" }),
+      JSON.stringify({ version: "v1.15.1", repo: "" }),
+    ]) {
+      const badRes = runBuildScriptInTempRoot(badConfig);
+      expect(badRes.status).not.toBe(0);
+      expect(badRes.stdout).not.toContain("v1.15.1");
+    }
+
+    // 3. Valid highs.config.json parses version & repo accurately before reaching isolated git stub
+    const validRes = runBuildScriptInTempRoot(
+      JSON.stringify({ version: "v9.8.7", repo: "https://example.com/HiGHS.git" })
+    );
+    expect(validRes.status).toBe(42);
+    expect(validRes.stdout).toContain("Version:   v9.8.7");
+    expect(validRes.stdout).toContain(
+      "GIT_STUB:clone --depth 1 --branch v9.8.7 https://example.com/HiGHS.git"
+    );
   });
 });

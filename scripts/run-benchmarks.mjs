@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import os from "node:os";
@@ -347,38 +347,49 @@ async function loadWashiModules({ includeBrowser = false, rebuild } = {}) {
   return { api, glpk };
 }
 
-function readPackageVersions() {
-  const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  let highsVersion = "1.15.1";
-  let glpkVersion =
-    pkg.devDependencies?.["glpk.js"] ?? pkg.peerDependencies?.["glpk.js"] ?? "unknown";
-  let playwrightVersion = pkg.devDependencies?.playwright ?? "unknown";
-  try {
-    const highsPkg = JSON.parse(
-      readFileSync(path.join(repoRoot, "node_modules/highs/package.json"), "utf8")
-    );
-    highsVersion = highsPkg.version || highsVersion;
-  } catch {
-    // fallback to default version
+function readNonEmptyString(value, description) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`Invalid ${description}: expected a non-empty string.`);
   }
-  try {
-    const glpkPkg = JSON.parse(
-      readFileSync(path.join(repoRoot, "node_modules/glpk.js/package.json"), "utf8")
-    );
-    glpkVersion = glpkPkg.version || glpkVersion;
-  } catch {
-    // fallback to package.json range
+  return value.trim();
+}
+
+function readDependencyVersion(root, pkg, depName, { includePeer = false } = {}) {
+  const depPkgPath = path.join(root, "node_modules", depName, "package.json");
+  if (existsSync(depPkgPath)) {
+    const depPkg = JSON.parse(readFileSync(depPkgPath, "utf8"));
+    return readNonEmptyString(depPkg?.version, `${depPkgPath} "version" field`);
   }
-  try {
-    const pwPkg = JSON.parse(
-      readFileSync(path.join(repoRoot, "node_modules/playwright/package.json"), "utf8")
-    );
-    playwrightVersion = pwPkg.version || playwrightVersion;
-  } catch {
-    // fallback to package.json range
+  const declared =
+    pkg?.devDependencies?.[depName] ??
+    (includePeer ? pkg?.peerDependencies?.[depName] : undefined);
+  return readNonEmptyString(
+    declared,
+    `package.json metadata for "${depName}" (and ${depPkgPath} does not exist)`
+  );
+}
+
+export function readPackageVersions(root = repoRoot) {
+  const pkgPath = path.join(root, "package.json");
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+  const washiVersion = readNonEmptyString(pkg?.version, `${pkgPath} "version" field`);
+
+  const highsConfigPath = path.join(root, "highs.config.json");
+  const highsConfig = JSON.parse(readFileSync(highsConfigPath, "utf8"));
+  const rawHighsVersion = readNonEmptyString(
+    highsConfig?.version,
+    `${highsConfigPath} "version" field`
+  );
+  const highsVersion = rawHighsVersion.replace(/^v/, "").trim();
+  if (!highsVersion) {
+    throw new Error(`Invalid ${highsConfigPath} "version" field: "${rawHighsVersion}".`);
   }
+
+  const glpkVersion = readDependencyVersion(root, pkg, "glpk.js", { includePeer: true });
+  const playwrightVersion = readDependencyVersion(root, pkg, "playwright");
+
   return {
-    washiVersion: pkg.version,
+    washiVersion,
     highsVersion,
     glpkVersion,
     playwrightVersion,

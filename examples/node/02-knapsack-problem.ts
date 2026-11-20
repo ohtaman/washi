@@ -38,13 +38,20 @@ async function main() {
   m.constraint(expr`dot(${weights}, ${x}) <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();
+  if (status !== "Optimal" || m.objectiveValue === null) {
+    throw new Error(`Knapsack did not solve to Optimal (status: ${status}).`);
+  }
 
   console.log(`\nStatus: ${status}`);
   console.log(`Max Total Value: $${m.objectiveValue}`);
   console.log("Packed Items:");
   let totalWeight = 0;
   for (const it of items) {
-    if (x[it.name].value === 1) {
+    const val = x[it.name].value;
+    if (val === null) {
+      throw new Error(`Missing solved value for item "${it.name}".`);
+    }
+    if (val === 1) {
       console.log(`  • ${it.name} (weight: ${it.weight}kg, value: $${it.value})`);
       totalWeight += it.weight;
     }
@@ -52,4 +59,7 @@ async function main() {
   console.log(`Total Weight: ${totalWeight}kg / ${maxCapacity}kg`);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});

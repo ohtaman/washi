@@ -80,10 +80,17 @@ async function main() {
   const buildMs = performance.now() - t0;
   const status = await m.solve();
   const solveMs = m.runTime * 1000;
+  if (
+    status !== "Optimal" ||
+    m.objectiveValue === null ||
+    addUsbCable.value === null
+  ) {
+    throw new Error(`Coupon optimization did not solve to Optimal (status: ${status}).`);
+  }
 
   const cableAdded = addUsbCable.value === 1;
   const grossTotal = baseCartSubtotal + (cableAdded ? usbCablePrice : 0);
-  const netPayable = m.objectiveValue ?? grossTotal;
+  const netPayable = m.objectiveValue;
   const discountSaved = grossTotal - netPayable;
 
   console.log(`\nStatus: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);
@@ -97,11 +104,18 @@ async function main() {
 
   console.log("Coupon Selection Breakdown:");
   for (const cpn of coupons) {
-    const applied = useCoupon[cpn.id].value === 1;
+    const couponVal = useCoupon[cpn.id].value;
+    if (couponVal === null) {
+      throw new Error(`Missing solved value for coupon "${cpn.id}".`);
+    }
+    const applied = couponVal === 1;
     console.log(
       `  ${applied ? "✅ [APPLIED] " : "   [skipped] "} ${cpn.id.padEnd(12)} (-$${cpn.discount}) — ${cpn.desc}`
     );
   }
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
