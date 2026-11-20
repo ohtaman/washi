@@ -51,26 +51,22 @@
 
 ## 5. 相关链接与参考资料 {#resources}
 
-以下整理了建模库、求解器官方文档以及优质的英文开源教材与问题集，方便进一步系统学习与查阅：
+聚焦于 WaSHI 的核心场景——**组合优化（LP / MIP / CP / SMT）**的官方文档与精选参考资料：
 
 ### 建模库与求解器官方文档
 
 - [WaSHI 文档（快速开始）](/zh/getting-started/) / [建模技巧](/zh/guide/formulation-tips) — WaSHI 本体 API、各求解器后端与建模指南。
-- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 Python 代数建模库文档（英文）。
+- [PuLP 官方文档](https://coin-or.github.io/pulp/) — `PuLP (Python)` 标签使用的 LP / MIP 代数建模库文档（英文）。
 - [HiGHS](https://highs.dev/)（[文档](https://ergo-code.github.io/HiGHS/)） — 同时支撑 WaSHI 与 PuLP 求解 LP / MIP 的开源求解器（英文）。
-- [SciPy `scipy.optimize` 参考手册](https://docs.scipy.org/doc/scipy/reference/optimize.html) — Python 中的线性规划（`linprog`）、混合整数规划（`milp`）等接口参考（英文）。
-- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 LP、MIP、车辆路径与 CP-SAT 约束规划的官方指南与示例（英文）。
-- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — Julia 代数建模语言文档，包含丰富的线性、整数与非线性建模示例（英文）。
+- [Google OR-Tools](https://developers.google.com/optimization) — 涵盖 MIP、车辆路径、排程与 CP-SAT 约束规划的官方指南与示例（英文）。
 - [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — 约束规划（CP）与全局约束建模的标准手册（英文）。
+- [JuMP 文档](https://jump.dev/JuMP.jl/stable/) — Julia 代数建模语言文档，提供精炼的 LP / MIP 建模模式介绍（英文）。
 - [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI 约束规划（CP）后端采用的 Lazy Clause Generation 求解器（英文）。
 - [Online Z3 Guide](https://microsoft.github.io/z3guide/) — 面向 SMT 求解器 Z3 的在线交互式教程与参考（英文）。
 
-### 教材、建模指南与问题库
+### 组合优化建模指南与问题库
 
-- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 涵盖线性化、Big-M、凸二次与锥规划的经典建模手册（英文）。
-- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — 配备可运行 Jupyter Notebook 的开源教材，覆盖 LP、网络流、凸优化与 MIP（英文）。
-- [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — 斯坦福大学凸优化经典教材，提供免费 PDF（英文）。
-- [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — 康奈尔大学维护的计算优化开源教科书 Wiki（英文）。
-- [NEOS Guide](https://neos-guide.org/) — 线性规划、整数规划与各类优化问题的系统入门指南（英文）。
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 实用的建模技巧手册，其中混合整数优化章节（Big-M、指示约束、线性化）尤为值得参考（英文）。
+- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — 配备可运行 Jupyter Notebook 的开源书籍，系统介绍网络流与 MIP 建模（英文）。
+- [CSPLib](https://www.csplib.org/) — 约束规划与组合优化领域的经典标准问题库（英文）。
 - [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — 同名书籍系列的在线配套教程与模型详解，系统覆盖图论、物流配送与排程（日语）。
-- [CSPLib](https://www.csplib.org/) — 约束规划与组合优化领域的经典标准测试问题库（英文）。

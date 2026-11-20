@@ -51,26 +51,22 @@ A concise reference for reading problem statements, building optimization models
 
 ## 5. Related Documentation & Learning Resources {#resources}
 
-Useful documentation, modeling cookbooks, open textbooks, and problem collections for going deeper beyond these exercises:
+Reference docs, formulation guides, and combinatorial optimization resources aligned with WaSHI's focus (**MIP, LP, CP, and SMT**):
 
 ### Modeling Libraries & Solvers
 
-- [WaSHI Getting Started](/getting-started/) & [Modeling Guide](/guide/formulation-tips) — Full TypeScript API, solver backends, and formulation tips for WaSHI.
-- [Optimization with PuLP](https://coin-or.github.io/pulp/) — Official documentation for the Python algebraic modeler used in the `PuLP (Python)` tab.
-- [HiGHS](https://highs.dev/) ([Docs](https://ergo-code.github.io/HiGHS/)) — Open-source LP/MIP/QP solver powering both WaSHI's default backend and `PuLP` here.
-- [SciPy Optimization (`scipy.optimize`)](https://docs.scipy.org/doc/scipy/reference/optimize.html) — Reference for linear (`linprog`), MILP (`milp`), and nonlinear optimization in Python.
-- [Google OR-Tools](https://developers.google.com/optimization) — Guides and examples for LP, MIP, vehicle routing, and the CP-SAT solver.
-- [JuMP Documentation](https://jump.dev/JuMP.jl/stable/) — Modeling language documentation in Julia with rich LP/MIP/nonlinear formulation examples.
-- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — Comprehensive guide to constraint programming (CP) modeling and global constraints.
+- [WaSHI Getting Started](/getting-started/) & [Modeling Guide](/guide/formulation-tips) — TypeScript API, solver backends, and formulation patterns for WaSHI.
+- [Optimization with PuLP](https://coin-or.github.io/pulp/) — Official documentation for the Python LP/MIP modeler used in the `PuLP (Python)` tab.
+- [HiGHS](https://highs.dev/) ([Docs](https://ergo-code.github.io/HiGHS/)) — Open-source LP/MIP solver powering both WaSHI's default backend and `PuLP` here.
+- [Google OR-Tools](https://developers.google.com/optimization) — Practical guides and examples for MIP, vehicle routing, scheduling, and the CP-SAT solver.
+- [The MiniZinc Handbook](https://docs.minizinc.dev/en/stable/) — Standard reference on constraint programming (CP) modeling and global constraints.
+- [JuMP Documentation](https://jump.dev/JuMP.jl/stable/) — Algebraic modeling language documentation in Julia with concise LP/MIP formulation guides.
 - [Pumpkin](https://github.com/ConSol-Lab/Pumpkin) — Lazy clause generation constraint programming solver used as WaSHI's CP backend.
-- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — Interactive tutorial and reference for SMT and constraint solving with Z3.
+- [Online Z3 Guide](https://microsoft.github.io/z3guide/) — Interactive tutorial and reference for SMT and logical constraint solving with Z3.
 
-### Textbooks, Formulation Guides & Problem Libraries
+### Combinatorial Optimization Guides & Problem Libraries
 
-- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Standard reference on linear, Big-M, quadratic, and conic optimization formulations.
-- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — Open textbook with interactive Jupyter notebooks covering LP, network flows, convex optimization, and MIP.
-- [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — Classic Stanford textbook on convex optimization and convex QP (free PDF).
-- [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — Open wiki textbook covering LP, MIP, integer formulations, and solution methods.
-- [NEOS Guide](https://neos-guide.org/) — Overview and taxonomy of linear, integer, network, and nonlinear optimization.
-- [SCMOPT `opt100` (Python Applied Optimization 100+)](https://scmopt.github.io/opt100/) — Companion online textbook and formulation guide for *Python Applied Optimization 100+*, covering graphs, logistics, and scheduling (in Japanese).
-- [CSPLib](https://www.csplib.org/) — Benchmark library of classic constraint programming and combinatorial optimization problems.
+- [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Widely referenced formulation cookbook (the Mixed Integer Optimization chapter is especially useful for Big-M and indicator tricks).
+- [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — Open textbook with runnable Jupyter notebooks covering LP, network flows, and MIP formulations.
+- [CSPLib](https://www.csplib.org/) — Standard benchmark library of constraint programming and combinatorial optimization problems.
+- [SCMOPT `opt100` (Python Applied Optimization 100+)](https://scmopt.github.io/opt100/) — Companion online textbook and formulation guide covering graphs, routing, packing, and scheduling (in Japanese).
