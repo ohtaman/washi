@@ -1,0 +1,28 @@
+{
+  "title": "#075. Staff Shift Coverage with Workload Bounds & Days Off",
+  "subtitle": "Assign staff to daily shifts satisfying coverage demands, one-shift-per-day limits, workload bounds, and fixed days off.",
+  "tags": [
+    "MIP",
+    "Staff Rostering",
+    "Shift Coverage",
+    "Binary Assignment"
+  ],
+  "caseNames": [
+    "3-staff 3-day baseline roster",
+    "4-staff 4-day alternating demands",
+    "5-staff 3-shift schedule",
+    "6-staff 5-day multi-leave roster",
+    "7-staff 6-day fractional costs"
+  ],
+  "judge": {
+    "m0": "Output must be an object { schedule, totalCost }.",
+    "m1": "Field \"schedule\" must be a {p0}x{p1} matrix.",
+    "m2": "schedule[{p0}][{p1}] must be an integer in [-1, {p3}] (received {p2}).",
+    "m3": "Staff {p0} has a required day off on day {p1}, but was assigned shift {p2}.",
+    "m4": "Staff {p0} works {p1} shifts, outside allowed range [{p2}, {p3}].",
+    "m5": "Day {p0}, shift {p1} has only {p2} staff assigned, below demand {p3}.",
+    "m6": "Reported totalCost ({p0}) does not match computed shift cost ({p1}).",
+    "m7": "Valid roster, but total cost ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal shift roster found (totalCost = {p0})!"
+  }
+}

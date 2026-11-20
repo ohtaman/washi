@@ -1,0 +1,27 @@
+{
+  "title": "#073. Job-Shop Scheduling (JSSP) via CP Disjoint",
+  "subtitle": "Model multi-machine job routing using Pumpkin's native disjoint global constraint and operation precedences to minimize makespan.",
+  "tags": [
+    "CP",
+    "Pumpkin",
+    "Job-Shop Scheduling",
+    "Global Constraint"
+  ],
+  "caseNames": [
+    "3-job 3-machine classic routing",
+    "3-job 3-machine tighter contention",
+    "4-job 3-machine rectangular shop",
+    "3-job 4-machine extended routing",
+    "4-job 4-machine balanced shop"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, makespan }.",
+    "m1": "Field \"starts\" must be a 2D array with {p0} job rows.",
+    "m2": "starts[{p0}][{p1}] must be a non-negative integer (received {p2}).",
+    "m3": "Job {p0} precedence violated: operation {p1} ends at {p2}, after operation {p3} starts at {p4}.",
+    "m4": "Machine {p0} overlap between operations {p1} and {p2}.",
+    "m5": "Reported makespan ({p0}) does not match maximum completion time ({p1}).",
+    "m6": "Valid schedule, but makespan ({p0}) exceeds minimum ({p1}).",
+    "m7": "Optimal job-shop schedule found (makespan = {p0})!"
+  }
+}

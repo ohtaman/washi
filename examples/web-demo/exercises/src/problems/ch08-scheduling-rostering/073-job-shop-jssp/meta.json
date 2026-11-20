@@ -1,0 +1,25 @@
+{
+  "id": "073",
+  "slug": "job-shop-jssp",
+  "chapter": 8,
+  "order": 3,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 16,
+  "paradigms": [
+    "CP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

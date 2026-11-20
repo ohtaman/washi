@@ -1,0 +1,26 @@
+{
+  "title": "#072. Single-Machine Scheduling with Sequence-Dependent Setups",
+  "subtitle": "Sequence jobs with changeover times using TSP-style precedence arcs and completion propagation to minimize total tardiness.",
+  "tags": [
+    "MIP",
+    "Scheduling",
+    "Sequence-Dependent Setup",
+    "TSP Formulation"
+  ],
+  "caseNames": [
+    "3-job asymmetric setup",
+    "4-job changeover tradeoffs",
+    "4-job uniform setup boundary",
+    "5-job dense changeover matrix",
+    "6-job fractional setups"
+  ],
+  "judge": {
+    "m0": "Output must be an object { order, completions, totalTardiness }.",
+    "m1": "order[{p0}] = {p1} does not form a valid permutation of 0..n-1.",
+    "m2": "First job {p0} has completion {p1} below its processing time {p2}.",
+    "m3": "Transition {p0} -> {p1} yields completion {p2}, below required {p3}.",
+    "m4": "Reported totalTardiness ({p0}) does not match computed tardiness ({p1}).",
+    "m5": "Valid sequence, but total tardiness ({p0}) exceeds minimum ({p1}).",
+    "m6": "Optimal changeover sequence found (totalTardiness = {p0})!"
+  }
+}
