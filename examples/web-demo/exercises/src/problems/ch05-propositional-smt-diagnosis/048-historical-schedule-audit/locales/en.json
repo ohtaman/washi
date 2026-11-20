@@ -1,0 +1,27 @@
+{
+  "title": "#048. Historical Assignment Audit (m.verify)",
+  "subtitle": "Audit historical shift and compliance logs against mixed Boolean-arithmetic rules using WaSHI's m.verify({ values }).",
+  "tags": [
+    "SMT",
+    "Verification",
+    "m.verify",
+    "Compliance Audit"
+  ],
+  "caseNames": [
+    "Compliant night-shift operational log",
+    "Weekend overtime rule violations",
+    "Multi-violation deployment log",
+    "XOR mode and backup violation audit",
+    "Compliant 9-attribute GDPR compliance record"
+  ],
+  "judge": {
+    "m0": "Output must be an object { valid, violatedRules }.",
+    "m1": "Duplicate rule ID \"{p0}\" in violatedRules.",
+    "m2": "Unknown rule ID \"{p0}\" in violatedRules.",
+    "m3": "Returned valid = {p0}, but actual validity is {p1}.",
+    "m4": "violatedRules mismatch (expected [{p0}], received [{p1}]).",
+    "m5": "violatedRules must be sorted lexicographically.",
+    "m6": "Audit verified: historical assignment is valid with 0 violations.",
+    "m7": "Audit verified: detected all {p0} violated rules!"
+  }
+}

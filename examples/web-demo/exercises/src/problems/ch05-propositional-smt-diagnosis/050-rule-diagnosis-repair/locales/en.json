@@ -1,0 +1,33 @@
+{
+  "title": "#050. Conflict Diagnosis & Minimum-Cost Repair Synthesis",
+  "subtitle": "Chapter 5 synthesis: detect policy consistency, extract a minimal unsat core when inconsistent, and compute minimum-weight soft-rule repairs.",
+  "tags": [
+    "SMT",
+    "MUS",
+    "MaxSAT",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4-flag production access conflict & repair",
+    "Consistent EU compliance policy",
+    "Shared-conflict hitting-set repair",
+    "Mixed boolean and integer equality conflict",
+    "Multi-attribute cloud governance synthesis"
+  ],
+  "judge": {
+    "m0": "Output must be an object { consistent, minimalCore, relaxedRules, repairCost, repairedAssignment }.",
+    "m1": "Returned consistent = {p0}, but combined hard+soft rules are actually {p1}.",
+    "m2": "When consistent is true, minimalCore and relaxedRules must be empty and repairCost must be 0.",
+    "m3": "Hard rule \"{p0}\" is violated by repairedAssignment.",
+    "m4": "Duplicate rule ID \"{p0}\" in {p1}.",
+    "m5": "Unknown rule ID \"{p0}\" in {p1}.",
+    "m6": "When inconsistent, minimalCore cannot be empty.",
+    "m7": "Returned minimalCore [{p0}] is actually satisfiable.",
+    "m8": "Returned minimalCore [{p0}] is NOT minimal: removing \"{p1}\" leaves it unsatisfiable.",
+    "m9": "relaxedRules [{p0}] does not match soft rules actually violated by repairedAssignment ([{p1}]).",
+    "m10": "Reported repairCost ({p0}) does not match actual relaxed rule weights ({p1}).",
+    "m11": "Valid repair, but repairCost ({p0}) exceeds minimum ({p1}).",
+    "m12": "Consistent policy verified (repairCost = 0)!",
+    "m13": "Diagnosed minimal core and synthesized optimal repair (repairCost = {p0})!"
+  }
+}
