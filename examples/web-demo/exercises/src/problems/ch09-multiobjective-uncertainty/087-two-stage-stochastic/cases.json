@@ -1,0 +1,85 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "orderCosts": [4, 6],
+      "shortageCosts": [14, 18],
+      "salvageValues": [1, 2],
+      "warehouseCap": 30,
+      "probs": [0.5, 0.5],
+      "demands": [
+        [10, 8],
+        [20, 16]
+      ]
+    },
+    "expectedOptimal": 184
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "orderCosts": [5, 7, 4],
+      "shortageCosts": [16, 24, 12],
+      "salvageValues": [1, 2, 1],
+      "warehouseCap": 32,
+      "probs": [0.3, 0.4, 0.3],
+      "demands": [
+        [8, 6, 10],
+        [14, 10, 14],
+        [20, 16, 18]
+      ]
+    },
+    "expectedOptimal": 308.80000000000007
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "orderCosts": [6, 8, 5],
+      "shortageCosts": [15, 28, 14],
+      "salvageValues": [2, 3, 1],
+      "warehouseCap": 40,
+      "probs": [0.5, 0.25, 0.15, 0.1],
+      "demands": [
+        [8, 5, 10],
+        [12, 10, 14],
+        [16, 16, 18],
+        [22, 24, 20]
+      ]
+    },
+    "expectedOptimal": 308.69999999999993
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "orderCosts": [4, 5, 7, 3],
+      "shortageCosts": [12, 18, 25, 10],
+      "salvageValues": [0, 0, 0, 0],
+      "warehouseCap": 36,
+      "probs": [0.25, 0.35, 0.25, 0.15],
+      "demands": [
+        [6, 8, 5, 10],
+        [10, 11, 8, 14],
+        [14, 15, 12, 16],
+        [18, 18, 16, 20]
+      ]
+    },
+    "expectedOptimal": 358.3
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "orderCosts": [5, 6, 8, 4, 7],
+      "shortageCosts": [15, 20, 26, 12, 22],
+      "salvageValues": [1.5, 2, 2.5, 1, 2],
+      "warehouseCap": 55,
+      "probs": [0.2, 0.25, 0.25, 0.2, 0.1],
+      "demands": [
+        [8, 6, 5, 10, 7],
+        [12, 9, 8, 12, 10],
+        [14, 12, 11, 15, 13],
+        [18, 15, 14, 18, 16],
+        [22, 18, 18, 20, 19]
+      ]
+    },
+    "expectedOptimal": 531.725
+  }
+]

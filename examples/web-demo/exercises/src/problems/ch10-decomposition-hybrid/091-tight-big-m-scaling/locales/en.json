@@ -1,0 +1,29 @@
+{
+  "title": "#091. Tight Big-M & Formulation Scaling",
+  "subtitle": "Tighten fixed-charge Big-M constants using instance demand bounds and verify the strengthened LP relaxation.",
+  "tags": [
+    "MIP",
+    "Big-M Tightening",
+    "LP Relaxation",
+    "Scaling"
+  ],
+  "caseNames": [
+    "3-plant setup with oversized facility",
+    "4-plant mixed-capacity plan",
+    "Zero-demand shutdown baseline",
+    "5-plant regional fulfillment",
+    "5-plant high-capacity consolidation"
+  ],
+  "judge": {
+    "m0": "Output must be an object { open, quantities, totalCost, lpBound }.",
+    "m1": "open[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m3": "Plant {p0} produced {p1} units exceeding allowed capacity {p2} for open[{p0}] = {p3}.",
+    "m4": "Total production ({p0}) does not meet required demand ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed fixed plus unit costs ({p1}).",
+    "m6": "LP relaxation bound ({p0}) is weaker than the tight Big-M LP bound ({p1}). Tighten Big-M using min(capacity, demand).",
+    "m7": "Reported lpBound ({p0}) exceeds the tight Big-M LP relaxation ({p1}). Solve the continuous LP relaxation instead of the MIP.",
+    "m8": "Feasible production plan, but totalCost ({p0}) exceeds the minimum ({p1}).",
+    "m9": "Tight Big-M formulation verified: totalCost = {p0}, lpBound = {p1}."
+  }
+}

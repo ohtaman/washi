@@ -1,0 +1,25 @@
+{
+  "title": "#084. Fair Resource Allocation via Convex QP",
+  "subtitle": "Balance efficiency against L2 variance fairness across teams using WaSHI's native convex Quadratic Programming.",
+  "tags": [
+    "QP",
+    "LP",
+    "Fairness",
+    "WaSHI Only"
+  ],
+  "caseNames": [
+    "3-team interior trade-off",
+    "4-team pure cost baseline (zero fairness weight)",
+    "4-team bound-saturated allocation",
+    "5-team high fairness weight",
+    "6-team mild fairness balancing"
+  ],
+  "judge": {
+    "m0": "Output must be an object { allocations, totalCost }.",
+    "m1": "allocations[{p0}] = {p1} falls outside allowed bounds [{p2}, {p3}].",
+    "m2": "Total allocated amount ({p0}) does not equal required totalDemand ({p1}).",
+    "m3": "Reported totalCost ({p0}) does not match computed cost plus variance penalty ({p1}).",
+    "m4": "All constraints satisfied, but totalCost ({p0}) exceeds minimum possible ({p1}).",
+    "m5": "Optimal fair allocation found (totalCost = {p0})."
+  }
+}

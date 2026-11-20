@@ -1,0 +1,108 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "capacities": [40, 50, 45, 35],
+      "fixedCosts": [120, 150, 130, 100],
+      "prodCosts": [10, 8, 9, 12],
+      "demand": 90,
+      "baselineActive": [1, 1, 0, 0],
+      "disruptionPenalty": 40,
+      "hardRules": [
+        { "id": "hard_min_backup", "type": "min_active", "lines": [2, 3] }
+      ],
+      "softRules": [
+        { "id": "soft_run_0", "type": "must_run", "line": 0, "weight": 25 },
+        { "id": "soft_idle_2", "type": "must_idle", "line": 2, "weight": 10 },
+        { "id": "soft_idle_3", "type": "must_idle", "line": 3, "weight": 18 }
+      ]
+    },
+    "expectedOptimal": 1200
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "capacities": [50, 40, 60, 30],
+      "fixedCosts": [100, 90, 140, 80],
+      "prodCosts": [9, 11, 7, 13],
+      "demand": 85,
+      "baselineActive": [1, 0, 1, 0],
+      "disruptionPenalty": 30,
+      "hardRules": [
+        { "id": "hard_run_2", "type": "must_run", "line": 2 }
+      ],
+      "softRules": [
+        { "id": "soft_mutex_1_2", "type": "implies", "ifLine": 2, "thenLine": 1, "thenActive": false, "weight": 20 },
+        { "id": "soft_any_0_3", "type": "min_active", "lines": [0, 3], "weight": 15 }
+      ]
+    },
+    "expectedOptimal": 885
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "capacities": [45, 55, 50, 40, 60],
+      "fixedCosts": [110, 140, 125, 100, 160],
+      "prodCosts": [8, 7, 9, 11, 6],
+      "demand": 130,
+      "baselineActive": [1, 1, 1, 0, 0],
+      "disruptionPenalty": 35,
+      "hardRules": [
+        { "id": "hard_run_0", "type": "must_run", "line": 0 },
+        { "id": "hard_0_imp_not_4", "type": "implies", "ifLine": 0, "thenLine": 4, "thenActive": false }
+      ],
+      "softRules": [
+        { "id": "soft_1_imp_2", "type": "implies", "ifLine": 1, "thenLine": 2, "thenActive": true, "weight": 30 },
+        { "id": "soft_idle_2", "type": "must_idle", "line": 2, "weight": 12 },
+        { "id": "soft_idle_3", "type": "must_idle", "line": 3, "weight": 20 },
+        { "id": "soft_run_1", "type": "must_run", "line": 1, "weight": 25 }
+      ]
+    },
+    "expectedOptimal": 1390
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "capacities": [50, 50, 45, 40, 35],
+      "fixedCosts": [130, 120, 110, 95, 85],
+      "prodCosts": [7, 8, 9, 10, 11],
+      "demand": 140,
+      "baselineActive": [1, 1, 1, 0, 0],
+      "disruptionPenalty": 45,
+      "hardRules": [
+        { "id": "hard_any_34", "type": "min_active", "lines": [3, 4] }
+      ],
+      "softRules": [
+        { "id": "soft_idle_2", "type": "must_idle", "line": 2, "weight": 14 },
+        { "id": "soft_idle_3", "type": "must_idle", "line": 3, "weight": 22 },
+        { "id": "soft_idle_4", "type": "must_idle", "line": 4, "weight": 9 },
+        { "id": "soft_run_0", "type": "must_run", "line": 0, "weight": 35 },
+        { "id": "soft_run_1", "type": "must_run", "line": 1, "weight": 30 }
+      ]
+    },
+    "expectedOptimal": 1585
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "capacities": [50, 45, 55, 40, 60, 35],
+      "fixedCosts": [120, 110, 140, 100, 150, 90],
+      "prodCosts": [8, 9, 7, 10, 6, 12],
+      "demand": 150,
+      "baselineActive": [1, 1, 0, 1, 0, 0],
+      "disruptionPenalty": 50,
+      "hardRules": [
+        { "id": "hard_run_0", "type": "must_run", "line": 0 },
+        { "id": "hard_mutex_2_4", "type": "implies", "ifLine": 2, "thenLine": 4, "thenActive": false }
+      ],
+      "softRules": [
+        { "id": "soft_idle_1", "type": "must_idle", "line": 1, "weight": 11 },
+        { "id": "soft_run_1", "type": "must_run", "line": 1, "weight": 24 },
+        { "id": "soft_run_2", "type": "must_run", "line": 2, "weight": 28 },
+        { "id": "soft_run_4", "type": "must_run", "line": 4, "weight": 13 },
+        { "id": "soft_idle_5", "type": "must_idle", "line": 5, "weight": 19 }
+      ]
+    },
+    "expectedOptimal": 1660
+  }
+]

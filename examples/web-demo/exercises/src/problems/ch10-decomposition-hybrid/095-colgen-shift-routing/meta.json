@@ -1,0 +1,25 @@
+{
+  "id": "095",
+  "slug": "colgen-shift-routing",
+  "chapter": 10,
+  "order": 5,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 25,
+  "paradigms": [
+    "LP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

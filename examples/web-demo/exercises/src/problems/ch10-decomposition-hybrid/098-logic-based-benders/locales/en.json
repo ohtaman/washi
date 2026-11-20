@@ -1,0 +1,30 @@
+{
+  "title": "#098. Logic-Based Benders (MIP + Pumpkin CP)",
+  "subtitle": "Combine a HiGHS assignment master with Pumpkin disjoint scheduling subproblems and minimal conflict no-good cuts.",
+  "tags": [
+    "Logic-Based Benders",
+    "Hybrid MIP+CP",
+    "Pumpkin CP",
+    "Scheduling"
+  ],
+  "caseNames": [
+    "4 jobs, 2 parallel machines",
+    "5 jobs, 2 parallel machines",
+    "6 jobs, 2 parallel machines",
+    "6 jobs, 3 parallel machines",
+    "7 jobs, 3 parallel machines"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignments, starts, totalCost }.",
+    "m1": "assignments[{p0}] must be an integer machine index (received {p1}).",
+    "m2": "assignments[{p0}] = {p1} is outside valid machine range [0, {p2}].",
+    "m3": "starts[{p0}] must be an integer start time (received {p1}).",
+    "m4": "Job {p0} starts at {p1} before its releaseTime ({p2}).",
+    "m5": "Job {p0} finishes at {p1}, exceeding its deadline ({p2}).",
+    "m6": "Job {p0} finishes at {p1}, exceeding global horizon ({p2}).",
+    "m7": "Overlap on machine {p0}: job {p1} finishes at {p2} after job {p3} starts at {p4}.",
+    "m8": "Reported totalCost ({p0}) does not match assignment cost ({p1}).",
+    "m9": "Schedule is valid, but assignment cost ({p0}) exceeds optimum ({p1}).",
+    "m10": "Optimal Logic-Based Benders schedule verified (totalCost = {p0})."
+  }
+}

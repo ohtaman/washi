@@ -1,0 +1,29 @@
+{
+  "title": "#095. Shift Rostering via Column Generation",
+  "subtitle": "Generate valid multi-day staff shift schedules dynamically from dual prices using WaSHI solveColumnGeneration.",
+  "tags": [
+    "Column Generation",
+    "Shift Rostering",
+    "Set Covering",
+    "LP / MIP"
+  ],
+  "caseNames": [
+    "5-day clinic roster",
+    "6-day logistics hub schedule",
+    "7-day support desk roster",
+    "7-day high-load hospital wing",
+    "7-day strict consecutive-limit crew"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selectedColumns, counts, totalCost }.",
+    "m1": "Field \"selectedColumns\" must be an array of binary shift vectors.",
+    "m2": "counts[{p0}] must be a non-negative integer (received {p1}).",
+    "m3": "selectedColumns[{p0}][{p1}] must be 0 or 1 (received {p2}).",
+    "m4": "Shift pattern {p0} works {p1} days, violating [1, {p2}] (maxWorkDays).",
+    "m5": "Shift pattern {p0} has {p1} consecutive work days, exceeding maxConsecutive ({p2}).",
+    "m6": "Day {p0} receives {p1} assigned workers, below demand ({p2}).",
+    "m7": "Reported totalCost ({p0}) does not match recomputed shift cost ({p1}).",
+    "m8": "All shift rules and daily demands are satisfied, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m9": "Optimal shift rostering plan verified (totalCost = {p0})."
+  }
+}

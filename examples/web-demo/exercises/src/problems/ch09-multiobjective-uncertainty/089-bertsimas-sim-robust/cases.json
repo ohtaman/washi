@@ -1,0 +1,62 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "profits": [12, 16, 10],
+      "nominalUsages": [2, 3, 2],
+      "deviations": [1, 1, 0.5],
+      "maxUnits": [8, 6, 8],
+      "capacityCap": 30,
+      "gamma": 1
+    },
+    "expectedOptimal": 144
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "profits": [14, 18, 11, 16],
+      "nominalUsages": [2.5, 3.0, 2.0, 2.8],
+      "deviations": [1.5, 2.0, 0.5, 1.2],
+      "maxUnits": [10, 10, 12, 8],
+      "capacityCap": 40,
+      "gamma": 0
+    },
+    "expectedOptimal": 237.14285714285714
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "profits": [14, 18, 11, 16],
+      "nominalUsages": [2.5, 3.0, 2.0, 2.8],
+      "deviations": [1.5, 2.0, 0.5, 1.2],
+      "maxUnits": [10, 10, 12, 8],
+      "capacityCap": 40,
+      "gamma": 4
+    },
+    "expectedOptimal": 172
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "profits": [20, 14, 24, 16, 12],
+      "nominalUsages": [3.0, 2.0, 3.5, 2.5, 1.8],
+      "deviations": [2.0, 0.8, 2.5, 1.0, 0.4],
+      "maxUnits": [8, 12, 8, 10, 12],
+      "capacityCap": 45,
+      "gamma": 2.5
+    },
+    "expectedOptimal": 250.9731543624161
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "profits": [18, 22, 15, 26, 13, 19],
+      "nominalUsages": [2.2, 3.1, 2.0, 3.8, 1.6, 2.6],
+      "deviations": [1.4, 2.2, 0.5, 2.8, 0.4, 1.3],
+      "maxUnits": [10, 9, 12, 8, 14, 10],
+      "capacityCap": 58,
+      "gamma": 2
+    },
+    "expectedOptimal": 387.8754433166198
+  }
+]

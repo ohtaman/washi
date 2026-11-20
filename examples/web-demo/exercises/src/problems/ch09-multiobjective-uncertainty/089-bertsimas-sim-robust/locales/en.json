@@ -1,0 +1,25 @@
+{
+  "title": "#089. Budgeted Robust Optimization (Bertsimas-Sim)",
+  "subtitle": "Protect a capacity constraint against up to Gamma simultaneous resource deviations via exact LP duality.",
+  "tags": [
+    "LP",
+    "Robust Optimization",
+    "Bertsimas-Sim",
+    "LP Duality"
+  ],
+  "caseNames": [
+    "3-product gamma=1 budgeted robust mix",
+    "4-product nominal boundary (gamma=0)",
+    "4-product full box protection (gamma=4)",
+    "5-product fractional uncertainty budget (gamma=2.5)",
+    "6-product high-deviation trap trade-off"
+  ],
+  "judge": {
+    "m0": "Output must be an object { quantities, totalProfit }.",
+    "m1": "quantities[{p0}] = {p1} falls outside [0, {p2}].",
+    "m2": "Worst-case capacity usage ({p0}) under gamma = {p2} exceeds capacityCap ({p1}).",
+    "m3": "Reported totalProfit ({p0}) does not match computed profit ({p1}).",
+    "m4": "Robustly feasible mix, but totalProfit ({p0}) is below robust optimum ({p1}).",
+    "m5": "Optimal Bertsimas-Sim robust plan verified (totalProfit = {p0})."
+  }
+}

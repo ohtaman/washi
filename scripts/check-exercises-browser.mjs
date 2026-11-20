@@ -180,6 +180,12 @@ async function run() {
       indexLayout.tocRowCount === expectedTocRows,
       `Expected ${expectedTocRows} .toc-row items (#000 + ${availableChapterCount} chapters), got ${indexLayout.tocRowCount}`
     );
+    if (availableChapterCount === 10) {
+      assert(
+        (await page.locator(".chapter-syllabus").count()) === 0,
+        "Expected .chapter-syllabus section hidden when all 10 chapters are available"
+      );
+    }
     assert(indexLayout.problemGridCount === 0, "Expected zero .problem-grid card layouts");
     assert(indexLayout.tutorialStripCount === 0, "Expected zero .tutorial-strip callouts");
     assert(indexLayout.pillCount === 0, "Expected zero button-like capsule pills on Exercise Index");
@@ -674,6 +680,14 @@ async function run() {
         { id: "042", expectHighspy: false },
         { id: "046", expectHighspy: false },
         { id: "048", expectHighspy: false },
+        { id: "054", expectHighspy: true },
+        { id: "068", expectHighspy: true },
+        { id: "073", expectHighspy: false },
+        { id: "084", expectHighspy: false },
+        { id: "094", expectHighspy: false },
+        { id: "097", expectHighspy: false },
+        { id: "098", expectHighspy: false },
+        { id: "100", expectHighspy: false },
       ];
       for (const mc of milestoneCases) {
         await page.goto(`${baseUrl}/exercises/?id=${mc.id}&lang=en`, { waitUntil: "networkidle" });

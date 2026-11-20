@@ -17,8 +17,8 @@ const CHAPTER_SPEC: ReadonlyArray<{
   { chapter: 6, idRange: "051–060", available: true, paradigms: ["LP", "MIP", "CP"] },
   { chapter: 7, idRange: "061–070", available: true, paradigms: ["LP", "MIP"] },
   { chapter: 8, idRange: "071–080", available: true, paradigms: ["MIP", "CP"] },
-  { chapter: 9, idRange: "081–090", available: false, paradigms: ["LP", "MIP", "QP"] },
-  { chapter: 10, idRange: "091–100", available: false, paradigms: ["LP", "MIP", "CP", "SMT"] },
+  { chapter: 9, idRange: "081–090", available: true, paradigms: ["LP", "MIP", "QP"] },
+  { chapter: 10, idRange: "091–100", available: true, paradigms: ["LP", "MIP", "CP", "SMT"] },
 ];
 
 type ChapterKey = keyof typeof enLocale.chapters;

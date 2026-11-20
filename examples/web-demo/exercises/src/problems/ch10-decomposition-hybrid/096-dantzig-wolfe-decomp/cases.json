@@ -1,0 +1,138 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "profits": [
+        [12, 18, 10],
+        [15, 11, 20]
+      ],
+      "localUsages": [
+        [2, 3, 1],
+        [3, 2, 4]
+      ],
+      "localCaps": [24, 30],
+      "sharedUsages": [
+        [1, 2, 1],
+        [2, 1, 2]
+      ],
+      "sharedCap": 20,
+      "productCaps": [
+        [8, 6, 10],
+        [6, 9, 5]
+      ]
+    },
+    "expectedOptimal": 225
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "profits": [
+        [20, 14],
+        [16, 22],
+        [18, 15]
+      ],
+      "localUsages": [
+        [3, 2],
+        [2, 3],
+        [4, 2]
+      ],
+      "localCaps": [25, 28, 30],
+      "sharedUsages": [
+        [2, 1],
+        [1, 3],
+        [2, 2]
+      ],
+      "sharedCap": 30,
+      "productCaps": [
+        [7, 10],
+        [9, 7],
+        [6, 11]
+      ]
+    },
+    "expectedOptimal": 386.33333333333337
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "profits": [
+        [10, 15, 12],
+        [14, 12, 16]
+      ],
+      "localUsages": [
+        [1, 2, 2],
+        [2, 1, 3]
+      ],
+      "localCaps": [50, 50],
+      "sharedUsages": [
+        [1, 1, 1],
+        [1, 1, 1]
+      ],
+      "sharedCap": 100,
+      "productCaps": [
+        [10, 10, 10],
+        [10, 10, 10]
+      ]
+    },
+    "expectedOptimal": 736.6666666666667
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "profits": [
+        [25, 19, 14, 11],
+        [18, 24, 15, 12],
+        [20, 16, 22, 13]
+      ],
+      "localUsages": [
+        [4, 3, 2, 1],
+        [2, 4, 3, 2],
+        [3, 2, 4, 2]
+      ],
+      "localCaps": [40, 42, 45],
+      "sharedUsages": [
+        [3, 2, 1, 1],
+        [2, 3, 2, 1],
+        [2, 1, 3, 2]
+      ],
+      "sharedCap": 50,
+      "productCaps": [
+        [8, 9, 10, 12],
+        [10, 8, 9, 10],
+        [9, 11, 7, 12]
+      ]
+    },
+    "expectedOptimal": 638
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "profits": [
+        [30, 22, 18],
+        [26, 20, 28],
+        [21, 27, 19],
+        [24, 17, 25]
+      ],
+      "localUsages": [
+        [5, 3, 2],
+        [4, 2, 4],
+        [3, 4, 2],
+        [3, 2, 4]
+      ],
+      "localCaps": [36, 40, 38, 42],
+      "sharedUsages": [
+        [2, 2, 1],
+        [3, 1, 2],
+        [1, 3, 2],
+        [2, 1, 3]
+      ],
+      "sharedCap": 48,
+      "productCaps": [
+        [6, 8, 10],
+        [7, 9, 8],
+        [8, 7, 9],
+        [8, 10, 7]
+      ]
+    },
+    "expectedOptimal": 858.4
+  }
+]

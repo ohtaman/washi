@@ -1,0 +1,28 @@
+{
+  "title": "#099. Large Neighborhood Search (Fix-and-Optimize)",
+  "subtitle": "Solve multi-period capacitated lot sizing by iteratively freeing overlapping setup windows in a Fix-and-Optimize matheuristic.",
+  "tags": [
+    "Fix-and-Optimize",
+    "LNS",
+    "Lot Sizing",
+    "MIP"
+  ],
+  "caseNames": [
+    "6-period uniform setup lot sizing",
+    "7-period varying setup costs",
+    "8-period tight capacity lot sizing",
+    "9-period multi-stage procurement",
+    "10-period seasonal production horizon"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setups, production, inventory, totalCost }.",
+    "m1": "setups[{p0}] must be binary (0 or 1, received {p1}).",
+    "m2": "production[{p0}] must be non-negative (received {p1}).",
+    "m3": "inventory[{p0}] must be non-negative (received {p1}).",
+    "m4": "Period {p0} production ({p1}) exceeds active capacity ({p2}).",
+    "m5": "Inventory flow conservation violated in period {p0}: net supply {p1} != demand {p2}.",
+    "m6": "Reported totalCost ({p0}) does not match recomputed lot-sizing cost ({p1}).",
+    "m7": "Lot-sizing schedule is feasible, but totalCost ({p0}) exceeds target ({p1}).",
+    "m8": "Fix-and-Optimize LNS lot-sizing plan verified (totalCost = {p0})."
+  }
+}

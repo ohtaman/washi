@@ -1,0 +1,67 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [20, 25, 15, 30, 20, 25],
+      "setupCosts": [120, 120, 120, 120, 120, 120],
+      "prodCosts": [4, 4, 4, 4, 4, 4],
+      "holdCost": 1,
+      "capacities": [60, 60, 60, 60, 60, 60],
+      "initialPlan": [1, 1, 1, 1, 1, 1],
+      "windowSize": 3
+    },
+    "expectedOptimal": 975
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [15, 25, 20, 10, 30, 15, 20],
+      "setupCosts": [110, 140, 100, 130, 110, 130, 105],
+      "prodCosts": [4, 4, 5, 4, 5, 4, 5],
+      "holdCost": 1,
+      "capacities": [50, 50, 50, 50, 50, 50, 50],
+      "initialPlan": [1, 1, 1, 1, 1, 1, 1],
+      "windowSize": 3
+    },
+    "expectedOptimal": 1065
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [30, 10, 20, 25, 15, 30, 20, 10],
+      "setupCosts": [140, 110, 130, 120, 150, 100, 140, 120],
+      "prodCosts": [6, 5, 4, 6, 5, 4, 5, 6],
+      "holdCost": 1.5,
+      "capacities": [65, 65, 65, 65, 65, 65, 65, 65],
+      "initialPlan": [1, 1, 1, 1, 1, 1, 1, 1],
+      "windowSize": 3
+    },
+    "expectedOptimal": 1247.5
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [18, 22, 28, 12, 24, 16, 26, 14, 20],
+      "setupCosts": [130, 130, 130, 130, 130, 130, 130, 130, 130],
+      "prodCosts": [4, 5, 4, 6, 4, 5, 4, 6, 5],
+      "holdCost": 1,
+      "capacities": [60, 60, 60, 60, 60, 60, 60, 60, 60],
+      "initialPlan": [1, 1, 1, 1, 1, 1, 1, 1, 1],
+      "windowSize": 4
+    },
+    "expectedOptimal": 1334
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [25, 15, 30, 20, 10, 28, 22, 18, 24, 16],
+      "setupCosts": [160, 120, 140, 150, 110, 160, 130, 140, 120, 150],
+      "prodCosts": [5, 6, 4, 5, 7, 4, 5, 6, 4, 5],
+      "holdCost": 1.2,
+      "capacities": [70, 70, 70, 70, 70, 70, 70, 70, 70, 70],
+      "initialPlan": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      "windowSize": 4
+    },
+    "expectedOptimal": 1606.8
+  }
+]

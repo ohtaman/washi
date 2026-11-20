@@ -1,0 +1,57 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "unitCosts": [10, 2, 6],
+      "minAlloc": [0, 0, 0],
+      "maxAlloc": [20, 20, 20],
+      "totalDemand": 30,
+      "fairnessWeight": 2
+    },
+    "expectedOptimal": 176
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "unitCosts": [12, 4, 8, 6],
+      "minAlloc": [2, 3, 1, 2],
+      "maxAlloc": [15, 14, 16, 12],
+      "totalDemand": 32,
+      "fairnessWeight": 0
+    },
+    "expectedOptimal": 184
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "unitCosts": [14, 3, 9, 5],
+      "minAlloc": [4, 2, 2, 3],
+      "maxAlloc": [15, 9, 14, 12],
+      "totalDemand": 32,
+      "fairnessWeight": 3
+    },
+    "expectedOptimal": 242.10416666666669
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "unitCosts": [20, 4, 12, 8, 16],
+      "minAlloc": [2, 2, 2, 2, 2],
+      "maxAlloc": [20, 20, 20, 20, 20],
+      "totalDemand": 50,
+      "fairnessWeight": 15
+    },
+    "expectedOptimal": 597.3333333333333
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "unitCosts": [11, 5, 9, 3, 7, 13],
+      "minAlloc": [3, 4, 2, 5, 3, 2],
+      "maxAlloc": [18, 14, 15, 13, 16, 12],
+      "totalDemand": 54,
+      "fairnessWeight": 1.5
+    },
+    "expectedOptimal": 420.33333333333337
+  }
+]

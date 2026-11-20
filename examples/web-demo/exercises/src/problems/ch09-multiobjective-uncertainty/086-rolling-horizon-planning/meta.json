@@ -1,0 +1,25 @@
+{
+  "id": "086",
+  "slug": "rolling-horizon-planning",
+  "chapter": 9,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}
