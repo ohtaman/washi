@@ -7,8 +7,11 @@
     "Inventory Flow"
   ],
   "caseNames": [
-    "4-quarter demand spike smoothed via inventory pre-build",
-    "5-period schedule with strict ending safety stock"
+    "4-quarter seasonal demand schedule",
+    "5-period schedule with ending safety stock",
+    "3-period schedule starting with surplus stock",
+    "6-period cycle from empty inventory",
+    "4-period plan with mid-horizon maintenance dip"
   ],
   "judge": {
     "m0": "Output must be an object { regular, overtime, inventory, totalCost }.",

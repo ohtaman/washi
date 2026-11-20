@@ -47,4 +47,4 @@ Determine non-negative continuous shipping quantities along every lane to **mini
 }
 ```
 
-Warehouse 1 ships all 80 units cheaply to stores 1 and 2, while Warehouse 0 covers store 0 plus the remaining 10 units for store 1 (keeping 10 surplus units), minimizing freight cost to **420**.
+Warehouse shipments total 50 ≤ 60 and 80 ≤ 80, store receipts equal `[40, 50, 40]`, and total freight cost is $4 \times 40 + 6 \times 10 + 3 \times 40 + 2 \times 40 =$ **420**.

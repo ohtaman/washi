@@ -44,4 +44,4 @@ An artisan creamery manufactures bulk gelato across multiple flavors in non-nega
 }
 ```
 
-Prioritizing only flavor 0 caps production at 30 L (15,000 profit) with 50 units of resource 1 unused. Producing `[20, 30]` uses all 90 of resource 0 and all 80 of resource 1 for **19,000** profit.
+Producing `[20, 30]` uses $3 \times 20 + 1 \times 30 = 90$ of resource 0 and $1 \times 20 + 2 \times 30 = 80$ of resource 1 (within both capacities), giving total profit $500 \times 20 + 300 \times 30 =$ **19,000**.

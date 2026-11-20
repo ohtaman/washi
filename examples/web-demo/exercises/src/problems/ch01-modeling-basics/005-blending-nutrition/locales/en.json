@@ -8,7 +8,10 @@
   ],
   "caseNames": [
     "3-metal specialty alloy (100 kg batch)",
-    "4-metal industrial blend (200 kg batch)"
+    "4-metal industrial blend (200 kg batch)",
+    "5-metal, 2-element blend (150 kg)",
+    "4-metal, 4-element precision alloy (120 kg)",
+    "Small tight-stock blend (50 kg)"
   ],
   "judge": {
     "m0": "Output must be an object { amounts, totalCost }.",

@@ -12,7 +12,9 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
   - Header `# #NNN. <Title>` followed by:
     - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No backticks (enforced by tests) and no repetitive UI/terminology tutorials.
     - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`).
-    - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a 1-sentence justification.
+    - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
+  - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
+  - Target 3–5 test cases per exercise (with 5 cases as the standard for Chapter 1+) covering boundary, binding-constraint, rectangular/dimension-varying, and fractional/zero-activity cases.
   - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, `dict` in Python); keep `#001`–`#100` purely focused on optimization modeling.
   - Keep cross-exercise definitions (decision variables, bounds, verdicts, LP vs. MIP, solver statuses) in `src/guide/locales/{en,ja,zh}.md` rather than repeating them in every problem.
 

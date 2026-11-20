@@ -3,8 +3,20 @@
     "nameKey": 0,
     "input": {
       "budget": 15,
-      "costs": [4, 5, 7, 3, 6],
-      "values": [10, 12, 16, 8, 13]
+      "costs": [
+        4,
+        5,
+        7,
+        3,
+        6
+      ],
+      "values": [
+        10,
+        12,
+        16,
+        8,
+        13
+      ]
     },
     "expectedOptimal": 36
   },
@@ -12,9 +24,94 @@
     "nameKey": 1,
     "input": {
       "budget": 20,
-      "costs": [4, 6, 7, 5, 8, 3],
-      "values": [9, 14, 17, 11, 19, 6]
+      "costs": [
+        4,
+        6,
+        7,
+        5,
+        8,
+        3
+      ],
+      "values": [
+        9,
+        14,
+        17,
+        11,
+        19,
+        6
+      ]
     },
     "expectedOptimal": 47
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "budget": 25,
+      "costs": [
+        6,
+        5,
+        8,
+        9,
+        4,
+        7,
+        11
+      ],
+      "values": [
+        14,
+        11,
+        19,
+        22,
+        9,
+        16,
+        26
+      ]
+    },
+    "expectedOptimal": 59
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "budget": 30,
+      "costs": [
+        3,
+        8,
+        12,
+        5,
+        7,
+        10,
+        6,
+        9
+      ],
+      "values": [
+        7,
+        19,
+        29,
+        12,
+        16,
+        24,
+        14,
+        21
+      ]
+    },
+    "expectedOptimal": 72
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "budget": 10,
+      "costs": [
+        7,
+        5,
+        5,
+        3
+      ],
+      "values": [
+        15,
+        11,
+        11,
+        5
+      ]
+    },
+    "expectedOptimal": 22
   }
 ]

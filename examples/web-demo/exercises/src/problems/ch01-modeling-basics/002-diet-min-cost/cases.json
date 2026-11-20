@@ -12,5 +12,26 @@
       "minFiber": 11
     },
     "expectedOptimal": 250
+  },
+  {
+    "input": {
+      "minProtein": 20,
+      "minFiber": 4
+    },
+    "expectedOptimal": 300
+  },
+  {
+    "input": {
+      "minProtein": 3,
+      "minFiber": 18
+    },
+    "expectedOptimal": 300
+  },
+  {
+    "input": {
+      "minProtein": 10,
+      "minFiber": 8
+    },
+    "expectedOptimal": 192
   }
 ]
