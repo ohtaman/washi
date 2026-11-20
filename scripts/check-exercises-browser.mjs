@@ -1050,15 +1050,41 @@ async function run() {
       await mobPage.close();
     }
 
-    // 6. Verify privacy-safe GA4 gtag telemetry in real browser bundle
+    // 6. Verify privacy-safe GA4 gtag / dataLayer telemetry in real browser bundle
+    //    (works whether dist/site was built without GOOGLE_TAG_ID, with G-/GT-, or with GTM-)
     {
       const gtagCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await gtagCtx.route("https://www.googletagmanager.com/**", (route) =>
+        route.fulfill({ status: 200, contentType: "application/javascript", body: "" })
+      );
       await gtagCtx.addInitScript(() => {
-        window.__capturedGtagEvents = [];
-        window.gtag = (cmd, name, params) => {
-          if (cmd === "event") {
-            window.__capturedGtagEvents.push({ name, params });
+        const captured = [];
+        window.__capturedGtagEvents = captured;
+        const rawLayer = [];
+        rawLayer.push = function (...items) {
+          for (const item of items) {
+            if (item && typeof item === "object") {
+              if (
+                typeof item.length === "number" &&
+                item[0] === "event" &&
+                typeof item[1] === "string"
+              ) {
+                captured.push({ name: item[1], params: item[2] ?? {} });
+              } else if (
+                !Array.isArray(item) &&
+                typeof item.event === "string" &&
+                item.event.startsWith("exercise_")
+              ) {
+                const { event: name, ...params } = item;
+                captured.push({ name, params });
+              }
+            }
           }
+          return Array.prototype.push.apply(this, items);
+        };
+        window.dataLayer = rawLayer;
+        window.gtag = function () {
+          window.dataLayer.push(arguments);
         };
       });
       const gtagPage = await gtagCtx.newPage();
