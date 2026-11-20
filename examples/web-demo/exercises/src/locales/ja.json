@@ -16,6 +16,10 @@
       {
         "label": "Python（PuLP）環境を併設",
         "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、Pyodide 上で PuLP + HiGHS も動かせるようにしています。"
+      },
+      {
+        "label": "生成 AI での作問と順次レビュー",
+        "body": "問題や解説は生成 AI（Gemini）を使って作成しており、自動検証とあわせて人手によるレビューを順次進めています。レビュー済みの問題にはページ上部に「Reviewed by ...」と表示されます。"
       }
     ],
     "navDocs": "ドキュメント",

@@ -16,6 +16,10 @@
       {
         "label": "Python (PuLP) runtime alongside WaSHI",
         "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser so Python practitioners can work through the same exercises and compare idioms side by side."
+      },
+      {
+        "label": "AI-generated exercises with ongoing review",
+        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand. Reviewed exercises display \"Reviewed by ...\" near the top of the problem page."
       }
     ],
     "navDocs": "Docs",

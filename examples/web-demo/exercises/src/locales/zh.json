@@ -16,6 +16,10 @@
       {
         "label": "同时提供 Python（PuLP）环境",
         "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上一并集成了 PuLP + HiGHS。"
+      },
+      {
+        "label": "由生成式 AI 编写并持续人工审阅",
+        "body": "习题与题解使用生成式 AI（Gemini）生成，在经过自动求解验证的同时持续进行人工审阅；已完成审阅的题目会在题目页顶部显示“Reviewed by ...”。"
       }
     ],
     "navDocs": "文档",
