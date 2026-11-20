@@ -405,6 +405,23 @@ describe("Benders Decomposition", () => {
     expect(res.status).toBe("Optimal");
     expect(res.objectiveValue).toBeCloseTo(-130, 4);
     expect(Math.round(res.values.ye)).toBe(1);
+
+    // 4. Caller-defined __benders_theta with negative lb detected automatically must NOT be rejected as auto-created lb:0
+    const predefMaster = new Model("PredefinedBendersThetaMaster");
+    const predefTheta = predefMaster.continuous("__benders_theta", { lb: -200 });
+    predefMaster.objective(minimize(predefTheta));
+
+    const predefRes = await predefMaster.solveBenders({
+      subproblem: () => {
+        const sub = new Model("PredefSub");
+        const x = sub.continuous("x", { lb: 0 });
+        sub.constraint(expr`${x} <= 5`, "cap");
+        sub.objective(minimize(expr`-20 * ${x}`));
+        return sub;
+      },
+    });
+    expect(predefRes.status).toBe("Optimal");
+    expect(predefRes.objectiveValue).toBeCloseTo(-100, 4);
   });
 
   it("does not fall back to final master state as an incumbent when master fails (Infeasible)", async () => {

@@ -11,6 +11,8 @@ import { LinExpr } from "../modeler/expression.js";
 import { Constraint } from "../modeler/constraint.js";
 import { minimize } from "../modeler/objective.js";
 
+const autoCreatedThetaVars = new WeakSet<Var>();
+
 function isModelLike(val: unknown): val is Model {
   return Boolean(
     val &&
@@ -30,8 +32,7 @@ async function generateBendersCutFromSubproblem(
   isMinimize: boolean,
   solver?: Solver | string,
   solverOptions?: SolverOptions,
-  iterationIndex = 1,
-  usingAutoCreatedTheta = false
+  iterationIndex = 1
 ): Promise<BendersCut | null> {
   interface LinkingMeta {
     origConstraint: Constraint;
@@ -96,9 +97,9 @@ async function generateBendersCutFromSubproblem(
       `Benders subproblem returned invalid objectiveValue (${String(subObj)}) at iteration ${iterationIndex}.`
     );
   }
-  if (usingAutoCreatedTheta && subObj < -1e-6) {
+  if (autoCreatedThetaVars.has(thetaVar) && subObj < thetaVar.lb - 1e-6) {
     throw new Error(
-      `Benders auto-created "__benders_theta" (lb: 0) cannot represent negative subproblem cost (${subObj}) at iteration ${iterationIndex}. ` +
+      `Benders auto-created "__benders_theta" (lb: ${thetaVar.lb}) cannot represent negative subproblem cost (${subObj}) at iteration ${iterationIndex}. ` +
         `Define an explicit theta variable with a negative lower bound and pass options.theta.`
     );
   }
@@ -211,7 +212,6 @@ export async function solveBenders(
   } = options;
 
   let thetaVar: Var | undefined;
-  let usingAutoCreatedTheta = false;
   if (options.theta !== undefined) {
     if (typeof options.theta === "string") {
       const candidate = master.variables.get(options.theta);
@@ -229,9 +229,6 @@ export async function solveBenders(
     for (const v of master.variables.values()) {
       if (v instanceof Var && (v.name === "theta" || v.name === "__benders_theta")) {
         thetaVar = v;
-        if (v.name === "__benders_theta") {
-          usingAutoCreatedTheta = true;
-        }
         break;
       }
     }
@@ -309,7 +306,7 @@ export async function solveBenders(
           }
           thetaVar = master.continuous("__benders_theta", { lb: 0 });
           master.objective(minimize(master.objective().add(thetaVar)));
-          usingAutoCreatedTheta = true;
+          autoCreatedThetaVars.add(thetaVar);
         }
 
         const autoCut = await generateBendersCutFromSubproblem(
@@ -321,8 +318,7 @@ export async function solveBenders(
           isMinimize,
           solver,
           solverOptions,
-          iter,
-          usingAutoCreatedTheta
+          iter
         );
         if (autoCut) {
           cuts.push(autoCut);
