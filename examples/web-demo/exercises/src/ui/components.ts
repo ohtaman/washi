@@ -411,10 +411,6 @@ export function renderExerciseIndexHtml(params: {
         <section class="ex-hero">
           <h1 class="ex-hero-title">${escapeHtml(strings.brandTitle)}</h1>
           <p class="ex-hero-sub">${escapeHtml(strings.brandSubtitle)}</p>
-          <div class="ex-hero-stance" id="hero-runtime-stance">
-            <p class="ex-hero-stance-title">${escapeHtml(strings.heroStanceTitle)}</p>
-            <p class="ex-hero-stance-body">${escapeHtml(strings.heroStanceBody)}</p>
-          </div>
           <div class="ex-hero-actions">
             <a
               href="?id=${encodeURIComponent(nextId)}&lang=${locale}"
@@ -442,6 +438,23 @@ export function renderExerciseIndexHtml(params: {
               }
             </div>
           </div>
+        </section>
+
+        <section class="chapter-section ex-about-section" id="about-exercises" aria-labelledby="about-heading">
+          <div class="chapter-head">
+            <div class="chapter-title-wrap">
+              <h2 id="about-heading" class="chapter-title">${escapeHtml(strings.aboutTitle)}</h2>
+            </div>
+          </div>
+          <p class="ex-about-body">${escapeHtml(strings.aboutBody)}</p>
+          <ul class="ex-about-points">
+            ${strings.aboutPoints
+              .map(
+                (pt) =>
+                  `<li><strong>${escapeHtml(pt.label)}</strong> — ${escapeHtml(pt.body)}</li>`
+              )
+              .join("")}
+          </ul>
         </section>
 
         ${

@@ -1,9 +1,23 @@
 {
   "ui": {
     "brandTitle": "数理最適化100本ノック",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習問題集 (WaSHI & PuLP)",
-    "heroStanceTitle": "対応言語と Python (PuLP) の位置づけ",
-    "heroStanceBody": "WaSHI 自体は TypeScript / JavaScript 向けの最適化モデラーであり、Python ライブラリではありません。この問題集では、普段 Python を使っている方でも環境構築なしにブラウザですぐ解けるよう、最適化の定番である PuLP（ソルバーは HiGHS / Pyodide WebAssembly）も併設しています。WaSHI・Python のどちらで AC しても解答済みになります。",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習 (WaSHI & PuLP)",
+    "aboutTitle": "この100本ノックについて",
+    "aboutBody": "数理最適化は、手法の概要を知るだけでは「手元の問題をどう変数と制約で表すか」「解けない（INFEASIBLE）ときにどこを見直すか」といった実践的な感覚が身につきにくい分野です。この100本ノックでは、環境構築なしでブラウザからそのままモデルを書き、自動採点で制約違反や最適性を確かめながら、LP・MIP・凸QP・CP・SMT の基礎となる定式化パターンを反復練習できます。",
+    "aboutPoints": [
+      {
+        "label": "書いて実行するだけで自動採点",
+        "body": "制約違反（VIOLATION）・非最適（SUBOPTIMAL）・実行不能（INFEASIBLE）といった状態をブラウザ上のソルバー（HiGHS 等）で確認できます。"
+      },
+      {
+        "label": "定式化の意図まで解説",
+        "body": "問題ごとに数式と実装のポイントを添えており、なぜその変数や制約を置くのかを確かめながら進められます。"
+      },
+      {
+        "label": "Python（PuLP）環境を併設",
+        "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、Pyodide 上で PuLP + HiGHS も動かせるようにしています。"
+      }
+    ],
     "navDocs": "ドキュメント",
     "navShowcase": "ショーケース",
     "navPlayground": "Playground",

@@ -536,28 +536,33 @@ button {
   max-width: 72ch;
 }
 
-.ex-hero-stance {
-  margin: 0 0 1.15rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
-  background: var(--surface-alt);
+.ex-about-section {
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ex-about-body {
+  margin: 0.35rem 0 0.85rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-sub);
   max-width: 72ch;
 }
 
-.ex-hero-stance-title {
-  margin: 0 0 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text);
+.ex-about-points {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.89rem;
+  line-height: 1.6;
+  color: var(--text-sub);
+  max-width: 72ch;
 }
 
-.ex-hero-stance-body {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: var(--text-sub);
+.ex-about-points strong {
+  color: var(--text);
 }
 
 .ex-hero-actions {

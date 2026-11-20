@@ -1,9 +1,23 @@
 {
   "ui": {
     "brandTitle": "数理优化百题训练",
-    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习册 (WaSHI & PuLP)",
-    "heroStanceTitle": "关于运行环境：WaSHI (TypeScript) 与 Python (PuLP)",
-    "heroStanceBody": "WaSHI 本身是面向 TypeScript / JavaScript 的优化建模库，并非 Python 包。为了让熟悉 Python 的读者也能零配置直接在浏览器里动手求解并对照写法，本练习册同时集成了经典的 PuLP 建模库（底层通过 Pyodide 运行 HiGHS）作为并行练习环境；任意一种语言通过（AC）均可记录完成状态。",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习 (WaSHI & PuLP)",
+    "aboutTitle": "关于本百题训练",
+    "aboutBody": "在数理优化中，仅了解算法概念往往很难掌握“如何将实际条件拆解为变量与约束”或“模型无解（INFEASIBLE）时从何排查”的实战感觉。本百题训练无需本地配置环境，让你直接在浏览器中编写模型并通过自动判题检验约束满足与最优性，从而反复练习 LP、MIP、凸 QP、CP 与 SMT 的核心建模模式。",
+    "aboutPoints": [
+      {
+        "label": "免配置运行并自动判题",
+        "body": "借助浏览器内的 WebAssembly 求解器（HiGHS 等），直接验证约束违反（VIOLATION）、非最优（SUBOPTIMAL）与无可行解（INFEASIBLE）等状态。"
+      },
+      {
+        "label": "每题附带数学模型与思路讲解",
+        "body": "不仅给出参考实现，还说明为何如此设置变量与约束，帮助理清建模意图与常见误区。"
+      },
+      {
+        "label": "同时提供 Python（PuLP）环境",
+        "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上一并集成了 PuLP + HiGHS。"
+      }
+    ],
     "navDocs": "文档",
     "navShowcase": "案例展示",
     "navPlayground": "Playground",
