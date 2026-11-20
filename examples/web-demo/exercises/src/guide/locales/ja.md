@@ -65,15 +65,12 @@
 - [Pumpkin (ConSol-Lab)](https://github.com/ConSol-Lab/Pumpkin) — WaSHI の CP バックエンドに使われている Lazy Clause Generation 型ソルバー（英語）。
 - [Online Z3 Guide](https://microsoft.github.io/z3guide/) — SMT ソルバー Z3 をブラウザ上で試しながら学べる公式ガイド（英語）。
 
-### 定式化ノウハウ・オープン教科書
+### 教科書・定式化ノウハウ・問題リファレンス
 
 - [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — 線形化・Big-M・凸二次・円錐計画などモデリング定石を網羅した定番クックブック（英語）。
 - [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — LP・ネットワーク流・凸最適化・MIP・不確実性下最適化まで Jupyter Notebook 付きで公開されているオープン書籍（英語）。
 - [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — Stanford 大学の凸最適化・凸二次計画の名著（PDF 無料公開・英語）。
 - [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — コーネル大学による LP・MIP・定式化パターンのオープン教科書 Wiki（英語）。
 - [NEOS Guide](https://neos-guide.org/) — 線形計画・整数計画など最適化手法全般の体系的入門ガイド（英語）。
-
-### 問題集・ベンチマーク集
-
+- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — 書籍『Pythonによる実務で役立つ最適化問題100+』シリーズのサポートサイト。グラフ・組合せ・物流・スケジューリング等の定式化と実装を体系的に学べる解説書（日本語）。
 - [CSPLib](https://www.csplib.org/) — 制約プログラミング・組合せ最適化の標準ベンチマーク問題ライブラリ（英語）。
-- [Pythonによる実務で役立つ最適化問題100+（SCMOPT `opt100`）](https://scmopt.github.io/opt100/) — グラフ・組合せ・物流・スケジューリングなど実務的テーマを広く扱う問題集（日本語）。

@@ -65,15 +65,12 @@ Useful documentation, modeling cookbooks, open textbooks, and problem collection
 - [Pumpkin](https://github.com/ConSol-Lab/Pumpkin) — Lazy clause generation constraint programming solver used as WaSHI's CP backend.
 - [Online Z3 Guide](https://microsoft.github.io/z3guide/) — Interactive tutorial and reference for SMT and constraint solving with Z3.
 
-### Formulation Cookbooks & Open Textbooks
+### Textbooks, Formulation Guides & Problem Libraries
 
 - [MOSEK Modeling Cookbook](https://docs.mosek.com/modeling-cookbook/index.html) — Standard reference on linear, Big-M, quadratic, and conic optimization formulations.
 - [Hands-On Mathematical Optimization with Python (`MO-book`)](https://mobook.github.io/MO-book/) — Open textbook with interactive Jupyter notebooks covering LP, network flows, convex optimization, and MIP.
 - [Convex Optimization — Boyd & Vandenberghe](https://web.stanford.edu/~boyd/cvxbook/) — Classic Stanford textbook on convex optimization and convex QP (free PDF).
 - [Cornell Computational Optimization Open Textbook](https://optimization.cbe.cornell.edu/index.php?title=Main_Page) — Open wiki textbook covering LP, MIP, integer formulations, and solution methods.
 - [NEOS Guide](https://neos-guide.org/) — Overview and taxonomy of linear, integer, network, and nonlinear optimization.
-
-### Problem Collections & Benchmarks
-
+- [SCMOPT `opt100` (Python Applied Optimization 100+)](https://scmopt.github.io/opt100/) — Companion online textbook and formulation guide for *Python Applied Optimization 100+*, covering graphs, logistics, and scheduling (in Japanese).
 - [CSPLib](https://www.csplib.org/) — Benchmark library of classic constraint programming and combinatorial optimization problems.
-- [SCMOPT `opt100` (Python Applied Optimization 100+)](https://scmopt.github.io/opt100/) — Applied Python optimization problems and formulations covering graphs, logistics, and scheduling (in Japanese).
