@@ -140,6 +140,8 @@ export class ExercisesApp {
   private problemTab: "problem" | "editorial" = "problem";
   private renderedProblemId: string | null = null;
   private trackedViewProblemId: string | null = null;
+  private viewedRuntimesInVisit = new Set<RuntimeId>();
+  private editedRuntimesInVisit = new Set<RuntimeId>();
   private activeRuntime: RuntimeId = "washi";
   private viewGeneration = 0;
   private renderSeq = 0;
@@ -400,6 +402,26 @@ export class ExercisesApp {
     }
   }
 
+  private recordRuntimeView(problemId: string, runtime: RuntimeId, locale: Locale): void {
+    if (this.viewedRuntimesInVisit.has(runtime)) return;
+    this.viewedRuntimesInVisit.add(runtime);
+    trackExerciseEvent("exercise_runtime_view", {
+      problem_id: problemId,
+      exercise_runtime: toAnalyticsRuntime(runtime),
+      locale,
+    });
+  }
+
+  private recordCodeEdit(problemId: string, runtime: RuntimeId, locale: Locale): void {
+    if (this.editedRuntimesInVisit.has(runtime)) return;
+    this.editedRuntimesInVisit.add(runtime);
+    trackExerciseEvent("exercise_code_edit", {
+      problem_id: problemId,
+      exercise_runtime: toAnalyticsRuntime(runtime),
+      locale,
+    });
+  }
+
   private switchRuntimeTab(next: RuntimeId, focusTab: boolean = false): void {
     const prob = this.getInteractiveProblem();
     if (!prob || !prob.meta.runtimes.includes(next)) return;
@@ -441,6 +463,7 @@ export class ExercisesApp {
       tab: toAnalyticsRuntime(next),
       locale: this.locale,
     });
+    this.recordRuntimeView(prob.meta.id, next, this.locale);
   }
 
   private async switchStatementTab(
@@ -701,6 +724,7 @@ export class ExercisesApp {
     this.syncEditorOverlay(runtime);
     this.progress = saveDraft(this.progress, prob.meta.id, runtime, target.value);
     saveProgress(this.progress);
+    this.recordCodeEdit(prob.meta.id, runtime, this.locale);
   }
 
   private setTocDrawerOpen(open: boolean): void {
@@ -806,6 +830,7 @@ export class ExercisesApp {
         this.syncEditorOverlay(runtime);
         this.progress = saveDraft(this.progress, prob.meta.id, runtime, target.value);
         saveProgress(this.progress);
+        this.recordCodeEdit(prob.meta.id, runtime, this.locale);
       }
     }
   }
@@ -815,6 +840,12 @@ export class ExercisesApp {
     if (this.runningGeneration === originGeneration) return;
     this.runningGeneration = originGeneration;
     const runLocale = this.locale;
+
+    trackExerciseEvent("exercise_run_start", {
+      problem_id: prob.meta.id,
+      exercise_runtime: toAnalyticsRuntime(runtime),
+      locale: runLocale,
+    });
 
     const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
     const initialRunBtn = this.root.querySelector<HTMLButtonElement>(
@@ -1039,15 +1070,22 @@ export class ExercisesApp {
       };
     }
 
+    if (!isStillCurrent) {
+      return;
+    }
+
     trackExerciseEvent("exercise_run", {
       problem_id: prob.meta.id,
       exercise_runtime: toAnalyticsRuntime(runtime),
       verdict: report.overallStatus,
       locale: runLocale,
     });
-
-    if (!isStillCurrent) {
-      return;
+    if (report.overallStatus === "AC") {
+      trackExerciseEvent("exercise_solve", {
+        problem_id: prob.meta.id,
+        exercise_runtime: toAnalyticsRuntime(runtime),
+        locale: runLocale,
+      });
     }
 
     this.lastReport = report;
@@ -1271,14 +1309,19 @@ export class ExercisesApp {
     if (nextRenderedProblemId !== null) {
       if (this.trackedViewProblemId !== nextRenderedProblemId) {
         this.trackedViewProblemId = nextRenderedProblemId;
+        this.viewedRuntimesInVisit.clear();
+        this.editedRuntimesInVisit.clear();
         trackExerciseEvent("exercise_view", {
           problem_id: nextRenderedProblemId,
           exercise_runtime: toAnalyticsRuntime(this.activeRuntime),
           locale,
         });
+        this.recordRuntimeView(nextRenderedProblemId, this.activeRuntime, locale);
       }
     } else {
       this.trackedViewProblemId = null;
+      this.viewedRuntimesInVisit.clear();
+      this.editedRuntimesInVisit.clear();
     }
 
     if (this.pendingHash) {

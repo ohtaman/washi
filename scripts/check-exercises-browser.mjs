@@ -1093,6 +1093,7 @@ async function run() {
       await gtagPage.waitForSelector("#ws-problem-title");
       await gtagPage.click("#stmt-tab-editorial");
       await gtagPage.click("#tab-highspy");
+      await gtagPage.locator("#editor-highspy").fill("# BROWSER_SECRET_EDIT_CHECK");
       await gtagPage.click("#tab-washi");
       const solBtn = gtagPage.locator('button[data-action="solution"][data-runtime="washi"]');
       await solBtn.click();
@@ -1101,10 +1102,18 @@ async function run() {
       await gtagPage.waitForSelector("#judge-results .ac-celebration", { timeout: 20_000 });
       const captured = await gtagPage.evaluate(() => window.__capturedGtagEvents);
       assert(
+        !JSON.stringify(captured).includes("BROWSER_SECRET_EDIT_CHECK"),
+        "Telemetry payload leaked user source code in browser"
+      );
+      assert(
         JSON.stringify(captured) ===
           JSON.stringify([
             {
               name: "exercise_view",
+              params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
+            },
+            {
+              name: "exercise_runtime_view",
               params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
             },
             {
@@ -1116,11 +1125,23 @@ async function run() {
               params: { problem_id: "000", tab: "pulp", locale: "en" },
             },
             {
+              name: "exercise_runtime_view",
+              params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+            },
+            {
+              name: "exercise_code_edit",
+              params: { problem_id: "000", exercise_runtime: "pulp", locale: "en" },
+            },
+            {
               name: "exercise_tab_switch",
               params: { problem_id: "000", tab: "washi", locale: "en" },
             },
             {
               name: "exercise_solution_reveal",
+              params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
+            },
+            {
+              name: "exercise_run_start",
               params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
             },
             {
@@ -1131,6 +1152,10 @@ async function run() {
                 verdict: "AC",
                 locale: "en",
               },
+            },
+            {
+              name: "exercise_solve",
+              params: { problem_id: "000", exercise_runtime: "washi", locale: "en" },
             },
           ]),
         `Unexpected browser gtag events: ${JSON.stringify(captured)}`

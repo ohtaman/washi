@@ -9,15 +9,35 @@ export interface ExerciseEventMap {
     exercise_runtime: ExerciseAnalyticsRuntime;
     locale: Locale;
   };
+  exercise_runtime_view: {
+    problem_id: string;
+    exercise_runtime: ExerciseAnalyticsRuntime;
+    locale: Locale;
+  };
+  exercise_code_edit: {
+    problem_id: string;
+    exercise_runtime: ExerciseAnalyticsRuntime;
+    locale: Locale;
+  };
   exercise_tab_switch: {
     problem_id: string;
     tab: ExerciseAnalyticsTab;
+    locale: Locale;
+  };
+  exercise_run_start: {
+    problem_id: string;
+    exercise_runtime: ExerciseAnalyticsRuntime;
     locale: Locale;
   };
   exercise_run: {
     problem_id: string;
     exercise_runtime: ExerciseAnalyticsRuntime;
     verdict: VerdictStatus;
+    locale: Locale;
+  };
+  exercise_solve: {
+    problem_id: string;
+    exercise_runtime: ExerciseAnalyticsRuntime;
     locale: Locale;
   };
   exercise_solution_reveal: {
