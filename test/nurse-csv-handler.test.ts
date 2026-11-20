@@ -114,15 +114,16 @@ N99,田中 花子,\u30bf\u30ca\u30ab \u30cf\u30ca\u30b3,"\u30ea\u30fc\u30c0\u30f
         id: "N01",
         name: "看護師1",
         kana: "\u30ab\u30f3\u30b4\u30b71",
-        skills: ["leader_cap" as const],
+        skills: ["leader_cap"],
         nightOk: true,
         yearsExp: 5,
-        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"],
         yearly36Stats: {
-          past11MonthsOvertimeHours: 120,
-          currentMonthOvertimeHours: 0,
-          annualProjectedHours: 120,
-          specialExtensionMonthsCount: 0,
+          prev11MonthsWorkDays: 200,
+          prev11MonthsNightShifts: 60,
+          prev11MonthsOvertimeHours: 120,
+          recent2MonthsAvgOvertime: 10,
+          paidLeaveDaysTaken: 5,
         },
       },
     ];
@@ -290,15 +291,16 @@ N01,7,D,0,正常日勤
         id: "N01",
         name: "看護師1",
         kana: "\u30ab\u30f3\u30b4\u30b71",
-        skills: ["leader_cap" as const],
+        skills: ["leader_cap"],
         nightOk: true,
         yearsExp: 5,
-        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"],
         yearly36Stats: {
-          past11MonthsOvertimeHours: 120,
-          currentMonthOvertimeHours: 0,
-          annualProjectedHours: 120,
-          specialExtensionMonthsCount: 0,
+          prev11MonthsWorkDays: 200,
+          prev11MonthsNightShifts: 60,
+          prev11MonthsOvertimeHours: 120,
+          recent2MonthsAvgOvertime: 10,
+          paidLeaveDaysTaken: 5,
         },
       },
     ];
@@ -337,30 +339,32 @@ preceptor,N03,N04,"  ",1,指導\u30da\u30a2
         id: "N01",
         name: "看護師1",
         kana: "\u30ab\u30f3\u30b4\u30b71",
-        skills: ["leader_cap" as const],
+        skills: ["leader_cap"],
         nightOk: true,
         yearsExp: 5,
-        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"],
         yearly36Stats: {
-          past11MonthsOvertimeHours: 120,
-          currentMonthOvertimeHours: 0,
-          annualProjectedHours: 120,
-          specialExtensionMonthsCount: 0,
+          prev11MonthsWorkDays: 200,
+          prev11MonthsNightShifts: 60,
+          prev11MonthsOvertimeHours: 120,
+          recent2MonthsAvgOvertime: 10,
+          paidLeaveDaysTaken: 5,
         },
       },
       {
         id: "N02",
         name: "看護師2",
         kana: "\u30ab\u30f3\u30b4\u30b72",
-        skills: [] as const,
+        skills: [],
         nightOk: true,
         yearsExp: 3,
-        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"],
         yearly36Stats: {
-          past11MonthsOvertimeHours: 80,
-          currentMonthOvertimeHours: 0,
-          annualProjectedHours: 80,
-          specialExtensionMonthsCount: 0,
+          prev11MonthsWorkDays: 190,
+          prev11MonthsNightShifts: 50,
+          prev11MonthsOvertimeHours: 80,
+          recent2MonthsAvgOvertime: 8,
+          paidLeaveDaysTaken: 4,
         },
       },
     ];
@@ -407,7 +411,7 @@ preceptor,N03,N04,"  ",1,指導\u30da\u30a2
     expect(blank.config.maxMonthlyNightShifts).toBe(8);
     expect(blank.config.enforce36Agreement).toBe(true);
     expect(blank.config.shiftTransitions).toBeDefined();
-    expect(blank.skillDefs.length).toBeGreaterThanOrEqual(3);
+    expect(blank.skillDefs?.length).toBeGreaterThanOrEqual(3);
   });
 
   it("verifies 4-step tutorial workflow and tab layout alignment with shift matrix first", () => {
@@ -538,5 +542,49 @@ preceptor,N03,N04,"  ",1,指導\u30da\u30a2
     expect(mondayCov.N).toBe(3);
 
     expect(holidayCov.D).toBe(7);
+  });
+
+  it("parses yearsExp=0 honestly, uses 0 for default yearly36Stats overtime, and rejects invalid CSV tokens explicitly", () => {
+    const validZeroExpCsv = [
+      "id,name,yearsExp,contractPreset,nightOk,maxMonthlyNightShifts,minMonthlyDaysOff,minMonthlyWorkDays,maxMonthlyWorkDays,maxConsecutiveWorkDays,weekdayOnly,holidaysOff,prevMonthShifts",
+      "N01,新卒 \u30bc\u30ed,0,full_time,1,6,9,14,22,5,0,0,O;D;D;O;D;E;N",
+    ].join("\n");
+    const parsedValid = parseNursesCsv(validZeroExpCsv);
+    expect(parsedValid.errors).toHaveLength(0);
+    expect(parsedValid.nurses).toHaveLength(1);
+    expect(parsedValid.nurses[0].yearsExp).toBe(0);
+    expect(parsedValid.nurses[0].yearly36Stats.prev11MonthsOvertimeHours).toBe(0);
+
+    const invalidNursesCsv = [
+      "id,name,yearsExp,contractPreset,nightOk,maxMonthlyNightShifts,prevMonthShifts",
+      "N01,不正経験年数,abc,full_time,1,6,O;D;D;O;D;E;N",
+      "N02,負\u306e経験年数,-2,full_time,1,6,O;D;D;O;D;E;N",
+      "N03,不正契約区分,3,unknown_preset,1,6,O;D;D;O;D;E;N",
+      "N04,不正真偽値,3,full_time,maybe,6,O;D;D;O;D;E;N",
+      "N05,不正夜勤上限,3,full_time,1,xyz,O;D;D;O;D;E;N",
+      "N06,不正前月\u30b7\u30d5\u30c8,3,full_time,1,6,O;D;BAD_SHIFT;O;D;E;N",
+    ].join("\n");
+    const parsedInvalidNurses = parseNursesCsv(invalidNursesCsv);
+    expect(parsedInvalidNurses.nurses).toHaveLength(0);
+    expect(parsedInvalidNurses.errors.length).toBe(6);
+
+    const invalidRequestsCsv = [
+      "nurseId,day,shift,isHard,reason",
+      "N01,5.5,O,1,小数日",
+      "N01,6,O,maybe,不正\u30d5\u30e9\u30b0",
+    ].join("\n");
+    const parsedInvalidReqs = parseRequestsCsv(invalidRequestsCsv);
+    expect(parsedInvalidReqs.preferences).toHaveLength(0);
+    expect(parsedInvalidReqs.errors.length).toBe(2);
+
+    const invalidRelationsCsv = [
+      "type,nurseA,nurseB,shifts,isHard,reason",
+      "buddy_pair,N01,N02,E;N,1,未知種別",
+      ",N01,N02,E;N,1,空種別",
+      "ng_pair,N01,N02,E;N,unknown_bool,不正\u30d5\u30e9\u30b0",
+    ].join("\n");
+    const parsedInvalidRels = parseRelationsCsv(invalidRelationsCsv);
+    expect(parsedInvalidRels.relations).toHaveLength(0);
+    expect(parsedInvalidRels.errors.length).toBe(3);
   });
 });

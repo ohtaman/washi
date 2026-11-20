@@ -131,7 +131,7 @@ export function getBaseOdenShift(
   if (found) {
     return found.baseShift ?? (found.countsAsWorkDay ? "D" : "O");
   }
-  return "D";
+  throw new Error(`Unknown shift code: "${code}"`);
 }
 
 export function getEffectiveIncludedAliases(cs: CustomShiftDef): string[] {
@@ -352,17 +352,31 @@ export function resolveDaysBySelector(
   selector: DaySelector
 ): number[] {
   if (selector.kind === "days") {
-    return Array.from(
-      new Set(selector.days.filter((d) => typeof d === "number" && d >= 1 && d <= numDays))
-    ).sort((a, b) => a - b);
+    for (const d of selector.days) {
+      if (typeof d !== "number" || !Number.isInteger(d) || d < 1 || d > numDays) {
+        throw new Error(`Invalid day "${String(d)}" in DaySelector (expected integer 1..${numDays}).`);
+      }
+    }
+    return Array.from(new Set(selector.days)).sort((a, b) => a - b);
   }
   if (selector.kind === "range") {
-    const rawStart = typeof selector.startDay === "number" ? selector.startDay : 1;
-    const rawEnd = typeof selector.endDay === "number" ? selector.endDay : numDays;
-    const s = Math.max(1, Math.min(numDays, Math.min(rawStart, rawEnd)));
-    const e = Math.max(1, Math.min(numDays, Math.max(rawStart, rawEnd)));
+    const start = selector.startDay;
+    const end = selector.endDay;
+    if (
+      typeof start !== "number" ||
+      typeof end !== "number" ||
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 1 ||
+      end > numDays ||
+      start > end
+    ) {
+      throw new Error(
+        `Invalid day range ${String(start)}..${String(end)} in DaySelector (expected 1 <= startDay <= endDay <= ${numDays}).`
+      );
+    }
     const out: number[] = [];
-    for (let d = s; d <= e; d++) out.push(d);
+    for (let d = start; d <= end; d++) out.push(d);
     return out;
   }
   const hol = selector.holidays ?? "ignore";
@@ -567,13 +581,14 @@ export function doesNurseMatchAttribute(
   skillDefs?: readonly SkillDefinition[]
 ): boolean {
   const norm = stripTrailingParenLabel(attribute);
-  if (!norm || norm === "all") return true;
+  if (!norm) return false;
+  if (norm === "all") return true;
   if (norm.includes(",") || norm.includes("|")) {
     const parts = norm
       .split(/[,|]/)
       .map((p) => p.trim())
       .filter(Boolean);
-    if (parts.length === 0) return true;
+    if (parts.length === 0) return false;
     return parts.some((part) => doesNurseMatchAttribute(nurse, part, skillDefs));
   }
   return doesNurseSatisfySkill(nurse, attribute, skillDefs);
@@ -719,8 +734,10 @@ export function applyContractPresetToNurse(
   presetId: ContractPresetId,
   overrides?: NurseContractOverrides
 ): NurseProfile {
-  const preset =
-    CONTRACT_PRESETS.find((p) => p.id === presetId) ?? CONTRACT_PRESETS[0]!;
+  const preset = CONTRACT_PRESETS.find((p) => p.id === presetId);
+  if (!preset) {
+    throw new Error(`Unknown contract preset: "${String(presetId)}"`);
+  }
   const d = preset.defaults;
   return {
     ...nurse,
@@ -1139,7 +1156,7 @@ export interface ScheduleDiffSummary {
 }
 
 export interface WashiSolveOutcome {
-  status: "Optimal" | "Feasible" | "Infeasible" | "Unsat" | "Error";
+  status: "Optimal" | "Feasible" | "Sat" | "Infeasible" | "Unsat" | "Error";
   solverUsed: string;
   buildTimeMs: number;
   solveTimeMs: number;
@@ -1346,6 +1363,10 @@ export interface AddDailyShiftCapOperation {
   minStaff?: number;
   maxStaff?: number;
   attribute?: string;
+  isHard?: boolean;
+  penaltyWeight?: number;
+  startDay?: number;
+  endDay?: number;
 }
 
 export interface AllowPrevMonthShiftOperation {

@@ -1,4 +1,5 @@
 import {
+  CONTRACT_PRESETS,
   type ContractPresetId,
   type NurseProfile,
   type NurseSkill,
@@ -82,12 +83,24 @@ export function normalizeHeader(h: string): string {
   return h.replace(/^\uFEFF/, "").toLowerCase().replace(/[\s_\-（）()\u30FB/]/g, "");
 }
 
-export function parseBooleanToken(token: string | undefined, defaultVal = false): boolean {
-  if (!token) return defaultVal;
+export function parseStrictInt(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!/^-?\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+export function parseBooleanToken(
+  token: string | undefined,
+  defaultVal?: boolean
+): boolean | null {
+  if (token === undefined || token.trim() === "") {
+    return defaultVal !== undefined ? defaultVal : null;
+  }
   const t = token.trim().toLowerCase();
   if (["1", "true", "yes", "y", "t", "可", "○", "\u306F\u3044", "on", "確定"].includes(t)) return true;
   if (["0", "false", "no", "n", "f", "不可", "×", "\u3044\u3044\u3048", "off", "希望"].includes(t)) return false;
-  return defaultVal;
+  return null;
 }
 
 export const BUILTIN_SHIFT_CODES: ReadonlySet<string> = new Set([
@@ -252,30 +265,101 @@ export function parseNursesCsv(text: string): {
           .filter(Boolean) as NurseSkill[])
       : [];
 
-    const yearsExp = parseInt(getCol(row, "yearsexp", "経験年数", "年数") ?? "5", 10) || 5;
-    const contractPreset = getCol(row, "contractpreset", "契約形態", "勤務区分") as ContractPresetId | undefined;
-    const nightOk = parseBooleanToken(getCol(row, "nightok", "夜勤可否", "夜勤可"), true);
+    const yearsExpRaw = getCol(row, "yearsexp", "経験年数", "年数");
+    let yearsExp = 0;
+    if (yearsExpRaw !== undefined && yearsExpRaw !== "") {
+      const parsedExp = parseStrictInt(yearsExpRaw);
+      if (parsedExp === null || parsedExp < 0) {
+        errors.push(`行 ${r + 1}: 経験年数 "${yearsExpRaw}" \u306f0以上\u306e整数\u3092指定\u3057\u3066\u304f\u3060\u3055\u3044。`);
+        continue;
+      }
+      yearsExp = parsedExp;
+    }
 
-    const maxMonthlyNightShiftsRaw = getCol(row, "maxmonthlynightshifts", "月間夜勤上限", "夜勤上限");
-    const maxMonthlyNightShifts = maxMonthlyNightShiftsRaw ? parseInt(maxMonthlyNightShiftsRaw, 10) : undefined;
+    const contractPresetRaw = getCol(row, "contractpreset", "契約形態", "勤務区分");
+    let contractPreset: ContractPresetId | undefined;
+    if (contractPresetRaw !== undefined && contractPresetRaw !== "") {
+      const validPreset = CONTRACT_PRESETS.find((p) => p.id === contractPresetRaw);
+      if (!validPreset) {
+        errors.push(`行 ${r + 1}: 未定義\u306e契約形態 "${contractPresetRaw}" \u3067\u3059。`);
+        continue;
+      }
+      contractPreset = validPreset.id;
+    }
 
-    const minMonthlyDaysOffRaw = getCol(row, "minmonthlydaysoff", "最小公休数", "公休数");
-    const minMonthlyDaysOff = minMonthlyDaysOffRaw ? parseInt(minMonthlyDaysOffRaw, 10) : undefined;
+    const nightOkRaw = getCol(row, "nightok", "夜勤可否", "夜勤可");
+    const nightOk = parseBooleanToken(nightOkRaw, true);
+    if (nightOk === null) {
+      errors.push(`行 ${r + 1}: 夜勤可否 "${nightOkRaw}" \u304c不正\u3067\u3059 (true/false/1/0/可/不可)。`);
+      continue;
+    }
 
-    const minMonthlyWorkDaysRaw = getCol(row, "minmonthlyworkdays", "最小勤務日数");
-    const minMonthlyWorkDays = minMonthlyWorkDaysRaw ? parseInt(minMonthlyWorkDaysRaw, 10) : undefined;
+    const parseOptContractInt = (
+      rawVal: string | undefined,
+      labelJa: string,
+      minValue = 0
+    ): number | undefined | "error" => {
+      if (rawVal === undefined || rawVal === "") return undefined;
+      const n = parseStrictInt(rawVal);
+      if (n === null || n < minValue) {
+        errors.push(`行 ${r + 1}: ${labelJa} "${rawVal}" \u306f${minValue}以上\u306e整数\u3092指定\u3057\u3066\u304f\u3060\u3055\u3044。`);
+        return "error";
+      }
+      return n;
+    };
 
-    const maxMonthlyWorkDaysRaw = getCol(row, "maxmonthlyworkdays", "最大勤務日数");
-    const maxMonthlyWorkDays = maxMonthlyWorkDaysRaw ? parseInt(maxMonthlyWorkDaysRaw, 10) : undefined;
+    const maxMonthlyNightShifts = parseOptContractInt(
+      getCol(row, "maxmonthlynightshifts", "月間夜勤上限", "夜勤上限"),
+      "月間夜勤上限",
+      0
+    );
+    if (maxMonthlyNightShifts === "error") continue;
 
-    const maxConsecutiveWorkDaysRaw = getCol(row, "maxconsecutiveworkdays", "最大連勤日数", "連勤上限");
-    const maxConsecutiveWorkDays = maxConsecutiveWorkDaysRaw ? parseInt(maxConsecutiveWorkDaysRaw, 10) : undefined;
+    const minMonthlyDaysOff = parseOptContractInt(
+      getCol(row, "minmonthlydaysoff", "最小公休数", "公休数"),
+      "最小公休数",
+      0
+    );
+    if (minMonthlyDaysOff === "error") continue;
 
-    const weekdayOnly = parseBooleanToken(getCol(row, "weekdayonly", "平日専従", "平日\u306E\u307F"), false);
-    const holidaysOff = parseBooleanToken(getCol(row, "holidaysoff", "祝日休", "祝日休\u307F"), false);
+    const minMonthlyWorkDays = parseOptContractInt(
+      getCol(row, "minmonthlyworkdays", "最小勤務日数"),
+      "最小勤務日数",
+      0
+    );
+    if (minMonthlyWorkDays === "error") continue;
+
+    const maxMonthlyWorkDays = parseOptContractInt(
+      getCol(row, "maxmonthlyworkdays", "最大勤務日数"),
+      "最大勤務日数",
+      0
+    );
+    if (maxMonthlyWorkDays === "error") continue;
+
+    const maxConsecutiveWorkDays = parseOptContractInt(
+      getCol(row, "maxconsecutiveworkdays", "最大連勤日数", "連勤上限"),
+      "最大連勤日数",
+      1
+    );
+    if (maxConsecutiveWorkDays === "error") continue;
+
+    const weekdayOnlyRaw = getCol(row, "weekdayonly", "平日専従", "平日\u306E\u307F");
+    const weekdayOnly = parseBooleanToken(weekdayOnlyRaw, false);
+    if (weekdayOnly === null) {
+      errors.push(`行 ${r + 1}: 平日専従 "${weekdayOnlyRaw}" \u304c不正\u3067\u3059 (true/false/1/0)。`);
+      continue;
+    }
+
+    const holidaysOffRaw = getCol(row, "holidaysoff", "祝日休", "祝日休\u307F");
+    const holidaysOff = parseBooleanToken(holidaysOffRaw, false);
+    if (holidaysOff === null) {
+      errors.push(`行 ${r + 1}: 祝日休 "${holidaysOffRaw}" \u304c不正\u3067\u3059 (true/false/1/0)。`);
+      continue;
+    }
 
     const prevMonthShiftsRaw = getCol(row, "prevmonthshifts", "前月最終勤務", "前月末\u30B7\u30D5\u30C8") ?? "";
     let prevMonthShifts: ShiftCode[] = [];
+    let hasInvalidPrevShift = false;
     if (prevMonthShiftsRaw) {
       const tokens = prevMonthShiftsRaw
         .split(/[;,]/)
@@ -286,11 +370,13 @@ export function parseNursesCsv(text: string): {
         if (parsed) {
           prevMonthShifts.push(parsed);
         } else {
-          warnings.push(`行 ${r + 1}: 前月\u30B7\u30D5\u30C8 "${tok}" \u306F未定義\u306E\u305F\u3081公休(O)\u3068\u3057\u3066扱\u3044\u307E\u3057\u305F。`);
-          prevMonthShifts.push("O");
+          errors.push(`行 ${r + 1}: 前月\u30b7\u30d5\u30c8 "${tok}" \u306f無効\u307e\u305f\u306f未定義\u3067\u3059。`);
+          hasInvalidPrevShift = true;
+          break;
         }
       }
     }
+    if (hasInvalidPrevShift) continue;
     while (prevMonthShifts.length < 7) {
       prevMonthShifts.unshift("O");
     }
@@ -303,7 +389,7 @@ export function parseNursesCsv(text: string): {
       name,
       kana,
       skills,
-      contractPreset: contractPreset || undefined,
+      contractPreset,
       nightOk,
       maxMonthlyNightShifts,
       minMonthlyDaysOff,
@@ -315,10 +401,11 @@ export function parseNursesCsv(text: string): {
       yearsExp,
       prevMonthShifts,
       yearly36Stats: {
-        past11MonthsOvertimeHours: Math.min(300, yearsExp * 15 + 60),
-        currentMonthOvertimeHours: 0,
-        annualProjectedHours: Math.min(300, yearsExp * 15 + 60),
-        specialExtensionMonthsCount: 0,
+        prev11MonthsWorkDays: 0,
+        prev11MonthsNightShifts: 0,
+        prev11MonthsOvertimeHours: 0,
+        recent2MonthsAvgOvertime: 0,
+        paidLeaveDaysTaken: 0,
       },
     });
   }
@@ -392,9 +479,9 @@ export function parseRequestsCsv(
       continue;
     }
 
-    const day = parseInt(dayRaw, 10);
-    if (isNaN(day) || day < 1 || day > 31) {
-      errors.push(`行 ${r + 1}: 不正\u306A日付 "${dayRaw}" \u3067\u3059 (1〜31\u306E範囲\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044)。`);
+    const day = parseStrictInt(dayRaw);
+    if (day === null || day < 1 || day > 31) {
+      errors.push(`行 ${r + 1}: 不正\u306A日付 "${dayRaw}" \u3067\u3059 (1〜31\u306E整数\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044)。`);
       continue;
     }
 
@@ -406,7 +493,12 @@ export function parseRequestsCsv(
       continue;
     }
 
-    const isHard = parseBooleanToken(getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "確定", "必須"), false);
+    const isHardRaw = getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "確定", "必須");
+    const isHard = parseBooleanToken(isHardRaw, false);
+    if (isHard === null) {
+      errors.push(`行 ${r + 1}: isHard "${isHardRaw}" \u304c不正\u3067\u3059 (true/false/1/0/確定/希望)。`);
+      continue;
+    }
     const reason = getCol(row, "reason", "理由", "備考") ?? (isHard ? "確定希望" : "希望\u30B7\u30D5\u30C8");
 
     preferences.push({
@@ -475,12 +567,34 @@ export function parseRelationsCsv(
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const typeRaw = getCol(row, "type", "種別", "\u30BF\u30A4\u30D7") ?? "ng_pair";
+    const typeRaw = getCol(row, "type", "種別", "\u30BF\u30A4\u30D7");
     const nurseA = getCol(row, "nursea", "\u30B9\u30BF\u30C3\u30D5a", "看護師a", "\u30DA\u30A21");
     const nurseB = getCol(row, "nurseb", "\u30B9\u30BF\u30C3\u30D5b", "看護師b", "\u30DA\u30A22");
 
     if (!nurseA || !nurseB) {
       warnings.push(`行 ${r + 1}: nurseA\u307E\u305F\u306FnurseB\u304C空\u306E\u305F\u3081\u30B9\u30AD\u30C3\u30D7\u3057\u307E\u3057\u305F。`);
+      continue;
+    }
+
+    const normalizedType = typeRaw?.trim().toLowerCase() ?? "";
+    let type: "ng_pair" | "preceptor" | null = null;
+    if (
+      normalizedType === "ng_pair" ||
+      normalizedType === "ng" ||
+      normalizedType === "相性ng" ||
+      normalizedType === "ng\u30da\u30a2"
+    ) {
+      type = "ng_pair";
+    } else if (
+      normalizedType === "preceptor" ||
+      normalizedType === "指導" ||
+      normalizedType === "指導\u30da\u30a2" ||
+      normalizedType === "\u30d7\u30ea\u30bb\u30d7\u30bf\u30fc"
+    ) {
+      type = "preceptor";
+    }
+    if (!type) {
+      errors.push(`行 ${r + 1}: \u30da\u30a2制約種別 "${typeRaw ?? ""}" \u304c不正\u307e\u305f\u306f空\u3067\u3059 (ng_pair / preceptor)。`);
       continue;
     }
 
@@ -500,7 +614,6 @@ export function parseRelationsCsv(
       }
     }
 
-    const type = typeRaw.includes("preceptor") || typeRaw.includes("指導") ? "preceptor" : "ng_pair";
     const shiftsRaw = getCol(row, "shifts", "対象\u30B7\u30D5\u30C8", "\u30B7\u30D5\u30C8");
     const rawTokens = shiftsRaw
       ? shiftsRaw
@@ -523,7 +636,12 @@ export function parseRelationsCsv(
     }
     if (hasUnknownShift) continue;
 
-    const isHard = parseBooleanToken(getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "必須"), true);
+    const isHardRaw = getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "必須");
+    const isHard = parseBooleanToken(isHardRaw, true);
+    if (isHard === null) {
+      errors.push(`行 ${r + 1}: isHard "${isHardRaw}" \u304c不正\u3067\u3059 (true/false/1/0)。`);
+      continue;
+    }
     const reason = getCol(row, "reason", "理由", "備考") ?? (type === "preceptor" ? "\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2" : "相性NG\u30DA\u30A2");
 
     relations.push({
@@ -568,8 +686,8 @@ export function validateNurseDataset(
     if (!nurseMap.has(pref.nurseId)) {
       errors.push(`希望\u30B7\u30D5\u30C8\u306E看護師ID "${pref.nurseId}" \u306F\u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u307E\u305B\u3093。`);
     }
-    if (pref.day < 1 || pref.day > numDays) {
-      errors.push(`希望\u30B7\u30D5\u30C8\u306E日付 "${pref.day}" \u306F月\u306E日数(1〜${numDays})\u306E範囲外\u3067\u3059。`);
+    if (!Number.isInteger(pref.day) || pref.day < 1 || pref.day > numDays) {
+      errors.push(`希望\u30B7\u30D5\u30C8\u306E日付 "${pref.day}" \u306F月\u306E日数(1〜${numDays})\u306E整数範囲外\u3067\u3059。`);
     }
     if (!parseShiftToken(pref.shift, customShiftCodes)) {
       errors.push(`希望\u30B7\u30D5\u30C8\u306E\u30B7\u30D5\u30C8\u30B3\u30FC\u30C9 "${pref.shift}" \u306F無効\u307E\u305F\u306F未定義\u3067\u3059。`);

@@ -17,6 +17,7 @@ import {
   clearNurseContractFromState,
   createDefaultShiftAliases,
   doesNurseMatchAttribute,
+  getBaseOdenShift,
   getEffectiveIncludedAliases,
   getJapaneseHolidayName,
   removeCustomShiftFromState,
@@ -26,12 +27,17 @@ import {
   applyContractPresetToNurse,
   getShiftTransitionMatrix,
   applyShiftTransitionToConfig,
+  type CustomConstraintRule,
+  type CustomShiftDef,
+  type NurseProfile,
+  type NurseSchedulingState,
 } from "../examples/web-demo/apps/ai-shift/types.js";
 import {
   applyChatOperationsToState,
   checkGeminiNanoAvailability,
   convertStage2ToolToOperation,
   createGeminiNanoManager,
+  resolveNurseFromText,
   STAGE1_ROUTER_SCHEMA,
   STAGE1_ROUTER_SYSTEM_PROMPT,
   CUSTOM_SHIFT_TOOLS_SCHEMA,
@@ -45,6 +51,15 @@ import {
   buildCategoryDynamicDictionary,
   verifyExecutionAgainstRequest,
 } from "../examples/web-demo/apps/ai-shift/nano-client.js";
+
+import {
+  buildDiagnosticCheckOutcome,
+  collectConfigFromDocument,
+  parseStrictConfigInputs,
+  parseStrictContractInputs,
+  buildCsvImportFeedback,
+  mergeShiftAliasesPreservingCustom,
+} from "../examples/web-demo/apps/ai-shift/main.js";
 
 describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", () => {
   it("solves default 30-nurse 30-day schedule to Optimal with HiGHS and passes verify()", async () => {
@@ -123,8 +138,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const operations = [
       convertStage2ToolToOperation(
         {
-          tool_name: "add_request",
-          args: { nurseNameOrId: "佐藤 美咲", startDay: 12, endDay: 12, shift: "O", isHard: true },
+          tool_name: "add_request_day",
+          args: { nurseNameOrId: "佐藤 美咲", day: 12, shift: "O", isHard: true },
         },
         baseState
       )!,
@@ -434,7 +449,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // Turn 4: Training limited to at most 2 people per day.
     const applied4 = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
-        { tool_name: "add_daily_shift_cap", args: { shiftName: "新人研修", maxStaffPerDay: 2 } },
+        { tool_name: "add_daily_shift_cap", args: { shiftName: "新人研修", attribute: "all", boundType: "max", staffCount: 2 } },
         state
       )!,
     ]);
@@ -629,7 +644,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           },
           {
             tool_name: "add_daily_shift_cap",
-            args: { shiftName: "新人研修", maxStaffPerDay: 2 },
+            args: { shiftName: "新人研修", attribute: "all", boundType: "max", staffCount: 2 },
           },
         ],
       };
@@ -1041,6 +1056,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
                   tool_name: "add_request_range",
                   args: {
                     nurseNameOrId: "小林",
+                    startDay: 1,
                     endDay: 17,
                     shift: "O",
                     isHard: true,
@@ -1182,14 +1198,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       convertStage2ToolToOperation(
         {
           tool_name: "add_request_range",
-          args: { nurseNameOrId: "N09", endDay: 17, shift: "O", isHard: true },
+          args: { nurseNameOrId: "N09", startDay: 1, endDay: 17, shift: "O", isHard: true },
         },
         state
       )!,
       convertStage2ToolToOperation(
         {
           tool_name: "set_nurse_contract",
-          args: { nurseNameOrId: "N09", minWorkDays: 8 },
+          args: { nurseNameOrId: "N09", item: "minWorkDays", value: 8 },
         },
         state
       )!,
@@ -1318,9 +1334,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           tool_name: "add_daily_shift_cap",
           args: {
             shiftName: "祭\u308a",
-            minStaffPerDay: 2,
-            maxStaffPerDay: 2,
             attribute: "newcomer",
+            boundType: "exact",
+            staffCount: 2,
           },
         },
         state
@@ -1359,7 +1375,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       convertStage2ToolToOperation(
         {
           tool_name: "add_request_range",
-          args: { nurseNameOrId: "山下", endDay: 18, shift: "O", isHard: true },
+          args: { nurseNameOrId: "山下", startDay: 1, endDay: 18, shift: "O", isHard: true },
         },
         state
       )!,
@@ -1373,7 +1389,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       convertStage2ToolToOperation(
         {
           tool_name: "set_nurse_contract",
-          args: { nurseNameOrId: "山下", minWorkDays: 0 },
+          args: { nurseNameOrId: "山下", item: "minWorkDays", value: 0 },
         },
         state
       )!,
@@ -1554,7 +1570,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       )!,
       convertStage2ToolToOperation(
         {
-          tool_name: "add_request",
+          tool_name: "add_request_day",
           args: {
             nurseNameOrId: "N10",
             day: 10,
@@ -1566,7 +1582,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       )!,
       convertStage2ToolToOperation(
         {
-          tool_name: "add_request",
+          tool_name: "add_request_day",
           args: {
             nurseNameOrId: "N10",
             day: 12,
@@ -1834,7 +1850,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // 3. Check granular shift selection in add_request (custom shift name "新人研修" -> "T")
     const opCustomPin = convertStage2ToolToOperation(
       {
-        tool_name: "add_request",
+        tool_name: "add_request_day",
         args: { nurseNameOrId: "N01", day: 12, shift: "新人研修", isHard: true },
       },
       state
@@ -1898,7 +1914,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           {
             tools: [
               {
-                tool_name: "add_request",
+                tool_name: "add_request_day",
                 args: { nurseNameOrId: "N02", day: 15, shift: "O", isHard: true },
               },
             ],
@@ -2120,7 +2136,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           {
             tools: [
               {
-                tool_name: "add_request",
+                tool_name: "add_request_day",
                 args: { nurseNameOrId: "徳川家康", day: 12, shift: "O", isHard: true },
               },
             ],
@@ -2173,7 +2189,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           {
             tools: [
               {
-                tool_name: "add_request",
+                tool_name: "add_request_day",
                 args: { nurseNameOrId: "N01", day: 12, shift: "O", isHard: true },
               },
             ],
@@ -3108,6 +3124,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         label: "特別準夜",
         shortLabel: "特準",
         baseShift: "E",
+        timeRange: "16:30–01:00",
+        colorClass: "shift-custom",
+        countsAsWorkDay: true,
+        overtimeHoursPerShift: 0.5,
       })
     ).toEqual(["W", "EN"]);
     expect(
@@ -3116,6 +3136,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         label: "特別深夜",
         shortLabel: "特深",
         baseShift: "N",
+        timeRange: "00:30–09:00",
+        colorClass: "shift-custom",
+        countsAsWorkDay: true,
+        overtimeHoursPerShift: 0.5,
       })
     ).toEqual(["W", "EN"]);
     expect(
@@ -3124,11 +3148,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         label: "特別日勤",
         shortLabel: "特日",
         baseShift: "D",
+        timeRange: "08:30–17:00",
+        colorClass: "shift-custom",
+        countsAsWorkDay: true,
+        overtimeHoursPerShift: 0.5,
       })
     ).toEqual(["W"]);
 
     // 2. Reject unknown/unregistered shift names in add_request / add_calendar_request (4359929248)
     const unknownCalendarOp = convertStage2ToolToOperation(
+      // @ts-expect-error intentional legacy action-based payload for negative validation test
       { action: "add_calendar_request", nurseName: "N01", day: 5, shift: "早番" },
       baseState
     );
@@ -3188,8 +3217,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       { op: "add_daily_shift_cap", shiftName: "CONF", maxStaff: 1 },
     ]).updatedState;
     expect(dirtyState.customRules.some((r) => r.kind === "pin_shift" && r.shift === "CONF")).toBe(true);
-    expect(dirtyState.relations.some((r) => r.id.startsWith("chat_ng_"))).toBe(true);
-    expect(dirtyState.relations.some((r) => r.id.startsWith("chat_preceptor_"))).toBe(true);
+    expect(dirtyState.relations.some((r) => r.id?.startsWith("chat_ng_"))).toBe(true);
+    expect(dirtyState.relations.some((r) => r.id?.startsWith("chat_preceptor_"))).toBe(true);
 
     const clearedRulesState = applyChatOperationsToState(dirtyState, [
       { op: "clear_custom_rules" },
@@ -3197,8 +3226,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(clearedRulesState.customRules.length).toBe(0);
     expect((clearedRulesState.customShiftDefs ?? []).length).toBe(0);
     expect(clearedRulesState.preferences.some((r) => r.shift === "CONF")).toBe(false);
-    expect(clearedRulesState.relations.some((r) => r.id.startsWith("chat_ng_"))).toBe(false);
-    expect(clearedRulesState.relations.some((r) => r.id.startsWith("chat_preceptor_"))).toBe(false);
+    expect(clearedRulesState.relations.some((r) => r.id?.startsWith("chat_ng_"))).toBe(false);
+    expect(clearedRulesState.relations.some((r) => r.id?.startsWith("chat_preceptor_"))).toBe(false);
     const n02AfterClear = clearedRulesState.nurses.find((n) => n.id === "N02")!;
     expect(n02AfterClear.maxMonthlyNightShifts).toBe(2);
     expect(n02AfterClear.forbiddenShifts).toEqual(["E"]);
@@ -3313,9 +3342,27 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(diagQuota.conflicts.some((c) => c.name.startsWith("quota_min_"))).toBe(true);
 
     // 10. O-based custom shifts in prevMonthShifts do not count toward carryover work streak (4362997688)
-    const leaveCustomDefs = [
-      { code: "CONF", label: "学会出張", shortLabel: "学", baseShift: "O" as const },
-      { code: "NIGHT_TR", label: "夜勤研修", shortLabel: "夜研", baseShift: "N" as const },
+    const leaveCustomDefs: CustomShiftDef[] = [
+      {
+        code: "CONF",
+        label: "学会出張",
+        shortLabel: "学",
+        baseShift: "O",
+        timeRange: "終日 (休暇)",
+        colorClass: "shift-custom",
+        countsAsWorkDay: false,
+        overtimeHoursPerShift: 0,
+      },
+      {
+        code: "NIGHT_TR",
+        label: "夜勤研修",
+        shortLabel: "夜研",
+        baseShift: "N",
+        timeRange: "00:30–09:00",
+        colorClass: "shift-custom",
+        countsAsWorkDay: true,
+        overtimeHoursPerShift: 0.5,
+      },
     ];
     expect(getPrevMonthTailWorkStreak(["D", "D", "CONF"], leaveCustomDefs)).toBe(0);
     expect(getPrevMonthTailWorkStreak(["CONF", "D", "NIGHT_TR"], leaveCustomDefs)).toBe(2);
@@ -3635,11 +3682,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const planTurn2c = await manager.extractPlan("\u3084\u3063\u3071\u308a少\u3057\u3060\u3051", state);
       expect(planTurn2c.nonToolReason).toBe("clarify");
 
-      // Turn 2d: Stage 1 output cannot be parsed while the user is answering the held request. The synthetic
-      // fallback `question` route must NOT be treated as an intent switch, so the pending entry is retained (4368219493).
+      // Turn 2d: Stage 1 output cannot be parsed while the user is answering the held request.
+      // Router failure propagates honestly without clearing the pending clarification entry.
       turn1RawOutput = "not a json response";
-      const planTurn2dRouterFailure = await manager.extractPlan("勤務下限\u306f", state);
-      expect(planTurn2dRouterFailure.operations).toEqual([]);
+      await expect(manager.extractPlan("勤務下限\u306f", state)).rejects.toThrow();
       turn1RawOutput = null;
 
       // Turn 4: User answers "min work days is 15" after repeated clarification rounds and a failed routing attempt
@@ -4022,7 +4068,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           shortLabel: "研",
           label: "研修",
           baseShift: "D",
-          timeBand: "day",
+          timeRange: "09:00–17:00",
+          colorClass: "shift-custom",
+          countsAsWorkDay: true,
+          overtimeHoursPerShift: 0.5,
           includedInAliases: ["W"],
         },
       ],
@@ -4062,5 +4111,610 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // Nov 1, 2026 is Sunday (weekend)
     expect(offConstraint).toBeDefined();
     expect(offConstraint?.labelJa).toContain("公休(O) >= 5名");
+  });
+
+  it("enforces strict domain validators in types.ts without silent fallbacks (Issue #321)", () => {
+    // 1. getBaseOdenShift throws on unknown shift code instead of defaulting to "D"
+    expect(() => getBaseOdenShift("UNKNOWN_X")).toThrow();
+    expect(getBaseOdenShift("EN")).toBe("E");
+
+    // 2. resolveDaysBySelector throws on inverted/out-of-range/non-integer days
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "range", startDay: 15, endDay: 10 })
+    ).toThrow();
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "range", startDay: 0, endDay: 5 })
+    ).toThrow();
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "range", startDay: 1, endDay: 31 })
+    ).toThrow();
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "range", startDay: 1.5, endDay: 5 })
+    ).toThrow();
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "days", days: [1, 31] })
+    ).toThrow();
+    expect(() =>
+      resolveDaysBySelector(2026, 11, 30, { kind: "days", days: [1.5] })
+    ).toThrow();
+
+    // 3. doesNurseMatchAttribute returns false on empty / delimiter-only attributes
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+    const n01 = baseState.nurses[0]!;
+    expect(doesNurseMatchAttribute(n01, "")).toBe(false);
+    expect(doesNurseMatchAttribute(n01, "   ")).toBe(false);
+    expect(doesNurseMatchAttribute(n01, ",")).toBe(false);
+    expect(doesNurseMatchAttribute(n01, " , | ")).toBe(false);
+    expect(doesNurseMatchAttribute(n01, "all")).toBe(true);
+
+    // 4. applyContractPresetToNurse throws on unknown presetId
+    // @ts-expect-error intentional unknown presetId to verify strict runtime rejection
+    expect(() => applyContractPresetToNurse(n01, "nonexistent_preset")).toThrow();
+  });
+
+  it("enforces strict solver diagnosis, zero overtime default, unclamped bounds, and staffing_rule shift validation (Issue #321)", async () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+    // 1. diagnoseNurseScheduleWithHiGHS with assumeInfeasibleFromMip does NOT fabricate coupled_consec_and_transitions
+    const cleanDiagState: NurseSchedulingState = {
+      ...baseState,
+      config: {
+        ...baseState.config,
+        numDays: 2,
+        weekdayDayStaff: 1,
+        weekendDayStaff: 1,
+        eveningStaff: 1,
+        nightStaff: 1,
+        minMonthlyDaysOff: 0,
+        minMonthlyWorkDays: 0,
+        requireWeekendOff: false,
+        enforce36Agreement: false,
+        enforceSkillCoverage: false,
+      },
+      preferences: [],
+      relations: [],
+      customRules: [],
+    };
+    const diagNoFake = await diagnoseNurseScheduleWithHiGHS(cleanDiagState, { assumeInfeasibleFromMip: true });
+    expect(diagNoFake.status).toBe("Unsat");
+    expect(diagNoFake.conflicts).toEqual([]);
+    expect(diagNoFake.rawNames).toEqual([]);
+
+    // 2. Empty or invalid staffing_rule.shifts is rejected consistently across solver & evaluator
+    const emptyShiftsRuleState: NurseSchedulingState = {
+      ...baseState,
+      customRules: [
+        {
+          id: "bad_empty_shifts",
+          kind: "staffing_rule",
+          enabled: true,
+          description: "empty shifts",
+          shifts: [],
+          attribute: "all",
+          dayType: "all",
+          minCount: 1,
+        },
+      ],
+    };
+    expect(() => getRequiredDailyCoverage(emptyShiftsRuleState, 1)).toThrow();
+    expect(() => buildNurseWashiModel(emptyShiftsRuleState, { solver: "highs" })).toThrow();
+    const dummySched: Record<string, string[]> = {};
+    for (const n of baseState.nurses) {
+      dummySched[n.id] = new Array(baseState.config.numDays).fill("D");
+    }
+    expect(() => evaluateNurseSchedule(emptyShiftsRuleState, dummySched)).toThrow();
+
+    // 3. Missing yearly36Stats defaults past11MonthsOvertimeHours to 0 (never 180)
+    const noStatsState: NurseSchedulingState = {
+      ...baseState,
+      nurses: baseState.nurses.map((n): NurseProfile => {
+        if (n.id !== "N01") return n;
+        return {
+          ...n,
+          // @ts-expect-error intentional missing-stats runtime fixture to verify 0h fallback (no 180h guess)
+          yearly36Stats: undefined,
+        };
+      }),
+    };
+    const builtNoStats = buildNurseWashiModel(noStatsState, { solver: "highs" });
+    const laborMeta = builtNoStats.constraintMeta.get("labor36_overtime_N01");
+    expect(laborMeta?.labelJa).toContain("過去11\u30f6月累計:0h");
+    const evalNoStats = evaluateNurseSchedule(noStatsState, dummySched);
+    const n01Sum = evalNoStats.nurseSummaries["N01"]!;
+    expect(n01Sum.projectedAnnualOvertimeHours).toBe(n01Sum.estMonthOvertimeHours);
+
+    // 4. Carryover streak exceeding maxConsecutiveWorkDays is NOT silently clamped (model becomes Infeasible)
+    const overStreakState: NurseSchedulingState = {
+      ...baseState,
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N01" ? { ...n, prevMonthShifts: ["D", "D", "D", "D", "D", "D"] } : n
+      ),
+    };
+    const overStreakRes = await solveNurseScheduleWithWashi(overStreakState);
+    expect(["Infeasible", "Unsat"]).toContain(overStreakRes.status);
+
+    // 5. Negative maxMonthlyWorkDays is NOT silently clamped to 0 (model becomes Infeasible)
+    const negWorkDaysState: NurseSchedulingState = {
+      ...baseState,
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N01" ? { ...n, maxMonthlyWorkDays: -1 } : n
+      ),
+    };
+    const negWorkRes = await solveNurseScheduleWithWashi(negWorkDaysState);
+    expect(["Infeasible", "Unsat"]).toContain(negWorkRes.status);
+  });
+
+  it("enforces strict LanguageModel availability, single create(), clone(), and honest Turn 1/2/3 error propagation (Issue #321)", async () => {
+    interface MockCreateOpts {
+      initialPrompts?: Array<{ role: string; content: string }>;
+      expectedOutputs?: Array<{ type: string; languages: string[] }>;
+    }
+    const g = globalThis as Record<string, unknown>;
+    const origLM = g.LanguageModel;
+    try {
+      const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+      // 1a. Explicit "unavailable" is honored even when create exists; legacy capabilities / create-only detection removed
+      g.LanguageModel = {
+        async availability() {
+          return "unavailable";
+        },
+        async create() {
+          throw new Error("should not be called");
+        },
+      };
+      expect(await checkGeminiNanoAvailability()).toBe("unavailable");
+
+      // 1b. Missing availability() with capabilities()/create() does NOT fabricate "available"
+      g.LanguageModel = {
+        async capabilities() {
+          return { available: "readily" };
+        },
+        async create() {
+          throw new Error("should not be called");
+        },
+      };
+      expect(await checkGeminiNanoAvailability()).toBe("unavailable");
+
+      // 2. initialize() sends language options + initialPrompts in a single strict create(), and rejects without re-calling availability()
+      let availCalls = 0;
+      const createCalls: MockCreateOpts[] = [];
+      g.LanguageModel = {
+        async availability() {
+          availCalls++;
+          return "available";
+        },
+        async create(opts: MockCreateOpts) {
+          createCalls.push(opts);
+          throw new Error("create failed strictly");
+        },
+      };
+      const failInitMgr = createGeminiNanoManager();
+      await expect(failInitMgr.initialize()).rejects.toThrow("create failed strictly");
+      expect(availCalls).toBe(0);
+      expect(createCalls.length).toBe(1);
+      expect(createCalls[0].initialPrompts?.[0]?.role).toBe("system");
+      expect(createCalls[0].expectedOutputs?.[0]?.languages).toEqual(["ja"]);
+
+      // 3. Missing/failing clone() rejects instead of mutating shared base sessions
+      let basePromptCalled = false;
+      let initStage: "no_consult_clone" | "no_router_clone" = "no_consult_clone";
+      g.LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create(opts: MockCreateOpts) {
+          const isRouter = String(opts?.initialPrompts?.[0]?.content ?? "").includes("\u30d7\u30e9\u30f3\u30ca\u30fc");
+          if (initStage === "no_consult_clone" && !isRouter) {
+            return {
+              async prompt() {
+                basePromptCalled = true;
+                return "{}";
+              },
+              destroy() {},
+            };
+          }
+          if (initStage === "no_router_clone" && isRouter) {
+            return {
+              async prompt() {
+                basePromptCalled = true;
+                return "{}";
+              },
+              destroy() {},
+            };
+          }
+          const okSession = {
+            async prompt() {
+              return "{}";
+            },
+            async clone() {
+              return okSession;
+            },
+            destroy() {},
+          };
+          return okSession;
+        },
+      };
+      const noConsultCloneMgr = createGeminiNanoManager();
+      await expect(noConsultCloneMgr.initialize()).rejects.toThrow(/clone/i);
+
+      initStage = "no_router_clone";
+      const noCloneMgr = createGeminiNanoManager();
+      await noCloneMgr.initialize();
+      await expect(noCloneMgr.extractPlan("N01\u306e12日\u3092休\u307f\u306b\u3057\u3066", baseState)).rejects.toThrow(/clone/i);
+      expect(basePromptCalled).toBe(false);
+
+      // 4. Turn 1, Turn 2, Turn 3 errors & AbortError propagate honestly
+      let mode: "turn1_err" | "turn2_err" | "turn3_err" | "turn3_abort" = "turn1_err";
+      g.LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create() {
+          const makeSession = () => ({
+            async prompt(_input: string, opts?: { responseConstraint?: unknown }) {
+              if (opts?.responseConstraint === STAGE1_ROUTER_SCHEMA) {
+                if (mode === "turn1_err") throw new Error("router boom");
+                return JSON.stringify({
+                  thought: "route",
+                  routes: [{ tool_type: "staff_calendar", instruction: "N01\u306e12日\u3092公休\u306b" }],
+                });
+              }
+              if (mode === "turn2_err") {
+                throw new Error("extractor boom");
+              }
+              return JSON.stringify({ tools: [{ tool_name: "none", args: {} }] });
+            },
+            promptStreaming() {
+              if (mode === "turn3_abort") {
+                const e = new Error("aborted");
+                e.name = "AbortError";
+                throw e;
+              }
+              if (mode === "turn3_err") {
+                throw new Error("stream boom");
+              }
+              return (async function* () {
+                yield "ok";
+              })();
+            },
+            async clone() {
+              return makeSession();
+            },
+            destroy() {},
+          });
+          return makeSession();
+        },
+      };
+      const errMgr = createGeminiNanoManager();
+      await errMgr.initialize();
+
+      mode = "turn1_err";
+      await expect(errMgr.extractPlan("N01\u306e12日\u3092休\u307f\u306b\u3057\u3066", baseState)).rejects.toThrow("router boom");
+
+      mode = "turn2_err";
+      await expect(errMgr.extractPlan("N01\u306e12日\u3092休\u307f\u306b\u3057\u3066", baseState)).rejects.toThrow("extractor boom");
+
+      mode = "turn3_err";
+      await expect(
+        (async () => {
+          for await (const _chunk of errMgr.streamConsultationReply("教\u3048\u3066", [], baseState, null)) {
+            // consume
+          }
+        })()
+      ).rejects.toThrow("stream boom");
+
+      mode = "turn3_abort";
+      await expect(
+        (async () => {
+          for await (const _chunk of errMgr.streamConsultationReply("教\u3048\u3066", [], baseState, null)) {
+            // consume
+          }
+        })()
+      ).rejects.toMatchObject({ name: "AbortError" });
+    } finally {
+      g.LanguageModel = origLM;
+    }
+  });
+
+  it("enforces strict nurse resolution, day parsing, Stage 2 schemas, and state op rejections (Issue #321)", () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+    const dupSurnameState: NurseSchedulingState = {
+      ...baseState,
+      nurses: [
+        { ...baseState.nurses[0]!, id: "N01", name: "佐藤 美咲", kana: "\u3055\u3068\u3046 \u307f\u3055\u304d" },
+        { ...baseState.nurses[1]!, id: "N02", name: "佐藤 花子", kana: "\u3055\u3068\u3046 \u306f\u306a\u3053" },
+        { ...baseState.nurses[2]!, id: "N03", name: "田中 一郎", kana: "\u305f\u306a\u304b \u3044\u3061\u308d\u3046" },
+      ],
+    };
+
+    // 1. resolveNurseFromText rejects ambiguous family name and partial substring matches
+    expect(resolveNurseFromText("佐藤", dupSurnameState.nurses)).toBeNull();
+    expect(resolveNurseFromText("佐", dupSurnameState.nurses)).toBeNull();
+    expect(resolveNurseFromText("佐藤 美咲", dupSurnameState.nurses)?.id).toBe("N01");
+    expect(resolveNurseFromText("田中", dupSurnameState.nurses)?.id).toBe("N03");
+    expect(resolveNurseFromText("N02", dupSurnameState.nurses)?.id).toBe("N02");
+    expect(resolveNurseFromText("\u3055\u3068\u3046 \u306f\u306a\u3053", dupSurnameState.nurses)?.id).toBe("N02");
+
+    // 2. Strict day validation in resolveDaysFromToolArgs
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_request_range", args: { nurseNameOrId: "N01", endDay: 5, shift: "O", isHard: true } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_request_range", args: { nurseNameOrId: "N01", startDay: 10, endDay: 5, shift: "O", isHard: true } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_request_day", args: { nurseNameOrId: "N01", day: 1.5, shift: "O", isHard: true } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_request_day", args: { nurseNameOrId: "N01", day: 31, shift: "O", isHard: true } },
+        baseState
+      )
+    ).toBeNull();
+
+    // 3. Reject legacy tool names, legacy params, and omitted required params
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_request", args: { nurseNameOrId: "N01", day: 12, shift: "O", isHard: true } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "forbid_shift", args: { nurseNameOrId: "N01", day: 12, shifts: ["N"] } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_daily_shift_cap", args: { shiftName: "D", maxStaffPerDay: 5 } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "set_nurse_contract", args: { nurseNameOrId: "N01", minWorkDays: 15 } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "set_staffing_rule", args: { skillName: "leader_cap", shift: "D", minCount: 2 } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_custom_shift", args: { shiftName: "研修", shift: "TR", shortLabel: "研", baseShift: "INVALID" } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_custom_shift", args: { shiftName: "研修", shift: "TR", shortLabel: "   " } },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        { tool_name: "add_ng_pair", args: { nurseA: "N01", nurseB: "N02", shifts: [] } },
+        baseState
+      )
+    ).toBeNull();
+
+    // 4. Schema-documented valid forms succeed: add_ng_pair omitted shifts defaults ["E", "N"], add_custom_shift accepts shortLabel
+    const validNgOp = convertStage2ToolToOperation(
+      { tool_name: "add_ng_pair", args: { nurseA: "N01", nurseB: "N02" } },
+      baseState
+    );
+    expect(validNgOp?.op).toBe("add_ng_pair");
+    if (validNgOp?.op === "add_ng_pair") {
+      expect(validNgOp.shifts).toEqual(["E", "N"]);
+    }
+    const validCustomOp = convertStage2ToolToOperation(
+      { tool_name: "add_custom_shift", args: { shiftName: "研修", shortLabel: "研", baseShift: "D" } },
+      baseState
+    );
+    expect(validCustomOp?.op).toBe("add_custom_shift");
+    if (validCustomOp?.op === "add_custom_shift") {
+      expect(validCustomOp.shortLabel).toBe("研");
+    }
+
+    // 5. applyChatOperationsToState surfaces rejectedLogs, stops partial skill deletion, preserves custom aliases
+    const customAliasState: NurseSchedulingState = {
+      ...baseState,
+      shiftAliases: [
+        ...(baseState.shiftAliases ?? createDefaultShiftAliases()),
+        { code: "CUSTOM_ALIAS", label: "任意\u30b0\u30eb\u30fc\u30d7", shortLabel: "任", shifts: ["D", "E"] },
+      ],
+    };
+    const opExec = applyChatOperationsToState(customAliasState, [
+      { op: "add_custom_shift", shiftName: "特別研修", shift: "SP_TR", shortLabel: "特", baseShift: "D" },
+      { op: "remove_skill_def", skillName: "呼吸" }, // partial substring must NOT match 人工呼吸器管理
+      { op: "allow_prev_month_shift", shiftName: "UNREGISTERED" }, // must NOT log fake success
+      // @ts-expect-error intentional invalid shift token to verify rejection instead of coercing to "D"
+      { op: "add_date_coverage", day: 5, shift: "X", minStaff: 2 },
+    ]);
+    expect(opExec.updatedState.shiftAliases?.some((a) => a.code === "CUSTOM_ALIAS")).toBe(true);
+    expect(opExec.updatedState.skillDefs?.some((s) => s.code === "ventilator")).toBe(true);
+    expect(opExec.appliedLogs.length).toBe(1);
+    expect(opExec.rejectedLogs.length).toBe(3);
+  });
+
+  it("enforces honest diagnostic outcomes, strict config/contract input parsing, alias preservation, and complete CSV feedback in main.ts (Issue #321)", () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+    // 1. Diagnostic check without a solved schedule MUST NOT fabricate status="Optimal" or validatedByWashi=true
+    const diagSatNoSchedule = buildDiagnosticCheckOutcome({
+      state: baseState,
+      diag: { status: "Sat", conflicts: [], rawNames: [] },
+      diagTimeMs: 25,
+      lastSolveOutcome: null,
+      currentSchedule: null,
+      currentEvaluation: null,
+    });
+    expect(diagSatNoSchedule.status).toBe("Sat");
+    expect(diagSatNoSchedule.validatedByWashi).toBe(false);
+    expect(diagSatNoSchedule.objectiveValue).toBeNull();
+    expect(diagSatNoSchedule.schedule).toBeNull();
+
+    // 2. Strict config form parser rejects non-integer / empty / negative inputs instead of falling back
+    const badCfg = parseStrictConfigInputs(
+      {
+        weekdayDayStaff: "abc",
+        weekendDayStaff: "7",
+        eveningStaff: "3",
+        nightStaff: "3",
+        maxConsecutiveWorkDays: "0",
+        minMonthlyDaysOff: "9",
+        minMonthlyWorkDays: "14",
+        maxMonthlyNightShifts: "8",
+        maxMonthlyOvertimeHours: "45",
+        maxAnnualOvertimeHours: "360",
+      },
+      baseState.config,
+      {
+        preserveCurrentSchedule: true,
+        enforceSkillCoverage: true,
+        enforcePreceptorPairs: false,
+        enforcePrevMonthCarryover: true,
+        enforce36Agreement: true,
+        requireWeekendOff: true,
+        enforceNgPairs: true,
+        enforceHardRequests: true,
+      },
+      {}
+    );
+    expect(badCfg.ok).toBe(false);
+    if (!badCfg.ok) {
+      expect(badCfg.errors.length).toBeGreaterThanOrEqual(2);
+    }
+
+    // Rendered empty string must fail, while unrendered (null/undefined) preserves baseConfig values
+    const renderedEmptyCfg = parseStrictConfigInputs(
+      {
+        weekdayDayStaff: "",
+        weekendDayStaff: "7",
+        eveningStaff: "3",
+        nightStaff: "3",
+        maxConsecutiveWorkDays: "5",
+        minMonthlyDaysOff: "9",
+        minMonthlyWorkDays: "14",
+        maxMonthlyNightShifts: "8",
+        maxMonthlyOvertimeHours: "45",
+        maxAnnualOvertimeHours: "360",
+      },
+      baseState.config,
+      {
+        preserveCurrentSchedule: true,
+        enforceSkillCoverage: true,
+        enforcePreceptorPairs: false,
+        enforcePrevMonthCarryover: true,
+        enforce36Agreement: true,
+        requireWeekendOff: true,
+        enforceNgPairs: true,
+        enforceHardRequests: true,
+      },
+      {}
+    );
+    expect(renderedEmptyCfg.ok).toBe(false);
+
+    const customBaseConfig = {
+      ...baseState.config,
+      weekdayDayStaff: 12,
+      weekendDayStaff: 8,
+      eveningStaff: 4,
+      nightStaff: 4,
+    };
+    const indexHtmlElements = new Map<string, { value?: string; checked?: boolean }>([
+      ["cfg-maxConsecutiveWorkDays", { value: "6" }],
+      ["cfg-minMonthlyDaysOff", { value: "10" }],
+      ["cfg-minMonthlyWorkDays", { value: "15" }],
+      ["cfg-maxMonthlyNightShifts", { value: "7" }],
+      ["cfg-maxMonthlyOvertimeHours", { value: "40" }],
+      ["cfg-maxAnnualOvertimeHours", { value: "320" }],
+      ["chk-preserve-schedule", { checked: false }],
+      ["cfg-enforceSkillCoverage", { checked: true }],
+      ["cfg-enforcePreceptorPairs", { checked: true }],
+      ["cfg-enforcePrevMonthCarryover", { checked: false }],
+      ["cfg-enforce36Agreement", { checked: true }],
+      ["cfg-enforceWeekendOff", { checked: false }],
+      ["cfg-enforceNgPairs", { checked: true }],
+      ["cfg-enforceHardRequests", { checked: false }],
+    ]);
+    const mockDoc = {
+      getElementById: (id: string) => indexHtmlElements.get(id) ?? null,
+    };
+    const collectedValid = collectConfigFromDocument(mockDoc, customBaseConfig);
+    expect(collectedValid.ok).toBe(true);
+    if (collectedValid.ok) {
+      expect(collectedValid.config.weekdayDayStaff).toBe(12);
+      expect(collectedValid.config.weekendDayStaff).toBe(8);
+      expect(collectedValid.config.eveningStaff).toBe(4);
+      expect(collectedValid.config.nightStaff).toBe(4);
+      expect(collectedValid.config.maxConsecutiveWorkDays).toBe(6);
+      expect(collectedValid.config.minMonthlyDaysOff).toBe(10);
+      expect(collectedValid.config.preserveCurrentSchedule).toBe(false);
+      expect(collectedValid.config.enforcePreceptorPairs).toBe(true);
+    }
+
+    // Rendered invalid numeric input still fails strictly via collectConfigFromDocument
+    indexHtmlElements.set("cfg-maxConsecutiveWorkDays", { value: "" });
+    const collectedInvalid = collectConfigFromDocument(mockDoc, customBaseConfig);
+    expect(collectedInvalid.ok).toBe(false);
+
+    // 3. Strict contract form parser rejects non-integer / negative inputs instead of dropping them silently
+    const badContract = parseStrictContractInputs({
+      minMonthlyWorkDays: "12.5",
+      maxMonthlyWorkDays: "",
+      minMonthlyDaysOff: "-1",
+      maxMonthlyNightShifts: "4",
+      maxConsecutiveWorkDays: "0",
+    });
+    expect(badContract.ok).toBe(false);
+    if (!badContract.ok) {
+      expect(badContract.errors.length).toBe(3);
+    }
+    const okContract = parseStrictContractInputs({
+      minMonthlyWorkDays: "0",
+      maxMonthlyWorkDays: "",
+      minMonthlyDaysOff: "9",
+      maxMonthlyNightShifts: "",
+      maxConsecutiveWorkDays: "3",
+    });
+    expect(okContract.ok).toBe(true);
+
+    // 4. mergeShiftAliasesPreservingCustom keeps custom non-built-in aliases intact
+    const mergedAliases = mergeShiftAliasesPreservingCustom(baseState.customShiftDefs, [
+      ...createDefaultShiftAliases(baseState.customShiftDefs),
+      { code: "DE", label: "早番帯", shortLabel: "DE", shifts: ["D", "E"] },
+    ]);
+    expect(mergedAliases.some((a) => a.code === "DE")).toBe(true);
+
+    // 5. buildCsvImportFeedback surfaces parseErrors and parseWarnings completely and blocks ready on error
+    const fbWithErrors = buildCsvImportFeedback({
+      nurses: baseState.nurses,
+      requests: [],
+      relations: [],
+      numDays: 30,
+      customShiftCodes: new Set(),
+      parseErrors: ["行 2: 前月\u30b7\u30d5\u30c8 \"Z\" \u306f無効", "行 3: 契約種別不正"],
+      parseWarnings: ["行 4: ID空\u306e\u305f\u3081\u30b9\u30ad\u30c3\u30d7"],
+    });
+    expect(fbWithErrors.ready).toBe(false);
+    expect(fbWithErrors.isError).toBe(true);
+    expect(fbWithErrors.lines).toContain("行 2: 前月\u30b7\u30d5\u30c8 \"Z\" \u306f無効");
+    expect(fbWithErrors.lines).toContain("行 3: 契約種別不正");
+    expect(fbWithErrors.lines).toContain("行 4: ID空\u306e\u305f\u3081\u30b9\u30ad\u30c3\u30d7");
   });
 });
