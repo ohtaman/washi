@@ -3,6 +3,7 @@ import {
   getHighs,
   isHighsCached,
   solveLpWithHighs,
+  validateHighsOptions,
   type RawHighsSolveResult,
   type HighsIncumbentSnapshot,
   resolveBrowserWasmUrl,
@@ -128,15 +129,23 @@ function terminateActiveWorkerAndRedispatch(): void {
   }
 
   if (pendingRequests.size > 0) {
-    const replacementWorker = getWorker();
-    if (replacementWorker) {
-      dispatchHeadRequestIfIdle(replacementWorker);
-    } else {
-      const recreateErr = new Error("[WaSHI] Failed to recreate HiGHS Worker after interruption.");
+    try {
+      const replacementWorker = getWorker();
+      if (replacementWorker) {
+        dispatchHeadRequestIfIdle(replacementWorker);
+      } else {
+        const recreateErr = new Error("[WaSHI] Failed to recreate HiGHS Worker after interruption.");
+        for (const other of Array.from(pendingRequests.values())) {
+          pendingRequests.delete(other.id);
+          other.cleanupAbort?.();
+          other.reject(recreateErr);
+        }
+      }
+    } catch (err) {
       for (const other of Array.from(pendingRequests.values())) {
         pendingRequests.delete(other.id);
         other.cleanupAbort?.();
-        other.reject(recreateErr);
+        other.reject(err);
       }
     }
   }
@@ -158,11 +167,11 @@ function getWorker(): Worker | null {
   }
 
   if (!workerInstance) {
+    let createdWorker: Worker;
     try {
-      workerInstance = createHighsWorker();
-      const currentWorker = workerInstance;
+      createdWorker = createHighsWorker();
 
-      workerInstance.onmessage = (e: MessageEvent) => {
+      createdWorker.onmessage = (e: MessageEvent) => {
         const { type, id, result, runTime, error, progress, incumbent } = e.data;
         const pending = pendingRequests.get(id);
         if (!pending) {
@@ -201,8 +210,8 @@ function getWorker(): Worker | null {
         pending.cleanupAbort?.();
         if (pending.kind === "WARMUP") {
           if (type === "WARMUP_SUCCESS") {
-            if (workerInstance === currentWorker) {
-              warmedWorker = currentWorker;
+            if (workerInstance === createdWorker) {
+              warmedWorker = createdWorker;
               warmedWorkerWasmUrl = pending.wasmUrl;
             }
             pending.resolve();
@@ -210,25 +219,25 @@ function getWorker(): Worker | null {
             pending.reject(new Error(error || "Worker warmup failed"));
           }
         } else if (type === "SOLVE_SUCCESS") {
-          if (workerInstance === currentWorker) {
-            warmedWorker = currentWorker;
+          if (workerInstance === createdWorker) {
+            warmedWorker = createdWorker;
             warmedWorkerWasmUrl = pending.wasmUrl;
           }
           pending.resolve({ result, runTime });
         } else {
           pending.reject(new Error(error || "Worker solve failed"));
         }
-        if (workerInstance === currentWorker) {
-          dispatchHeadRequestIfIdle(currentWorker);
+        if (workerInstance === createdWorker) {
+          dispatchHeadRequestIfIdle(createdWorker);
         }
       };
 
       const failWorker = (error: Error) => {
-        if (workerInstance !== currentWorker) return;
+        if (workerInstance !== createdWorker) return;
         workerInstance = null;
         warmedWorker = null;
         warmedWorkerWasmUrl = null;
-        currentWorker.terminate();
+        createdWorker.terminate();
         for (const pending of pendingRequests.values()) {
           pending.cleanupAbort?.();
           pending.reject(error);
@@ -236,18 +245,21 @@ function getWorker(): Worker | null {
         pendingRequests.clear();
       };
 
-      workerInstance.onerror = (e: any) =>
+      createdWorker.onerror = (e: any) =>
         failWorker(
           new Error(
             `[WaSHI] HiGHS Worker failed to load or execute. Check Worker assets, CORS and CSP. ${e?.message || ""}`
           )
         );
-      workerInstance.onmessageerror = () =>
+      createdWorker.onmessageerror = () =>
         failWorker(
           new Error("[WaSHI] Could not deserialize the HiGHS Worker response.")
         );
-    } catch {
+
+      workerInstance = createdWorker;
+    } catch (err) {
       workerInstance = null;
+      throw err;
     }
   }
 
@@ -269,16 +281,33 @@ function shouldUseWorker(options: SolveOptions & { useWorker?: boolean }): boole
   );
 }
 
+function resolveWorkerForOptions(options: SolveOptions & { useWorker?: boolean }): Worker | null {
+  if (options.useWorker === true && !isBrowserWebWorkerAvailable()) {
+    throw new Error(
+      "[WaSHI] Web Worker execution was requested (useWorker: true), but browser Web Workers are unavailable in this environment."
+    );
+  }
+  return shouldUseWorker(options) ? getWorker() : null;
+}
+
 function sanitizeWorkerOptions(
   options: SolveOptions & { useWorker?: boolean },
   resolvedWasmUrl: string
 ): Record<string, any> {
-  const { signal: _signal, onProgress: _onProgress, ...restOptions } = options;
+  const {
+    signal: _signal,
+    onProgress: _onProgress,
+    onIncumbent: _onIncumbent,
+    ...restOptions
+  } = options;
   const workerOptions: Record<string, any> = {};
   for (const [k, v] of Object.entries(restOptions)) {
-    if (typeof v !== "function") {
-      workerOptions[k] = v;
+    if (typeof v === "function") {
+      throw new Error(
+        `[WaSHI] HiGHS Worker option "${k}" cannot be a function (functions cannot be cloned across Web Worker boundaries).`
+      );
     }
+    workerOptions[k] = v;
   }
   workerOptions.wasmUrl = resolvedWasmUrl;
   return workerOptions;
@@ -291,6 +320,9 @@ function sanitizeWorkerOptions(
 export async function isHighsWarmed(
   options: SolveOptions & { useWorker?: boolean } = {}
 ): Promise<boolean> {
+  if (options.useWorker === true && !isBrowserWebWorkerAvailable()) {
+    return false;
+  }
   if (!shouldUseWorker(options) || !isBrowserWebWorkerAvailable()) {
     return isHighsCached(options);
   }
@@ -334,6 +366,7 @@ function attachAbortHandler(
 export async function warmupHighs(
   options: SolveOptions & { useWorker?: boolean } = {}
 ): Promise<{ cached: boolean }> {
+  validateHighsOptions(options);
   const { signal } = options;
   if (signal?.aborted) {
     return { cached: false };
@@ -344,7 +377,7 @@ export async function warmupHighs(
     return { cached: false };
   }
 
-  const worker = shouldUseWorker(options) ? getWorker() : null;
+  const worker = resolveWorkerForOptions(options);
 
   if (!worker) {
     const cached = await isHighsCached(options);
@@ -416,6 +449,7 @@ export async function solveLp(
   lpString: string,
   options: SolveOptions & { useWorker?: boolean } = {}
 ): Promise<{ result: RawHighsSolveResult; runTime: number }> {
+  validateHighsOptions(options);
   if (options.signal?.aborted) {
     return {
       result: createInterruptedRawResult(),
@@ -432,7 +466,7 @@ export async function solveLp(
     };
   }
 
-  const worker = shouldUseWorker(options) ? getWorker() : null;
+  const worker = resolveWorkerForOptions(options);
 
   if (!worker) {
     return solveLpWithHighs(lpString, options);

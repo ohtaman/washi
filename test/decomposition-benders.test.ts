@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, minimize, solveBenders } from "../src/index.js";
+import { Model, expr, maximize, minimize, solveBenders } from "../src/index.js";
 
 describe("Benders Decomposition", () => {
   it("solves a Two-Stage Capacitated Facility Location Problem with optimality cuts", async () => {
@@ -329,5 +329,116 @@ describe("Benders Decomposition", () => {
     expect(() => {
       sub.link(expr`2 * ${x}`);
     }).toThrow("Linking constraint must contain a comparison operator (<=, >=, ==)");
+  });
+
+  it("throws a descriptive error when an auto-cut subproblem solves to Infeasible instead of reporting Optimal", async () => {
+    const master = new Model("InfeasibleSubBenders");
+    const y = master.binary("y");
+    master.objective(minimize(expr`10 * ${y}`));
+
+    await expect(
+      master.solveBenders({
+        subproblem: () => {
+          const sub = new Model("AlwaysInfeasibleSub");
+          const x = sub.continuous("x", { lb: 0, ub: 5 });
+          sub.objective(minimize(x));
+          sub.constraint(expr`${x} >= 10`, "impossible_demand");
+          sub.link(expr`${x} <= 5 * ${y} + 100`);
+          return sub;
+        },
+      })
+    ).rejects.toThrow(/Infeasible|Optimal|Feasible/i);
+  });
+
+  it("requires explicit theta for Maximize master models and rejects negative subproblem costs with auto-created lb:0 theta", async () => {
+    // 1. Maximize without explicit theta must throw
+    const maxMaster = new Model("MaxBendersNoTheta");
+    const ym = maxMaster.binary("ym");
+    maxMaster.objective(maximize(expr`10 * ${ym}`));
+
+    await expect(
+      maxMaster.solveBenders({
+        subproblem: () => {
+          const sub = new Model("MaxSub");
+          const x = sub.continuous("x", { lb: 0, ub: 5 });
+          sub.objective(maximize(x));
+          sub.link(expr`${x} <= 5 * ${ym}`);
+          return sub;
+        },
+      })
+    ).rejects.toThrow(/theta/i);
+
+    // 2. Minimize with negative subproblem cost on iteration 1 using auto-created lb:0 theta must throw
+    const minMaster = new Model("NegSubCostBenders");
+    const y = minMaster.binary("y");
+    minMaster.objective(minimize(expr`10 * ${y}`));
+
+    await expect(
+      minMaster.solveBenders({
+        subproblem: () => {
+          const sub = new Model("NegativeCostSub");
+          const x = sub.continuous("x", { lb: 0, ub: 5 });
+          sub.objective(minimize(expr`-20 * ${x}`));
+          sub.link(expr`${x} <= 5 * ${y} + 2`);
+          return sub;
+        },
+      })
+    ).rejects.toThrow(/negative.*theta|options\.theta/i);
+
+    // 3. Explicit theta with negative lower bound allows negative subproblem cost to converge accurately
+    const explicitMaster = new Model("ExplicitNegThetaMaster");
+    const ye = explicitMaster.binary("ye");
+    const theta = explicitMaster.continuous("theta", { lb: -200 });
+    explicitMaster.objective(minimize(expr`10 * ${ye} + ${theta}`));
+
+    const res = await explicitMaster.solveBenders({
+      theta,
+      subproblem: () => {
+        const sub = new Model("NegativeCostSubExplicit");
+        const x = sub.continuous("x", { lb: 0 });
+        sub.objective(minimize(expr`-20 * ${x}`));
+        sub.link(expr`${x} <= 5 * ${ye} + 2`);
+        return sub;
+      },
+    });
+    // ye=1 => x<=7 => sub=-140, total = 10 - 140 = -130 (vs ye=0 => x<=2 => sub=-40, total=-40)
+    expect(res.status).toBe("Optimal");
+    expect(res.objectiveValue).toBeCloseTo(-130, 4);
+    expect(Math.round(res.values.ye)).toBe(1);
+
+    // 4. Caller-defined __benders_theta with negative lb detected automatically must NOT be rejected as auto-created lb:0
+    const predefMaster = new Model("PredefinedBendersThetaMaster");
+    const predefTheta = predefMaster.continuous("__benders_theta", { lb: -200 });
+    predefMaster.objective(minimize(predefTheta));
+
+    const predefRes = await predefMaster.solveBenders({
+      subproblem: () => {
+        const sub = new Model("PredefSub");
+        const x = sub.continuous("x", { lb: 0 });
+        sub.constraint(expr`${x} <= 5`, "cap");
+        sub.objective(minimize(expr`-20 * ${x}`));
+        return sub;
+      },
+    });
+    expect(predefRes.status).toBe("Optimal");
+    expect(predefRes.objectiveValue).toBeCloseTo(-100, 4);
+  });
+
+  it("does not fall back to final master state as an incumbent when master fails (Infeasible)", async () => {
+    const master = new Model("InfeasibleMasterBenders");
+    const x = master.continuous("x", { lb: 10, ub: 20 });
+    // Pre-populate stale value on variable to verify it is NOT leaked when master is infeasible
+    x.value = 15;
+    master.constraint(expr`${x} <= 5`, "contradictory");
+    master.objective(minimize(x));
+
+    const res = await solveBenders({
+      master,
+      subproblem: () => null,
+    });
+
+    expect(res.status).toBe("Infeasible");
+    expect(res.objectiveValue).toBeNull();
+    expect(res.values).toEqual({});
   });
 });

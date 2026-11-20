@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, maximize, minimize } from "../src/modeler/index.js";
+import { Model, sum, maximize, minimize, HighsSolver } from "../src/modeler/index.js";
 
 describe("HiGHS Solver Edge Cases & Advanced Features", () => {
   it("detects Infeasible problems properly", async () => {
@@ -133,5 +133,41 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     expect(m.objectiveValue).toBeGreaterThan(0);
     // Solving 50 vars in HiGHS WASM should take less than 100ms
     expect(elapsed).toBeLessThan(500);
+  });
+
+  it("rejects unsupported SolveOptions in HiGHS instead of silently ignoring them", async () => {
+    const m = new Model("HighsUnsupportedOpts");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    m.objective(maximize(x));
+
+    await expect(m.solve({ threads: 4 } as any)).rejects.toThrow(/threads/i);
+    await expect(m.solve({ verbose: true } as any)).rejects.toThrow(/verbose/i);
+    await expect(m.solve({ unsupportedCustomFlag: true } as any)).rejects.toThrow(
+      /unsupportedCustomFlag/i
+    );
+  });
+
+  it("throws when explicit lpResult.nameToVar is missing a model variable instead of falling back to sanitizeIdentifier", async () => {
+    const m = new Model("MissingSymbolMap");
+    const x = m.continuous("x", { lb: 0, ub: 10, initialValue: 2 });
+    m.objective(maximize(x));
+
+    const solver = new HighsSolver();
+    await expect(
+      solver.solve(
+        {
+          name: m.name,
+          sense: m.sense,
+          objective: m.objective(),
+          constraints: [],
+          variables: [x],
+        },
+        {
+          lpString: "Maximize\n obj: x\nBounds\n 0 <= x <= 10\nEnd",
+          nameToVar: new Map(),
+          nameToConstraint: new Map(),
+        }
+      )
+    ).rejects.toThrow(/nameToVar.*missing.*"x"/i);
   });
 });

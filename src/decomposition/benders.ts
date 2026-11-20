@@ -9,7 +9,9 @@ import { Var } from "../modeler/variable.js";
 import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
 import { LinExpr } from "../modeler/expression.js";
 import { Constraint } from "../modeler/constraint.js";
-import { minimize, maximize } from "../modeler/objective.js";
+import { minimize } from "../modeler/objective.js";
+
+const autoCreatedThetaVars = new WeakSet<Var>();
 
 function isModelLike(val: unknown): val is Model {
   return Boolean(
@@ -83,10 +85,24 @@ async function generateBendersCutFromSubproblem(
   // Solve subproblem as continuous LP
   const subStatus = await subModel.solve(solver, { ...solverOptions, relax: true });
   if (subStatus !== "Optimal" && subStatus !== "Feasible") {
-    return null;
+    throw new Error(
+      `Benders subproblem failed at iteration ${iterationIndex} with status "${subStatus}". ` +
+        `Auto-cut generation requires an Optimal or Feasible subproblem (expected Optimal or Feasible).`
+    );
   }
 
-  const subObj = subModel.objectiveValue ?? 0;
+  const subObj = subModel.objectiveValue;
+  if (typeof subObj !== "number" || !Number.isFinite(subObj)) {
+    throw new Error(
+      `Benders subproblem returned invalid objectiveValue (${String(subObj)}) at iteration ${iterationIndex}.`
+    );
+  }
+  if (autoCreatedThetaVars.has(thetaVar) && subObj < thetaVar.lb - 1e-6) {
+    throw new Error(
+      `Benders auto-created "__benders_theta" (lb: ${thetaVar.lb}) cannot represent negative subproblem cost (${subObj}) at iteration ${iterationIndex}. ` +
+        `Define an explicit theta variable with a negative lower bound and pass options.theta.`
+    );
+  }
   const currentThetaVal = masterValues[thetaVar.name] ?? 0;
 
   const tolerance = 1e-4;
@@ -196,10 +212,15 @@ export async function solveBenders(
   } = options;
 
   let thetaVar: Var | undefined;
-  if (options.theta) {
+  if (options.theta !== undefined) {
     if (typeof options.theta === "string") {
       const candidate = master.variables.get(options.theta);
-      thetaVar = candidate instanceof Var ? candidate : undefined;
+      if (!(candidate instanceof Var)) {
+        throw new Error(
+          `Benders option "theta" references variable "${options.theta}", which was not found on the master model.`
+        );
+      }
+      thetaVar = candidate;
     } else {
       thetaVar = options.theta;
     }
@@ -278,12 +299,14 @@ export async function solveBenders(
         const rawLinking = subModel.linkingConstraints;
 
         if (!thetaVar) {
-          thetaVar = master.continuous("__benders_theta", { lb: 0 });
-          if (isMinimize) {
-            master.objective(minimize(master.objective().add(thetaVar)));
-          } else {
-            master.objective(maximize(master.objective().sub(thetaVar)));
+          if (!isMinimize) {
+            throw new Error(
+              `Benders auto-cut generation requires an explicit options.theta variable for Maximize master models.`
+            );
           }
+          thetaVar = master.continuous("__benders_theta", { lb: 0 });
+          master.objective(minimize(master.objective().add(thetaVar)));
+          autoCreatedThetaVars.add(thetaVar);
         }
 
         const autoCut = await generateBendersCutFromSubproblem(
@@ -363,24 +386,32 @@ export async function solveBenders(
     }
   }
 
-  // Use the best incumbent values associated with the converged bound, falling back to final master state
+  // Use the best incumbent values associated with the converged bound; only fall back to final
+  // master state if the final solve produced an Optimal or Feasible solution.
+  const hasValidFinalMaster = lastStatus === "Optimal" || lastStatus === "Feasible";
   const values: Record<string, number> =
     Object.keys(bestIncumbentValues).length > 0
       ? bestIncumbentValues
-      : (() => {
-          const rec: Record<string, number> = {};
-          for (const v of master.variables.values()) {
-            if (v instanceof Var && v.value !== null) {
-              rec[v.name] = v.value;
+      : hasValidFinalMaster
+        ? (() => {
+            const rec: Record<string, number> = {};
+            for (const v of master.variables.values()) {
+              if (v instanceof Var && v.value !== null) {
+                rec[v.name] = v.value;
+              }
             }
-          }
-          return rec;
-        })();
+            return rec;
+          })()
+        : {};
 
   // The evaluated incumbent values are returned in result.values.
   // We keep the solved master model state separate and internally consistent with its final solve.
   const finalObjective =
-    bestEvaluatedObjective !== null ? bestEvaluatedObjective : master.objectiveValue;
+    bestEvaluatedObjective !== null
+      ? bestEvaluatedObjective
+      : hasValidFinalMaster
+        ? master.objectiveValue
+        : null;
 
   const result: BendersResult = {
     status: lastStatus,

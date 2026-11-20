@@ -618,7 +618,7 @@ describe("Pumpkin WASM LCG solver", () => {
       data: {
         id: w2.messages[0].id,
         type: "CHECK_SUCCESS",
-        result: { status: "Sat", values: [] },
+        responseJson: JSON.stringify({ status: "Sat", values: [] }),
         runTime: 0.01,
       },
     } as MessageEvent);
@@ -864,6 +864,112 @@ describe("Pumpkin WASM LCG solver", () => {
       };
       expect(parsedA.status).toBe("Sat");
       expect(parsedA.values).toEqual([["v", 4]]);
+    } finally {
+      setPumpkinWasmUrl(prevUrl);
+      resetPumpkinLoader();
+    }
+  });
+
+  it("rejects empty wasmUrl strings, loads file:// URLs directly in Node without fetch, rejects unsupported SolveOptions, and rejects non-JSON worker payloads", async () => {
+    await ensurePumpkinRegistered();
+    const {
+      setPumpkinWasmUrl,
+      getPumpkinWasmUrl,
+      loadPumpkinRuntime,
+      isPumpkinRuntimeCached,
+      resetPumpkinLoader,
+    } = await import("../src/modeler/solvers/pumpkin/loader.js");
+    const {
+      createPumpkinWorkerClient,
+      warmupPumpkin,
+      isPumpkinWarmed,
+    } = await import("../src/modeler/solvers/pumpkin/worker-client.js");
+    const { pathToFileURL } = await import("node:url");
+
+    const prevUrl = getPumpkinWasmUrl();
+    try {
+      // 1. Empty string wasmUrl must reject instead of coercing to null
+      expect(() => setPumpkinWasmUrl("")).toThrow(/empty string/i);
+      await expect(loadPumpkinRuntime("")).rejects.toThrow(/empty string/i);
+      expect(() => isPumpkinRuntimeCached("")).toThrow(/empty string/i);
+      await expect(warmupPumpkin({ wasmUrl: "" })).rejects.toThrow(/empty string/i);
+      expect(() => isPumpkinWarmed({ wasmUrl: "" })).toThrow(/empty string/i);
+
+      const m = new Model("PumpkinStrictTest");
+      const x = m.integer("x", { lb: 0, ub: 5 });
+      m.constraint(x.ge(1), "lb");
+      m.objective(minimize(x));
+
+      await expect(m.solve({ solver: "pumpkin", wasmUrl: "" })).rejects.toThrow(/empty string/i);
+      await expect(m.check({ solver: "pumpkin", wasmUrl: "" })).rejects.toThrow(/empty string/i);
+
+      // 2. Unsupported SolveOptions must throw explicit errors in both solve() and check()
+      const unsupportedOpts: Array<[Record<string, unknown>, RegExp]> = [
+        [{ presolve: "on" }, /PumpkinSolver.*presolve/i],
+        [{ relativeGap: 0.01 }, /PumpkinSolver.*relativeGap/i],
+        [{ absoluteGap: 1 }, /PumpkinSolver.*absoluteGap/i],
+        [{ threads: 2 }, /PumpkinSolver.*threads/i],
+        [{ verbose: true }, /PumpkinSolver.*verbose/i],
+        [{ outputFlag: true }, /PumpkinSolver.*outputFlag/i],
+        [{ relax: true }, /PumpkinSolver.*relax/i],
+        [{ unknownPumpkinOpt: 1 }, /PumpkinSolver.*unknownPumpkinOpt/i],
+      ];
+      for (const [opts, pattern] of unsupportedOpts) {
+        await expect(m.solve({ solver: "pumpkin", ...(opts as any) })).rejects.toThrow(pattern);
+        await expect(m.check({ solver: "pumpkin", ...(opts as any) })).rejects.toThrow(pattern);
+      }
+
+      // 3. Node.js file:// URL reads directly via node-runtime without invoking fetch
+      resetPumpkinLoader();
+      const fetchSpy = vi.fn().mockRejectedValue(new Error("fetch must not be called for file://"));
+      vi.stubGlobal("fetch", fetchSpy);
+      const validFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/pumpkin.wasm")).href;
+      const status = await m.solve({ solver: "pumpkin", wasmUrl: validFileUrl });
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(1);
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      const missingFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/nonexistent-pumpkin.wasm")).href;
+      await expect(loadPumpkinRuntime(missingFileUrl)).rejects.toThrow();
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      // 4. Worker client rejects legacy object payloads lacking canonical responseJson / payloadJson strings
+      const client = createPumpkinWorkerClient({
+        workerFactory: () => {
+          const w: any = {
+            onmessage: null,
+            onerror: null,
+            onmessageerror: null,
+            terminate: vi.fn(),
+            postMessage(msg: any) {
+              queueMicrotask(() => {
+                if (msg.type === "check") {
+                  w.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: "CHECK_SUCCESS",
+                      result: { status: "Sat", values: [] },
+                    },
+                  });
+                } else {
+                  w.onmessage?.({
+                    data: {
+                      id: msg.id,
+                      type: "SOLVE_PROGRESS",
+                      incumbent: { objectiveValue: 5, values: [], boolValues: [] },
+                    },
+                  });
+                }
+              });
+            },
+          };
+          return w;
+        },
+      });
+
+      await expect(client.check({ requestJson: "{}" })).rejects.toThrow(/responseJson/i);
+      await expect(client.solve({ requestJson: "{}" })).rejects.toThrow(/payloadJson/i);
+      client.dispose();
     } finally {
       setPumpkinWasmUrl(prevUrl);
       resetPumpkinLoader();

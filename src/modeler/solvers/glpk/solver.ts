@@ -5,9 +5,94 @@ import {
   type LpModelData,
   type LpExportResult,
 } from "../../lp-writer.js";
-import type { SolverStatus } from "../../types.js";
+import { normalizeSense, type SolverStatus } from "../../types.js";
 import { registerSolver } from "../registry.js";
 import * as glpkLoader from "./loader.js";
+
+const GLPK_UNSUPPORTED_OPTIONS = new Set<string>([
+  "absoluteGap",
+  "threads",
+  "outputFlag",
+]);
+
+const GLPK_ALLOWED_OPTIONS = new Set<string>([
+  "timeLimit",
+  "presolve",
+  "relativeGap",
+  "verbose",
+  "relax",
+  "useWorker",
+  "signal",
+  "onProgress",
+]);
+
+function validateGlpkOptions(options: SolverOptions & Record<string, any> = {}): void {
+  if (options.useWorker !== undefined) {
+    if (typeof options.useWorker !== "boolean") {
+      throw new Error(
+        `Invalid GLPK option "useWorker": expected boolean, got ${typeof options.useWorker}.`
+      );
+    }
+    if (options.useWorker === true) {
+      throw new Error(`Solver "GLPK" does not support option "useWorker: true".`);
+    }
+  }
+  for (const key of GLPK_UNSUPPORTED_OPTIONS) {
+    if (options[key] !== undefined) {
+      if (key === "outputFlag") {
+        throw new Error(`Solver "GLPK" does not support option "outputFlag"; use "verbose" instead.`);
+      }
+      throw new Error(`Solver "GLPK" does not support option "${key}".`);
+    }
+  }
+  for (const [key, val] of Object.entries(options)) {
+    if (val === undefined) continue;
+    if (!GLPK_ALLOWED_OPTIONS.has(key)) {
+      throw new Error(`Solver "GLPK" does not support option "${key}".`);
+    }
+  }
+  if (options.verbose !== undefined && typeof options.verbose !== "boolean") {
+    throw new Error(
+      `Invalid GLPK option "verbose": expected boolean, got ${typeof options.verbose}.`
+    );
+  }
+  if (options.relax !== undefined && typeof options.relax !== "boolean") {
+    throw new Error(`Invalid GLPK option "relax": expected boolean, got ${typeof options.relax}.`);
+  }
+  if (
+    options.presolve !== undefined &&
+    options.presolve !== "on" &&
+    options.presolve !== "off" &&
+    options.presolve !== "choose"
+  ) {
+    throw new Error(
+      `Invalid GLPK option "presolve" (${String(options.presolve)}): expected "on", "off", or "choose".`
+    );
+  }
+  if (options.timeLimit !== undefined) {
+    if (typeof options.timeLimit !== "number" || !Number.isFinite(options.timeLimit) || options.timeLimit < 0) {
+      throw new Error(
+        `Invalid GLPK option "timeLimit" (${String(options.timeLimit)}): expected a finite non-negative number of seconds.`
+      );
+    }
+  }
+  if (options.relativeGap !== undefined) {
+    if (
+      typeof options.relativeGap !== "number" ||
+      !Number.isFinite(options.relativeGap) ||
+      options.relativeGap < 0
+    ) {
+      throw new Error(
+        `Invalid GLPK option "relativeGap" (${String(options.relativeGap)}): expected a finite non-negative number.`
+      );
+    }
+  }
+  if (options.onProgress !== undefined && typeof options.onProgress !== "function") {
+    throw new Error(
+      `Invalid GLPK option "onProgress": expected function, got ${typeof options.onProgress}.`
+    );
+  }
+}
 
 function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): void {
   Object.defineProperty(record, key, {
@@ -59,9 +144,25 @@ export class GLPKSolver implements Solver {
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
+    if (
+      modelData.objective &&
+      "quadTerms" in modelData.objective &&
+      modelData.objective.quadTerms &&
+      modelData.objective.quadTerms.size > 0
+    ) {
+      throw new Error(
+        `Solver "${this.name}" does not support quadratic objective terms (QP). Use a QP-capable solver such as HiGHS.`
+      );
+    }
+    const objConstant = modelData.objective?.constant ?? 0;
+    if (typeof objConstant !== "number" || !Number.isFinite(objConstant)) {
+      throw new Error(`GLPK: invalid non-finite objective constant (${String(objConstant)}).`);
+    }
+    const sense = normalizeSense(modelData.sense);
     const hasExplicitLpResult = isLpExportResult(lpResultOrOptions);
     const options: SolverOptions = (hasExplicitLpResult ? maybeOptions : lpResultOrOptions) ?? {};
     const mergedOptions: SolverOptions = { ...this.options, ...options };
+    validateGlpkOptions(mergedOptions);
     if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
@@ -115,6 +216,21 @@ export class GLPKSolver implements Solver {
         buildLpSymbolMaps(modelData));
     }
 
+    const getRequiredVarName = (v: any): string => {
+      const mapped = varToName.get(v);
+      if (mapped === undefined) {
+        throw new Error(`GLPK symbol map is missing variable "${String(v?.name)}".`);
+      }
+      return mapped;
+    };
+    const getRequiredConstraintName = (c: any): string => {
+      const mapped = constraintToName.get(c);
+      if (mapped === undefined) {
+        throw new Error(`GLPK symbol map is missing constraint "${String(c?.name)}".`);
+      }
+      return mapped;
+    };
+
     // 1. Objective linear variables
     const objVars: { name: string; coef: number }[] = [];
     const linTerms =
@@ -124,7 +240,7 @@ export class GLPKSolver implements Solver {
     if (linTerms) {
       for (const [v, coef] of linTerms) {
         if (coef === 0) continue;
-        const vName = varToName.get(v) || v.name;
+        const vName = getRequiredVarName(v);
         objVars.push({ name: vName, coef: Number(coef) });
       }
     }
@@ -132,12 +248,12 @@ export class GLPKSolver implements Solver {
     // 2. Constraints (subjectTo)
     const subjectTo: any[] = [];
     for (const c of modelData.constraints) {
-      const cName = constraintToName.get(c) || c.name || `c_${subjectTo.length + 1}`;
+      const cName = getRequiredConstraintName(c);
       const vars: { name: string; coef: number }[] = [];
 
       for (const [v, coef] of c.lhs.terms) {
         if (coef === 0) continue;
-        const vName = varToName.get(v) || v.name;
+        const vName = getRequiredVarName(v);
         vars.push({ name: vName, coef: Number(coef) });
       }
 
@@ -164,7 +280,7 @@ export class GLPKSolver implements Solver {
     const bounds: any[] = [];
 
     for (const v of modelData.variables) {
-      const vName = varToName.get(v) || v.name;
+      const vName = getRequiredVarName(v);
 
       if (!mergedOptions.relax && v.type === "Binary") {
         binaries.push(vName);
@@ -200,10 +316,7 @@ export class GLPKSolver implements Solver {
     const glpkProblem: any = {
       name: modelData.name || "GLPK_Model",
       objective: {
-        direction:
-          modelData.sense && modelData.sense.toLowerCase() === "maximize"
-            ? glpk.GLP_MAX
-            : glpk.GLP_MIN,
+        direction: sense === "Maximize" ? glpk.GLP_MAX : glpk.GLP_MIN,
         name: "obj",
         vars: objVars,
       },
@@ -225,11 +338,6 @@ export class GLPKSolver implements Solver {
       glpkOptions.mipgap = mergedOptions.relativeGap;
     }
 
-    const objConstant =
-      typeof modelData.objective?.constant === "number" &&
-      Number.isFinite(modelData.objective.constant)
-        ? modelData.objective.constant
-        : 0;
     let objConstVarName: string | null = null;
     if (objConstant !== 0 && glpkOptions.presol) {
       let candidate = "__washi_obj_const";
@@ -342,11 +450,8 @@ export class GLPKSolver implements Solver {
 
       if (hasValidVariablePayload) {
         for (const v of modelData.variables) {
-          const lpName = varToName.get(v) || v.name;
-          if (
-            !Object.prototype.hasOwnProperty.call(rawVars, lpName) &&
-            !Object.prototype.hasOwnProperty.call(rawVars, v.name)
-          ) {
+          const lpName = getRequiredVarName(v);
+          if (!Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
             hasValidVariablePayload = false;
             break;
           }

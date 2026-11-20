@@ -2,12 +2,12 @@ import type { Solver, SolverOptions, SolverResult, SolveModelData } from "../typ
 import {
   generateLpString,
   isLpExportResult,
-  sanitizeIdentifier,
   type LpModelData,
   type LpExportResult,
 } from "../../lp-writer.js";
 import type { SolverStatus, TerminationStatus } from "../../types.js";
 import { normalizeVarInitialValue, validateVarBounds } from "../../validation.js";
+import { validateHighsOptions } from "./loader.js";
 import { solveLp } from "./worker-client.js";
 
 /**
@@ -111,44 +111,6 @@ export function mapHighsTerminationStatus(
       return "Unknown";
   }
 
-  const lower = normalized.toLowerCase();
-  if (lower.includes("infeasible") && lower.includes("unbounded")) {
-    return "InfeasibleOrUnbounded";
-  }
-  if (lower.includes("infeasible")) {
-    return "Infeasible";
-  }
-  if (lower.includes("unbounded")) {
-    return "Unbounded";
-  }
-  if (lower.includes("time limit") || lower.includes("timelimit")) {
-    return "TimeLimit";
-  }
-  if (lower.includes("iteration limit") || lower.includes("iterationlimit")) {
-    return "IterationLimit";
-  }
-  if (lower.includes("solution limit") || lower.includes("solutionlimit")) {
-    return "SolutionLimit";
-  }
-  if (lower.includes("memory limit") || lower.includes("memorylimit")) {
-    return "MemoryLimit";
-  }
-  if (lower.includes("bound on objective")) {
-    return "ObjectiveBound";
-  }
-  if (lower.includes("target for objective")) {
-    return "ObjectiveTarget";
-  }
-  if (lower.includes("interrupt")) {
-    return "Interrupted";
-  }
-  if (lower.includes("error")) {
-    return "Error";
-  }
-  if (lower === "optimal") {
-    return "Optimal";
-  }
-
   return "Unknown";
 }
 
@@ -224,7 +186,15 @@ export class HighsSolver implements Solver {
     const hasExplicitLp = isLpExportResult(optionsOrLpResult);
     const options: SolverOptions = hasExplicitLp ? maybeOptions : optionsOrLpResult;
     const mergedOptions: SolverOptions = { ...this.options, ...options };
-    const offset = modelData.objective.constant || 0;
+    validateHighsOptions(mergedOptions);
+
+    const rawConstant = modelData.objective?.constant ?? 0;
+    if (typeof rawConstant !== "number" || !Number.isFinite(rawConstant)) {
+      throw new Error(
+        `Solver "${this.name}" encountered non-finite objective constant: ${String(rawConstant)}.`
+      );
+    }
+    const offset = rawConstant === 0 ? 0 : rawConstant;
 
     for (const v of modelData.variables) {
       validateVarBounds(v);
@@ -246,17 +216,11 @@ export class HighsSolver implements Solver {
         hasInitialValues = true;
       }
     }
-    for (let i = 0; i < modelData.variables.length; i++) {
-      const v = modelData.variables[i];
+    for (const v of modelData.variables) {
       if (!mappedVars.has(v)) {
-        const normalized = normalizeVarInitialValue(v);
-        if (normalized !== undefined) {
-          const fallbackName = sanitizeIdentifier(v.name, "x", i);
-          if (!Object.prototype.hasOwnProperty.call(initialValues, fallbackName)) {
-            initialValues[fallbackName] = normalized;
-            hasInitialValues = true;
-          }
-        }
+        throw new Error(
+          `LP export symbol map (nameToVar) is missing model variable "${v.name}".`
+        );
       }
     }
 
@@ -265,7 +229,7 @@ export class HighsSolver implements Solver {
       effectiveOptions = {
         ...effectiveOptions,
         ...(offset !== 0 ? { objectiveOffset: offset } : {}),
-        initialValues: hasInitialValues ? initialValues : undefined,
+        ...(hasInitialValues ? { initialValues } : {}),
       };
     }
 
@@ -279,31 +243,7 @@ export class HighsSolver implements Solver {
         ? result.IsMip
         : modelData.variables.some((v) => v.type === "Integer" || v.type === "Binary");
 
-    let hasPrimalSolution: boolean;
-    if (typeof result?.HasPrimalSolution === "boolean") {
-      hasPrimalSolution = result.HasPrimalSolution;
-    } else {
-      const colEntries = result?.Columns ? Object.values(result.Columns) : [];
-      const anyFinitePrimal =
-        colEntries.length > 0
-          ? colEntries.some((c: any) => typeof c?.Primal === "number" && Number.isFinite(c.Primal))
-          : false;
-      const finiteRawObj =
-        typeof result?.ObjectiveValue === "number" && Number.isFinite(result.ObjectiveValue);
-      if (
-        terminationStatus === "Infeasible" ||
-        terminationStatus === "Unbounded" ||
-        terminationStatus === "InfeasibleOrUnbounded" ||
-        terminationStatus === "Error" ||
-        terminationStatus === "NotSolved"
-      ) {
-        hasPrimalSolution = false;
-      } else if (terminationStatus === "Optimal" || terminationStatus === "Feasible") {
-        hasPrimalSolution = finiteRawObj || anyFinitePrimal;
-      } else {
-        hasPrimalSolution = finiteRawObj && (colEntries.length === 0 || anyFinitePrimal);
-      }
-    }
+    const hasPrimalSolution = result?.HasPrimalSolution === true;
 
     const status = mapHighsStatus(result?.Status, result?.StatusCode, hasPrimalSolution);
 

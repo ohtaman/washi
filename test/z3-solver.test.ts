@@ -1,18 +1,26 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import {
   Model,
+  LinExpr,
   sum,
   maximize,
+  minimize,
   and,
   or,
   not,
   implies,
+  getSolver,
 } from "../src/index.js";
 import { Z3Solver, registerZ3Solver, killZ3Threads } from "../src/modeler/solvers/z3.js";
+import * as z3Loader from "../src/modeler/solvers/z3/loader.js";
 
 describe("Z3Solver (SMT & SAT & MIP)", () => {
   beforeAll(async () => {
     registerZ3Solver();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("has correct capabilities for SMT, SAT, and MIP", () => {
@@ -342,6 +350,215 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(mSolve.runTime).toBeGreaterThan(0);
 
     await killZ3Threads();
+  });
+
+  it("preserves constructor options in registerSolver('z3') and handles unconstrained variables via model completion", async () => {
+    const solver = getSolver("z3", { z3JsUrl: "https://example.test/z3-built.js" }) as Z3Solver;
+    expect(solver.options).toEqual({ z3JsUrl: "https://example.test/z3-built.js" });
+
+    const mFree = new Model("Z3Unconstrained");
+    const freeX = mFree.continuous("freeX");
+    const freeB = mFree.bool("freeB");
+    const boundedY = mFree.integer("boundedY", { lb: 0, ub: 5 });
+    mFree.objective(maximize(boundedY));
+
+    const checkRes = await mFree.check("z3");
+    expect(checkRes.status).toBe("Sat");
+    expect(typeof checkRes.values.freeX).toBe("number");
+    expect(Number.isFinite(checkRes.values.freeX as number)).toBe(true);
+    expect(typeof checkRes.values.freeB).toBe("boolean");
+
+    const solveStatus = await mFree.solve("z3");
+    expect(solveStatus).toBe("Optimal");
+    expect(freeX.value).not.toBeNull();
+    expect(boundedY.value).toBe(5);
+
+    await killZ3Threads();
+  });
+
+  it("rejects unsupported SolveOptions in both check() and solve() with clear errors naming Z3", async () => {
+    const m = new Model("Z3OptionValidation");
+    const x = m.integer("x", { lb: 0, ub: 5 });
+    m.constraint(x.ge(1), "lb");
+    m.objective(minimize(x));
+
+    const unsupportedCases: Array<[Record<string, unknown>, RegExp]> = [
+      [{ relax: true }, /z3.*relax/i],
+      [{ timeLimit: 5 }, /z3.*timeLimit/i],
+      [{ presolve: "on" }, /z3.*presolve/i],
+      [{ relativeGap: 0.01 }, /z3.*relativeGap/i],
+      [{ absoluteGap: 1 }, /z3.*absoluteGap/i],
+      [{ threads: 2 }, /z3.*threads/i],
+      [{ verbose: true }, /z3.*verbose/i],
+      [{ outputFlag: true }, /z3.*outputFlag/i],
+      [{ useWorker: true }, /z3.*useWorker/i],
+      [{ unknownZ3Flag: 123 }, /z3.*unknownZ3Flag/i],
+    ];
+
+    for (const [opts, pattern] of unsupportedCases) {
+      await expect(m.check("z3", opts as any)).rejects.toThrow(pattern);
+      await expect(m.solve("z3", opts as any)).rejects.toThrow(pattern);
+    }
+    await expect(m.relax("z3")).rejects.toThrow(/z3.*relax/i);
+  });
+
+  it("rejects invalid sense via normalizeSense and throws on non-finite constants or RHS", async () => {
+    const z3 = new Z3Solver();
+    const m = new Model("Z3BadInputs");
+    const x = m.integer("x", { lb: 0, ub: 5 });
+
+    await expect(
+      z3.solve({
+        name: "InvalidSense",
+        sense: "bogus" as any,
+        objective: x.mul(1),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow(/Invalid optimization sense/);
+
+    await expect(
+      z3.solve({
+        name: "NaNConst",
+        sense: "Minimize",
+        objective: new LinExpr(new Map([[x, 1]]), Number.NaN),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow(/non-finite/i);
+
+    await expect(
+      z3.check({
+        name: "NaNRhs",
+        variables: [x],
+        constraints: [{ name: "bad_rhs", lhs: x.mul(1), sense: "<=", rhs: Number.POSITIVE_INFINITY } as any],
+      })
+    ).rejects.toThrow(/non-finite/i);
+  });
+
+  it("throws instead of misreporting Optimal when Optimize bound inspection throws or is missing, and throws on missing AST values", async () => {
+    const z3 = new Z3Solver();
+    const m = new Model("Z3BrokenOptimize");
+    const x = m.continuous("x", { lb: 0 });
+    m.objective(maximize(x));
+
+    const makeMockAst = () => {
+      const node: any = {
+        ge: () => node,
+        le: () => node,
+        eq: () => node,
+        add: () => node,
+        sub: () => node,
+        mul: () => node,
+      };
+      return node;
+    };
+
+    const makeMockContext = (opts: { getUpper?: any; evalReturn?: any }) =>
+      class MockContext {
+        Real = {
+          const: () => makeMockAst(),
+          val: () => makeMockAst(),
+        };
+        Int = {
+          const: () => makeMockAst(),
+          val: () => makeMockAst(),
+        };
+        Bool = {
+          const: () => makeMockAst(),
+          val: () => makeMockAst(),
+        };
+        isInt = () => false;
+        ToReal = (a: any) => a;
+        Optimize = class {
+          add() {}
+          maximize() {
+            return {};
+          }
+          minimize() {
+            return {};
+          }
+          async check() {
+            return { toString: () => "sat" };
+          }
+          model() {
+            return {
+              eval: () =>
+                opts.evalReturn !== undefined
+                  ? opts.evalReturn
+                  : { asNumber: () => 5, toString: () => "5" },
+            };
+          }
+          getUpper = opts.getUpper;
+          getLower = () => ({ toString: () => "0" });
+        };
+      };
+
+    // 1. Missing getUpper must throw instead of reporting Optimal
+    vi.spyOn(z3Loader, "loadZ3").mockResolvedValueOnce({
+      Context: makeMockContext({ getUpper: undefined }),
+    });
+    await expect(
+      z3.solve({
+        name: m.name,
+        sense: "Maximize",
+        objective: m.objective(),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow(/getUpper/i);
+
+    // 2. Throwing getUpper must propagate instead of being swallowed
+    vi.spyOn(z3Loader, "loadZ3").mockResolvedValueOnce({
+      Context: makeMockContext({
+        getUpper: () => {
+          throw new Error("bound inspection failed");
+        },
+      }),
+    });
+    await expect(
+      z3.solve({
+        name: m.name,
+        sense: "Maximize",
+        objective: m.objective(),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow("bound inspection failed");
+
+    // 3. Missing AST value in model.eval must throw instead of coercing to 0
+    vi.spyOn(z3Loader, "loadZ3").mockResolvedValueOnce({
+      Context: makeMockContext({
+        getUpper: () => ({ toString: () => "5" }),
+        evalReturn: null,
+      }),
+    });
+    await expect(
+      z3.solve({
+        name: m.name,
+        sense: "Maximize",
+        objective: m.objective(),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow(/missing|AST/i);
+
+    // 4. Non-numeric AST string in model.eval must throw instead of coercing to 0
+    vi.spyOn(z3Loader, "loadZ3").mockResolvedValueOnce({
+      Context: makeMockContext({
+        getUpper: () => ({ toString: () => "5" }),
+        evalReturn: { toString: () => "unassigned_symbol" },
+      }),
+    });
+    await expect(
+      z3.solve({
+        name: m.name,
+        sense: "Maximize",
+        objective: m.objective(),
+        constraints: [],
+        variables: [x],
+      })
+    ).rejects.toThrow(/non-numeric|invalid|AST/i);
   });
 });
 

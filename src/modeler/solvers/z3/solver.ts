@@ -2,7 +2,7 @@ import type { Var } from "../../variable.js";
 import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "../../boolean-expr.js";
 import type { LinExpr, NonlinearAtom } from "../../expression.js";
 import type { QuadExpr } from "../../quad-expr.js";
-import type { ComparisonSense } from "../../types.js";
+import { normalizeSense, type ComparisonSense } from "../../types.js";
 import { Constraint } from "../../constraint.js";
 import type {
   CheckModelData,
@@ -47,8 +47,71 @@ function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): vo
  * - `objectiveValue`: Primal objective value when `hasPrimalSolution` is `true`, otherwise `null`.
  * - `objectiveBound`, `relativeGap`, `absoluteGap`: Z3 Optimize is an SMT optimization engine and does not expose branch-and-bound MIP dual bounds or relative/absolute MIP gaps, so these fields are intentionally left `undefined` rather than returning invented defaults.
  */
+const Z3_UNSUPPORTED_OPTIONS = new Set<string>([
+  "timeLimit",
+  "presolve",
+  "relativeGap",
+  "absoluteGap",
+  "threads",
+  "verbose",
+  "outputFlag",
+]);
+
+const Z3_ALLOWED_OPTIONS = new Set<string>([
+  "signal",
+  "onProgress",
+  "relax",
+  "useWorker",
+  "z3JsUrl",
+  "z3WasmUrl",
+]);
+
+function validateZ3Options(options: SolverOptions & Record<string, any> = {}): void {
+  if (options.relax !== undefined) {
+    if (typeof options.relax !== "boolean") {
+      throw new Error(`Invalid Z3 option "relax": expected boolean, got ${typeof options.relax}.`);
+    }
+    if (options.relax === true) {
+      throw new Error(
+        `Solver "z3" does not support option "relax: true" (LP relaxation). Use a simplex/IPM solver such as HiGHS or GLPK.`
+      );
+    }
+  }
+  if (options.useWorker !== undefined) {
+    if (typeof options.useWorker !== "boolean") {
+      throw new Error(`Invalid Z3 option "useWorker": expected boolean, got ${typeof options.useWorker}.`);
+    }
+    if (options.useWorker === true) {
+      throw new Error(`Solver "z3" does not support option "useWorker: true".`);
+    }
+  }
+  for (const key of Z3_UNSUPPORTED_OPTIONS) {
+    if (options[key] !== undefined) {
+      throw new Error(`Solver "z3" does not support option "${key}".`);
+    }
+  }
+  for (const [key, val] of Object.entries(options)) {
+    if (val === undefined) continue;
+    if (!Z3_ALLOWED_OPTIONS.has(key)) {
+      throw new Error(`Solver "z3" does not support option "${key}".`);
+    }
+  }
+  if (options.onProgress !== undefined && typeof options.onProgress !== "function") {
+    throw new Error(
+      `Invalid Z3 option "onProgress": expected function, got ${typeof options.onProgress}.`
+    );
+  }
+  for (const urlKey of ["z3JsUrl", "z3WasmUrl"] as const) {
+    const val = (options as Record<string, unknown>)[urlKey];
+    if (val !== undefined && (typeof val !== "string" || val === "")) {
+      throw new Error(`Invalid Z3 option "${urlKey}": expected a non-empty string.`);
+    }
+  }
+}
+
 export class Z3Solver implements Solver {
   readonly name = "z3";
+  readonly options: SolverOptions;
   readonly capabilities: SolverCapabilities = {
     supportsMIP: true,
     supportsQP: false,
@@ -57,6 +120,10 @@ export class Z3Solver implements Solver {
     supportsUnsatCore: true,
     supportsWarmStart: false,
   };
+
+  constructor(options: SolverOptions = {}) {
+    this.options = options;
+  }
 
   /**
    * Helper to build AST translations for a given Z3 Context
@@ -235,7 +302,10 @@ export class Z3Solver implements Solver {
           result = result === null ? term : addArithAst(result, term);
         }
       }
-      const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
+      const constant = expr?.constant ?? 0;
+      if (typeof constant !== "number" || !Number.isFinite(constant)) {
+        throw new Error(`Z3: invalid non-finite expression constant (${String(constant)}).`);
+      }
       if (constant !== 0 || result === null) {
         const preferInt = result === null || isIntAst(result);
         const offsetAst = makeConstAst(constant, preferInt);
@@ -270,7 +340,10 @@ export class Z3Solver implements Solver {
           result = result === null ? term : addArithAst(result, term);
         }
       }
-      const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
+      const constant = expr?.constant ?? 0;
+      if (typeof constant !== "number" || !Number.isFinite(constant)) {
+        throw new Error(`Z3: invalid non-finite expression constant (${String(constant)}).`);
+      }
       if (constant !== 0 || result === null) {
         const preferInt = result === null || isIntAst(result);
         const cAst = makeConstAst(constant, preferInt);
@@ -282,6 +355,9 @@ export class Z3Solver implements Solver {
     function translateConstraint(c: Constraint, domainGuards?: any[]) {
       if (c._indicatorMeta) {
         const meta = c._indicatorMeta;
+        if (typeof meta.targetRhs !== "number" || !Number.isFinite(meta.targetRhs)) {
+          throw new Error(`Z3: invalid non-finite indicator target RHS (${String(meta.targetRhs)}).`);
+        }
         const binAst = getVarAst(meta.binVar);
         const condAst = compareAstWithNumber(binAst, "==", meta.activeValue);
         const localGuards: any[] = [];
@@ -305,8 +381,10 @@ export class Z3Solver implements Solver {
           ? translateQuadExpr(c.lhs as any, guardsTarget)
           : translateLinExpr(c.lhs, guardsTarget);
 
-      const rhsVal = typeof c.rhs === "number" ? c.rhs : 0;
-      const cmpAst = compareAstWithNumber(lhsAst, c.sense, rhsVal);
+      if (typeof c.rhs !== "number" || !Number.isFinite(c.rhs)) {
+        throw new Error(`Z3: invalid non-finite constraint RHS (${String(c.rhs)}).`);
+      }
+      const cmpAst = compareAstWithNumber(lhsAst, c.sense, c.rhs);
       if (!domainGuards && localGuards.length > 0) {
         return ctx.And(cmpAst, ...localGuards);
       }
@@ -439,8 +517,12 @@ export class Z3Solver implements Solver {
 
     function parseSmtNumberString(s: string): number {
       const trimmed = s.trim();
+      if (!trimmed) {
+        throw new Error("Z3 returned an empty AST value string.");
+      }
       if (trimmed.startsWith("(- ") && trimmed.endsWith(")")) {
-        return -parseSmtNumberString(trimmed.slice(3, -1));
+        const neg = -parseSmtNumberString(trimmed.slice(3, -1));
+        return neg === 0 ? 0 : neg;
       }
       if (trimmed.startsWith("(/ ") && trimmed.endsWith(")")) {
         const inner = trimmed.slice(3, -1).trim();
@@ -459,20 +541,31 @@ export class Z3Solver implements Solver {
           const num = parseSmtNumberString(inner.slice(0, splitIdx));
           const den = parseSmtNumberString(inner.slice(splitIdx + 1));
           const q = num / den;
+          if (!Number.isFinite(q)) {
+            throw new Error(`Z3 returned a non-finite rational AST value: "${s}".`);
+          }
           return q === 0 ? 0 : q;
         }
       }
       const n = Number(trimmed);
+      if (!Number.isFinite(n)) {
+        throw new Error(`Z3 returned a non-numeric or non-finite AST value: "${s}".`);
+      }
       return n === 0 ? 0 : n;
     }
 
     function parseAstValue(val: any): number {
-      if (!val) return 0;
+      if (val === null || val === undefined) {
+        throw new Error("Z3 model evaluation returned a missing AST value.");
+      }
       if (typeof val.asNumber === "function") {
         const n = val.asNumber();
         if (typeof n === "number" && Number.isFinite(n)) {
           return n === 0 ? 0 : n;
         }
+      }
+      if (typeof val.toString !== "function") {
+        throw new Error("Z3 model evaluation returned an unreadable AST value.");
       }
       return parseSmtNumberString(val.toString());
     }
@@ -538,15 +631,17 @@ export class Z3Solver implements Solver {
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
-    if (options.signal?.aborted) {
+    const mergedOptions: SolverOptions = { ...this.options, ...options };
+    validateZ3Options(mergedOptions);
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         values: {},
       };
     }
-    const instance = await loadZ3(options);
+    const instance = await loadZ3(mergedOptions);
     const { Context } = instance;
-    if (options.signal?.aborted) {
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         values: {},
@@ -597,7 +692,7 @@ export class Z3Solver implements Solver {
       s.addAndTrack(tracked, createTracker(name));
     }
 
-    if (options.signal?.aborted) {
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         values: {},
@@ -614,14 +709,20 @@ export class Z3Solver implements Solver {
 
       for (const v of variables) {
         const vAst = trans.getVarAst(v);
-        const val = z3Model.eval(vAst);
+        const val = z3Model.eval(vAst, true);
         setOwnProperty(values, v.name, trans.parseAstValue(val));
       }
 
       for (const bv of boolVars) {
         const bvAst = trans.getBoolVarAst(bv);
-        const val = z3Model.eval(bvAst);
-        setOwnProperty(values, bv.name, val.toString() === "true");
+        const val = z3Model.eval(bvAst, true);
+        const bvStr = val?.toString?.();
+        if (bvStr !== "true" && bvStr !== "false") {
+          throw new Error(
+            `Z3 model evaluation returned non-boolean AST value for BoolVar "${bv.name}": "${String(bvStr)}".`
+          );
+        }
+        setOwnProperty(values, bv.name, bvStr === "true");
       }
 
       return {
@@ -669,13 +770,21 @@ export class Z3Solver implements Solver {
   ): Promise<SolverResult> {
     const hasExplicitLpResult = isLpExportResult(lpResultOrOptions);
     const options: SolverOptions = (hasExplicitLpResult ? maybeOptions : lpResultOrOptions) ?? {};
+    const mergedOptions: SolverOptions = { ...this.options, ...options };
 
     if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
       throw new Error(
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
-    if (options.signal?.aborted) {
+    validateZ3Options(mergedOptions);
+    const sense = normalizeSense(modelData.sense);
+    const obj = modelData.objective;
+    if (obj && (typeof obj.constant !== "number" || !Number.isFinite(obj.constant))) {
+      throw new Error(`Z3: invalid non-finite objective constant (${String(obj.constant)}).`);
+    }
+
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         terminationStatus: "Interrupted",
@@ -685,7 +794,6 @@ export class Z3Solver implements Solver {
       };
     }
     const startTime = performance.now();
-    const obj = modelData.objective;
     const objHasNonlinear =
       obj !== null &&
       obj !== undefined &&
@@ -700,7 +808,7 @@ export class Z3Solver implements Solver {
           : "terms" in obj && obj.terms.size > 0));
 
     if (!hasObjective) {
-      const checkRes = await this.check(modelData, options);
+      const checkRes = await this.check(modelData, mergedOptions);
       const numericValues: Record<string, number> = {};
       const boolValues: Record<string, boolean> = {};
       for (const [k, v] of Object.entries(checkRes.values)) {
@@ -715,14 +823,14 @@ export class Z3Solver implements Solver {
       const isSat = checkRes.status === "Sat";
       const objVal = isSat ? (obj?.constant ?? 0) : null;
       const runTime = checkRes.runTime ?? (performance.now() - startTime) / 1000;
-      if (options.onProgress && !options.signal?.aborted) {
-        options.onProgress({
+      if (mergedOptions.onProgress && !mergedOptions.signal?.aborted) {
+        mergedOptions.onProgress({
           elapsedTime: runTime,
           elapsedSeconds: runTime,
           ...(typeof objVal === "number" && Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
         });
       }
-      if (options.signal?.aborted) {
+      if (mergedOptions.signal?.aborted) {
         return {
           status: isSat ? "Feasible" : "Unknown",
           terminationStatus: "Interrupted",
@@ -751,9 +859,9 @@ export class Z3Solver implements Solver {
       };
     }
 
-    const instance = await loadZ3(options);
+    const instance = await loadZ3(mergedOptions);
     const { Context } = instance;
-    if (options.signal?.aborted) {
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         terminationStatus: "Interrupted",
@@ -801,10 +909,10 @@ export class Z3Solver implements Solver {
       opt.add(g);
     }
 
-    const sense = (modelData.sense || "MINIMIZE").toUpperCase();
-    const objHandle = sense === "MAXIMIZE" ? opt.maximize(objAst) : opt.minimize(objAst);
+    const isMax = sense === "Maximize";
+    const objHandle = isMax ? opt.maximize(objAst) : opt.minimize(objAst);
 
-    if (options.signal?.aborted) {
+    if (mergedOptions.signal?.aborted) {
       return {
         status: "Unknown",
         terminationStatus: "Interrupted",
@@ -826,45 +934,49 @@ export class Z3Solver implements Solver {
 
       for (const v of variables) {
         const vAst = trans.getVarAst(v);
-        const val = z3Model.eval(vAst);
+        const val = z3Model.eval(vAst, true);
         setOwnProperty(values, v.name, trans.parseAstValue(val));
       }
 
       for (const bv of boolVars) {
         const bvAst = trans.getBoolVarAst(bv);
-        const val = z3Model.eval(bvAst);
-        const isTrue = val.toString() === "true";
+        const val = z3Model.eval(bvAst, true);
+        const bvStr = val?.toString?.();
+        if (bvStr !== "true" && bvStr !== "false") {
+          throw new Error(
+            `Z3 model evaluation returned non-boolean AST value for BoolVar "${bv.name}": "${String(bvStr)}".`
+          );
+        }
+        const isTrue = bvStr === "true";
         setOwnProperty(values, bv.name, isTrue ? 1 : 0);
         setOwnProperty(boolValues, bv.name, isTrue);
       }
 
-      const objVal = trans.parseAstValue(z3Model.eval(objAst));
+      const objVal = trans.parseAstValue(z3Model.eval(objAst, true));
+      const boundMethodName = isMax ? "getUpper" : "getLower";
+      if (isMax ? typeof opt.getUpper !== "function" : typeof opt.getLower !== "function") {
+        throw new Error(
+          `Z3 Optimize instance is missing "${boundMethodName}" required to verify objective boundedness.`
+        );
+      }
+      const boundAst = isMax ? opt.getUpper(objHandle) : opt.getLower(objHandle);
+      if (boundAst === null || boundAst === undefined || typeof boundAst.toString !== "function") {
+        throw new Error(`Z3 Optimize "${boundMethodName}" returned an invalid bound AST.`);
+      }
+      const boundStr = boundAst.toString();
       let isUnbounded = false;
       let isUnattained = false;
-      try {
-        const boundAst =
-          sense === "MAXIMIZE"
-            ? typeof opt.getUpper === "function"
-              ? opt.getUpper(objHandle)
-              : undefined
-            : typeof opt.getLower === "function"
-              ? opt.getLower(objHandle)
-              : undefined;
-        const boundStr = boundAst ? boundAst.toString() : "";
-        if (boundStr.includes("oo")) {
-          isUnbounded = true;
-        } else if (boundStr.includes("epsilon")) {
-          isUnattained = true;
-        }
-      } catch {
-        // Ignore if bound inspection is unavailable
+      if (boundStr.includes("oo")) {
+        isUnbounded = true;
+      } else if (boundStr.includes("epsilon")) {
+        isUnattained = true;
       }
 
       const postSolveElapsed = (performance.now() - solveStartTime) / 1000;
 
       if (isUnbounded) {
-        if (options.onProgress) {
-          options.onProgress({
+        if (mergedOptions.onProgress) {
+          mergedOptions.onProgress({
             elapsedTime: postSolveElapsed,
             elapsedSeconds: postSolveElapsed,
             ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
@@ -882,8 +994,8 @@ export class Z3Solver implements Solver {
       }
 
       if (isUnattained) {
-        if (options.onProgress) {
-          options.onProgress({
+        if (mergedOptions.onProgress) {
+          mergedOptions.onProgress({
             elapsedTime: postSolveElapsed,
             elapsedSeconds: postSolveElapsed,
           });
@@ -898,8 +1010,8 @@ export class Z3Solver implements Solver {
         };
       }
 
-      if (options.onProgress) {
-        options.onProgress({
+      if (mergedOptions.onProgress) {
+        mergedOptions.onProgress({
           elapsedTime: postSolveElapsed,
           elapsedSeconds: postSolveElapsed,
           ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
@@ -916,8 +1028,8 @@ export class Z3Solver implements Solver {
         ...(Object.keys(boolValues).length > 0 ? { boolValues } : {}),
       };
     } else if (statusStr === "unsat") {
-      if (options.onProgress) {
-        options.onProgress({
+      if (mergedOptions.onProgress) {
+        mergedOptions.onProgress({
           elapsedTime: solveElapsed,
           elapsedSeconds: solveElapsed,
         });
@@ -931,8 +1043,8 @@ export class Z3Solver implements Solver {
         runTime: solveElapsed,
       };
     } else if (statusStr === "unknown") {
-      if (options.onProgress) {
-        options.onProgress({
+      if (mergedOptions.onProgress) {
+        mergedOptions.onProgress({
           elapsedTime: solveElapsed,
           elapsedSeconds: solveElapsed,
         });
@@ -962,7 +1074,7 @@ export class Z3Solver implements Solver {
  * Register Z3 solver into global solver registry
  */
 export function registerZ3Solver(): void {
-  registerSolver("z3", () => new Z3Solver());
+  registerSolver("z3", (options) => new Z3Solver(options));
 }
 
 // Auto-register so 'z3' is instantly available when importing this module
