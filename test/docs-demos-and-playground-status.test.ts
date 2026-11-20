@@ -258,24 +258,95 @@ async function waitForSolveIdle(root: TestElement, timeoutMs = 15_000) {
   throw new Error(`Timed out after ${timeoutMs}ms waiting for demo solve to complete`);
 }
 
-function createFakeDomForPlayground() {
-  const elements = new Map<string, any>();
+interface FakeClassList {
+  add(cls: string): void;
+  remove(cls: string): void;
+  toggle(cls: string, force?: boolean): void;
+  contains(cls: string): boolean;
+}
 
-  const makeEl = (id: string, tagName = "div") => {
-    const listeners = new Map<string, Array<(e?: any) => void>>();
+type FakeEventListener = (event?: unknown) => unknown;
+
+interface FakeDomElement {
+  id: string;
+  tagName: string;
+  value: string;
+  textContent: string;
+  innerHTML: string;
+  disabled: boolean;
+  checked: boolean;
+  style: Record<string, string>;
+  children: FakeDomElement[];
+  options: FakeDomElement[];
+  className: string;
+  classList: FakeClassList;
+  setAttribute(k: string, v: string): void;
+  getAttribute(k: string): string | null;
+  removeAttribute(k: string): void;
+  appendChild(child: FakeDomElement): FakeDomElement;
+  addEventListener(type: string, cb: FakeEventListener): void;
+  trigger(type: string, ev?: unknown): Promise<void>;
+}
+
+interface FakeDocument {
+  documentElement: FakeDomElement;
+  getElementById(id: string): FakeDomElement | null;
+  querySelectorAll(selector: string): FakeDomElement[];
+  createElement(tag: string): FakeDomElement;
+}
+
+interface FakeStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+interface FakeWindow {
+  location: URL;
+  crossOriginIsolated: boolean;
+  localStorage: FakeStorage;
+  matchMedia(): {
+    matches: boolean;
+    addEventListener: ReturnType<typeof vi.fn>;
+    removeEventListener: ReturnType<typeof vi.fn>;
+  };
+  addEventListener: ReturnType<typeof vi.fn>;
+}
+
+function createFakeDomForPlayground(): {
+  mockDoc: FakeDocument;
+  mockWindow: FakeWindow;
+  mockStorage: FakeStorage;
+  elements: Map<string, FakeDomElement>;
+} {
+  const elements = new Map<string, FakeDomElement>();
+
+  const makeEl = (id: string, tagName = "div"): FakeDomElement => {
+    const listeners = new Map<string, FakeEventListener[]>();
     const classSet = new Set<string>();
     const attrs = new Map<string, string>();
-    const el: any = {
+    let rawInnerHtml = "";
+
+    const el: FakeDomElement = {
       id,
       tagName,
       value: "",
       textContent: "",
-      innerHTML: "",
+      get innerHTML(): string {
+        return rawInnerHtml;
+      },
+      set innerHTML(val: string) {
+        rawInnerHtml = val;
+        if (val === "") {
+          el.children = [];
+          el.options = [];
+        }
+      },
       disabled: false,
       checked: false,
       style: {},
-      children: [] as any[],
-      options: [] as any[],
+      children: [],
+      options: [],
       className: "",
       classList: {
         add(c: string) {
@@ -310,35 +381,23 @@ function createFakeDomForPlayground() {
       removeAttribute(k: string) {
         attrs.delete(k);
       },
-      appendChild(child: any) {
+      appendChild(child: FakeDomElement) {
         el.children.push(child);
         if (child.tagName === "option") el.options.push(child);
         return child;
       },
-      addEventListener(type: string, cb: (e?: any) => void) {
+      addEventListener(type: string, cb: FakeEventListener) {
         const arr = listeners.get(type) ?? [];
         arr.push(cb);
         listeners.set(type, arr);
       },
-      async trigger(type: string, ev?: any) {
+      async trigger(type: string, ev?: unknown) {
         const arr = listeners.get(type) ?? [];
         for (const cb of arr) {
           await cb(ev);
         }
       },
     };
-    Object.defineProperty(el, "innerHTML", {
-      get() {
-        return el._innerHTML ?? "";
-      },
-      set(val: string) {
-        el._innerHTML = val;
-        if (val === "") {
-          el.children = [];
-          el.options = [];
-        }
-      },
-    });
     return el;
   };
 
@@ -385,7 +444,7 @@ function createFakeDomForPlayground() {
   elements.set("tab-logs", tabLogs);
   elements.set("tab-lp", tabLp);
 
-  const mockDoc: any = {
+  const mockDoc: FakeDocument = {
     documentElement: makeEl("html", "html"),
     getElementById(id: string) {
       return elements.get(id) ?? null;
@@ -401,13 +460,13 @@ function createFakeDomForPlayground() {
   };
 
   const storage = new Map<string, string>();
-  const mockStorage = {
+  const mockStorage: FakeStorage = {
     getItem: (k: string) => storage.get(k) ?? null,
     setItem: (k: string, v: string) => storage.set(k, v),
     removeItem: (k: string) => storage.delete(k),
   };
 
-  const mockWindow: any = {
+  const mockWindow: FakeWindow = {
     location: new URL("https://washi.ohtaman.dev/demo/"),
     crossOriginIsolated: false,
     localStorage: mockStorage,
@@ -430,24 +489,49 @@ afterEach(async () => {
 
 describe("Component Locale Key Parity (docs/.vitepress/theme/locales/components.*.json)", () => {
   it("enforces identical keys and non-empty strings across en, ja, and zh component locales", () => {
-    const collectKeys = (obj: unknown, prefix = ""): string[] => {
+    const collectLeafEntries = (
+      obj: unknown,
+      prefix = ""
+    ): Array<[string, unknown]> => {
       if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-        return [prefix];
+        return [[prefix, obj]];
       }
-      const keys: string[] = [];
+      const entries: Array<[string, unknown]> = [];
       for (const [k, v] of Object.entries(obj)) {
         const next = prefix ? `${prefix}.${k}` : k;
-        keys.push(...collectKeys(v, next));
+        entries.push(...collectLeafEntries(v, next));
       }
-      return keys;
+      return entries;
     };
 
-    const enKeys = collectKeys(LocalesModule.en).sort();
-    const jaKeys = collectKeys(LocalesModule.ja).sort();
-    const zhKeys = collectKeys(LocalesModule.zh).sort();
+    const enEntries = collectLeafEntries(LocalesModule.en).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    const jaEntries = collectLeafEntries(LocalesModule.ja).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    const zhEntries = collectLeafEntries(LocalesModule.zh).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
 
-    expect(jaKeys).toEqual(enKeys);
-    expect(zhKeys).toEqual(enKeys);
+    expect(jaEntries.map(([k]) => k)).toEqual(enEntries.map(([k]) => k));
+    expect(zhEntries.map(([k]) => k)).toEqual(enEntries.map(([k]) => k));
+    for (const [loc, entries] of [
+      ["en", enEntries],
+      ["ja", jaEntries],
+      ["zh", zhEntries],
+    ] as const) {
+      for (const [key, val] of entries) {
+        expect(typeof val, `${loc}.${key} must be a string`).toBe("string");
+        // Note: ecommerce.smartTipBody1 in ja.json is intentionally "" due to Japanese word order.
+        if (!(loc === "ja" && key === "ecommerce.smartTipBody1")) {
+          expect(
+            String(val).trim().length,
+            `${loc}.${key} must be non-empty`
+          ).toBeGreaterThan(0);
+        }
+      }
+    }
   });
 });
 
@@ -816,12 +900,12 @@ describe("Playground Status Display (examples/web-demo/src/ui/app.ts)", () => {
 
     try {
       // Case 1: Code creates no Model at all -> status MUST be "--", never "Optimal"
-      const editor = elements.get("code-editor");
-      const runBtn = elements.get("run-btn");
-      const metricStatus = elements.get("metric-status");
-      const metricObj = elements.get("metric-obj");
-      const metricVars = elements.get("metric-vars");
-      const vizContainer = elements.get("visualizer-container");
+      const editor = elements.get("code-editor")!;
+      const runBtn = elements.get("run-btn")!;
+      const metricStatus = elements.get("metric-status")!;
+      const metricObj = elements.get("metric-obj")!;
+      const metricVars = elements.get("metric-vars")!;
+      const vizContainer = elements.get("visualizer-container")!;
 
       editor.value = `console.log("no model here");`;
       await runBtn.trigger("click");
