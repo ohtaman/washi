@@ -958,19 +958,44 @@ async function run() {
         const mobLong = Array.from({ length: 120 }, (_, i) => `// line ${i + 1}`).join("\n");
         await mobPage.locator("#editor-washi").fill(mobLong);
         const mobMetrics = await mobPage.evaluate(() => {
-          const wrap = document.querySelector(".code-editor-wrap");
+          const wb = document.querySelector(".answer-workbench");
+          const panel = document.querySelector(".answer-workbench > [role='tabpanel']:not([hidden])");
+          const inner = panel?.querySelector(".tab-panel-inner");
+          const wrap = panel?.querySelector(".code-editor-wrap");
+          const results = document.querySelector("#judge-results");
           const ta = document.querySelector("#editor-washi");
-          if (!wrap || !(ta instanceof HTMLTextAreaElement)) return null;
+          if (!wb || !panel || !inner || !wrap || !results || !(ta instanceof HTMLTextAreaElement)) {
+            return null;
+          }
+          const wbRect = wb.getBoundingClientRect();
+          const panelRect = panel.getBoundingClientRect();
+          const innerRect = inner.getBoundingClientRect();
+          const wrapRect = wrap.getBoundingClientRect();
+          const resRect = results.getBoundingClientRect();
           return {
-            wrapHeight: wrap.getBoundingClientRect().height,
+            wbHeight: wbRect.height,
+            wbBottom: wbRect.bottom,
+            panelHeight: panelRect.height,
+            innerHeight: innerRect.height,
+            wrapHeight: wrapRect.height,
+            wrapBottom: wrapRect.bottom,
+            resTop: resRect.top,
             scrollHeight: ta.scrollHeight,
             clientHeight: ta.clientHeight,
           };
         });
         assert(mobMetrics, "Missing mobile editor elements for long-code check");
         assert(
-          mobMetrics.wrapHeight <= 450,
-          `Expected mobile .code-editor-wrap <= 450px with 120 lines, got ${mobMetrics.wrapHeight}`
+          mobMetrics.panelHeight >= mobMetrics.innerHeight - 1 && mobMetrics.panelHeight >= 280,
+          `Expected non-collapsed mobile [role='tabpanel'] (${mobMetrics.panelHeight} < ${mobMetrics.innerHeight})`
+        );
+        assert(
+          mobMetrics.wrapBottom <= mobMetrics.resTop + 1 && mobMetrics.wrapBottom <= mobMetrics.wbBottom + 1,
+          `Expected mobile .code-editor-wrap unclipped above results/workbench (wrapBottom=${mobMetrics.wrapBottom}, resTop=${mobMetrics.resTop}, wbBottom=${mobMetrics.wbBottom})`
+        );
+        assert(
+          mobMetrics.wrapHeight >= 280 && mobMetrics.wrapHeight <= 450,
+          `Expected mobile .code-editor-wrap in [280, 450]px with 120 lines, got ${mobMetrics.wrapHeight}`
         );
         assert(
           mobMetrics.scrollHeight > mobMetrics.clientHeight,

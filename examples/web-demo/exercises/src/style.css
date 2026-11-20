@@ -1697,7 +1697,7 @@ details.hint-accordion[open] summary::after {
     min-height: 0;
   }
 
-  [role="tabpanel"]:not([hidden]),
+  .answer-workbench > [role="tabpanel"]:not([hidden]),
   .tab-panel-inner {
     flex: none;
   }
