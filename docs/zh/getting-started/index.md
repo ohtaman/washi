@@ -28,15 +28,14 @@ bun add @ohtaman/washi
 
 :::
 
-仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）、**GLPK** 或 AI 编程助手技能时按需安装：
+仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）或 **GLPK** 时按需安装可选依赖：
 
 ```bash
 npm install z3-solver   # SMT 逻辑约束及 Unsat Core 冲突诊断
 npm install glpk.js     # GLPK 求解器 (GPL-3.0)
-
-# 可选：为 AI 编程助手（Claude Code, Cursor, Codex 等）安装建模技能
-npx skills add ohtaman/washi
 ```
+
+如果使用 AI 编程助手，请参阅[使用 AI 编程助手](./coding-agents.md)了解 `npx skills add ohtaman/washi`、`llms.txt` 与现成提示词模板。
 
 ---
 
@@ -75,7 +74,13 @@ if (m.hasPrimalSolution) {
 
 ## 🧭 下一步
 
-- **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与冲突诊断
-- **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 12 个可参考与运行的建模示例
-- **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与 Pumpkin，以及可选 Z3、GLPK 求解器的特性对比与切换方式
-- **[运行时环境配置](/zh/getting-started/runtimes)**：Node.js、Vite / Next.js 打包工具、CDN 与静态托管配置说明
+### 选择开发方式
+
+- **使用 AI 编程助手构建**：[使用 AI 编程助手](./coding-agents.md) — `npx skills add`、`llms.txt` / Context7 配置、各类数学问题与部署形态的现成提示词，以及冲突调试指南
+- **直接使用 TypeScript 编写模型**：[建模指南](../guide/variables.md) — 数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与冲突诊断
+
+### 参考文档与示例
+
+- **[实际案例与 API 索引](../examples/)**：排班优化、投资组合 QP、车辆路径规划等 12 个可参考与运行的建模示例
+- **[求解器概览与对比](../solvers/)**：内置 HiGHS 与 Pumpkin，以及可选 Z3、GLPK 求解器的特性对比与切换方式
+- **[运行时环境配置](./runtimes.md)**：Node.js、Vite / Next.js 打包工具、CDN、单文件 HTML 与桌面/移动 WebView 配置说明

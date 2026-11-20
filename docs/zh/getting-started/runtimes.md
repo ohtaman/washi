@@ -135,6 +135,24 @@ export default function OptimizerComponent() {
 }
 ```
 
+### 桌面端与移动端 WebView 应用 (Tauri / Capacitor / PWA)
+
+标准 Vite 前端产物无需本地编译 C/C++ 求解器，即可在 **Tauri**（`tauri://localhost` / `http://tauri.localhost`）、**Capacitor** 移动 WebView 以及离线 **PWA** 中完全离线运行内置的 **HiGHS** 与 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）。
+
+在 `tauri.conf.json` 中配置 CSP 以允许 WebAssembly 编译（在 `script-src` 中包含 `'wasm-unsafe-eval'`）与 Web Worker（`worker-src 'self' blob:`），或传入 `{ useWorker: false }`：
+
+```json
+{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:"
+    }
+  }
+}
+```
+
+在桌面端与移动端 WebView 环境中，推荐优先使用内置的 **HiGHS** 与 **Pumpkin** 而非 **Z3**，因为它们无需 `SharedArrayBuffer` 或 `COOP`/`COEP` 响应头。
+
 ---
 
 ## 📦 浏览器 ESM (`<script type="module">`)
@@ -215,7 +233,8 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。在标准 Web 源（`https://` / `http://`）下，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker；而在有效源为不透明源的环境（`window.origin === "null"`，例如本地 `file:` 页面或未开启 `allow-same-origin` 的 `sandbox="allow-scripts"` `<iframe>` 嵌入）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS 与 Pumpkin。
+> - **跨源 CDN Worker 引导**：在标准 Web 源（`https://` / `http://`）下，浏览器同源策略会拦截直接调用 `new Worker("https://cdn...")`，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker。
+> - **直接打开本地 `.html` 文件（`file://`）**：从 CDN 加载 `washi.min.js` 与 `solvers/pumpkin.min.js` 时，直接通过 `file://` 双击打开本地 `.html`（无需本地服务器）即可直接运行——在有效源为不透明源的环境（`window.origin === "null"`，例如本地 `file:` 页面或未开启 `allow-same-origin` 的 `sandbox="allow-scripts"` `<iframe>` 嵌入）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS 与 Pumpkin。自托管的本地 `.wasm` 文件（在 `file://` 下受浏览器 `fetch()` CORS 限制拦截）以及 **Z3**（需配置 `COOP`/`COEP`）则需通过 `http://` 或 `https://` 托管。
 
 ---
 

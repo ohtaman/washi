@@ -105,6 +105,9 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(locMatches).toContain("https://washi.ohtaman.dev/ja/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/zh/");
     expect(locMatches).toContain("https://washi.ohtaman.dev/getting-started/");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/getting-started/coding-agents");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/ja/getting-started/coding-agents");
+    expect(locMatches).toContain("https://washi.ohtaman.dev/zh/getting-started/coding-agents");
     expect(locMatches).toContain("https://washi.ohtaman.dev/guide/variables");
     expect(locMatches).toContain("https://washi.ohtaman.dev/guide/constraint-programming");
     expect(locMatches).toContain("https://washi.ohtaman.dev/guide/decomposition");
@@ -346,7 +349,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     };
 
     const { allDocFiles } = buildLlmsArtifacts(rootDir) as { allDocFiles: string[] };
-    for (const publishedRelPath of ["index.md", ...allDocFiles]) {
+    for (const publishedRelPath of ["index.md", "getting-started/coding-agents.md", ...allDocFiles]) {
       const head = await runTransformHead(publishedRelPath);
       expect(head).toContainEqual(["link", { rel: "describedby", href: "/llms.txt" }]);
       expect(head).toContainEqual([
@@ -359,9 +362,11 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "showcase/index.md",
       "ja/index.md",
       "ja/getting-started/index.md",
+      "ja/getting-started/coding-agents.md",
       "ja/showcase/index.md",
       "zh/index.md",
       "zh/getting-started/index.md",
+      "zh/getting-started/coding-agents.md",
     ]) {
       const head = await runTransformHead(nonRawMdRelPath);
       expect(head).toContainEqual(["link", { rel: "describedby", href: "/llms.txt" }]);
@@ -389,16 +394,19 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     expect(enSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/getting-started/",
+      "/getting-started/coding-agents",
       "/getting-started/runtimes",
       "/getting-started/cross-origin",
     ]);
     expect(jaSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/ja/getting-started/",
+      "/ja/getting-started/coding-agents",
       "/ja/getting-started/runtimes",
       "/ja/getting-started/cross-origin",
     ]);
     expect(zhSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/zh/getting-started/",
+      "/zh/getting-started/coding-agents",
       "/zh/getting-started/runtimes",
       "/zh/getting-started/cross-origin",
     ]);
@@ -474,6 +482,31 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(head).toContainEqual([
         "link",
         { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/guide/variables" },
+      ]);
+    }
+
+    // Human coding-agents guide across EN, JA, ZH
+    for (const codingRel of [
+      "getting-started/coding-agents.md",
+      "ja/getting-started/coding-agents.md",
+      "zh/getting-started/coding-agents.md",
+    ]) {
+      const head = await runTransformHead(codingRel);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "en", href: "https://washi.ohtaman.dev/getting-started/coding-agents" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "ja", href: "https://washi.ohtaman.dev/ja/getting-started/coding-agents" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "zh-CN", href: "https://washi.ohtaman.dev/zh/getting-started/coding-agents" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/getting-started/coding-agents" },
       ]);
     }
 
@@ -696,6 +729,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       [jaContent, "/ja"],
       [zhContent, "/zh"],
     ] as const) {
+      expect(mdContent).toContain(`(${prefix}/getting-started/coding-agents)`);
       expect(mdContent).toContain(`(${prefix}/getting-started/runtimes)`);
       expect(mdContent).not.toContain("getting-started/ecosystem");
       expect(mdContent).not.toContain("getting-started/ai-agents");
@@ -830,6 +864,13 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(subpageHtml).toContain('property="og:type" content="article"');
     expect(subpageHtml).toContain('link rel="describedby" href="/llms.txt"');
     expect(subpageHtml).toContain('link rel="alternate" type="text/markdown" href="/getting-started/ai-agents.md"');
+
+    const codingAgentsHtml = fs.readFileSync(path.resolve(siteDistPath, "getting-started/coding-agents.html"), "utf-8");
+    expect(codingAgentsHtml).toContain('link rel="canonical" href="https://washi.ohtaman.dev/getting-started/coding-agents"');
+    expect(codingAgentsHtml).toContain('link rel="alternate" type="text/markdown" href="/getting-started/coding-agents.md"');
+    expect(fs.existsSync(path.resolve(siteDistPath, "getting-started/coding-agents.md"))).toBe(true);
+    expect(fs.existsSync(path.resolve(siteDistPath, "ja/getting-started/coding-agents.html"))).toBe(true);
+    expect(fs.existsSync(path.resolve(siteDistPath, "zh/getting-started/coding-agents.html"))).toBe(true);
 
     // Removed pages must not exist in built dist/site
     expect(fs.existsSync(path.resolve(siteDistPath, "getting-started/ecosystem.html"))).toBe(false);

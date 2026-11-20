@@ -28,15 +28,14 @@ bun add @ohtaman/washi
 
 :::
 
-**Z3**（SMT 論理制約・Unsat Core 競合診断）や **GLPK** を使う場合のオプション依存パッケージ、および AI コーディングエージェント用スキルは必要に応じて追加します：
+**Z3**（SMT 論理制約・Unsat Core 競合診断）や **GLPK** を使う場合は、オプション依存パッケージを追加します：
 
 ```bash
 npm install z3-solver   # SMT論理制約および Unsat Core 競合診断用
 npm install glpk.js     # GLPK ソルバー用 (GPL-3.0)
-
-# AI コーディングエージェント用スキル (Claude Code, Cursor, Codex 等)
-npx skills add ohtaman/washi
 ```
+
+AI コーディングエージェントを利用する場合は、[AI コーディングエージェントでの開発](./coding-agents.md)（`npx skills add ohtaman/washi`・`llms.txt`・実用プロンプト集）を参照してください。
 
 ---
 
@@ -75,7 +74,13 @@ if (m.hasPrimalSolution) {
 
 ## 🧭 次のステップ
 
-- **[モデリングガイド](../guide/variables.md)**: 配列・辞書変数の作り方、総和 `sum()` や内積 `dot()`、論理制約や競合診断の書き方
+### 開発スタイルを選ぶ
+
+- **AI コーディングエージェントで構築する**: [AI コーディングエージェントでの開発](./coding-agents.md) — `npx skills add` や `llms.txt` / Context7 の設定、問題クラス・配布形態別の実用プロンプト集、競合デバッグ手順
+- **TypeScript で直接モデルを記述する**: [モデリングガイド](../guide/variables.md) — 配列・辞書変数の作り方、総和 `sum()` や内積 `dot()`、論理制約や競合診断の書き方
+
+### リファレンスと実践例
+
 - **[具体例と API 早見表](../examples/)**: 生産計画・シフト作成・ポートフォリオ最適化・配送計画など、12の実践レシピ
 - **[ソルバーの比較と切り替え](../solvers/)**: 同梱の HiGHS・Pumpkin と、オプションの Z3・GLPK の特性比較
-- **[ランタイム環境設定](./runtimes.md)**: Node.js、Vite / Next.js 等のバンドラー、CDN、静的ホスティングでの設定方法
+- **[ランタイム環境設定](./runtimes.md)**: Node.js、Vite / Next.js 等のバンドラー、CDN、単一 HTML、デスクトップ・モバイル WebView での設定方法

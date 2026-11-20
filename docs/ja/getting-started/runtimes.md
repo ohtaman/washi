@@ -135,6 +135,24 @@ export default function OptimizerComponent() {
 }
 ```
 
+### デスクトップ・モバイル WebView アプリ (Tauri / Capacitor / PWA)
+
+標準の Vite フロントエンド構成のまま、**Tauri**（`tauri://localhost` / `http://tauri.localhost`）、**Capacitor** のモバイル WebView、オフライン対応 **PWA** 内で同梱の **HiGHS** および **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を C/C++ ソルバーのネイティブビルドなしでオフライン実行できます。
+
+Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src` に `'wasm-unsafe-eval'`）と Web Worker（`worker-src 'self' blob:`）を許可するか、`{ useWorker: false }` を指定します：
+
+```json
+{
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:"
+    }
+  }
+}
+```
+
+デスクトップ・モバイル WebView では、`SharedArrayBuffer` や `COOP`/`COEP` ヘッダーを必要としない同梱の **HiGHS** および **Pumpkin** の利用を **Z3** より推奨します。
+
 ---
 
 ## 📦 ブラウザ ESM (`<script type="module">`)
@@ -215,7 +233,8 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> jsDelivr 等のクロスオリジン CDN から読み込んだ場合、ブラウザの同一オリジンポリシーにより直接の `new Worker("https://cdn...")` はブロックされます。通常の Web オリジン（`https://` / `http://`）では、WaSHI は軽量の ES モジュール `Blob` ブートストラップ（`import "https://..."`）を介して自動的に Web Worker を起動します。一方、実効オリジンが不透明な環境（`window.origin === "null"`、ローカルの `file:` URL や `allow-same-origin` なしの `sandbox="allow-scripts"` `<iframe>` 埋め込みなど）では、`useWorker` 未指定時に自動的にメインスレッドで HiGHS と Pumpkin を実行します。
+> - **クロスオリジン CDN の Worker 起動**: 通常の Web オリジン（`https://` / `http://`）では直接の `new Worker("https://cdn...")` がブロックされるため、WaSHI は軽量の ES モジュール `Blob` ブートストラップ（`import "https://..."`）を介して自動的に Web Worker を起動します。
+> - **ローカル `.html` の直接起動（`file://`）**: CDN から `washi.min.js` や `solvers/pumpkin.min.js` を読み込む場合、ローカル `.html` を `file://`（ダブルクリック、ローカルサーバー不要）で開いてもそのまま動作します。実効オリジンが不透明な環境（`window.origin === "null"`、ローカルの `file:` URL や `allow-same-origin` なしの `sandbox="allow-scripts"` `<iframe>` 埋め込みなど）では、`useWorker` 未指定時に自動的にメインスレッドで HiGHS と Pumpkin を実行するためです。一方、セルフホストのローカル `.wasm` ファイル（`file://` ではブラウザの `fetch()` CORS 制約でブロック）や **Z3**（`COOP`/`COEP` 必須）は `http://` / `https://` サーバー経由で配信してください。
 
 ---
 
