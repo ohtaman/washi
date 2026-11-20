@@ -1,0 +1,781 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "powerCap": 4,
+      "jobs": [
+        {
+          "duration": 4,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            2
+          ],
+          "postTimes": [
+            2,
+            0
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            2
+          ],
+          "postTimes": [
+            2,
+            0
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 3,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3
+          ],
+          "postTimes": [
+            3,
+            0
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            2
+          ],
+          "postTimes": [
+            1,
+            0
+          ]
+        }
+      ],
+      "precedences": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          3
+        ]
+      ],
+      "modeRules": [
+        {
+          "jobs": [
+            1,
+            2
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    "expectedOptimal": 11
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "powerCap": 4,
+      "jobs": [
+        {
+          "duration": 5,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "duration": 5,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 3,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3,
+            2
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            2,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            2,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        }
+      ],
+      "precedences": [
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          4
+        ]
+      ],
+      "modeRules": [
+        {
+          "jobs": [
+            0,
+            2
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            1,
+            3
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    "expectedOptimal": 13
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "powerCap": 4,
+      "jobs": [
+        {
+          "duration": 6,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3
+          ],
+          "postTimes": [
+            3,
+            0
+          ]
+        },
+        {
+          "duration": 5,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3
+          ],
+          "postTimes": [
+            3,
+            0
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 3,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3
+          ],
+          "postTimes": [
+            3,
+            0
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3
+          ],
+          "postTimes": [
+            2,
+            0
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            2
+          ],
+          "postTimes": [
+            2,
+            0
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            2
+          ],
+          "postTimes": [
+            2,
+            0
+          ]
+        }
+      ],
+      "precedences": [
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "modeRules": [
+        {
+          "jobs": [
+            0,
+            2
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            1,
+            3
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    "expectedOptimal": 14
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "powerCap": 5,
+      "jobs": [
+        {
+          "duration": 5,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            3,
+            0,
+            2
+          ]
+        },
+        {
+          "duration": 5,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 4,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            4,
+            2
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 2,
+          "machine": 2,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 1,
+          "machine": 2,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3,
+            2
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            2,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        }
+      ],
+      "precedences": [
+        [
+          0,
+          6
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "modeRules": [
+        {
+          "jobs": [
+            0,
+            2
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            3,
+            4
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            5,
+            6
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    "expectedOptimal": 15
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "powerCap": 5,
+      "jobs": [
+        {
+          "duration": 5,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            2
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 5,
+          "power": 1,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 4,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            4,
+            2
+          ],
+          "postTimes": [
+            3,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 2,
+          "machine": 2,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 4,
+          "power": 1,
+          "machine": 2,
+          "setupTimes": [
+            0,
+            3,
+            2
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 3,
+          "power": 2,
+          "machine": 0,
+          "setupTimes": [
+            0,
+            3,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        },
+        {
+          "duration": 2,
+          "power": 2,
+          "machine": 1,
+          "setupTimes": [
+            0,
+            2,
+            1
+          ],
+          "postTimes": [
+            2,
+            0,
+            1
+          ]
+        }
+      ],
+      "precedences": [
+        [
+          2,
+          5
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          7
+        ]
+      ],
+      "modeRules": [
+        {
+          "jobs": [
+            0,
+            2
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            1,
+            4
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            3,
+            5
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "jobs": [
+            6,
+            7
+          ],
+          "allowedPairs": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    "expectedOptimal": 15
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "title": "#034. Successor-Variable Hamiltonian Tour",
+  "subtitle": "Model a compact TSP circuit using distinct(next), rank ordering without subtours, and at(distRow, next[i]).",
+  "tags": [
+    "CP",
+    "Successor Circuit",
+    "Subtour Elimination",
+    "at"
+  ],
+  "caseNames": [
+    "4-node symmetric two-pair trap",
+    "4-node asymmetric route",
+    "5-node 2-cycle and 3-cycle trap",
+    "6-node two-cluster network",
+    "6-node asymmetric circuit"
+  ],
+  "judge": {
+    "m0": "Output must be an object { next, totalDistance }.",
+    "m1": "next[{p0}] must be an integer (received {p1}).",
+    "m2": "next[{p0}] = {p1} is out of bounds [0, {p2}].",
+    "m3": "Invalid successor next[{p0}] = {p1}: self-loops and duplicate successors are forbidden.",
+    "m4": "Subtour detected! Following next from node 0 closed early at step {p0} instead of visiting all nodes.",
+    "m5": "Reported totalDistance ({p0}) does not match computed tour length ({p1}).",
+    "m6": "Valid Hamiltonian tour, but totalDistance ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal single-circuit Hamiltonian tour found (totalDistance = {p0})!"
+  }
+}

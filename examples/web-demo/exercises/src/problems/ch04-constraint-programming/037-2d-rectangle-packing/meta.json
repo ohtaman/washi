@@ -1,0 +1,25 @@
+{
+  "id": "037",
+  "slug": "2d-rectangle-packing",
+  "chapter": 4,
+  "order": 7,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 14,
+  "paradigms": [
+    "CP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

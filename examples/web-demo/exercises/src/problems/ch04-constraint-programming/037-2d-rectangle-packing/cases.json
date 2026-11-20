@@ -1,0 +1,103 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "stripWidth": 6,
+      "widths": [
+        4,
+        2,
+        3
+      ],
+      "heights": [
+        3,
+        4,
+        2
+      ]
+    },
+    "expectedOptimal": 5
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "stripWidth": 8,
+      "widths": [
+        5,
+        3,
+        4,
+        3
+      ],
+      "heights": [
+        4,
+        3,
+        2,
+        5
+      ]
+    },
+    "expectedOptimal": 7
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "stripWidth": 10,
+      "widths": [
+        6,
+        4,
+        5,
+        3,
+        2
+      ],
+      "heights": [
+        3,
+        5,
+        2,
+        4,
+        3
+      ]
+    },
+    "expectedOptimal": 7
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "stripWidth": 9,
+      "widths": [
+        4,
+        5,
+        3,
+        3,
+        4
+      ],
+      "heights": [
+        4,
+        2,
+        5,
+        3,
+        3
+      ]
+    },
+    "expectedOptimal": 9
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "stripWidth": 10,
+      "widths": [
+        5,
+        4,
+        3,
+        4,
+        2,
+        3
+      ],
+      "heights": [
+        4,
+        3,
+        5,
+        2,
+        4,
+        3
+      ]
+    },
+    "expectedOptimal": 9
+  }
+]

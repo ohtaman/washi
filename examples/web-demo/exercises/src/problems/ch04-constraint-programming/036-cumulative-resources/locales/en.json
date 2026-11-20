@@ -1,0 +1,27 @@
+{
+  "title": "#036. Cumulative Resource Scheduling (RCPSP)",
+  "subtitle": "Schedule a precedence DAG under a shared renewable power or crew capacity via cumulative(tasks, capacity).",
+  "tags": [
+    "CP",
+    "RCPSP",
+    "cumulative",
+    "Scheduling"
+  ],
+  "caseNames": [
+    "4 tasks under capacity 3",
+    "5-task diamond DAG under capacity 4",
+    "6-task hardware testbench RCPSP",
+    "7-task multi-branch project",
+    "9-task deep DAG under capacity 6"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, makespan }.",
+    "m1": "starts[{p0}] must be an integer (received {p1}).",
+    "m2": "starts[{p0}] cannot be negative (received {p1}).",
+    "m3": "Precedence violated: task {p0} finishes at {p1}, after task {p2} starts at {p3}.",
+    "m4": "Resource capacity exceeded at t = {p0}: active demand {p1} > capacity {p2}. Add cumulative(tasks, capacity)!",
+    "m5": "Reported makespan ({p0}) does not match max completion time ({p1}).",
+    "m6": "Valid RCPSP schedule, but makespan ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal cumulative schedule found (makespan = {p0})!"
+  }
+}
