@@ -1,0 +1,25 @@
+{
+  "id": "091",
+  "slug": "tight-big-m-scaling",
+  "chapter": 10,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 15,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "fixedCosts": [1000, 200, 450],
+      "unitCosts": [10, 12, 11],
+      "capacities": [500, 40, 80],
+      "demand": 60
+    },
+    "expectedOptimal": 1110
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "fixedCosts": [1500, 300, 500, 250],
+      "unitCosts": [8, 14, 10, 15],
+      "capacities": [400, 50, 70, 30],
+      "demand": 90
+    },
+    "expectedOptimal": 1750
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "fixedCosts": [800, 600, 350],
+      "unitCosts": [5, 7, 9],
+      "capacities": [200, 150, 100],
+      "demand": 0
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "fixedCosts": [1200, 400, 550, 300, 700],
+      "unitCosts": [6, 11, 9, 13, 8],
+      "capacities": [600, 45, 65, 35, 250],
+      "demand": 110
+    },
+    "expectedOptimal": 1580
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "fixedCosts": [2000, 480, 620, 390, 850],
+      "unitCosts": [4, 10, 8, 12, 7],
+      "capacities": [800, 60, 80, 40, 300],
+      "demand": 135
+    },
+    "expectedOptimal": 1795
+  }
+]

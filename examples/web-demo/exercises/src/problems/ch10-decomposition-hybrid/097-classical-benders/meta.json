@@ -1,0 +1,25 @@
+{
+  "id": "097",
+  "slug": "classical-benders",
+  "chapter": 10,
+  "order": 7,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 35,
+  "paradigms": [
+    "LP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

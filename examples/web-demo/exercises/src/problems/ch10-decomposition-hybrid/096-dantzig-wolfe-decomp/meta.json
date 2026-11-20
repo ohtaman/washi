@@ -1,0 +1,25 @@
+{
+  "id": "096",
+  "slug": "dantzig-wolfe-decomp",
+  "chapter": 10,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 30,
+  "paradigms": [
+    "LP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

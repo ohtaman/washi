@@ -1,0 +1,27 @@
+{
+  "id": "100",
+  "slug": "integrated-sop-capstone",
+  "chapter": 10,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 45,
+  "paradigms": [
+    "LP",
+    "MIP",
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3",
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

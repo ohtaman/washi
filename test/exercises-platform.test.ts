@@ -1318,18 +1318,23 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
     expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 0 })).toBeNull();
 
     // Multi-chapter Overview rendering & hiding upcoming syllabus when all chapters are available
-    const ch1And2Chapters = CHAPTERS.map((ch) =>
-      ch.chapter <= 2 ? { ...ch, available: true } : ch
-    );
+    const ch1And2Chapters = CHAPTERS.map((ch) => ({
+      ...ch,
+      available: ch.chapter <= 2,
+    }));
     const ch2DummyProb = {
       ...PROBLEMS[1],
       meta: { ...PROBLEMS[1].meta, id: "011", chapter: 2, order: 1 },
     };
+    const sampleProblems = [
+      ...PROBLEMS.filter((p) => p.meta.chapter <= 1),
+      ch2DummyProb,
+    ];
     const multiChapterHtml = renderExerciseIndexHtml({
       locale: "en",
       strings: UI_STRINGS.en,
       chapters: ch1And2Chapters,
-      problems: [...PROBLEMS, ch2DummyProb],
+      problems: sampleProblems,
       progress: state,
     });
     expect(multiChapterHtml).toContain('id="ch1-heading"');
@@ -1341,7 +1346,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       locale: "en",
       strings: UI_STRINGS.en,
       chapters: CHAPTERS.map((ch) => ({ ...ch, available: true })),
-      problems: [...PROBLEMS, ch2DummyProb],
+      problems: sampleProblems,
       progress: state,
     });
     expect(allAvailableHtml).not.toContain('class="chapter-section chapter-syllabus"');

@@ -1,0 +1,28 @@
+{
+  "title": "#097. Classical Benders Decomposition",
+  "subtitle": "Solve two-stage Capacitated Facility Location via WaSHI solveBenders using LP dual feasibility and optimality cuts.",
+  "tags": [
+    "Benders Decomposition",
+    "Facility Location",
+    "Dual Cuts",
+    "LP / MIP"
+  ],
+  "caseNames": [
+    "2 facilities, 3 customer zones",
+    "3 facilities, 4 customer zones",
+    "3 high-capacity hubs, 3 zones",
+    "4 facilities, 5 regional markets",
+    "5 facilities, 6 distribution regions"
+  ],
+  "judge": {
+    "m0": "Output must be an object { open, shipments, totalCost }.",
+    "m1": "Field \"shipments\" must be an array of {p0} facility rows.",
+    "m2": "open[{p0}] must be binary (0 or 1, received {p1}).",
+    "m3": "shipments[{p0}][{p1}] must be non-negative (received {p2}).",
+    "m4": "Facility {p0} ships {p1} total units, exceeding available capacity ({p2}).",
+    "m5": "Customer {p0} receives {p1} units, below demand ({p2}).",
+    "m6": "Reported totalCost ({p0}) does not match recomputed fixed plus shipping cost ({p1}).",
+    "m7": "Plan is feasible, but totalCost ({p0}) exceeds optimal cost ({p1}).",
+    "m8": "Optimal Benders facility location and shipping plan verified (totalCost = {p0})."
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "#096. Dantzig-Wolfe Decomposition",
+  "subtitle": "Decompose block-angular multi-division planning with convexity constraints and independent block LP pricing via WaSHI solveColumnGeneration.",
+  "tags": [
+    "Dantzig-Wolfe",
+    "Column Generation",
+    "Block-Angular LP",
+    "Decomposition"
+  ],
+  "caseNames": [
+    "2-division 3-product corporate plan",
+    "3-division 2-product joint capacity",
+    "2-division high-slack allocation",
+    "3-division 4-product supply network",
+    "4-division shared resource coordination"
+  ],
+  "judge": {
+    "m0": "Output must be an object { allocations, totalProfit }.",
+    "m1": "Field \"allocations\" must be an array of {p0} division production vectors.",
+    "m2": "allocations[{p0}][{p1}] = {p2} violates bounds [0, {p3}].",
+    "m3": "Division {p0} local resource usage ({p1}) exceeds localCap ({p2}).",
+    "m4": "Total shared resource consumption ({p0}) exceeds sharedCap ({p1}).",
+    "m5": "Reported totalProfit ({p0}) does not match recomputed profit ({p1}).",
+    "m6": "Allocation is feasible, but totalProfit ({p0}) is below optimum ({p1}).",
+    "m7": "Optimal Dantzig-Wolfe allocation verified (totalProfit = {p0})."
+  }
+}
