@@ -508,7 +508,7 @@
     "noticeResetDefaults": "↩ 已重置设置与自定义规则",
     "noticeConflictCheckBaseRules": "ℹ️ 冲突中不包含追加规则，请在规则设置中检查基本条件。",
     "noticeConflictCleared": "✨ 已移除 {count} 条冲突规则并重新编排",
-    "noticeInvalidConfigInput": "⚠️ 参数设置无效（连续与教师单日上限需为 1–5 的整数，年级必修上限需为 2–5 的整数，空堂权重需为 0–100 的数值）。",
+    "noticeInvalidConfigInput": "⚠️ 参数设置无效（连续与单日上限需为 1–5 的整数，空堂权重需为 0–100 的数值）。",
     "noticeRuleNeedDistinctCourses": "⚠️ 禁止同时段冲突规则请选择两门不同的课程。",
     "chatOpRejectedTarget": "⚠ 目标未找到，未应用",
     "chatErrorOutputTruncated": "⚠️ Gemini Nano 输出被截断或达到输出上限（{msg}）。请尝试更简短的指令，或直接在右侧「规则设置」标签页中编辑。",

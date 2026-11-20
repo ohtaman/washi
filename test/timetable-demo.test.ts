@@ -3108,6 +3108,13 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(mainFresh.getAppState().config.weightCohortIdleGaps).toBe(2);
       expect(toastAppends.length).toBeGreaterThanOrEqual(4);
 
+      // Chat-supported cohort cap (1..5) must also be accepted by readConfigFromForm
+      inMaxCohort.value = "1";
+      expect(mainFresh.readConfigFromForm()).toBe(true);
+      expect(mainFresh.getAppState().config.maxCohortCompulsoryPerDay).toBe(1);
+      inMaxCohort.value = "4";
+      expect(mainFresh.readConfigFromForm()).toBe(true);
+
       // 2. handleClearToBlank returns false and preserves data when confirm() is unavailable
       delete (globalThis as any).confirm;
       const beforeCoursesCount = mainFresh.getAppState().courses.length;

@@ -2576,7 +2576,7 @@ export function readConfigFromForm(): boolean {
 
   const maxConsec = readValidatedConfigNumber("cfg-maxProfessorConsecutivePeriods", 1, 5, true);
   const maxDaily = readValidatedConfigNumber("cfg-maxProfessorSessionsPerDay", 1, 5, true);
-  const maxCohort = readValidatedConfigNumber("cfg-maxCohortCompulsoryPerDay", 2, 5, true);
+  const maxCohort = readValidatedConfigNumber("cfg-maxCohortCompulsoryPerDay", 1, 5, true);
   const weightGap = readValidatedConfigNumber("cfg-weightCohortIdleGaps", 0, 100, false);
 
   if (maxConsec === null || maxDaily === null || maxCohort === null || weightGap === null) {

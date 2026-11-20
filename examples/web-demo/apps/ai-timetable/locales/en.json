@@ -508,7 +508,7 @@
     "noticeResetDefaults": "↩ Reset settings and custom rules to defaults",
     "noticeConflictCheckBaseRules": "ℹ️ No custom rules in conflict. Check base rules in the Rules tab.",
     "noticeConflictCleared": "✨ Removed {count} conflicting rule(s) and re-optimizing",
-    "noticeInvalidConfigInput": "⚠️ Invalid settings value: enter integers 1–5 for consecutive/daily caps, 2–5 for cohort compulsory cap, and 0–100 for idle gap weight.",
+    "noticeInvalidConfigInput": "⚠️ Invalid settings value: enter integers 1–5 for consecutive/daily caps and 0–100 for idle gap weight.",
     "noticeRuleNeedDistinctCourses": "⚠️ Select two different courses for a no-overlap rule.",
     "chatOpRejectedTarget": "⚠ Not applied (unresolved target)",
     "chatErrorOutputTruncated": "⚠️ Gemini Nano output was truncated or exceeded its limit ({msg}). Please try a shorter request or configure rules directly in the Rules tab.",
