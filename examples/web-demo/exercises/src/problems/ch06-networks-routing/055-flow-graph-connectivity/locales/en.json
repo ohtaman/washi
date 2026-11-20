@@ -1,0 +1,28 @@
+{
+  "title": "#055. Rooted Connected Subgraph via Single-Commodity Flow",
+  "subtitle": "Select a prize-collecting connected cluster rooted at node 0 using single-commodity flow to forbid disconnected islands.",
+  "tags": [
+    "MIP",
+    "Graph Connectivity",
+    "Flow Formulation",
+    "Core"
+  ],
+  "caseNames": [
+    "5-node Steiner relay cluster",
+    "6-node expensive bridge choice",
+    "6-node disconnected island trap",
+    "7-node multi-branch network",
+    "8-node multi-tier subgraph"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selectedNodes, selectedEdges, netValue }.",
+    "m1": "selectedNodes[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Root node 0 must always be selected (selectedNodes[0] == 1).",
+    "m3": "selectedEdges[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m4": "Selected edge {p0} ({p1}-{p2}) requires both endpoints to be selected.",
+    "m5": "Selected node {p0} is disconnected from root node 0 along selectedEdges.",
+    "m6": "Reported netValue ({p0}) does not match prize sum minus edge cost ({p1}).",
+    "m7": "Valid connected subgraph, but netValue ({p0}) is below maximum ({p1}).",
+    "m8": "Optimal connected subgraph rooted at node 0 found (netValue = {p0})!"
+  }
+}

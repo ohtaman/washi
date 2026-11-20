@@ -1,0 +1,27 @@
+{
+  "title": "#053. Resource-Constrained Shortest Path (RCSP)",
+  "subtitle": "Select a minimum-cost s-to-t path using binary flow-conservation arcs subject to a cumulative resource budget.",
+  "tags": [
+    "MIP",
+    "Shortest Path",
+    "Resource Constraint",
+    "Core"
+  ],
+  "caseNames": [
+    "5-node tight delay budget",
+    "6-node cyclic trade-off graph",
+    "7-node multi-hop detour",
+    "8-node bidirectional bridge",
+    "8-node bottleneck network"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, totalCost }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Unit s-t flow conservation failed at node {p0}: net outflow is {p1}, expected {p2}.",
+    "m3": "Selected arcs do not form a single simple s-to-t path (disconnected cycle or branch detected).",
+    "m4": "Total resource consumption ({p0}) exceeds budget ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match sum of selected arc costs ({p1}).",
+    "m6": "Valid s-to-t path within resource limit, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m7": "Minimum-cost resource-feasible s-to-t path found (totalCost = {p0})!"
+  }
+}
