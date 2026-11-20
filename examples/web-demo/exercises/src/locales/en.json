@@ -19,7 +19,7 @@
       },
       {
         "label": "AI-generated exercises with ongoing review",
-        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand. Reviewed exercises display \"Reviewed by ...\" near the top of the problem page."
+        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand (reviewed exercises display \"Reviewed by ...\"). Each exercise also links to its own GitHub Discussions thread for questions and feedback."
       }
     ],
     "navDocs": "Docs",
@@ -63,7 +63,9 @@
       "tocDrawerClose": "Close",
       "statementTablistLabel": "Statement and editorial tabs",
       "problemTab": "Problem",
-      "editorialTab": "Editorial"
+      "editorialTab": "Editorial",
+      "discussionNote": "Have questions, alternative approaches, or wording feedback on this exercise?",
+      "discussionBtn": "Discuss on GitHub"
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",

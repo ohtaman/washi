@@ -32,6 +32,7 @@ import {
 } from "../examples/web-demo/exercises/src/ui/markdown.js";
 import { loadGuideMarkdown } from "../examples/web-demo/exercises/src/guide/index.js";
 import {
+  getProblemDiscussionUrl,
   renderExerciseIndexHtml,
   renderGuidePageHtml,
   renderHeaderHtml,
@@ -1206,6 +1207,14 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       const p010WsHtml = wsHtml;
       expect(p010WsHtml).toContain('id="stmt-tab-problem"');
       expect(p010WsHtml).toContain('id="stmt-tab-editorial"');
+      expect(p010WsHtml).toContain('id="ws-discussion-link"');
+      expect(p010WsHtml).toContain(
+        `href="https://github.com/ohtaman/washi/discussions/${p010.meta.discussionNumber}"`
+      );
+      expect(p010WsHtml).toContain('target="_blank"');
+      expect(p010WsHtml).toContain('rel="noopener noreferrer"');
+      expect(decodeHtmlEntities(p010WsHtml)).toContain(UI_STRINGS[locale].workspace.discussionNote);
+      expect(decodeHtmlEntities(p010WsHtml)).toContain(UI_STRINGS[locale].workspace.discussionBtn);
       expect(p010WsHtml).toContain(`${p010.meta.difficulty}/5`);
       expect(p010WsHtml).toContain(UI_STRINGS[locale].solvedBadge);
 
@@ -1245,6 +1254,16 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       expect(resHtml).toContain("✓ ");
       expect(resHtml).toContain(UI_STRINGS[locale].results.nextProblemBtn("010"));
     }
+
+    expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 282 })).toBe(
+      "https://github.com/ohtaman/washi/discussions/282"
+    );
+    expect(getProblemDiscussionUrl({ id: "099" })).toBe(
+      "https://github.com/ohtaman/washi/discussions?discussions_q=%23099"
+    );
+    expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 0 })).toBe(
+      "https://github.com/ohtaman/washi/discussions?discussions_q=%23001"
+    );
   });
 });
 

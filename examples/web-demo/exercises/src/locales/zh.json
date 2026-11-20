@@ -19,7 +19,7 @@
       },
       {
         "label": "由生成式 AI 编写并持续人工审阅",
-        "body": "习题与题解使用生成式 AI（Gemini）生成，在经过自动求解验证的同时持续进行人工审阅；已完成审阅的题目会在题目页顶部显示“Reviewed by ...”。"
+        "body": "习题与题解使用生成式 AI（Gemini）生成，在经过自动求解验证的同时持续进行人工审阅（已完成审阅的题目会显示“Reviewed by ...”）；每道题页面底部还配有对应的 GitHub Discussions 讨论帖，欢迎提问或提交建议。"
       }
     ],
     "navDocs": "文档",
@@ -63,7 +63,9 @@
       "tocDrawerClose": "关闭",
       "statementTablistLabel": "题目与题解切换",
       "problemTab": "题目",
-      "editorialTab": "题解"
+      "editorialTab": "题解",
+      "discussionNote": "对本题有疑问、其他解法或改进建议？",
+      "discussionBtn": "在 GitHub Discussions 讨论"
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
