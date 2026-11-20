@@ -1,0 +1,24 @@
+{
+  "id": "050",
+  "slug": "rule-diagnosis-repair",
+  "chapter": 5,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "scratch",
+  "difficulty": 5,
+  "estimatedMinutes": 20,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

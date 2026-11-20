@@ -1,0 +1,118 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "externalDemands": [
+        [0, 0, 10, 15, 12],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]
+      ],
+      "bom": [
+        [0, 0, 0],
+        [2, 0, 0],
+        [0, 3, 0]
+      ],
+      "leadTimes": [1, 1, 0],
+      "initialInventory": [0, 0, 0],
+      "setupCosts": [150, 90, 50],
+      "prodCosts": [12, 6, 2],
+      "holdCosts": [2, 1, 0.5],
+      "capacities": [30, 60, 180]
+    },
+    "expectedOptimal": 1936
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "externalDemands": [
+        [5, 8, 12, 10, 14, 8],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0]
+      ],
+      "bom": [
+        [0, 0, 0],
+        [2, 0, 0],
+        [1, 0, 0]
+      ],
+      "leadTimes": [1, 1, 1],
+      "initialInventory": [15, 25, 15],
+      "setupCosts": [180, 110, 90],
+      "prodCosts": [15, 7, 5],
+      "holdCosts": [2.5, 1.2, 1.0],
+      "capacities": [25, 50, 30]
+    },
+    "expectedOptimal": 2012
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "externalDemands": [
+        [0, 0, 8, 12, 10, 15],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0]
+      ],
+      "bom": [
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+        [2, 0, 0, 0],
+        [0, 2, 1, 0]
+      ],
+      "leadTimes": [1, 1, 0, 0],
+      "initialInventory": [0, 10, 0, 0],
+      "setupCosts": [200, 100, 120, 70],
+      "prodCosts": [20, 8, 6, 2],
+      "holdCosts": [3, 1.5, 1.0, 0.4],
+      "capacities": [30, 30, 60, 200]
+    },
+    "expectedOptimal": 3152
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "externalDemands": [
+        [8, 0, 10, 14, 0, 12, 10],
+        [0, 0, 0, 0, 0, 0, 0],
+        [4, 6, 4, 8, 5, 6, 4],
+        [0, 0, 0, 0, 0, 0, 0]
+      ],
+      "bom": [
+        [0, 0, 0, 0],
+        [2, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 2, 3, 0]
+      ],
+      "leadTimes": [1, 1, 1, 0],
+      "initialInventory": [10, 20, 25, 0],
+      "setupCosts": [220, 130, 90, 60],
+      "prodCosts": [18, 9, 5, 2],
+      "holdCosts": [3, 1.5, 1, 0.5],
+      "capacities": [25, 45, 60, 250]
+    },
+    "expectedOptimal": 4000
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "externalDemands": [
+        [6, 8, 10, 12, 8, 14, 10],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0]
+      ],
+      "bom": [
+        [0, 0, 0, 0],
+        [2, 0, 0, 0],
+        [1, 1, 0, 0],
+        [0, 0, 2, 0]
+      ],
+      "leadTimes": [2, 1, 1, 0],
+      "initialInventory": [16, 30, 40, 0],
+      "setupCosts": [250, 140, 100, 55],
+      "prodCosts": [22, 10, 6, 2],
+      "holdCosts": [3.5, 1.8, 1.2, 0.5],
+      "capacities": [22, 40, 70, 200]
+    },
+    "expectedOptimal": 4401.6
+  }
+]

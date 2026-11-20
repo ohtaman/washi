@@ -1,0 +1,345 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "supplies": [
+        10,
+        0,
+        0,
+        -10
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 6,
+          "cost": 2
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 8,
+          "cost": 4
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "cap": 5,
+          "cost": 1
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 4,
+          "cost": 3
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 7,
+          "cost": 2
+        }
+      ]
+    },
+    "expectedOptimal": 54
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "supplies": [
+        12,
+        0,
+        0,
+        -5,
+        -7
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 8,
+          "cost": 3
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 7,
+          "cost": 5
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "cap": 4,
+          "cost": 1
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 6,
+          "cost": 4
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 3,
+          "cost": 2
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 8,
+          "cost": 3
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cap": 5,
+          "cost": 2
+        }
+      ]
+    },
+    "expectedOptimal": 87
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "supplies": [
+        9,
+        6,
+        0,
+        0,
+        -7,
+        -8
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 7,
+          "cost": 2
+        },
+        {
+          "from": 0,
+          "to": 3,
+          "cap": 5,
+          "cost": 4
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "cap": 4,
+          "cost": 3
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 6,
+          "cost": 2
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 3,
+          "cost": 1
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cap": 8,
+          "cost": 3
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cap": 4,
+          "cost": 6
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cap": 5,
+          "cost": 5
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cap": 9,
+          "cost": 2
+        }
+      ]
+    },
+    "expectedOptimal": 71
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "supplies": [
+        14,
+        0,
+        0,
+        0,
+        -6,
+        -8
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cap": 9,
+          "cost": 5
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 10,
+          "cost": 3
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 7,
+          "cost": 2
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cap": 4,
+          "cost": 7
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "cap": 4,
+          "cost": 1
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 5,
+          "cost": 6
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cap": 6,
+          "cost": 8
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cap": 5,
+          "cost": 2
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cap": 6,
+          "cost": 3
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "cap": 3,
+          "cost": 1
+        }
+      ]
+    },
+    "expectedOptimal": 139
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "supplies": [
+        15,
+        10,
+        0,
+        0,
+        0,
+        -9,
+        -8,
+        -8
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 2,
+          "cap": 11,
+          "cost": 2
+        },
+        {
+          "from": 0,
+          "to": 3,
+          "cap": 8,
+          "cost": 4
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cap": 7,
+          "cost": 2
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cap": 6,
+          "cost": 5
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cap": 5,
+          "cost": 1
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cap": 10,
+          "cost": 3
+        },
+        {
+          "from": 2,
+          "to": 6,
+          "cap": 4,
+          "cost": 6
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cap": 6,
+          "cost": 2
+        },
+        {
+          "from": 3,
+          "to": 6,
+          "cap": 9,
+          "cost": 3
+        },
+        {
+          "from": 3,
+          "to": 7,
+          "cap": 5,
+          "cost": 8
+        },
+        {
+          "from": 4,
+          "to": 6,
+          "cap": 4,
+          "cost": 4
+        },
+        {
+          "from": 4,
+          "to": 7,
+          "cap": 9,
+          "cost": 2
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cap": 3,
+          "cost": 2
+        }
+      ]
+    },
+    "expectedOptimal": 146
+  }
+]

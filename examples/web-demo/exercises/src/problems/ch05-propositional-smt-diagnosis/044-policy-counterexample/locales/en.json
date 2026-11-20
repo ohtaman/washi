@@ -1,0 +1,26 @@
+{
+  "title": "#044. Security Policy Counterexample Search",
+  "subtitle": "Prove a safety invariant by refutation: assert all policy rules together with not(safeInvariant) in Z3 to find a concrete violation.",
+  "tags": [
+    "SMT",
+    "Verification",
+    "Counterexample",
+    "Security"
+  ],
+  "caseNames": [
+    "Firewall SSH rule with missing MFA check",
+    "Patched firewall SSH policy",
+    "API burst-quota privilege loophole",
+    "Database export clearance policy",
+    "Cloud IAM cross-account role assumption"
+  ],
+  "judge": {
+    "m0": "Output must be an object { hasViolation, counterexample }.",
+    "m1": "When hasViolation is false, counterexample must be null.",
+    "m2": "A valid counterexample violating the safety invariant exists, yet hasViolation: false was returned.",
+    "m3": "Counterexample violates policy rule {p0}.",
+    "m4": "Counterexample actually satisfies safeInvariant instead of violating it.",
+    "m5": "Safety invariant proven: no state satisfies all policy rules while violating safeInvariant.",
+    "m6": "Valid policy violation counterexample found!"
+  }
+}

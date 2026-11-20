@@ -1,0 +1,24 @@
+{
+  "id": "033",
+  "slug": "table-allowed-configs",
+  "chapter": 4,
+  "order": 3,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 3,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "CP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

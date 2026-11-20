@@ -1,0 +1,27 @@
+{
+  "title": "#035. Disjunctive Machine Scheduling (disjoint)",
+  "subtitle": "Schedule tasks with release times and precedences across unary machines using disjoint(tasks) to minimize makespan.",
+  "tags": [
+    "CP",
+    "Scheduling",
+    "disjoint",
+    "NoOverlap"
+  ],
+  "caseNames": [
+    "4 tasks on a single machine",
+    "5 tasks with staggered release times",
+    "6 tasks across 2 coupled machines",
+    "7 tasks on 2 machines with precedence DAG",
+    "8 tasks across 2 machines"
+  ],
+  "judge": {
+    "m0": "Output must be an object { starts, makespan }.",
+    "m1": "starts[{p0}] must be an integer (received {p1}).",
+    "m2": "Task {p0} starts at {p1}, before its releaseTime ({p2}).",
+    "m3": "Precedence violated: task {p0} finishes at {p1}, after task {p2} starts at {p3}.",
+    "m4": "Machine {p0} overlap between task {p1} {p3} and task {p2} {p4}. Add disjoint(tasks)!",
+    "m5": "Reported makespan ({p0}) does not match max completion time ({p1}).",
+    "m6": "Valid schedule, but makespan ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal disjunctive schedule found (makespan = {p0})!"
+  }
+}

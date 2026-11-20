@@ -665,6 +665,45 @@ async function run() {
       "Expected 0 / 100 to persist after reload"
     );
 
+    // 4a. Representative milestone verifications for Chapters 2+
+    {
+      const milestoneCases = [
+        { id: "011", expectHighspy: true },
+        { id: "027", expectHighspy: true },
+        { id: "036", expectHighspy: false },
+        { id: "042", expectHighspy: false },
+        { id: "046", expectHighspy: false },
+        { id: "048", expectHighspy: false },
+      ];
+      for (const mc of milestoneCases) {
+        await page.goto(`${baseUrl}/exercises/?id=${mc.id}&lang=en`, { waitUntil: "networkidle" });
+        await page.waitForSelector("#ws-problem-title");
+        assert(
+          (await page.locator("#ws-discussion-link").count()) === 0,
+          `${mc.id}: expected #ws-discussion-link omitted when discussionNumber is absent`
+        );
+        if (mc.expectHighspy) {
+          assert((await page.locator("#tab-highspy").count()) === 1, `${mc.id}: expected #tab-highspy`);
+        } else {
+          assert((await page.locator("#tab-highspy").count()) === 0, `${mc.id}: expected WaSHI-only (no #tab-highspy)`);
+        }
+        const washiSolBtn = page.locator('button[data-action="solution"][data-runtime="washi"]');
+        await washiSolBtn.click();
+        await washiSolBtn.click();
+        await page.click('button[data-action="run"][data-runtime="washi"]');
+        await page.waitForSelector("#judge-results .ac-celebration", { timeout: 60_000 });
+        if (mc.expectHighspy) {
+          await page.click("#tab-highspy");
+          const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
+          await pySolBtn.click();
+          await pySolBtn.click();
+          await page.click('button[data-action="run"][data-runtime="highspy"]');
+          await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
+        }
+        console.log(`  [PASS] Milestone ${mc.id}: real-browser AC verified.`);
+      }
+    }
+
     // 4b. Verify leaving a workspace while a Python run is in flight never leaks results into another problem
     {
       const raceCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });

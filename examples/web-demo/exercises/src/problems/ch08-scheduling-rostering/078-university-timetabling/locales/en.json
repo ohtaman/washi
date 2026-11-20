@@ -1,0 +1,29 @@
+{
+  "title": "#078. University Course Timetabling",
+  "subtitle": "Assign courses to rooms and timeslots obeying capacity, room exclusivity, teacher conflicts, and student cohort cliques.",
+  "tags": [
+    "MIP",
+    "Timetabling",
+    "Clique Conflicts",
+    "3D Assignment"
+  ],
+  "caseNames": [
+    "4-course 2-room 3-slot check",
+    "6-course 3-room multi-cohort",
+    "7-course tight lecture hall",
+    "8-course 5-slot department block",
+    "10-course 4-room full timetable"
+  ],
+  "judge": {
+    "m0": "Output must be an object { rooms, slots, totalScore }.",
+    "m1": "rooms[{p0}] must be an integer in [0, {p2}] (received {p1}).",
+    "m2": "slots[{p0}] must be an integer in [0, {p2}] (received {p1}).",
+    "m3": "Course {p0} (size {p1}) exceeds capacity of room {p2} ({p3}).",
+    "m4": "Courses {p0} and {p1} are both scheduled in room {p2} at slot {p3}.",
+    "m5": "Courses {p0} and {p1} share teacher {p2} in slot {p3}.",
+    "m6": "Courses {p0} and {p1} share cohort {p2} in slot {p3}.",
+    "m7": "Reported totalScore ({p0}) does not match computed slot score ({p1}).",
+    "m8": "Valid timetable, but total score ({p0}) is below maximum ({p1}).",
+    "m9": "Optimal conflict-free timetable found (totalScore = {p0})!"
+  }
+}

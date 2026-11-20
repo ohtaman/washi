@@ -1,0 +1,28 @@
+{
+  "title": "#061. Single-Item Dynamic Lot Sizing",
+  "subtitle": "Balance fixed setup costs, production costs, and inventory holding across periods with strong lot-sizing reformulations.",
+  "tags": [
+    "MIP",
+    "Lot Sizing",
+    "Facility Location",
+    "Tight Formulation"
+  ],
+  "caseNames": [
+    "4-period seasonal demand",
+    "5-period tight capacity",
+    "4-period zero-demand period",
+    "6-period rising holding cost",
+    "6-period fractional demands"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setups, production, inventory, totalCost }.",
+    "m1": "setups[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "production[{p0}] cannot be negative (received {p1}).",
+    "m3": "Period {p0} produced {p1} units exceeding allowed capacity {p2} for setups[{p0}] = {p3}.",
+    "m4": "inventory[{p0}] cannot be negative (received {p1}).",
+    "m5": "Inventory flow mismatch at period {p0}: expected {p1}, got {p2}.",
+    "m6": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
+    "m7": "Valid lot-sizing plan, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal dynamic lot-sizing schedule found (totalCost = {p0})!"
+  }
+}

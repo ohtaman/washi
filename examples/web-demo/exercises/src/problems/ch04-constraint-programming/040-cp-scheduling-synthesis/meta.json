@@ -1,0 +1,25 @@
+{
+  "id": "040",
+  "slug": "cp-scheduling-synthesis",
+  "chapter": 4,
+  "order": 10,
+  "role": "capstone",
+  "scaffold": "fill-in",
+  "difficulty": 5,
+  "estimatedMinutes": 18,
+  "paradigms": [
+    "CP",
+    "MIP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

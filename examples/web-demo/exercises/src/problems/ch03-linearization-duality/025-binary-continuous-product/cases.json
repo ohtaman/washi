@@ -1,0 +1,197 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "minOrders": [
+        10,
+        15,
+        10
+      ],
+      "maxOrders": [
+        50,
+        60,
+        40
+      ],
+      "baseCosts": [
+        20,
+        22,
+        18
+      ],
+      "discounts": [
+        5,
+        6,
+        3
+      ],
+      "contractFees": [
+        160,
+        220,
+        150
+      ],
+      "totalDemand": 95
+    },
+    "expectedOptimal": 1780
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "minOrders": [
+        12,
+        8,
+        15,
+        10
+      ],
+      "maxOrders": [
+        45,
+        50,
+        40,
+        35
+      ],
+      "baseCosts": [
+        25,
+        20,
+        28,
+        22
+      ],
+      "discounts": [
+        7,
+        4,
+        9,
+        5
+      ],
+      "contractFees": [
+        200,
+        180,
+        210,
+        140
+      ],
+      "totalDemand": 110
+    },
+    "expectedOptimal": 2401
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "minOrders": [
+        10,
+        10,
+        10,
+        10
+      ],
+      "maxOrders": [
+        30,
+        30,
+        30,
+        30
+      ],
+      "baseCosts": [
+        15,
+        18,
+        20,
+        16
+      ],
+      "discounts": [
+        2,
+        3,
+        2,
+        3
+      ],
+      "contractFees": [
+        120,
+        140,
+        130,
+        150
+      ],
+      "totalDemand": 75
+    },
+    "expectedOptimal": 1230
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "minOrders": [
+        8,
+        12,
+        10,
+        14,
+        6
+      ],
+      "maxOrders": [
+        40,
+        55,
+        45,
+        50,
+        35
+      ],
+      "baseCosts": [
+        24,
+        21,
+        26,
+        23,
+        19
+      ],
+      "discounts": [
+        6,
+        5,
+        8,
+        6,
+        4
+      ],
+      "contractFees": [
+        150,
+        190,
+        220,
+        210,
+        130
+      ],
+      "totalDemand": 140
+    },
+    "expectedOptimal": 2905
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "minOrders": [
+        10,
+        12,
+        15,
+        8,
+        10,
+        12
+      ],
+      "maxOrders": [
+        45,
+        50,
+        55,
+        40,
+        45,
+        50
+      ],
+      "baseCosts": [
+        22,
+        25,
+        20,
+        27,
+        23,
+        21
+      ],
+      "discounts": [
+        5,
+        7,
+        4,
+        8,
+        6,
+        5
+      ],
+      "contractFees": [
+        160,
+        240,
+        180,
+        200,
+        190,
+        175
+      ],
+      "totalDemand": 190
+    },
+    "expectedOptimal": 3936
+  }
+]

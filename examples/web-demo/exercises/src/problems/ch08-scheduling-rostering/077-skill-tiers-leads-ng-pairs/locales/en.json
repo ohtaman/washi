@@ -1,0 +1,29 @@
+{
+  "title": "#077. Skill Coverage, Senior Leads & Incompatible Staff Pairs",
+  "subtitle": "Combine shift skill requirements, mandatory senior lead presence, and forbidden incompatible pair rules in staff rostering.",
+  "tags": [
+    "MIP",
+    "Staff Rostering",
+    "Skill Coverage",
+    "Conflict Pairs"
+  ],
+  "caseNames": [
+    "4-staff 2-day skill and pair check",
+    "5-staff 3-day dual-shift roster",
+    "6-staff 3-shift multi-skill roster",
+    "6-staff 4-day dense NG pairs",
+    "8-staff 4-day multi-tier clinic"
+  ],
+  "judge": {
+    "m0": "Output must be an object { schedule, totalCost }.",
+    "m1": "Field \"schedule\" must be a {p0}x{p1} matrix.",
+    "m2": "schedule[{p0}][{p1}] must be an integer in [-1, {p3}] (received {p2}).",
+    "m3": "Day {p0}, shift {p1} has {p2} staff assigned, below demand {p3}.",
+    "m4": "Day {p0}, shift {p1} has no senior lead assigned.",
+    "m5": "Day {p0}, shift {p1} has only {p3} staff with skill {p2}, below requirement {p4}.",
+    "m6": "Incompatible pair ({p0}, {p1}) are both assigned to day {p2}, shift {p3}.",
+    "m7": "Reported totalCost ({p0}) does not match computed shift cost ({p1}).",
+    "m8": "Valid roster, but total cost ({p0}) exceeds minimum ({p1}).",
+    "m9": "Optimal qualified roster found (totalCost = {p0})!"
+  }
+}

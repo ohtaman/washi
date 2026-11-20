@@ -1,0 +1,33 @@
+{
+  "title": "#050. 冲突诊断与最小代价修复综合实战",
+  "subtitle": "第五章综合题：判定硬软策略联合一致性，冲突时提取极小不可满足核心 (MUS)，并通过 Z3 合成最小代价软规则松弛修复方案。",
+  "tags": [
+    "SMT",
+    "MUS",
+    "MaxSAT",
+    "第五章综合"
+  ],
+  "caseNames": [
+    "生产访问策略冲突诊断与修复",
+    "无冲突的欧盟合规策略",
+    "跨越双重冲突的最小碰集修复",
+    "布尔与整数等式混合冲突",
+    "多属性云治理策略综合修复"
+  ],
+  "judge": {
+    "m0": "返回值必须是 { consistent, minimalCore, relaxedRules, repairCost, repairedAssignment } 对象。",
+    "m1": "返回 consistent = {p0}，但硬规则与软规则联合集实际为 {p1}。",
+    "m2": "当 consistent 为 true 时，minimalCore 和 relaxedRules 必须为空且 repairCost 必须为 0。",
+    "m3": "repairedAssignment 违反了硬规则 \"{p0}\"。",
+    "m4": "{p1} 中包含重复规则 ID \"{p0}\"。",
+    "m5": "{p1} 中包含未知规则 ID \"{p0}\"。",
+    "m6": "当策略不一致时，minimalCore 不能为空。",
+    "m7": "返回的 minimalCore [{p0}] 实际上可满足。",
+    "m8": "返回的 minimalCore [{p0}] 不是极小的：移除规则 \"{p1}\" 后仍然不可满足。",
+    "m9": "relaxedRules（[{p0}]）与 repairedAssignment 实际违背的软规则（[{p1}]）不一致。",
+    "m10": "返回的 repairCost（{p0}）与实际被松弛规则权重之和（{p1}）不符。",
+    "m11": "修复满足全部硬规则，但 repairCost（{p0}）高于最优最小值（{p1}）。",
+    "m12": "策略联合一致（repairCost = 0）验证通过！",
+    "m13": "已完成极小冲突核诊断与最小代价修复（repairCost = {p0}）！"
+  }
+}

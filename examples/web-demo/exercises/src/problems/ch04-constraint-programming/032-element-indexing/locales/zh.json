@@ -1,0 +1,26 @@
+{
+  "title": "#032. 基于 Element 索引（at）的机器作业指派",
+  "subtitle": "用 N 个有限域整数变量配合 distinct() 和 Element 索引原语 at(costs[i], assign[i]) 替代二维 0-1 矩阵求解最小成本指派。",
+  "tags": [
+    "CP",
+    "Element约束",
+    "at",
+    "distinct"
+  ],
+  "caseNames": [
+    "3 项作业与 3 台机器",
+    "4 项作业与 4 台机器",
+    "4 项作业与 6 台候选机器",
+    "5 项作业与 5 台机器",
+    "6 项作业与 7 台候选机器"
+  ],
+  "judge": {
+    "m0": "返回值必须是包含 { assignment, totalCost } 的对象。",
+    "m1": "assignment[{p0}] 必须是整数（实际为 {p1}）。",
+    "m2": "assignment[{p0}] = {p1} 超出了机器索引范围 [0, {p2}]。",
+    "m3": "机器 {p0} 被重复分配给多项作业，请检查 distinct(assignment) 约束。",
+    "m4": "返回的 totalCost ({p0}) 与实际指派总成本 ({p1}) 不一致。",
+    "m5": "满足所有唯一指派约束，但总成本 ({p0}) 高于最优值 ({p1})。",
+    "m6": "正确！已通过 Element 索引求得最小成本指派方案（totalCost = {p0}）。"
+  }
+}

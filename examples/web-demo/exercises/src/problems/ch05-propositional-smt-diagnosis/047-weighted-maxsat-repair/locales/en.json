@@ -1,0 +1,27 @@
+{
+  "title": "#047. Weighted MaxSAT Policy Repair",
+  "subtitle": "Satisfy all hard rules while minimizing the total penalty weight of violated soft preferences via Z3 optimization.",
+  "tags": [
+    "SMT",
+    "MaxSAT",
+    "Soft Constraints",
+    "Repair"
+  ],
+  "caseNames": [
+    "4-variable protocol preference tradeoff",
+    "4-variable conflict-free soft policy",
+    "5-variable branch penalty tradeoff",
+    "6-variable multi-soft conflict",
+    "8-variable enterprise security repair"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignment, violatedRules, totalPenalty }.",
+    "m1": "Hard rule {p0} is violated by the returned assignment.",
+    "m2": "Duplicate rule ID \"{p0}\" in violatedRules.",
+    "m3": "Unknown soft rule ID \"{p0}\" in violatedRules.",
+    "m4": "violatedRules [{p0}] does not match the soft rules actually violated by assignment ([{p1}]).",
+    "m5": "Reported totalPenalty ({p0}) does not match the actual penalty weight ({p1}) of violated soft rules.",
+    "m6": "All hard rules satisfied, but totalPenalty ({p0}) exceeds minimum ({p1}).",
+    "m7": "Optimal MaxSAT repair found (totalPenalty = {p0})!"
+  }
+}

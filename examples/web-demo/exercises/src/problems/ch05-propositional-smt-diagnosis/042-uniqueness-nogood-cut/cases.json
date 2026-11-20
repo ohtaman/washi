@@ -1,0 +1,70 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "vars": ["a", "b", "c", "d"],
+      "rules": [
+        "a",
+        { "implies": ["a", "b"] },
+        { "xor": ["b", "c"] },
+        { "implies": [{ "and": ["a", { "not": "c" }] }, "d"] }
+      ]
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "vars": ["p", "q", "r", "s"],
+      "rules": [
+        { "or": ["p", "q"] },
+        { "implies": ["p", "r"] },
+        { "xor": ["r", "s"] }
+      ]
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "vars": ["u", "v", "w", "z"],
+      "rules": [
+        { "xor": ["u", "v"] },
+        { "xor": ["v", "w"] },
+        { "xor": ["w", "u"] },
+        { "implies": ["z", "u"] }
+      ]
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "vars": ["x0", "x1", "x2", "x3", "x4", "x5"],
+      "rules": [
+        { "xor": ["x0", "x1"] },
+        { "implies": ["x0", "x2"] },
+        { "implies": ["x1", "x2"] },
+        { "not": "x0" },
+        { "xor": ["x2", "x3"] },
+        { "implies": [{ "and": ["x1", "x2"] }, "x4"] },
+        { "xor": ["x4", "x5"] }
+      ]
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "vars": ["k0", "k1", "k2", "k3", "k4", "k5"],
+      "rules": [
+        { "or": ["k0", "k1"] },
+        { "not": { "and": ["k0", "k1"] } },
+        { "implies": ["k0", "k2"] },
+        { "implies": ["k1", "k3"] },
+        { "xor": ["k4", "k5"] }
+      ]
+    },
+    "expectedOptimal": 2
+  }
+]

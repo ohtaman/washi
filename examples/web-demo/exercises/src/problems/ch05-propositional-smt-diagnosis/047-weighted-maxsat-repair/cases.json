@@ -1,0 +1,93 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "vars": ["tls", "legacyApi", "fastMode", "audit"],
+      "hardRules": [
+        { "implies": ["fastMode", "legacyApi"] },
+        { "not": { "and": ["tls", "legacyApi"] } }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 5, "expr": "tls" },
+        { "id": "S2", "weight": 2, "expr": "fastMode" },
+        { "id": "S3", "weight": 4, "expr": { "implies": ["tls", "audit"] } }
+      ]
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "vars": ["cache", "replicas", "cdn", "strict"],
+      "hardRules": [
+        { "implies": ["cdn", "cache"] },
+        { "or": ["replicas", "strict"] }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 3, "expr": "cdn" },
+        { "id": "S2", "weight": 4, "expr": "replicas" },
+        { "id": "S3", "weight": 2, "expr": "strict" }
+      ]
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "vars": ["a", "b", "c", "d", "e"],
+      "hardRules": [
+        { "xor": ["a", "b"] },
+        { "implies": ["a", "c"] },
+        { "implies": ["b", { "and": ["d", "e"] }] }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 6, "expr": "a" },
+        { "id": "S2", "weight": 3, "expr": { "not": "c" } },
+        { "id": "S3", "weight": 2, "expr": { "not": "d" } },
+        { "id": "S4", "weight": 4, "expr": { "not": "e" } }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "vars": ["x0", "x1", "x2", "x3", "x4", "x5"],
+      "hardRules": [
+        { "or": ["x0", "x1"] },
+        { "implies": ["x0", { "not": "x2" }] },
+        { "implies": ["x1", { "and": [{ "not": "x3" }, { "not": "x4" }] }] },
+        { "implies": [{ "not": "x0" }, "x5"] }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 4, "expr": "x2" },
+        { "id": "S2", "weight": 3, "expr": "x3" },
+        { "id": "S3", "weight": 5, "expr": "x4" },
+        { "id": "S4", "weight": 2, "expr": { "not": "x5" } },
+        { "id": "S5", "weight": 6, "expr": { "and": ["x0", "x1"] } }
+      ]
+    },
+    "expectedOptimal": 10
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "vars": ["mfa", "sso", "guest", "vpn", "logging", "alert", "encrypt", "backup"],
+      "hardRules": [
+        { "implies": ["guest", { "not": "sso" }] },
+        { "implies": ["vpn", { "and": ["mfa", "encrypt"] }] },
+        { "xor": ["guest", "vpn"] },
+        { "implies": ["alert", "logging"] }
+      ],
+      "softRules": [
+        { "id": "S1", "weight": 7, "expr": "vpn" },
+        { "id": "S2", "weight": 5, "expr": "sso" },
+        { "id": "S3", "weight": 2, "expr": { "not": "mfa" } },
+        { "id": "S4", "weight": 3, "expr": { "not": "encrypt" } },
+        { "id": "S5", "weight": 4, "expr": "alert" },
+        { "id": "S6", "weight": 1, "expr": { "not": "logging" } }
+      ]
+    },
+    "expectedOptimal": 6
+  }
+]

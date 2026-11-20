@@ -1,0 +1,72 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [30, 50, 20, 25],
+      "capacities": [35, 30, 40, 30],
+      "prodCosts": [10, 12, 10, 11],
+      "unitPrice": 22,
+      "holdCost": 1.5,
+      "backorderCost": 3,
+      "lostSalePenalty": 5,
+      "initialInventory": 5
+    },
+    "expectedOptimal": 1420
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [25, 45, 50, 30, 20],
+      "capacities": [30, 30, 30, 30, 30],
+      "prodCosts": [11, 13, 14, 10, 10],
+      "unitPrice": 20,
+      "holdCost": 1.5,
+      "backorderCost": 2.5,
+      "lostSalePenalty": 4,
+      "initialInventory": 0
+    },
+    "expectedOptimal": 1122.5
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [20, 35, 25, 20],
+      "capacities": [25, 35, 30, 25],
+      "prodCosts": [10, 26, 10, 11],
+      "unitPrice": 22,
+      "holdCost": 2,
+      "backorderCost": 3,
+      "lostSalePenalty": 2,
+      "initialInventory": 0
+    },
+    "expectedOptimal": 840
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [15, 40, 35, 20, 25],
+      "capacities": [20, 25, 30, 30, 25],
+      "prodCosts": [9, 12, 11, 10, 12],
+      "unitPrice": 25,
+      "holdCost": 1.2,
+      "backorderCost": 4,
+      "lostSalePenalty": 6,
+      "initialInventory": 20
+    },
+    "expectedOptimal": 2097
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [18.5, 32.0, 27.5, 22.0, 30.5, 15.0],
+      "capacities": [25, 24, 28, 25, 22, 20],
+      "prodCosts": [10.5, 14.0, 11.5, 9.5, 13.0, 10.0],
+      "unitPrice": 21,
+      "holdCost": 1.4,
+      "backorderCost": 2.8,
+      "lostSalePenalty": 3.5,
+      "initialInventory": 4.5
+    },
+    "expectedOptimal": 1418.5
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "title": "#056. Capacitated Vehicle Routing Problem (CVRP)",
+  "subtitle": "Dispatch up to K capacitated vehicles from depot 0 to serve every customer once and minimize total route distance.",
+  "tags": [
+    "MIP",
+    "CVRP",
+    "Vehicle Routing",
+    "Applied"
+  ],
+  "caseNames": [
+    "4 customers, 2-vehicle split",
+    "5 customers, 2-route packing",
+    "5 customers, tight capacity",
+    "6 customers, balanced 2-route",
+    "7 customers, 3-vehicle fleet"
+  ],
+  "judge": {
+    "m0": "Output must be an object { routes, totalDistance }.",
+    "m1": "Field \"routes\" must be an array of customer routes.",
+    "m2": "Used {p0} vehicles, exceeding maxVehicles = {p1}.",
+    "m3": "Route {p0} must be an integer array of length at least 3 ([0, ..., 0]).",
+    "m4": "Route {p0} must start and end at depot 0.",
+    "m5": "Customer index {p0} is out of valid range [1, {p1}].",
+    "m6": "Customer {p0} is visited more than once.",
+    "m7": "Route {p0} demand ({p1}) exceeds vehicle capacity ({p2}).",
+    "m8": "Customer {p0} was not visited by any route.",
+    "m9": "Reported totalDistance ({p0}) does not match computed route distance ({p1}).",
+    "m10": "Feasible CVRP solution, but totalDistance ({p0}) exceeds minimum ({p1}).",
+    "m11": "Minimum-distance capacitated vehicle routes found (totalDistance = {p0})!"
+  }
+}

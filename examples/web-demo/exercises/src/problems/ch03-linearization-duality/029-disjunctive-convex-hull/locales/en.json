@@ -1,0 +1,26 @@
+{
+  "title": "#029. Disjunctive Operating Bands (Convex Hull)",
+  "subtitle": "Formulate disjoint operating regimes with band-specific fixed and linear costs via disaggregated convex-hull variables.",
+  "tags": [
+    "MIP",
+    "Disjunctive Programming",
+    "Convex Hull",
+    "Operating Bands"
+  ],
+  "caseNames": [
+    "2 units with 3 operating bands",
+    "3 units under moderate load",
+    "Zero-demand idle baseline",
+    "3 units across 4 operating bands",
+    "4 units with mixed mid-band dispatch"
+  ],
+  "judge": {
+    "m0": "Output must be an object { modes, outputs, totalCost }.",
+    "m1": "modes[{p0}] must be a valid integer band index (received {p1}).",
+    "m2": "Unit {p0} output ({p1}) falls outside band {p2} range [{p3}, {p4}].",
+    "m3": "Total output ({p0}) is below required demand ({p1}).",
+    "m4": "Reported totalCost ({p0}) does not match computed fixed plus linear band cost ({p1}).",
+    "m5": "Valid dispatch, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m6": "Optimal disjunctive band dispatch found (totalCost = {p0})!"
+  }
+}

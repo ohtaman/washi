@@ -1,0 +1,29 @@
+{
+  "title": "#042. 基于 No-Good 割的解唯一性证明",
+  "subtitle": "在求得一个可行赋值后追加禁止该赋值的 No-Good 阻塞子句再次求解，以证明解是否唯一。",
+  "tags": [
+    "SMT",
+    "SAT",
+    "No-Good 割",
+    "唯一性证明"
+  ],
+  "caseNames": [
+    "4 变量唯一解推导链",
+    "4 变量多解规则集",
+    "4 变量不可满足奇偶环",
+    "6 变量唯一强制级联",
+    "6 变量对称多解"
+  ],
+  "judge": {
+    "m0": "返回值必须是 { satisfiable, assignment, unique } 对象。",
+    "m1": "当 satisfiable 为 false 时，assignment 必须为 null。",
+    "m2": "不可满足公式的 unique 不能为 true。",
+    "m3": "公式存在可行赋值，但输出返回了 satisfiable: false。",
+    "m4": "在返回的赋值下，第 {p0} 条规则计算结果为 false。",
+    "m5": "输出声称 unique = true，但实际上至少存在两组不同的可满足赋值。",
+    "m6": "输出声称 unique = false，但实际上该可满足赋值是唯一的。",
+    "m7": "正确判定为不可满足（unique = false）！",
+    "m8": "通过 No-Good 割二次检验为 Unsat，成功证明解的唯一性！",
+    "m9": "正确找到可行赋值并判定存在多解（unique = false）！"
+  }
+}

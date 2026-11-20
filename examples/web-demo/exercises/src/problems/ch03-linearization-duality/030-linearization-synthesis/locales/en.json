@@ -1,0 +1,28 @@
+{
+  "title": "#030. Linearization Synthesis — Service Fleet & Load Balancing",
+  "subtitle": "Chapter 3 synthesis: combine minimax peak capping, L1 target tracking, and quadratic binary McCormick linearization.",
+  "tags": [
+    "MIP",
+    "Minimax",
+    "L1 Deviation",
+    "McCormick",
+    "Capstone"
+  ],
+  "caseNames": [
+    "4 services across 2 balanced zones",
+    "5 services across 3 clusters",
+    "4-service low-threshold synergy trade-off",
+    "6-service multi-cluster deployment",
+    "7-service 4-zone enterprise fleet"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, pairProducts, peakLoad, totalCost }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Total delivered value ({p0}) is below minValue ({p1}).",
+    "m3": "pairProducts[{p0}] for pair ({p1}, {p2}) received {p3}, expected x[{p1}] * x[{p2}] = {p4}.",
+    "m4": "Reported peakLoad ({p0}) does not match maximum zone load ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
+    "m6": "Valid deployment, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal multi-cluster deployment found (totalCost = {p0})!"
+  }
+}

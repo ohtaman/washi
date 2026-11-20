@@ -1,0 +1,27 @@
+{
+  "title": "#022. Weighted L1 Target Tracking",
+  "subtitle": "Linearize absolute deviations |x_i - tau_i| using non-negative positive and negative slack pairs.",
+  "tags": [
+    "LP",
+    "L1 Norm",
+    "Absolute Value",
+    "Linearization"
+  ],
+  "caseNames": [
+    "3-channel budget rebalancing",
+    "4-unit demand expansion",
+    "4-unit exact target feasibility",
+    "5-product capacity shift",
+    "6-region budget contraction"
+  ],
+  "judge": {
+    "m0": "Output must be an object { allocations, totalDeviation }.",
+    "m1": "allocations[{p0}] cannot be negative (received {p1}).",
+    "m2": "allocations[{p0}] ({p1}) exceeds upper bound {p2}.",
+    "m3": "Total allocation ({p0}) must equal totalOutput ({p1}).",
+    "m4": "Total cost ({p0}) exceeds budget ({p1}).",
+    "m5": "Reported totalDeviation ({p0}) does not match weighted L1 deviation ({p1}).",
+    "m6": "Feasible plan, but totalDeviation ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal L1 target-tracking plan found (totalDeviation = {p0})!"
+  }
+}

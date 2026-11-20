@@ -1,0 +1,57 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "demands": [20, 50, 10, 40],
+      "setupCosts": [180, 180, 180, 180],
+      "prodCosts": [10, 12, 10, 14],
+      "holdCosts": [2, 2, 2, 2],
+      "capacities": [80, 80, 80, 80]
+    },
+    "expectedOptimal": 1740
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "demands": [30, 45, 25, 50, 20],
+      "setupCosts": [200, 150, 220, 180, 160],
+      "prodCosts": [8, 9, 8, 10, 9],
+      "holdCosts": [1.5, 1.5, 2, 1.5, 2],
+      "capacities": [60, 60, 55, 65, 50]
+    },
+    "expectedOptimal": 2187.5
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "demands": [25, 0, 35, 15],
+      "setupCosts": [140, 140, 140, 140],
+      "prodCosts": [12, 10, 11, 13],
+      "holdCosts": [1.5, 1.5, 1.5, 1.5],
+      "capacities": [75, 75, 75, 75]
+    },
+    "expectedOptimal": 1152.5
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "demands": [15, 35, 20, 45, 30, 25],
+      "setupCosts": [240, 240, 180, 220, 200, 210],
+      "prodCosts": [11, 10, 12, 9, 11, 10],
+      "holdCosts": [1, 2, 3, 2, 3, 4],
+      "capacities": [70, 70, 70, 70, 70, 70]
+    },
+    "expectedOptimal": 2610
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "demands": [12.5, 27.5, 18.0, 32.5, 14.5, 22.0],
+      "setupCosts": [160, 190, 150, 210, 170, 180],
+      "prodCosts": [9.5, 10.0, 8.8, 10.5, 9.2, 11.0],
+      "holdCosts": [1.2, 1.5, 1.2, 1.8, 1.5, 2.0],
+      "capacities": [55, 60, 50, 65, 55, 50]
+    },
+    "expectedOptimal": 1746.9
+  }
+]

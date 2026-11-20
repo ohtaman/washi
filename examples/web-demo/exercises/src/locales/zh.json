@@ -179,6 +179,14 @@
   "judgeHelpers": {
     "expectFiniteNumber": "字段「{field}」必须是有限数值（实际为 {actual}）。",
     "expectArrayLength": "字段「{field}」必须是长度为 {length} 的数组。",
-    "expectArrayElementFinite": "{field}[{index}] 必须是有限数值（实际为 {actual}）。"
+    "expectArrayElementFinite": "{field}[{index}] 必须是有限数值（实际为 {actual}）。",
+    "expectRecord": "字段「{field}」必须是对象。",
+    "expectBoolean": "字段「{field}」必须是布尔值（实际为 {actual}）。",
+    "expectBooleanEntry": "{field}[\"{key}\"] 必须是布尔值（实际为 {actual}）。",
+    "expectNumberEntry": "{field}[\"{key}\"] 必须是有限数值（实际为 {actual}）。",
+    "expectStringArray": "字段「{field}」必须是字符串数组。",
+    "expectStringElement": "{field}[{index}] 必须是字符串（实际为 {actual}）。",
+    "intIntegrality": "{field}[\"{key}\"] 必须是整数（实际为 {actual}）。",
+    "intBounds": "{field}[\"{key}\"]（{actual}）超出范围 [{lb}, {ub}]。"
   }
 }

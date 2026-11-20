@@ -1,0 +1,362 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "nodeCount": 5,
+      "source": 0,
+      "sink": 4,
+      "maxResource": 10,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cost": 2,
+          "resource": 6
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cost": 4,
+          "resource": 3
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cost": 2,
+          "resource": 5
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cost": 5,
+          "resource": 6
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "cost": 1,
+          "resource": 2
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cost": 3,
+          "resource": 4
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cost": 2,
+          "resource": 3
+        }
+      ]
+    },
+    "expectedOptimal": 9
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "nodeCount": 6,
+      "source": 0,
+      "sink": 5,
+      "maxResource": 12,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cost": 3,
+          "resource": 6
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cost": 5,
+          "resource": 3
+        },
+        {
+          "from": 1,
+          "to": 2,
+          "cost": 2,
+          "resource": 2
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "cost": 1,
+          "resource": 3
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cost": 3,
+          "resource": 5
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cost": 4,
+          "resource": 4
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cost": 1,
+          "resource": 4
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cost": 4,
+          "resource": 4
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "cost": 3,
+          "resource": 4
+        }
+      ]
+    },
+    "expectedOptimal": 12
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "nodeCount": 7,
+      "source": 0,
+      "sink": 6,
+      "maxResource": 11,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cost": 2,
+          "resource": 7
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cost": 4,
+          "resource": 3
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cost": 3,
+          "resource": 5
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cost": 6,
+          "resource": 2
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cost": 2,
+          "resource": 3
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cost": 3,
+          "resource": 4
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cost": 2,
+          "resource": 4
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "cost": 2,
+          "resource": 2
+        },
+        {
+          "from": 4,
+          "to": 6,
+          "cost": 7,
+          "resource": 3
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cost": 3,
+          "resource": 2
+        }
+      ]
+    },
+    "expectedOptimal": 12
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "nodeCount": 8,
+      "source": 0,
+      "sink": 7,
+      "maxResource": 14,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cost": 2,
+          "resource": 8
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cost": 5,
+          "resource": 4
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "cost": 3,
+          "resource": 5
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "cost": 2,
+          "resource": 3
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cost": 4,
+          "resource": 2
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "cost": 2,
+          "resource": 3
+        },
+        {
+          "from": 4,
+          "to": 3,
+          "cost": 2,
+          "resource": 2
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cost": 3,
+          "resource": 6
+        },
+        {
+          "from": 4,
+          "to": 6,
+          "cost": 4,
+          "resource": 4
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cost": 2,
+          "resource": 2
+        },
+        {
+          "from": 5,
+          "to": 7,
+          "cost": 4,
+          "resource": 4
+        },
+        {
+          "from": 6,
+          "to": 7,
+          "cost": 3,
+          "resource": 3
+        }
+      ]
+    },
+    "expectedOptimal": 16
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "nodeCount": 8,
+      "source": 0,
+      "sink": 7,
+      "maxResource": 15,
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "cost": 1,
+          "resource": 10
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "cost": 3,
+          "resource": 5
+        },
+        {
+          "from": 0,
+          "to": 3,
+          "cost": 6,
+          "resource": 2
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "cost": 2,
+          "resource": 8
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "cost": 3,
+          "resource": 4
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "cost": 5,
+          "resource": 3
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "cost": 2,
+          "resource": 3
+        },
+        {
+          "from": 4,
+          "to": 6,
+          "cost": 2,
+          "resource": 5
+        },
+        {
+          "from": 5,
+          "to": 4,
+          "cost": 1,
+          "resource": 2
+        },
+        {
+          "from": 5,
+          "to": 6,
+          "cost": 4,
+          "resource": 4
+        },
+        {
+          "from": 6,
+          "to": 7,
+          "cost": 3,
+          "resource": 3
+        },
+        {
+          "from": 4,
+          "to": 7,
+          "cost": 4,
+          "resource": 7
+        }
+      ]
+    },
+    "expectedOptimal": 13
+  }
+]
