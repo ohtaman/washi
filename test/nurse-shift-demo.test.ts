@@ -54,6 +54,7 @@ import {
 
 import {
   buildDiagnosticCheckOutcome,
+  collectConfigFromDocument,
   parseStrictConfigInputs,
   parseStrictContractInputs,
   buildCsvImportFeedback,
@@ -4598,6 +4599,79 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     if (!badCfg.ok) {
       expect(badCfg.errors.length).toBeGreaterThanOrEqual(2);
     }
+
+    // Rendered empty string must fail, while unrendered (null/undefined) preserves baseConfig values
+    const renderedEmptyCfg = parseStrictConfigInputs(
+      {
+        weekdayDayStaff: "",
+        weekendDayStaff: "7",
+        eveningStaff: "3",
+        nightStaff: "3",
+        maxConsecutiveWorkDays: "5",
+        minMonthlyDaysOff: "9",
+        minMonthlyWorkDays: "14",
+        maxMonthlyNightShifts: "8",
+        maxMonthlyOvertimeHours: "45",
+        maxAnnualOvertimeHours: "360",
+      },
+      baseState.config,
+      {
+        preserveCurrentSchedule: true,
+        enforceSkillCoverage: true,
+        enforcePreceptorPairs: false,
+        enforcePrevMonthCarryover: true,
+        enforce36Agreement: true,
+        requireWeekendOff: true,
+        enforceNgPairs: true,
+        enforceHardRequests: true,
+      },
+      {}
+    );
+    expect(renderedEmptyCfg.ok).toBe(false);
+
+    const customBaseConfig = {
+      ...baseState.config,
+      weekdayDayStaff: 12,
+      weekendDayStaff: 8,
+      eveningStaff: 4,
+      nightStaff: 4,
+    };
+    const indexHtmlElements = new Map<string, { value?: string; checked?: boolean }>([
+      ["cfg-maxConsecutiveWorkDays", { value: "6" }],
+      ["cfg-minMonthlyDaysOff", { value: "10" }],
+      ["cfg-minMonthlyWorkDays", { value: "15" }],
+      ["cfg-maxMonthlyNightShifts", { value: "7" }],
+      ["cfg-maxMonthlyOvertimeHours", { value: "40" }],
+      ["cfg-maxAnnualOvertimeHours", { value: "320" }],
+      ["chk-preserve-schedule", { checked: false }],
+      ["cfg-enforceSkillCoverage", { checked: true }],
+      ["cfg-enforcePreceptorPairs", { checked: true }],
+      ["cfg-enforcePrevMonthCarryover", { checked: false }],
+      ["cfg-enforce36Agreement", { checked: true }],
+      ["cfg-enforceWeekendOff", { checked: false }],
+      ["cfg-enforceNgPairs", { checked: true }],
+      ["cfg-enforceHardRequests", { checked: false }],
+    ]);
+    const mockDoc = {
+      getElementById: (id: string) => indexHtmlElements.get(id) ?? null,
+    };
+    const collectedValid = collectConfigFromDocument(mockDoc, customBaseConfig);
+    expect(collectedValid.ok).toBe(true);
+    if (collectedValid.ok) {
+      expect(collectedValid.config.weekdayDayStaff).toBe(12);
+      expect(collectedValid.config.weekendDayStaff).toBe(8);
+      expect(collectedValid.config.eveningStaff).toBe(4);
+      expect(collectedValid.config.nightStaff).toBe(4);
+      expect(collectedValid.config.maxConsecutiveWorkDays).toBe(6);
+      expect(collectedValid.config.minMonthlyDaysOff).toBe(10);
+      expect(collectedValid.config.preserveCurrentSchedule).toBe(false);
+      expect(collectedValid.config.enforcePreceptorPairs).toBe(true);
+    }
+
+    // Rendered invalid numeric input still fails strictly via collectConfigFromDocument
+    indexHtmlElements.set("cfg-maxConsecutiveWorkDays", { value: "" });
+    const collectedInvalid = collectConfigFromDocument(mockDoc, customBaseConfig);
+    expect(collectedInvalid.ok).toBe(false);
 
     // 3. Strict contract form parser rejects non-integer / negative inputs instead of dropping them silently
     const badContract = parseStrictContractInputs({

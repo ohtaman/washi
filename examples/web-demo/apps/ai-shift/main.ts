@@ -1869,18 +1869,22 @@ function renderShiftAliasesList(): void {
   }
 }
 
+export interface ConfigDocumentLike {
+  getElementById(id: string): ({ value?: string; checked?: boolean } | HTMLElement) | null;
+}
+
 export function parseStrictConfigInputs(
   rawValues: {
-    weekdayDayStaff: string;
-    weekendDayStaff: string;
-    eveningStaff: string;
-    nightStaff: string;
-    maxConsecutiveWorkDays: string;
-    minMonthlyDaysOff: string;
-    minMonthlyWorkDays: string;
-    maxMonthlyNightShifts: string;
-    maxMonthlyOvertimeHours: string;
-    maxAnnualOvertimeHours: string;
+    weekdayDayStaff?: string | null;
+    weekendDayStaff?: string | null;
+    eveningStaff?: string | null;
+    nightStaff?: string | null;
+    maxConsecutiveWorkDays?: string | null;
+    minMonthlyDaysOff?: string | null;
+    minMonthlyWorkDays?: string | null;
+    maxMonthlyNightShifts?: string | null;
+    maxMonthlyOvertimeHours?: string | null;
+    maxAnnualOvertimeHours?: string | null;
   },
   baseConfig: NurseScheduleConfig,
   toggles: {
@@ -1896,31 +1900,82 @@ export function parseStrictConfigInputs(
   softRuleWeights: Record<string, number>
 ): { ok: true; config: NurseScheduleConfig } | { ok: false; errors: string[] } {
   const errors: string[] = [];
-  const parseField = (raw: string, label: string, minVal: number): number => {
+  const parseField = (
+    raw: string | null | undefined,
+    existingValue: number,
+    label: string,
+    minVal: number
+  ): number => {
+    // Control is not rendered in the DOM -> preserve existing configuration value
+    if (raw === null || raw === undefined) {
+      return existingValue;
+    }
     const trimmed = raw.trim();
     const parsed = parseStrictInt(trimmed);
     if (parsed === null || parsed < minVal) {
       errors.push(`${label} "${raw}" \u306f ${minVal} 以上\u306e整数\u3067入力\u3057\u3066\u304f\u3060\u3055\u3044。`);
-      return minVal;
+      return existingValue;
     }
     return parsed;
   };
 
-  const weekdayDayStaff = parseField(rawValues.weekdayDayStaff, "平日\u30fb日勤必要人数", 0);
-  const weekendDayStaff = parseField(rawValues.weekendDayStaff, "土日\u30fb日勤必要人数", 0);
-  const eveningStaff = parseField(rawValues.eveningStaff, "準夜勤必要人数", 0);
-  const nightStaff = parseField(rawValues.nightStaff, "深夜勤必要人数", 0);
-  const maxConsecutiveWorkDays = parseField(rawValues.maxConsecutiveWorkDays, "最大連勤日数", 1);
-  const minMonthlyDaysOff = parseField(rawValues.minMonthlyDaysOff, "月間最低公休日数", 0);
-  const minMonthlyWorkDays = parseField(rawValues.minMonthlyWorkDays, "月間最低勤務日数", 0);
-  const maxMonthlyNightShifts = parseField(rawValues.maxMonthlyNightShifts, "月間夜勤上限回数", 0);
+  const weekdayDayStaff = parseField(
+    rawValues.weekdayDayStaff,
+    baseConfig.weekdayDayStaff,
+    "平日\u30fb日勤必要人数",
+    0
+  );
+  const weekendDayStaff = parseField(
+    rawValues.weekendDayStaff,
+    baseConfig.weekendDayStaff,
+    "土日\u30fb日勤必要人数",
+    0
+  );
+  const eveningStaff = parseField(
+    rawValues.eveningStaff,
+    baseConfig.eveningStaff,
+    "準夜勤必要人数",
+    0
+  );
+  const nightStaff = parseField(
+    rawValues.nightStaff,
+    baseConfig.nightStaff,
+    "深夜勤必要人数",
+    0
+  );
+  const maxConsecutiveWorkDays = parseField(
+    rawValues.maxConsecutiveWorkDays,
+    baseConfig.maxConsecutiveWorkDays,
+    "最大連勤日数",
+    1
+  );
+  const minMonthlyDaysOff = parseField(
+    rawValues.minMonthlyDaysOff,
+    baseConfig.minMonthlyDaysOff,
+    "月間最低公休日数",
+    0
+  );
+  const minMonthlyWorkDays = parseField(
+    rawValues.minMonthlyWorkDays,
+    baseConfig.minMonthlyWorkDays,
+    "月間最低勤務日数",
+    0
+  );
+  const maxMonthlyNightShifts = parseField(
+    rawValues.maxMonthlyNightShifts,
+    baseConfig.maxMonthlyNightShifts,
+    "月間夜勤上限回数",
+    0
+  );
   const maxMonthlyOvertimeHours = parseField(
     rawValues.maxMonthlyOvertimeHours,
+    baseConfig.maxMonthlyOvertimeHours,
     "36協定 月間時間外上限",
     0
   );
   const maxAnnualOvertimeHours = parseField(
     rawValues.maxAnnualOvertimeHours,
+    baseConfig.maxAnnualOvertimeHours,
     "36協定 年間時間外上限",
     0
   );
@@ -2000,37 +2055,46 @@ export function parseStrictContractInputs(rawFields: {
   };
 }
 
-function readWeightSelect(id: string, key: string, targetWeights: Record<string, number>): void {
-  const sel = document.getElementById(id) as HTMLSelectElement | null;
-  if (!sel) return;
+function readWeightSelect(
+  doc: ConfigDocumentLike,
+  id: string,
+  key: string,
+  targetWeights: Record<string, number>
+): void {
+  const sel = doc.getElementById(id);
+  if (!sel || !("value" in sel) || typeof sel.value !== "string") return;
   const parsed = parseStrictInt(sel.value);
   if (parsed !== null && parsed > 0) targetWeights[key] = parsed;
   else delete targetWeights[key];
 }
 
-function readConfigInputsToState(): boolean {
-  const getInputVal = (id: string): string => {
-    const el = document.getElementById(id) as HTMLInputElement | null;
-    return el ? el.value : "";
+export function collectConfigFromDocument(
+  doc: ConfigDocumentLike,
+  baseConfig: NurseScheduleConfig
+): { ok: true; config: NurseScheduleConfig } | { ok: false; errors: string[] } {
+  const getInputVal = (id: string): string | null => {
+    const el = doc.getElementById(id);
+    if (!el || !("value" in el) || typeof el.value !== "string") return null;
+    return el.value;
   };
-  const preserveEl = document.getElementById("chk-preserve-schedule") as HTMLInputElement | null;
-  const isChecked = (id: string, fallback = false): boolean => {
-    const el = document.getElementById(id) as HTMLInputElement | null;
-    return el ? el.checked : fallback;
+  const isChecked = (id: string, fallback: boolean): boolean => {
+    const el = doc.getElementById(id);
+    if (!el || !("checked" in el) || typeof el.checked !== "boolean") return fallback;
+    return el.checked;
   };
 
-  const nextWeights: Record<string, number> = { ...(appState.config.softRuleWeights ?? {}) };
-  readWeightSelect("sel-weight-enforce36Agreement", "enforce36Agreement", nextWeights);
-  readWeightSelect("sel-weight-consecutive", "consecutive", nextWeights);
-  readWeightSelect("sel-weight-monthlyDaysOff", "monthlyDaysOff", nextWeights);
-  readWeightSelect("sel-weight-monthlyNightCap", "monthlyNightCap", nextWeights);
-  readWeightSelect("sel-weight-enforcePrevMonthCarryover", "enforcePrevMonthCarryover", nextWeights);
-  readWeightSelect("sel-weight-enforcePreceptorPairs", "enforcePreceptorPairs", nextWeights);
-  readWeightSelect("sel-weight-enforceNgPairs", "enforceNgPairs", nextWeights);
-  readWeightSelect("sel-weight-requireWeekendOff", "requireWeekendOff", nextWeights);
-  readWeightSelect("sel-weight-enforceHardRequests", "enforceHardRequests", nextWeights);
+  const nextWeights: Record<string, number> = { ...(baseConfig.softRuleWeights ?? {}) };
+  readWeightSelect(doc, "sel-weight-enforce36Agreement", "enforce36Agreement", nextWeights);
+  readWeightSelect(doc, "sel-weight-consecutive", "consecutive", nextWeights);
+  readWeightSelect(doc, "sel-weight-monthlyDaysOff", "monthlyDaysOff", nextWeights);
+  readWeightSelect(doc, "sel-weight-monthlyNightCap", "monthlyNightCap", nextWeights);
+  readWeightSelect(doc, "sel-weight-enforcePrevMonthCarryover", "enforcePrevMonthCarryover", nextWeights);
+  readWeightSelect(doc, "sel-weight-enforcePreceptorPairs", "enforcePreceptorPairs", nextWeights);
+  readWeightSelect(doc, "sel-weight-enforceNgPairs", "enforceNgPairs", nextWeights);
+  readWeightSelect(doc, "sel-weight-requireWeekendOff", "requireWeekendOff", nextWeights);
+  readWeightSelect(doc, "sel-weight-enforceHardRequests", "enforceHardRequests", nextWeights);
 
-  const parsed = parseStrictConfigInputs(
+  return parseStrictConfigInputs(
     {
       weekdayDayStaff: getInputVal("cfg-weekdayDayStaff"),
       weekendDayStaff: getInputVal("cfg-weekendDayStaff"),
@@ -2043,21 +2107,32 @@ function readConfigInputsToState(): boolean {
       maxMonthlyOvertimeHours: getInputVal("cfg-maxMonthlyOvertimeHours"),
       maxAnnualOvertimeHours: getInputVal("cfg-maxAnnualOvertimeHours"),
     },
-    appState.config,
+    baseConfig,
     {
-      preserveCurrentSchedule: preserveEl
-        ? preserveEl.checked
-        : appState.config.preserveCurrentSchedule !== false,
-      enforceSkillCoverage: isChecked("cfg-enforceSkillCoverage", true),
-      enforcePreceptorPairs: isChecked("cfg-enforcePreceptorPairs", false),
-      enforcePrevMonthCarryover: isChecked("cfg-enforcePrevMonthCarryover", true),
-      enforce36Agreement: isChecked("cfg-enforce36Agreement", true),
-      requireWeekendOff: isChecked("cfg-enforceWeekendOff", true),
-      enforceNgPairs: isChecked("cfg-enforceNgPairs", true),
-      enforceHardRequests: isChecked("cfg-enforceHardRequests", true),
+      preserveCurrentSchedule: isChecked(
+        "chk-preserve-schedule",
+        baseConfig.preserveCurrentSchedule !== false
+      ),
+      enforceSkillCoverage: isChecked("cfg-enforceSkillCoverage", baseConfig.enforceSkillCoverage),
+      enforcePreceptorPairs: isChecked(
+        "cfg-enforcePreceptorPairs",
+        Boolean(baseConfig.enforcePreceptorPairs)
+      ),
+      enforcePrevMonthCarryover: isChecked(
+        "cfg-enforcePrevMonthCarryover",
+        baseConfig.enforcePrevMonthCarryover
+      ),
+      enforce36Agreement: isChecked("cfg-enforce36Agreement", baseConfig.enforce36Agreement),
+      requireWeekendOff: isChecked("cfg-enforceWeekendOff", baseConfig.requireWeekendOff),
+      enforceNgPairs: isChecked("cfg-enforceNgPairs", baseConfig.enforceNgPairs),
+      enforceHardRequests: isChecked("cfg-enforceHardRequests", baseConfig.enforceHardRequests),
     },
     nextWeights
   );
+}
+
+function readConfigInputsToState(): boolean {
+  const parsed = collectConfigFromDocument(document, appState.config);
   if (!parsed.ok) {
     alert(`条件設定\u306e入力\u30a8\u30e9\u30fc:\n${parsed.errors.join("\n")}`);
     return false;
