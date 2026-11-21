@@ -90,3 +90,10 @@ Every unit transferred from inbound truck $i$ (docked at inbound door $r$) to ou
 ```
 
 Pairing inbound 0 with outbound 2 on door `(0, 0)` and pairing inbounds 1–2 with outbounds 0–1 on door `(1, 1)` routes all 110 units at unit handling cost 2 with departures `[5, 5, 3] <= [6, 8, 7]` (zero delay), giving total cost $110 \times 2 =$ **220**.
+
+
+<!-- section:hint1 -->
+Use binary assignment matrices to assign each inbound truck to one inbound door and each outbound truck to one outbound door, binary indicators to record whether any freight moves between each inbound–outbound truck pair, and continuous variables for commodity flows, outbound departure times, and tardiness.
+
+<!-- section:hint2 -->
+Because handling cost and transfer time depend on the $(r, s)$ door pair while commodity flows are indexed by $(i, j, k)$, disaggregate total pair flow into door-pair variables $w_{i,j,r,s}$ linked to both door assignments (`x[i][r]` and `y[j][s]`). For time synchronization, activate $t_j \ge a_i + \tau_{r,s}$ only when all three binaries (`x[i][r]`, `y[j][s]`, and `z[i][j]`) equal 1 using an instance-derived Big-M equal to $\max_i a_i + \max_{r,s} \tau_{r,s}$.

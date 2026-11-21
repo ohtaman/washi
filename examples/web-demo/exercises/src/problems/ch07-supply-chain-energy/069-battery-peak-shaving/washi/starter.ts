@@ -22,13 +22,6 @@ export interface P069Output {
 }
 
 export async function solve(input: P069Input): Promise<P069Output> {
-  const m = new Model("BatteryPeakShaving");
-
-  // TODO:
-  // 1. Declare charge[t], discharge[t], soc[t] (within [minSoc, capacity] and terminal >= minFinalSoc),
-  //    gridLoad[t] >= 0, binary mode[t] for charge/discharge mutual exclusion, and epigraph peakLoad
-  // 2. Enforce SOC balance with efficiencies etaCharge and 1 / etaDischarge, gridLoad[t] == baseLoads[t] + charge[t] - discharge[t],
-  //    and peakLoad >= gridLoad[t]
-  // 3. Minimize energy bill + demandCharge * peakLoad, await m.solve(), and return outputs
+  // TODO: Build and solve the model, then return the output.
   throw new Error("Not implemented");
 }

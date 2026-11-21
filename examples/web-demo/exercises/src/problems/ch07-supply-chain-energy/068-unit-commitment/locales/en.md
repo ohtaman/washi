@@ -62,3 +62,10 @@ Consecutive-hour generation changes while online cannot exceed the unit's ramp l
 ```
 
 One startup per generator (`450 + 220 + 80 = 750`) plus fuel (`20*565 + 32*225 + 48*10 = 18980`) meets every demand, ramp bound, and min-up/down rule for total cost **19,730**.
+
+
+<!-- section:hint1 -->
+For each generator and hour, model binary on/off commitment ($u$), binary startup ($v$), and shutdown ($w$) indicators alongside continuous hourly generation ($p$). Coupling commitments across time handles startup costs, minimum up/down durations, and inter-hour ramping.
+
+<!-- section:hint2 -->
+Link commitment and switching via $v_{g,t} - w_{g,t} = u_{g,t} - u_{g,t-1}$ (with $u_{g,-1} = 0$), and enforce minimum up/down times with clique inequalities over the trailing `minUp[g]` and `minDown[g]` windows. For ramping, allow a startup or shutdown step to reach `startCap = max(pMin[g], rampLimit[g])` while restricting consecutive online hours to `rampLimit[g]`.

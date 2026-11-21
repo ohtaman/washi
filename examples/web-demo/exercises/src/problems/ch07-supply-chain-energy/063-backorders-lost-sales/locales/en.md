@@ -60,3 +60,10 @@ In each period, physical inventory equals prior inventory plus current productio
 ```
 
 Pre-building 10 units in period 0 and backordering 10 units from period 1 to period 2 satisfies both balance equations with terminal backlog 0 and yields net profit $125(22) - (350 + 360 + 300 + 275) - 10(1.5) - 10(3) =$ **1,420**.
+
+
+<!-- section:hint1 -->
+Create five non-negative continuous vectors indexed by period: production, actual sales (shipments), ending physical inventory, ending backlog, and lost sales. Unlike standard lot sizing, physical inventory and customer-order backlog are tracked by two separate conservation chains.
+
+<!-- section:hint2 -->
+Physical inventory carries over from the prior period (`initialInventory` at $t = 0$), increases with production, and decreases with shipments; backlog carries over from zero initial backlog, increases with new demand, and decreases with both shipments and lost sales. Bound `lostSales[t]` by `demands[t]` and fix the terminal backlog $b_{T-1} = 0$ so all accepted orders are cleared by the end of the horizon.

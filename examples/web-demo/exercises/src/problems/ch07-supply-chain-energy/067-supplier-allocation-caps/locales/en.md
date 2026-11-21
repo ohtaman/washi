@@ -64,3 +64,10 @@ To prevent single-vendor concentration risk, no single supplier may fulfill more
 ```
 
 Activating suppliers 2 and 3 (2 active in `[2, 3]`) satisfies per-plant 60% caps (`[60, 48, 72]`) and supplier order intervals (`170 in [70, 170]`, `130 in [50, 130]`), yielding total cost $(320 + 280) + 4074 =$ **4,674**.
+
+
+<!-- section:hint1 -->
+Model a binary activation variable for each supplier and a continuous $S \times P$ matrix of order quantities from each supplier to each plant. The model enforces supplier-level semi-continuous volume rules alongside plant-level diversification limits.
+
+<!-- section:hint2 -->
+You can encode the single-supplier share cap directly as a variable upper bound `maxShare * demands[p]` on each allocation $q_{s,p}$. Link each supplier's total order across all plants to its binary `active[s]` variable with both lower (`minOrders[s] * active[s]`) and upper (`maxOrders[s] * active[s]`) bounds, and constrain the sum of `active` between `minSuppliers` and `maxSuppliers`.

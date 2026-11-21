@@ -62,3 +62,10 @@ Charging adds energy scaled by the charging efficiency while discharging drains 
 ```
 
 Charging off-peak up to `soc = 78` and discharging during periods 3–4 caps net grid loads at `[70, 80, 80, 80, 70.6, 80]` (`peakLoad = 80`) while ending at `soc = 30`, giving total cost $93.968 + 8 \times 80 =$ **733.968**.
+
+
+<!-- section:hint1 -->
+Create per-period continuous variables for charging power, discharging power, end-of-period state of charge (SOC), and net grid import, plus a binary mode indicator per period to prevent simultaneous charging and discharging and a single scalar variable for peak grid load.
+
+<!-- section:hint2 -->
+In the SOC transition equation, charging adds $\eta_c c_t$ while discharging subtracts $d_t / \eta_d$, and net grid import equals `baseLoads[t] + charge[t] - discharge[t] >= 0`. Link charge and discharge to the binary mode (`charge[t] <= maxPower * mode[t]` and `discharge[t] <= maxPower * (1 - mode[t])`), bound the final SOC by $\max(\text{minSoc}, \text{minFinalSoc})$, and linearize the peak demand charge with `peakLoad >= gridLoad[t]` for all $t$.

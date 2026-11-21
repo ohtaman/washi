@@ -76,3 +76,10 @@ Total factory electricity demand equals base load plus setup standby power plus 
 ```
 
 Producing ahead in off-peak periods 0 and 2 (`production = [55, 0, 55, 0]`) while charging off-peak and discharging on-peak flattens net grid imports across all four periods to `83.597561`, yielding total cost $240 + 97.5 + 443.067073 + 668.780488 \approx$ **1,449.35**.
+
+
+<!-- section:hint1 -->
+Combine the single-item lot-sizing variables (binary setups, continuous production, and product inventory) with the battery-dispatch variables (charging, discharging, binary charge/discharge mode, battery SOC, net grid load, and scalar peak load) over the same period horizon.
+
+<!-- section:hint2 -->
+Couple the two subsystems through the hourly grid power balance: `gridLoad[t] = baseLoads[t] + setupPower * setups[t] + unitPower * production[t] + charge[t] - discharge[t] >= 0`. Enforce `charge` and `discharge` mutual exclusion via the binary mode variable, scale battery SOC changes by $\eta_c$ and $1 / \eta_d$, require `soc[T - 1] >= initSoc`, and capture the demand ratchet with `peakLoad >= gridLoad[t]`.
