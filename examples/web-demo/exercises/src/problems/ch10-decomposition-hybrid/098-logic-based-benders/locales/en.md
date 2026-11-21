@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 Each job in a manufacturing shop must be assigned to exactly one unrelated parallel machine, incurring a machine-dependent processing cost. Once assigned, each machine must schedule all of its assigned jobs non-overlappingly within a common planning horizon while respecting every job release time, processing duration, and deadline.
 
-Implement Logic-Based Benders Decomposition across WaSHI solvers: minimize total assignment cost in a HiGHS binary MIP master problem without time-indexed or big-M disjunctive variables, verify each machine schedule using a Pumpkin constraint programming subproblem with the disjoint global constraint, and return no-good conflict cuts whenever a machine subset fails feasibility.
+Solve this hybrid assignment-and-scheduling problem using Logic-Based Benders Decomposition across WaSHI solvers, pairing a HiGHS assignment master with Pumpkin constraint programming subproblems to return the optimal machine assignments, valid start times, and minimum total cost.
 
 <!-- section:io -->
 ### Input
@@ -53,3 +53,9 @@ Implement Logic-Based Benders Decomposition across WaSHI solvers: minimize total
 ```
 
 Jobs `0` and `1` both prefer machine `0` cheaply (`10 + 12`), yet placing both on machine `0` violates their tight time windows `[0, 6]` and `[1, 7]`. Shifting job `0` to machine `1` gives intervals `[2, 6]` on machine `0` and `[0, 4], [4, 7], [7, 10]` on machine `1` for cost **66**.
+
+<!-- section:hint1 -->
+Formulate the master MIP with binary job-to-machine assignment variables only, ensuring every job is assigned to one machine at minimum total assignment cost. Delegate all time-window and non-overlap scheduling checks to independent per-machine CP subproblems via `master.solveBenders(...)`.
+
+<!-- section:hint2 -->
+For each machine $m$ with assigned jobs $S_m$, build a Pumpkin CP model with integer start times $s_j \in [\text{releaseTimes}[j], \min(\text{deadlines}[j], \text{horizon}) - \text{durations}[j]]$, enforce `disjoint(...)`, and call `await sub.check({ solver: "pumpkin" })`. Whenever a machine returns `Unsat`, optionally shrink $S_m$ to a minimal infeasible subset $K$ by greedy deletion and emit a feasibility no-good cut $\sum_{j \in K} x_{jm} \le |K| - 1$.

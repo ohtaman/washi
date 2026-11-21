@@ -1,9 +1,9 @@
 # #093. Iterative Subtour Elimination Cuts (DFJ TSP)
 
 <!-- section:scenario -->
-Given a symmetric distance matrix over n cities, find a shortest closed Hamiltonian tour visiting every city exactly once. Instead of enumerating exponentially many subtour elimination constraints upfront, start from the 2-matching relaxation where every city has degree 2.
+Given a symmetric distance matrix over n cities, find a shortest closed Hamiltonian tour visiting every city exactly once using an iterative Dantzig-Fulkerson-Johnson (DFJ) subtour elimination loop. Rather than enumerating exponentially many subtour constraints upfront, the solver starts from a 2-matching relaxation and iteratively separates any disconnected subtours until a single connected tour remains.
 
-On each iteration, solve the integer program, inspect the active undirected edges for disconnected cycles, add a Dantzig-Fulkerson-Johnson subtour elimination cut for every detected subtour, and re-solve until a single connected tour remains.
+Return the optimal tour, its total distance, and the number of MIP solves executed.
 
 <!-- section:io -->
 ### Input
@@ -47,3 +47,9 @@ On each iteration, solve the integer program, inspect the active undirected edge
 ```
 
 Visiting `[0, 1, 3, 5, 4, 2]` and returning to `0` covers all 6 cities once with total distance $3 + 24 + 3 + 5 + 24 + 4 =$ **63** after **2** DFJ cut iterations.
+
+<!-- section:hint1 -->
+Model one binary edge-selection decision per unordered pair of distinct cities, minimizing total tour distance. Structure the solver as an iterative cutting-plane loop that starts from a relaxed degree-constrained model and progressively cuts off disconnected cycles until a single connected tour remains.
+
+<!-- section:hint2 -->
+Index undirected edges by pairs $(i, j)$ with $i < j$ and enforce degree 2 at every city. Because every vertex has degree 2, any disconnected integer solution decomposes into vertex-disjoint cycles $S$; for each proper subset $S$ with $|S| < n$, add the DFJ cut $\sum_{i, j \in S,\, i < j} x_{ij} \le |S| - 1$ to the same model, re-solve, and increment `iterations` on each `solve()` call.

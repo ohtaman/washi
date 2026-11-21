@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 物流企業がどの倉庫候補地を開設するか（固定費がかかる第 1 段階の 0-1 決定）と、開設された倉庫から各顧客ゾーンへどれだけ出荷するか（第 2 段階の連続輸送線形計画）を同時に最適化します。施設開設ベクトルを固定すると第 2 段階は純粋な連続 LP となるため、段階構造に沿った分解が可能です。
 
-WaSHI の solveBenders を用いて古典的 Benders 分解を実装してください。主問題で施設開設と第 2 段階コスト推定変数を最適化し、子問題の輸送 LP（総供給能力不足時は Phase-I 緩和 LP）の双対価格から Benders 実行可能性カットおよび最適性カットを反復追加して上下界を一致させます。
+WaSHI の古典的 Benders 分解を用いて 0-1 施設開設決定と連続輸送リコースを分離し、上下界が収束した最適な施設選択・輸送量行列・総コストを返してください。
 
 <!-- section:io -->
 ### 入力
@@ -52,3 +52,9 @@ WaSHI の solveBenders を用いて古典的 Benders 分解を実装してくだ
 ```
 
 両方の倉庫を開設すると固定費 `100 + 120 = 220`、輸送費 `60 + 60 + 50 = 170` となり、最適総コスト **390** を達成します。
+
+<!-- section:hint1 -->
+主問題 MIP には施設の開設を表す二値変数と非負の第 2 段階コスト推定変数 `theta` だけを置き、固定費と `theta` の和を最小化します。候補となる開設ベクトルごとに連続輸送 LP 子問題を評価し、総供給能力が総需要に満たない場合は実行可能性カット、実行可能な場合は `theta` の下界を与える最適性カットを返します。
+
+<!-- section:hint2 -->
+`await master.solveBenders({ theta, gapTolerance: 1e-5, subproblem })` を呼び出します。輸送 LP が実行不能なときは Phase-I 緩和 LP から双対価格 $\alpha_j$（需要 $\ge$）と $\beta_i \le 0$（容量 $\le$）を取り出して $\sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i \le 0$ の `{ kind: "feasibility", constraint }` を返し、実行可能なときは $\theta \ge \sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i$ の `{ kind: "optimality", constraint, subproblemObjective }` を返します。最後に最適 `open` で輸送 LP を再求解して `shipments` を復元してください。

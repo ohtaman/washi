@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 A manufacturing plant plans production over a discrete horizon. Each period has a fixed demand, a binary setup decision that unlocks production up to capacity while incurring a setup cost, a per-unit production cost, and an end-of-period inventory holding cost. Over long horizons, monolithic binary lot sizing can stall in branch-and-bound.
 
-Implement the Fix-and-Optimize Large Neighborhood Search matheuristic starting from the given initial setup plan: sweep overlapping rolling windows across the horizon, unfixing only the binary setup variables inside the active window while leaving outside setups fixed and all continuous production and inventory flows free to re-balance, until a full sweep yields no further cost reduction.
+Use Fix-and-Optimize Large Neighborhood Search starting from the given initial setup plan and window size to iteratively improve the lot-sizing schedule until a full sweep yields no further cost reduction, returning the final setups, production, inventory, and total cost.
 
 <!-- section:io -->
 ### Input
@@ -54,3 +54,9 @@ Implement the Fix-and-Optimize Large Neighborhood Search matheuristic starting f
 ```
 
 Consolidating six setups down to three reduces setup cost to `360`, combined with production `540` and holding `75` for total cost **975**.
+
+<!-- section:hint1 -->
+Maintain a current best binary setup vector initialized from `initialPlan` and sweep overlapping windows of length `windowSize` across the horizon. In each subproblem, only the setup decisions inside the active window are free binary variables while outside setups stay fixed and continuous production and inventory variables remain free across all periods.
+
+<!-- section:hint2 -->
+Model the full-horizon lot-sizing constraints in each sub-MIP: $0 \le p_t \le C_t y_t$ and inventory balance $I_{t-1} + p_t - d_t = I_t$ with $I_{-1} = 0$, fixing $y_t = \bar{y}_t$ for $t \notin [\text{start}, \text{start} + \text{windowSize})$. Accept a window solution whenever its objective strictly improves on the incumbent (by more than $10^{-6}$), and stop once a complete pass over all windows finds no improvement.

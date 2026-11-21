@@ -22,7 +22,7 @@
     "m4": "Symmetry breaking requires used bins to form a contiguous prefix starting at 0 (bin {p0} is empty before a used bin).",
     "m5": "Reported binsUsed ({p0}) does not match distinct used bins ({p1}).",
     "m6": "Bin {p0} load ({p1}) exceeds binCapacity ({p2}).",
-    "m7": "LP relaxation bound ({p0}) is below the strengthened LP optimum ({p1}). Add symmetry breaking, capacity, and extended cover cuts.",
+    "m7": "Reported lpBound ({p0}) is below the expected strengthened LP relaxation optimum ({p1}).",
     "m8": "Reported lpBound ({p0}) exceeds the strengthened LP relaxation optimum ({p1}).",
     "m9": "Valid symmetry-broken packing, but binsUsed ({p0}) exceeds minimum ({p1}).",
     "m10": "Strengthened bin packing verified: binsUsed = {p0}, lpBound = {p1}.",

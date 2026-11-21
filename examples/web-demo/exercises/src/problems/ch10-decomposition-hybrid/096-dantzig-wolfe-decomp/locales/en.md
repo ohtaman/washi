@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 A corporation operates multiple independent production divisions, each facing its own local machine capacity and per-product market caps while competing for a single corporate-wide shared bottleneck resource. This creates a classic block-angular linear program where coupling constraints tie together otherwise independent divisional blocks.
 
-Formulate Dantzig-Wolfe decomposition using WaSHI column generation: keep the shared resource constraint and per-division convexity constraints in the master problem, solve each division pricing subproblem independently against the dual shadow prices to propose profitable extreme points, and reconstruct the original continuous production quantities from the optimal convex combination weights.
+Solve this block-angular linear program using Dantzig-Wolfe decomposition via WaSHI column generation, coordinating the shared resource across divisional subproblems to return the optimal continuous production allocations and total corporate profit.
 
 <!-- section:io -->
 ### Input
@@ -63,3 +63,9 @@ Formulate Dantzig-Wolfe decomposition using WaSHI column generation: keep the sh
 ```
 
 Division 0 uses `19 <= 24` local capacity, Division 1 uses `18 <= 30`, total shared consumption is `11 + 9 = 20 <= 20`, and total profit reaches **225**.
+
+<!-- section:hint1 -->
+Keep the global shared-resource constraint and one convexity constraint per division in the master LP, seeded with an initial zero-production extreme point for each division. Each division's local capacity and product bounds form an independent LP pricing subproblem that proposes profitable extreme points.
+
+<!-- section:hint2 -->
+Run `solveColumnGeneration({ master, finalizeAsMIP: false, pricing })` with named master constraints (`shared_cap` and `conv_${k}`) so each division's convexity weights sum to one. In `pricing({ getDual })`, subtract the shared-resource dual cost from each product's unit profit, check whether the subproblem optimum exceeds the division's convexity dual (by more than $10^{-6}$), and reconstruct `allocations[k][j]` as the convex combination of the generated extreme points.

@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 某物流企业需要决定启用哪些候选仓库（第一阶段 0-1 开设决策并产生固定激活成本），以及从各启用仓库向客户区域调拨多少货物（第二阶段连续线性运输问题）。固定一阶段开仓向量后，第二阶段即化简为连续线性规划，天然适合按阶段分解求解。
 
-请使用 WaSHI 的 solveBenders 接口实现经典 Benders 分解：在主问题中同时优化 0-1 开仓决策与辅助费用估计变量，在子问题中求解运输 LP（若产能不足则求解 Phase-I 弹性松弛 LP）以提取精确对偶价格，不断向主问题添加 Benders 可行性割与最优性割直至上下界收敛。
+使用 WaSHI 的经典 Benders 分解将 0-1 开仓决策与连续运输补救问题分离，直至上下界收敛，返回最优设施选择、运输量矩阵及总成本。
 
 <!-- section:io -->
 ### 输入
@@ -52,3 +52,9 @@
 ```
 
 启用两座仓库固定成本为 `100 + 120 = 220`，运费为 `60 + 60 + 50 = 170`，取得最优总成本 **390**。
+
+<!-- section:hint1 -->
+在主问题 MIP 中仅保留二元开仓变量和非负第二阶段费用估计变量 `theta`，最小化固定成本与 `theta` 之和。针对每个候选开仓方案评估连续运输 LP 子问题：若总开放产能不足以满足总需求则生成可行性割，否则生成从下方约束 `theta` 的最优性割。
+
+<!-- section:hint2 -->
+调用 `await master.solveBenders({ theta, gapTolerance: 1e-5, subproblem })`。当运输 LP 不可行时，通过 Phase-I 弹性松弛 LP 提取对偶 $\alpha_j$（需求 $\ge$）和 $\beta_i \le 0$（产能 $\le$），返回满足 $\sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i \le 0$ 的 `{ kind: "feasibility", constraint }`；可行时返回 $\theta \ge \sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i$ 的 `{ kind: "optimality", constraint, subproblemObjective }`；最后在最优 `open` 下重解运输 LP 以恢复 `shipments`。

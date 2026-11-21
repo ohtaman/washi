@@ -36,6 +36,7 @@ registerChapterExerciseSuite({
     "100": ["washi"],
   },
   usesZ3: true,
+  enforceScaffoldPolicy: true,
   extractObjective: (_id, output) => extractCh10Objective(output),
   checkAdversarial: () => {
     const p091 = getProblem("091");

@@ -48,3 +48,9 @@ Formulate the linking constraints using the tightest instance-derived Big-M boun
 ```
 
 Opening plant 2 yields $60 \le 80$ output meeting demand $60$ at total cost $450 + 11 \times 60 =$ **1,110**, while the tight Big-M LP relaxation achieves lower bound **1,050**.
+
+<!-- section:hint1 -->
+Model a binary open/close decision and a continuous non-negative production quantity for each plant. Minimize total fixed setup costs plus variable production costs subject to meeting total demand and linking each plant's output to its open indicator.
+
+<!-- section:hint2 -->
+No single plant ever needs to produce more than total demand, so the tightest Big-M for plant $i$ is $M_i = \min(\text{capacities}[i], \text{demand})$ rather than raw capacity or an arbitrary large constant. In WaSHI, build the MIP once and call `await m.relax()` to read `lpBound` before calling `await m.solve()`; in PuLP, solve both a continuous relaxation (with binary variables relaxed to $[0, 1]$) and the MIP.
