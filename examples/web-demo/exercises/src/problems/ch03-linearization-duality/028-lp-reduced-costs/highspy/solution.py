@@ -1,11 +1,9 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(costs, yields, minRequirements) -> dict:
     """Return {"quantities": list[float], "reducedCosts": list[float], "optimalCost": float}."""
-    costs = input_data["costs"]
-    yields = input_data["yields"]
-    min_reqs = input_data["minRequirements"]
+    min_reqs = minRequirements
     n = len(costs)
 
     prob = pulp.LpProblem("reduced_costs", pulp.LpMinimize)

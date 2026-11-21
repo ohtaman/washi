@@ -1,22 +1,35 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    demands,
+    setupCost,
+    holdCost,
+    prodCap,
+    setupPower,
+    unitPower,
+    baseLoads,
+    prices,
+    demandCharge,
+    batteryCap,
+    initSoc,
+    maxPower,
+    etaCharge,
+    etaDischarge,
+) -> dict:
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
-    demands = input_data["demands"]
-    setup_cost = input_data["setupCost"]
-    hold_cost = input_data["holdCost"]
-    prod_cap = input_data["prodCap"]
-    setup_power = input_data["setupPower"]
-    unit_power = input_data["unitPower"]
-    base_loads = input_data["baseLoads"]
-    prices = input_data["prices"]
-    demand_charge = input_data["demandCharge"]
-    bat_cap = input_data["batteryCap"]
-    init_soc = input_data["initSoc"]
-    p_max = input_data["maxPower"]
-    eta_c = input_data["etaCharge"]
-    eta_d = input_data["etaDischarge"]
+    setup_cost = setupCost
+    hold_cost = holdCost
+    prod_cap = prodCap
+    setup_power = setupPower
+    unit_power = unitPower
+    base_loads = baseLoads
+    demand_charge = demandCharge
+    bat_cap = batteryCap
+    init_soc = initSoc
+    p_max = maxPower
+    eta_c = etaCharge
+    eta_d = etaDischarge
     T = len(demands)
 
     prob = pulp.LpProblem("energy_coupled_scm", pulp.LpMinimize)

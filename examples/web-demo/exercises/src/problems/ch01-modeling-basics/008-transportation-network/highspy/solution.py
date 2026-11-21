@@ -1,11 +1,9 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(supplies, demands, unitCosts) -> dict:
     """Return {"shipments": list[list[float]], "totalCost": float}."""
-    supplies = input_data["supplies"]
-    demands = input_data["demands"]
-    unit_costs = input_data["unitCosts"]
+    unit_costs = unitCosts
     n_s = len(supplies)
     n_d = len(demands)
 

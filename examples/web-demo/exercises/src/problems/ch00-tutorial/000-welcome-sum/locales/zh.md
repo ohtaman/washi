@@ -6,7 +6,7 @@
 在本题集的所有练习中，都需要按以下约定编写 solve 函数，判题器会根据其返回值进行验证（本题只需熟悉格式，无需调用优化求解器，直接计算并返回相加结果即可）：
 
 - TypeScript：实现接收 P000Input 类型输入并返回 P000Output 类型对象的 solve 函数。
-- Python：实现接收输入字典 input_data 并返回对应输出字典（dict）的 solve 函数。
+- Python：实现 solve(a, b) 函数，直接将输入字段作为参数接收并返回对应输出字典（dict）。
 
 <!-- section:io -->
 ### 输入

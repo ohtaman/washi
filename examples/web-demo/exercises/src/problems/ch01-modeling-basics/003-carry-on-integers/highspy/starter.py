@@ -1,13 +1,11 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(maxWeight, weights, values, maxCounts) -> dict:
     """Return {"counts": list[int], "totalValue": int}."""
     prob = pulp.LpProblem("carry_on", pulp.LpMaximize)
 
-    weights = input_data["weights"]
-    values = input_data["values"]
-    max_counts = input_data["maxCounts"]
+    max_counts = maxCounts
 
     # TODO 1: Switch `cat=pulp.LpContinuous` to `cat=pulp.LpInteger`!
     counts = [
@@ -15,7 +13,7 @@ def solve(input_data: dict) -> dict:
         for i, cap in enumerate(max_counts)
     ]
 
-    # TODO 2: Add the weight limit constraint <= input_data["maxWeight"]
+    # TODO 2: Add the weight limit constraint <= maxWeight
 
     prob += pulp.lpDot(values, counts)
     prob.solve(pulp.HiGHS(msg=False))

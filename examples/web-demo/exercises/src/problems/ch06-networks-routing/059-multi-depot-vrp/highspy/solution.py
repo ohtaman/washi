@@ -1,13 +1,11 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(dist, demands, vehicleCapacity, depotMaxVehicles, depotCapacities) -> dict:
     """Return {"routes": list[list[int]], "totalDistance": float}."""
-    dist = input_data["dist"]
-    demands = input_data["demands"]
-    q_cap = input_data["vehicleCapacity"]
-    depot_max_v = input_data["depotMaxVehicles"]
-    depot_caps = input_data["depotCapacities"]
+    q_cap = vehicleCapacity
+    depot_max_v = depotMaxVehicles
+    depot_caps = depotCapacities
     num_depots = len(depot_max_v)
     n = len(dist)
 

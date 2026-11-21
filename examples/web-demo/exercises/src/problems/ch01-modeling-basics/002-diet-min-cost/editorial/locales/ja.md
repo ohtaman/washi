@@ -31,6 +31,6 @@ m.constraint(expr`${oats} + 3 * ${beans} >= ${input.minFiber}`, "fiber");
 **PuLP (Python)**
 
 ```python
-prob += 2 * oats + beans >= input_data["minProtein"]
-prob += oats + 3 * beans >= input_data["minFiber"]
+prob += 2 * oats + beans >= minProtein
+prob += oats + 3 * beans >= minFiber
 ```

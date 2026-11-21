@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(costs) -> dict:
     """Return {"assignment": list[int], "totalCost": float}."""
-    costs = input_data["costs"]
     n = len(costs)
 
     prob = pulp.LpProblem("task_assignment", pulp.LpMinimize)

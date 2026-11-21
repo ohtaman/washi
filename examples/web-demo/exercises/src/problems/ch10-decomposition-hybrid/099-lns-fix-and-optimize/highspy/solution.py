@@ -1,12 +1,16 @@
 import pulp
 
 
-def _solve_window(input_data: dict, fixed_setups: list[int], win_start: int, win_end: int):
-    demands = input_data["demands"]
-    setup_costs = input_data["setupCosts"]
-    prod_costs = input_data["prodCosts"]
-    hold_cost = input_data["holdCost"]
-    capacities = input_data["capacities"]
+def _solve_window(
+    demands,
+    setupCosts,
+    prodCosts,
+    holdCost,
+    capacities,
+    fixed_setups: list[int],
+    win_start: int,
+    win_end: int,
+):
     n_periods = len(demands)
 
     prob = pulp.LpProblem("lot_sizing_window", pulp.LpMinimize)
@@ -27,9 +31,9 @@ def _solve_window(input_data: dict, fixed_setups: list[int], win_start: int, win
     inv = [pulp.LpVariable(f"inv_{t}", lowBound=0) for t in range(n_periods)]
 
     prob += (
-        pulp.lpDot(setup_costs, y)
-        + pulp.lpDot(prod_costs, p)
-        + hold_cost * pulp.lpSum(inv)
+        pulp.lpDot(setupCosts, y)
+        + pulp.lpDot(prodCosts, p)
+        + holdCost * pulp.lpSum(inv)
     )
 
     for t in range(n_periods):
@@ -51,23 +55,36 @@ def _solve_window(input_data: dict, fixed_setups: list[int], win_start: int, win
     }
 
 
-def solve(input_data: dict) -> dict:
+def solve(demands, setupCosts, prodCosts, holdCost, capacities, initialPlan, windowSize) -> dict:
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "totalCost": float}."""
-    n_periods = len(input_data["demands"])
-    win = max(1, min(n_periods, int(input_data["windowSize"])))
-    best = _solve_window(input_data, list(input_data["initialPlan"]), 0, 0)
+    n_periods = len(demands)
+    win = max(1, min(n_periods, int(windowSize)))
+    best = _solve_window(
+        demands, setupCosts, prodCosts, holdCost, capacities, list(initialPlan), 0, 0
+    )
     if best is None:
         raise RuntimeError("Initial plan is infeasible")
 
     for _ in range(10):
         improved = False
         for start in range(0, n_periods - win + 1):
-            candidate = _solve_window(input_data, best["setups"], start, start + win)
+            candidate = _solve_window(
+                demands,
+                setupCosts,
+                prodCosts,
+                holdCost,
+                capacities,
+                best["setups"],
+                start,
+                start + win,
+            )
             if candidate is not None and candidate["totalCost"] < best["totalCost"] - 1e-6:
                 best = candidate
                 improved = True
         if not improved:
             break
 
-    verified = _solve_window(input_data, best["setups"], 0, 0)
+    verified = _solve_window(
+        demands, setupCosts, prodCosts, holdCost, capacities, best["setups"], 0, 0
+    )
     return verified if verified is not None else best

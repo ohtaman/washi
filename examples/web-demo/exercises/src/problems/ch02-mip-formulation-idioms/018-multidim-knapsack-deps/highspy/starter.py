@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(values, weights, capacities, prerequisites, incompatibles) -> dict:
     """Return {"selected": list[int], "totalValue": float}."""
-    values = input_data["values"]
-    weights = input_data["weights"]
-    capacities = input_data["capacities"]
-    prerequisites = input_data["prerequisites"]
-    incompatibles = input_data["incompatibles"]
     n = len(values)
 
     prob = pulp.LpProblem("multidim_knapsack_deps", pulp.LpMaximize)

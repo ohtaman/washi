@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(dist) -> dict:
     """Return {"tour": list[int], "totalCost": float}."""
-    dist = input_data["dist"]
     n = len(dist)
 
     prob = pulp.LpProblem("tsp_mtz", pulp.LpMinimize)

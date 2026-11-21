@@ -1,12 +1,8 @@
 import pulp
 
 
-def _solve_variant(input_data: dict, relax: bool):
-    fixed_costs = input_data["fixedCosts"]
-    unit_costs = input_data["unitCosts"]
-    capacities = input_data["capacities"]
-    demand = input_data["demand"]
-    n = len(fixed_costs)
+def _solve_variant(fixedCosts, unitCosts, capacities, demand, relax: bool):
+    n = len(fixedCosts)
 
     prob = pulp.LpProblem("tight_big_m", pulp.LpMinimize)
     cat = pulp.LpContinuous if relax else pulp.LpBinary
@@ -20,16 +16,18 @@ def _solve_variant(input_data: dict, relax: bool):
         tight_m = min(capacities[i], demand)
         prob += quantities[i] <= tight_m * open_vars[i]
     prob += pulp.lpSum(quantities) >= demand
-    prob += pulp.lpDot(fixed_costs, open_vars) + pulp.lpDot(unit_costs, quantities)
+    prob += pulp.lpDot(fixedCosts, open_vars) + pulp.lpDot(unitCosts, quantities)
 
     prob.solve(pulp.HiGHS(msg=False))
     return prob, open_vars, quantities
 
 
-def solve(input_data: dict) -> dict:
+def solve(fixedCosts, unitCosts, capacities, demand) -> dict:
     """Return {"open": list[int], "quantities": list[float], "totalCost": float, "lpBound": float}."""
-    lp_prob, _, _ = _solve_variant(input_data, relax=True)
-    mip_prob, open_vars, quantities = _solve_variant(input_data, relax=False)
+    lp_prob, _, _ = _solve_variant(fixedCosts, unitCosts, capacities, demand, relax=True)
+    mip_prob, open_vars, quantities = _solve_variant(
+        fixedCosts, unitCosts, capacities, demand, relax=False
+    )
 
     return {
         "open": [round(pulp.value(v)) for v in open_vars],

@@ -1,12 +1,11 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(nodeCount, source, sink, edges) -> dict:
     """Return {"flows": list[float], "cutEdges": list[int], "maxFlow": float}."""
-    n = input_data["nodeCount"]
-    s = input_data["source"]
-    t = input_data["sink"]
-    edges = input_data["edges"]
+    n = nodeCount
+    s = source
+    t = sink
 
     prob = pulp.LpProblem("max_flow_min_cut", pulp.LpMaximize)
     flows = [

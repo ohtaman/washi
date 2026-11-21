@@ -1,16 +1,24 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    demands,
+    unitCosts,
+    fixedCosts,
+    minOrders,
+    maxOrders,
+    maxShare,
+    minSuppliers,
+    maxSuppliers,
+) -> dict:
     """Return {"active": list[int], "allocations": list[list[float]], "totalCost": float}."""
-    demands = input_data["demands"]
-    unit_costs = input_data["unitCosts"]
-    fixed_costs = input_data["fixedCosts"]
-    min_orders = input_data["minOrders"]
-    max_orders = input_data["maxOrders"]
-    max_share = input_data["maxShare"]
-    min_suppliers = input_data["minSuppliers"]
-    max_suppliers = input_data["maxSuppliers"]
+    unit_costs = unitCosts
+    fixed_costs = fixedCosts
+    min_orders = minOrders
+    max_orders = maxOrders
+    max_share = maxShare
+    min_suppliers = minSuppliers
+    max_suppliers = maxSuppliers
     n_sup = len(fixed_costs)
     n_plants = len(demands)
 

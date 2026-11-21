@@ -1,16 +1,25 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    actualDemands,
+    forecastDemands,
+    prodCosts,
+    prodCap,
+    holdCost,
+    shortfallPenalty,
+    initialInventory,
+    windowLen,
+) -> dict:
     """Return {"produced": list[float], "inventories": list[float], "shortfalls": list[float], "totalCost": float}."""
-    actual = input_data["actualDemands"]
-    forecasts = input_data["forecastDemands"]
-    prod_costs = input_data["prodCosts"]
-    prod_cap = input_data["prodCap"]
-    hold_cost = input_data["holdCost"]
-    shortfall_pen = input_data["shortfallPenalty"]
-    inv_curr = float(input_data["initialInventory"])
-    window_len = input_data["windowLen"]
+    actual = actualDemands
+    forecasts = forecastDemands
+    prod_costs = prodCosts
+    prod_cap = prodCap
+    hold_cost = holdCost
+    shortfall_pen = shortfallPenalty
+    inv_curr = float(initialInventory)
+    window_len = windowLen
     T = len(actual)
 
     produced = []

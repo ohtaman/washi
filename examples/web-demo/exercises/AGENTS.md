@@ -15,7 +15,7 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
     - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
   - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
   - Target 3–5 test cases per exercise (with 5 cases as the standard for Chapter 1+) covering boundary, binding-constraint, rectangular/dimension-varying, and fractional/zero-activity cases.
-  - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, `dict` in Python); keep `#001`–`#100` purely focused on optimization modeling.
+  - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, unpacked input fields and `dict` output in Python); keep `#001`–`#100` purely focused on optimization modeling.
   - Keep cross-exercise definitions (decision variables, bounds, verdicts, LP vs. MIP, solver statuses) in `src/guide/locales/{en,ja,zh}.md` rather than repeating them in every problem.
   - Keep judge messages (`locales/*.json` → `judge.m*`) diagnostic: report what is wrong with the output, not which cuts, variables, or steps to add.
 
@@ -55,7 +55,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
-  - Python (`highspy/{starter,solution}.py`): declare `def solve(input_data: dict) -> dict:` with a concise `"""Return {...}."""` schema docstring matching `PNNNOutput`.
+  - Python (`highspy/{starter,solution}.py`): declare `def solve(<input_fields...>) -> dict:` accepting the problem's input fields directly as parameters, with a concise `"""Return {...}."""` schema docstring matching `PNNNOutput`.
 - **Idiomatic WaSHI (TypeScript)**:
   - **Prefer `.map()` + batch `m.constraint([...])` over C-style `for (let i = 0; ...)` loops**:
     ```ts

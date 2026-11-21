@@ -1,11 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(margins, usages, capacities) -> dict:
     """Return {"quantities": list[float], "totalProfit": float}."""
-    margins = input_data["margins"]
-    usages = input_data["usages"]
-    capacities = input_data["capacities"]
     n_products = len(margins)
 
     prob = pulp.LpProblem("product_mix", pulp.LpMaximize)

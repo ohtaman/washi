@@ -1,12 +1,10 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(fixedCosts, capacities, demands, unitCosts) -> dict:
     """Return {"open": list[int], "shipments": list[list[float]], "totalCost": float}."""
-    fixed_costs = input_data["fixedCosts"]
-    capacities = input_data["capacities"]
-    demands = input_data["demands"]
-    unit_costs = input_data["unitCosts"]
+    fixed_costs = fixedCosts
+    unit_costs = unitCosts
     n_f, n_d = len(fixed_costs), len(demands)
 
     prob = pulp.LpProblem("capacitated_facility_location", pulp.LpMinimize)

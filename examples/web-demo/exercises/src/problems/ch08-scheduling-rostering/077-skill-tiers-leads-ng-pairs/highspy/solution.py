@@ -1,14 +1,13 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(demands, isSenior, staffSkills, skillDemands, ngPairs, shiftCosts) -> dict:
     """Return {"schedule": list[list[int]], "totalCost": float}."""
-    demands = input_data["demands"]
-    is_senior = input_data["isSenior"]
-    staff_skills = input_data["staffSkills"]
-    skill_demands = input_data["skillDemands"]
-    ng_pairs = input_data["ngPairs"]
-    shift_costs = input_data["shiftCosts"]
+    is_senior = isSenior
+    staff_skills = staffSkills
+    skill_demands = skillDemands
+    ng_pairs = ngPairs
+    shift_costs = shiftCosts
     num_staff = len(shift_costs)
     num_days = len(demands)
     num_shifts = len(demands[0])

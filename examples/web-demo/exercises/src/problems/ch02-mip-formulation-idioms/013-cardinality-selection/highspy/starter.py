@@ -1,14 +1,11 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(budget, costs, values, mutexGroups, exactGroups, atLeastOneGroups) -> dict:
     """Return {"selected": list[int], "totalValue": float}."""
-    budget = input_data["budget"]
-    costs = input_data["costs"]
-    values = input_data["values"]
-    mutex_groups = input_data["mutexGroups"]
-    exact_groups = input_data["exactGroups"]
-    at_least_one_groups = input_data["atLeastOneGroups"]
+    mutex_groups = mutexGroups
+    exact_groups = exactGroups
+    at_least_one_groups = atLeastOneGroups
     n = len(costs)
 
     prob = pulp.LpProblem("cardinality_selection", pulp.LpMaximize)

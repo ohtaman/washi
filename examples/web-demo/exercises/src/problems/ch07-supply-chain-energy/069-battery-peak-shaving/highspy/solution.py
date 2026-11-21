@@ -1,18 +1,28 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    baseLoads,
+    prices,
+    demandCharge,
+    capacity,
+    minSoc,
+    initSoc,
+    minFinalSoc,
+    maxPower,
+    etaCharge,
+    etaDischarge,
+) -> dict:
     """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
-    base_loads = input_data["baseLoads"]
-    prices = input_data["prices"]
-    demand_charge = input_data["demandCharge"]
-    cap = input_data["capacity"]
-    min_soc = input_data["minSoc"]
-    init_soc = input_data["initSoc"]
-    min_final = input_data["minFinalSoc"]
-    p_max = input_data["maxPower"]
-    eta_c = input_data["etaCharge"]
-    eta_d = input_data["etaDischarge"]
+    base_loads = baseLoads
+    demand_charge = demandCharge
+    cap = capacity
+    min_soc = minSoc
+    init_soc = initSoc
+    min_final = minFinalSoc
+    p_max = maxPower
+    eta_c = etaCharge
+    eta_d = etaDischarge
     T = len(base_loads)
 
     prob = pulp.LpProblem("battery_peak_shaving", pulp.LpMinimize)

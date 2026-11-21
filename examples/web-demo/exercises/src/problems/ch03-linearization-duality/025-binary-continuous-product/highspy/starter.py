@@ -1,14 +1,20 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    minOrders,
+    maxOrders,
+    baseCosts,
+    discounts,
+    contractFees,
+    totalDemand,
+) -> dict:
     """Return {"b": list[int], "x": list[float], "z": list[float], "totalCost": float}."""
-    min_ord = input_data["minOrders"]
-    max_ord = input_data["maxOrders"]
-    base_costs = input_data["baseCosts"]
-    discounts = input_data["discounts"]
-    fees = input_data["contractFees"]
-    demand = input_data["totalDemand"]
+    min_ord = minOrders
+    max_ord = maxOrders
+    base_costs = baseCosts
+    fees = contractFees
+    demand = totalDemand
     n = len(min_ord)
 
     prob = pulp.LpProblem("glover_product", pulp.LpMinimize)

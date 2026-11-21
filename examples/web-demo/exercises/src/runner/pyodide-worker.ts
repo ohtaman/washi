@@ -193,13 +193,13 @@ def __washi_run_batch(code_str, inputs_json):
             exec(compile(code_str, "solution.py", "exec"), ns)
             fn = ns.get("solve")
             if not callable(fn):
-                raise RuntimeError("Could not find Python function solve(input_data).")
+                raise RuntimeError("Could not find Python function solve(...).")
             outputs = []
             metrics = []
             for inp in inputs:
                 _washi_tracked_models.clear()
                 _washi_tracked_pulp_models.clear()
-                raw_out = fn(inp)
+                raw_out = fn(**inp)
                 outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(_washi_current_metrics())
         return json.dumps({

@@ -1,14 +1,20 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    demands,
+    minRegular,
+    maxRegular,
+    regularCosts,
+    overtimePenalties,
+    totalRegularCap,
+) -> dict:
     """Return {"regular": list[float], "shortage": list[float], "totalCost": float}."""
-    demands = input_data["demands"]
-    min_reg = input_data["minRegular"]
-    max_reg = input_data["maxRegular"]
-    reg_costs = input_data["regularCosts"]
-    penalties = input_data["overtimePenalties"]
-    total_cap = input_data["totalRegularCap"]
+    min_reg = minRegular
+    max_reg = maxRegular
+    reg_costs = regularCosts
+    penalties = overtimePenalties
+    total_cap = totalRegularCap
     T = len(demands)
 
     prob = pulp.LpProblem("positive_part_overtime", pulp.LpMinimize)

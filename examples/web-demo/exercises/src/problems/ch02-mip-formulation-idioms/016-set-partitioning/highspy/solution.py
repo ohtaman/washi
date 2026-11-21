@@ -1,11 +1,9 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(numTasks, costs, routes) -> dict:
     """Return {"selected": list[int], "totalCost": float}."""
-    num_tasks = input_data["numTasks"]
-    costs = input_data["costs"]
-    routes = input_data["routes"]
+    num_tasks = numTasks
     m_count = len(costs)
 
     prob = pulp.LpProblem("set_partitioning", pulp.LpMinimize)

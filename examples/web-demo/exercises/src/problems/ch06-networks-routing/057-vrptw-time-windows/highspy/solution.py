@@ -1,13 +1,9 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(dist, earliest, latest, service, maxVehicles) -> dict:
     """Return {"routes": list[list[int]], "totalCost": float}."""
-    dist = input_data["dist"]
-    earliest = input_data["earliest"]
-    latest = input_data["latest"]
-    service = input_data["service"]
-    max_v = input_data["maxVehicles"]
+    max_v = maxVehicles
     n = len(dist)
 
     prob = pulp.LpProblem("vrptw", pulp.LpMinimize)
