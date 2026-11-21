@@ -17,8 +17,5 @@ def solve(input_data: dict) -> dict:
         for i in range(n_f)
     ]
 
-    # TODO:
-    # 1. Link facility capacity: sum(shipments[i][j] for j) <= capacities[i] * open_vars[i]
-    # 2. Enforce customer demands: sum(shipments[i][j] for i) >= demands[j]
-    # 3. Minimize fixed + shipping costs, solve with HiGHS, and return dict
+    # TODO: Link facility capacity to opening decisions, enforce customer demands, minimize total cost, and return the result.
     raise NotImplementedError("Not implemented")

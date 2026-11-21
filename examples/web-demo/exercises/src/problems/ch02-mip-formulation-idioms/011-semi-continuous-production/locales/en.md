@@ -48,3 +48,9 @@ Because every active product draws from the same shared resource limit and earns
 ```
 
 Activating products 0 and 1 with `quantities = [15, 15, 0]` satisfies `[8, 20]` and `[15, 30]` batch windows while keeping product 2 at zero, using $15 + 15 = 30 \le 30$ resource for total margin $30 \times 15 + 24 \times 15 =$ **810**.
+
+<!-- section:hint1 -->
+Each product has a binary activation indicator and a continuous production quantity. The model couples each pair so that inactive products produce zero while active products stay within their operating window, alongside a single shared resource limit.
+
+<!-- section:hint2 -->
+Link each quantity to its binary flag from both sides: multiply `minBatches[i]` and `maxBatches[i]` by `active[i]` so that `active[i] = 0` forces the quantity to $0$ while `active[i] = 1` restricts it to `[minBatches[i], maxBatches[i]]`. Add the shared resource cap, maximize total margin, and round `active` outputs cleanly.

@@ -16,8 +16,5 @@ def solve(input_data: dict) -> dict:
         for s, tiers in enumerate(suppliers)
     ]
 
-    # TODO:
-    # 1. Select at most one tier per supplier: sum(tier_sel[s]) <= 1
-    # 2. Link tier bounds: minQty * y <= q <= maxQty * y
-    # 3. Require total ordered >= demand and minimize total cost
+    # TODO: Enforce at most one tier per supplier, link tier quantity bounds, meet total demand, minimize cost, and return the result.
     raise NotImplementedError("Not implemented")

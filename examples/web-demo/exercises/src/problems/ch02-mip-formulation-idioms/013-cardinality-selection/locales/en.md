@@ -48,3 +48,9 @@ Select a valid subset of projects that obeys all budget and cardinality rules wh
 ```
 
 Selecting projects `{1, 3, 4}` uses $6 + 3 + 7 = 16 \le 16$ budget, chooses 1 from `[0, 1]`, 2 from `[2, 3, 4]`, and 1 from `[4, 5]`, earning total value $17 + 8 + 19 =$ **44**.
+
+<!-- section:hint1 -->
+Model each project with a binary selection variable. The budget limit and each of the three governance group types (mutually exclusive, exact count, and at-least-one) are all linear constraints over subsets of those binary variables.
+
+<!-- section:hint2 -->
+Because each binary variable takes value $0$ or $1$, the number of selected projects in any group is simply the sum of `selected[i]` over its indices; constrain that sum to $\le 1$, $= \text{count}$, or $\ge 1$ accordingly. Remember to round binary values cleanly when reading the solver output.

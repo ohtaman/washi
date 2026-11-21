@@ -49,3 +49,9 @@ Select a disjoint subset of routes so that every task is covered **exactly once*
 ```
 
 Selecting routes 1 (`[2, 3, 4]`) and 2 (`[0, 1]`) partitions tasks `{0, 1, 2, 3, 4}` with zero overlap or gap for total cost $5 + 6 =$ **11**.
+
+<!-- section:hint1 -->
+Each candidate route gets a binary selection variable. Like set covering, you write one constraint per task across all routes that include it, but here no task may be skipped or double-counted.
+
+<!-- section:hint2 -->
+Replace the set-covering $\ge 1$ inequality with an equality $= 1$ for every task $i \in \{0, \dots, \text{numTasks} - 1\}$ over the routes covering $i$. A covering relaxation ($\ge 1$) can appear cheaper by overlapping routes, which violates exact partitioning.

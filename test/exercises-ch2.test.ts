@@ -36,27 +36,24 @@ registerChapterExerciseSuite({
     "020": ["washi", "highspy"],
   },
   extractObjective: extractCh2Objective,
+  enforceScaffoldPolicy: true,
   checkAdversarial: async (problems) => {
     const byId = new Map(problems.map((p) => [p.meta.id, p]));
 
-    // #011: Starter missing lower bound must produce VIOLATION in WaSHI (and PuLP if uv is present)
+    // #011: Starters stop after variable declarations and throw Not implemented
     {
       const p = byId.get("011")!;
       const c0 = p.cases[0];
       const washiStarterRun = await runWashiExerciseCode(p.washiStarter, [structuredClone(c0.input)]);
-      expect(washiStarterRun.ok).toBe(true);
-      expect(
-        p.judge(c0.input, washiStarterRun.outputs[0], c0.expectedOptimal, "en").status
-      ).toBe("VIOLATION");
+      expect(washiStarterRun.ok).toBe(false);
+      expect(washiStarterRun.error).toContain("Not implemented");
 
       if (process.env.REQUIRE_HIGHSPY_PYTHON === "1") {
         const pyRes = runHighspyBatch([
           { id: "011_starter", code: p.highspyStarter, inputs: [c0.input] },
         ])["011_starter"];
-        expect(pyRes.ok).toBe(true);
-        expect(
-          p.judge(c0.input, pyRes.outputs![0], c0.expectedOptimal, "en").status
-        ).toBe("VIOLATION");
+        expect(pyRes.ok).toBe(false);
+        expect(pyRes.error).toContain("NotImplementedError");
       }
     }
 

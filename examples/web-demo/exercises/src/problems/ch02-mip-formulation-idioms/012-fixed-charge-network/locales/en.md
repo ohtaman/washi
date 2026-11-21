@@ -63,3 +63,9 @@ Each warehouse has a maximum supply stock, each store requires at least its dema
 ```
 
 Opening lanes `(0, 0)`, `(0, 1)`, and `(1, 2)` satisfies capacities (`30 <= 40`, `35 <= 40`, `25 <= 40`), supplies (`65 <= 65`, `25 <= 60`), and store demands `[30, 35, 25]`, for total cost $(120 + 40 + 90) + (30 \times 4 + 35 \times 5 + 25 \times 3) =$ **620**.
+
+<!-- section:hint1 -->
+Each lane $(i, j)$ has a binary opening variable and a continuous shipment variable. The model couples each lane's flow to its opening decision, while aggregating row sums for warehouse supplies and column sums for store demands.
+
+<!-- section:hint2 -->
+Use the lane capacity `capacities[i][j]` as the tight upper bound linking `shipments[i][j]` to `open[i][j]`, forcing unopened lanes to carry zero flow. Include both fixed opening costs (`fixedCosts`) and variable unit shipping costs (`unitCosts`) in the objective.

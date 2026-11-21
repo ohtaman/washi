@@ -21,9 +21,6 @@ export async function solve(input: P017Input): Promise<P017Output> {
   const open = m.binary(mSites, { prefix: "open" });
   const covered = m.binary(n, { prefix: "cov" });
 
-  // TODO:
-  // 1. Limit total open facilities: sum(open) <= input.maxFacilities
-  // 2. For each zone i, enforce covered[i] <= sum of open[j] where distances[i][j] <= coverageRadius
-  // 3. Maximize dot(input.demands, covered), solve, and return { open, covered, totalCoveredDemand }
+  // TODO: Limit open sites, link zone coverage to nearby open sites, maximize covered demand, and return the result.
   throw new Error("Not implemented");
 }

@@ -21,8 +21,5 @@ def solve(input_data: dict) -> dict:
         for i in range(n_s)
     ]
 
-    # TODO:
-    # 1. Link lane capacity: shipments[i][j] <= capacities[i][j] * open_vars[i][j]
-    # 2. Enforce supplies[i] upper bounds and demands[j] lower bounds
-    # 3. Minimize sum of fixedCosts * open_vars + unitCosts * shipments, solve, and return dict
+    # TODO: Add capacity-linking, supply, and demand constraints, minimize total cost, and return the result.
     raise NotImplementedError("Not implemented")

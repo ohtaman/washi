@@ -54,3 +54,9 @@ Operational policy imposes three logical dependencies: prerequisite pairs where 
 ```
 
 Activating facilities `{0, 1, 4}` with `levels = [10, 22, 0, 0, 23]` satisfies prerequisite `1 -> 0`, avoids the `[2, 4]` conflict and conjunction trigger, uses $10 + 22 + 23 = 55 \le 55$ budget, and earns net profit $(60 + 484 + 460) - (90 + 80 + 95) =$ **739**.
+
+<!-- section:hint1 -->
+Each facility combines a binary activation variable with a continuous operating level. The model couples each pair's operating range, caps total operating levels by the budget, and expresses the three logical rules (prerequisites, conjunctions, and conflicts) as linear inequalities over the binary variables.
+
+<!-- section:hint2 -->
+Use tight instance bounds (`minLevels[i]` and `maxLevels[i]`) to link `levels[i]` to `active[i]`. For logical rules, an implication $a \implies b$ becomes $y_a \le y_b$, a conflict becomes $y_u + y_v \le 1$, and a conjunction $(a \land b) \implies c$ becomes $y_a + y_b - 1 \le y_c$ (active only when both $a$ and $b$ are $1$).

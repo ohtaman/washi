@@ -24,10 +24,6 @@ export async function solve(input: P012Input): Promise<P012Output> {
     input.demands.map((_, j) => m.continuous(`ship_${i}_${j}`, { lb: 0 }))
   );
 
-  // TODO:
-  // 1. Link lane capacity to activation: shipments[i][j] <= capacities[i][j] * open[i][j]
-  // 2. Enforce warehouse supply limits: sum(shipments[i]) <= supplies[i]
-  // 3. Enforce store demand requirements: sum_i shipments[i][j] >= demands[j]
-  // 4. Minimize dot(fixedCosts, open) + dot(unitCosts, shipments), solve, and return result
+  // TODO: Add capacity-linking, supply, and demand constraints, minimize total cost, and return the result.
   throw new Error("Not implemented");
 }

@@ -18,9 +18,6 @@ export async function solve(input: P018Input): Promise<P018Output> {
   const m = new Model("MultidimKnapsackDeps");
   const selected = m.binary(n, { prefix: "item" });
 
-  // TODO:
-  // 1. Add capacity constraint for each resource k: dot(input.weights[k], selected) <= input.capacities[k]
-  // 2. Add prerequisites (selected[a] <= selected[b]) and incompatibles (selected[c] + selected[d] <= 1)
-  // 3. Maximize dot(input.values, selected), solve, and return { selected, totalValue }
+  // TODO: Enforce all resource capacities, prerequisites, and incompatibilities, maximize total value, and return the result.
   throw new Error("Not implemented");
 }

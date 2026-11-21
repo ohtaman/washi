@@ -14,8 +14,5 @@ def solve(input_data: dict) -> dict:
     open_vars = [pulp.LpVariable(f"open_{j}", cat=pulp.LpBinary) for j in range(m_sites)]
     covered = [pulp.LpVariable(f"cov_{i}", cat=pulp.LpBinary) for i in range(n)]
 
-    # TODO:
-    # 1. Limit open facilities: sum(open_vars) <= max_facilities
-    # 2. Link coverage: covered[i] <= sum(open_vars[j] for j if distances[i][j] <= radius)
-    # 3. Maximize covered demand, solve with HiGHS, and return dict
+    # TODO: Limit open sites, link zone coverage to nearby open sites, maximize covered demand, and return the result.
     raise NotImplementedError("Not implemented")

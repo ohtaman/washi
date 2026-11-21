@@ -54,3 +54,9 @@ Each customer zone requires at least its specified demand, and every shipped uni
 ```
 
 Opening facilities 1 and 2 ships `50 <= 50` and `50 <= 55` units while meeting customer demands `[25, 30, 20, 25]`, yielding total cost $(260 + 290) + (20 \times 7 + 30 \times 3 + 5 \times 10 + 20 \times 4 + 25 \times 3) =$ **985**.
+
+<!-- section:hint1 -->
+The model combines a binary opening variable per facility with a continuous shipment matrix from facilities to customers. You need one capacity-linking constraint per facility over its row of shipments, and one demand constraint per customer over its column of shipments.
+
+<!-- section:hint2 -->
+Link each facility's total outflow (sum over customers $j$) to `capacities[i] * open[i]`, which simultaneously prevents closed facilities from shipping and caps open facilities at their capacity. Include both fixed opening costs (`fixedCosts`) and variable shipping costs (`unitCosts`) in the minimization objective.
