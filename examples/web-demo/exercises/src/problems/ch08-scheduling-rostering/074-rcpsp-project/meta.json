@@ -4,9 +4,9 @@
   "chapter": 8,
   "order": 4,
   "role": "core",
-  "scaffold": "fill-in",
+  "scaffold": "scratch",
   "difficulty": 4,
-  "estimatedMinutes": 16,
+  "estimatedMinutes": 22,
   "paradigms": [
     "CP",
     "MIP"

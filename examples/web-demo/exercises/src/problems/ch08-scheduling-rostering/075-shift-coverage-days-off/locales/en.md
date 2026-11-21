@@ -58,3 +58,9 @@ Every day and shift type has a minimum staffing demand and a staff-specific assi
 ```
 
 Each staff member works 2 shifts within `[minShifts, maxShifts]` while respecting `daysOff` (staff 0 off on day 1, staff 2 off on day 2), covers `[1, 1]` shifts every day, and incurs cost $(12 + 8) + (14 + 14) + (11 + 11) =$ **70**.
+
+<!-- section:hint1 -->
+Introduce a three-dimensional binary decision variable for assigning staff member $i$ to shift $s$ on day $d$. The model balances per-staff-day exclusivity and leave rules against daily shift demand coverage and total workload bounds per staff member.
+
+<!-- section:hint2 -->
+On a staff member's required `daysOff`, fix all shift variables for that staff-day to zero (or restrict the daily sum to zero) rather than omitting them from workload totals. Because costs are non-negative, covering demands with $\ge$ inequalities avoids overstaffing unless needed to meet `minShifts`, and you can decode `schedule[i][d]` as the assigned shift index or `-1` when all shifts on that day are zero.

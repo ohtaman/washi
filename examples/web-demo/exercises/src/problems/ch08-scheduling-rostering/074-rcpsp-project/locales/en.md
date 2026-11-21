@@ -46,3 +46,9 @@ At every moment, total demand for each resource cannot exceed its capacity. Assi
 ```
 
 Tasks run as `T0: [0,3)`, `T2: [3,7)`, `T3: [5,7)` (sharing peak load $2 + 1 = 3 \le 3$), `T1: [7,10)`, and `T4: [10,12)`, satisfying all precedence edges and giving makespan **12**.
+
+<!-- section:hint1 -->
+Model the project in Constraint Programming (`{ solver: "pumpkin" }`) with an integer start-time variable for each task. Combine directed acyclic precedence constraints for every dependency pair with one cumulative resource constraint per renewable resource pool.
+
+<!-- section:hint2 -->
+Bound each `m.integer(...)` start time between `0` and `horizon - d` where `horizon` is the sum of all task durations. For each resource $r$, collect `{ start, duration, demand }` entries for tasks with positive demand and enforce `cumulative(tasks, cap)`, then minimize `max(...)` over all task completion times without discretizing time into binary buckets.
