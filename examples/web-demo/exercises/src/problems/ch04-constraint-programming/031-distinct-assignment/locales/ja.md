@@ -44,3 +44,9 @@
 ```
 
 割当 `[0, 2, 1]` はすべて互いに異なり、干渉ペア `(0, 1)` でも $|0 - 2| = 2 \ge 2$ を満たし、総コストは $10 \times 0 + 6 \times 2 + 4 \times 1 =$ **16** です。
+
+<!-- section:hint1 -->
+各送信局に対して `[0, numChannels - 1]` の範囲をとる整数決定変数を 1 つずつ定義します。すべての送信局の重複禁止を AllDifferent グローバル制約で表し、各干渉ペアに対してチャネル差の分離制約を追加します。
+
+<!-- section:hint2 -->
+チャネル変数配列に `distinct(channels)` を課し、`input.adjacentConflicts` の各ペア `[u, v]` に対して `expr\`abs(${channels[u]} - ${channels[v]}) >= 2\`` を追加します。`minimize(expr\`dot(${input.weights}, ${channels})\`)` で重み付きコストを最小化し、`solver: "pumpkin"` で解いてください。

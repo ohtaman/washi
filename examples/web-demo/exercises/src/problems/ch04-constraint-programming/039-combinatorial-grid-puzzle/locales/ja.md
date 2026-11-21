@@ -52,3 +52,9 @@ givens に指定されたマスには指定の数字を固定し、さらに cag
 ```
 
 各行・各列が `{1, 2, 3, 4}` の順列になり、固定ヒントと全ケージの和・相異条件（例：`2 + 3 = 5`、`3 + 2 + 1 = 6`）を満たしています。
+
+<!-- section:hint1 -->
+値域 `[1, n]` をもつ $N \times N$ の整数変数行列を定義します。各行・各列・各ケージに AllDifferent 制約を課し、固定ヒントとケージ合計値の等式制約を加えます。純粋な充足問題なので目的関数は不要です。
+
+<!-- section:hint2 -->
+各行に `distinct(row)`、各列 `c` に `distinct(grid.map((row) => row[c]))` を適用します。`input.cages` の各 `cage` に対して `vars = cage.cells.map(([r, c]) => grid[r][c])` を取り、`expr\`${sum(vars)} == ${cage.targetSum}\`` と `distinct(vars)` の両方を追加して `solver: "pumpkin"` で解いてください。

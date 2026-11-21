@@ -18,7 +18,7 @@
     "m0": "Output must be an object { x, y, height }.",
     "m1": "Coordinates for box {p0} must be integers (received x={p1}, y={p2}).",
     "m2": "Box {p0} out of strip bounds: x=[{p1}, {p2}] (width {p4}), y={p3}.",
-    "m3": "Boxes {p0} {p2} and {p1} {p3} overlap! Add 4-way non-overlap or(...) constraints.",
+    "m3": "Boxes {p0} {p2} and {p1} {p3} overlap.",
     "m4": "Reported height ({p0}) does not match max top coordinate ({p1}).",
     "m5": "Valid non-overlapping packing, but strip height ({p0}) exceeds optimal ({p1}).",
     "m6": "Optimal 2D orthogonal packing found (height = {p0})!"

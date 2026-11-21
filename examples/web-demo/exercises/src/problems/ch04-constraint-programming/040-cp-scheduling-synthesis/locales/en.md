@@ -51,3 +51,9 @@ Job i cannot start before its mode's setup time, jobs on the same machine cannot
 ```
 
 Job 1 (mode `0`) runs `[0, 4)` + post `2` = `6`, freeing Machine 0 so Job 0 (mode `1`, setup `2 <= 4`, post `0`) runs `[4, 8)` alongside Job 2 (mode `0`, power $1 + 3 = 4 \le 4$) at `[4, 8)` + post `3` = `11`, while Job 3 (mode `1`) runs `[9, 11)`, giving makespan **11**.
+
+<!-- section:hint1 -->
+Introduce two integer decision variables per job: its start time `starts[i]` and its operating mode `modes[i]`. Couple them through mode-indexed setup/post-processing delays, precedences, per-machine non-overlap, global power capacity, and mode-compatibility tables to minimize makespan.
+
+<!-- section:hint2 -->
+Use `at(j.setupTimes, modes[i])` for start lower bounds and `at(j.postTimes, modes[i])` inside precedence and makespan expressions. Enforce `disjoint(...)` per machine over `{ start: starts[i], duration: j.duration }`, `cumulative(..., input.powerCap)` with `demand: j.power`, and `allowed([modes[u], modes[v]], rule.allowedPairs)` for each mode rule, then solve with `solver: "pumpkin"`.

@@ -46,3 +46,9 @@
 ```
 
 機械 0 上で作業 0 `[0, 4)` → 作業 3 `[4, 6)` → 作業 1 `[6, 9)` → 作業 2 `[9, 14)` と重なりなく処理され、リリース時刻と先行関係 `0 -> 3` を満たして総完了時刻は **14** になります。
+
+<!-- section:hint1 -->
+各作業に対してリリース時刻以上 `horizon - durations[i]` 以下の整数開始時刻変数を定義します。先行制約に加えて、担当機械ごとに作業をグループ化し、各機械に対して非重複の選言（disjunctive）制約を適用します。
+
+<!-- section:hint2 -->
+各機械に割り当てられた作業の `{ start: starts[i], duration: input.durations[i] }` を集め、（空でなければ）`disjoint(tasks)` を追加してください。目的関数は `minimize(max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`)))` として `solver: "pumpkin"` で解きます。

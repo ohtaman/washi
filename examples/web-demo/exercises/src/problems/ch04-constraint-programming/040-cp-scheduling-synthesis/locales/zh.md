@@ -51,3 +51,9 @@
 ```
 
 作业 1（模式 `0`）在 `[0, 4)` 加工并于 `6` 完成冷却；之后机器 0 上的作业 0（模式 `1`，准备时间 `2 <= 4`）在 `[4, 8)` 与作业 2（模式 `0`，总功率 $1 + 3 = 4 \le 4$）并行，作业 2 冷却至 `11`，作业 3（模式 `1`）在 `[9, 11)` 完成，最大完工时间为 **11**。
+
+<!-- section:hint1 -->
+为每个作业定义两个整数决策变量：开始时间 `starts[i]` 与运行模式 `modes[i]`。将按模式索引的准备/后处理延迟、先后顺序、按机器的互斥执行、全局功率上限以及模式兼容表结合起来，最小化最大完工时间。
+
+<!-- section:hint2 -->
+使用 `at(j.setupTimes, modes[i])` 约束启动下界，并在先后约束和完工时间表达式中使用 `at(j.postTimes, modes[i])`。对每台机器的 `{ start: starts[i], duration: j.duration }` 施加 `disjoint(...)`，对全局功率施加带 `demand: j.power` 的 `cumulative(..., input.powerCap)`，并对每条模式规则施加 `allowed([modes[u], modes[v]], rule.allowedPairs)`，最后用 `solver: "pumpkin"` 求解。

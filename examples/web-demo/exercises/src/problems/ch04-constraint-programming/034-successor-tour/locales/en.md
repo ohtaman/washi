@@ -43,3 +43,9 @@ Choose the immediate successor next[i] visited after each node i so that the suc
 ```
 
 Following `next = [1, 2, 3, 0]` traces the single closed tour `0 -> 1 -> 2 -> 3 -> 0` of length $2 + 4 + 2 + 6 =$ **14**.
+
+<!-- section:hint1 -->
+Model one successor integer variable per node in `[0, n - 1]` with no self-loops and all distinct values. To rule out disconnected cycles (subtours), introduce an auxiliary visit-order rank variable per node starting at depot 0.
+
+<!-- section:hint2 -->
+Enforce `distinct(next)`, `distinct(rank)`, and `rank[0] == 0` along with `at(rank, next[0]) == 1`. For every customer node $i \ge 1$, link successor steps with `implies(expr\`${next[i]} != 0\`, expr\`at(${rank}, ${next[i]}) == ${rank[i]} + 1\`)`, and minimize `sum(input.distances.map((row, i) => at(row, next[i])))` using `solver: "pumpkin"`.

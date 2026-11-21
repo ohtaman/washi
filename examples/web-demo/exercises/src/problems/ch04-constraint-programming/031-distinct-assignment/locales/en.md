@@ -44,3 +44,9 @@ In addition, each pair of co-located interfering transmitters must be separated 
 ```
 
 Channels `[0, 2, 1]` are all distinct in `[0, 3]`, satisfy `|0 - 2| = 2 >= 2` for pair `(0, 1)`, and give weighted cost $10 \times 0 + 6 \times 2 + 4 \times 1 =$ **16**.
+
+<!-- section:hint1 -->
+Introduce one integer decision variable per transmitter representing its assigned channel in `[0, numChannels - 1]`. Model uniqueness across all transmitters with an all-different global constraint, and add pairwise separation constraints for every interfering pair.
+
+<!-- section:hint2 -->
+Enforce `distinct(channels)` on the channel variable array, and add `expr\`abs(${channels[u]} - ${channels[v]}) >= 2\`` for each pair `[u, v]` in `input.adjacentConflicts`. Minimize the weighted cost with `minimize(expr\`dot(${input.weights}, ${channels})\`)` and solve using `solver: "pumpkin"`.

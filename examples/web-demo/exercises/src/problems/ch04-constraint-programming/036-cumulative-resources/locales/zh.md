@@ -47,3 +47,9 @@
 ```
 
 任务 0 与任务 2 在 `[0, 3)` 并行占用 $2 + 1 = 3 \le 3$ 单位资源；任务 0 释放资源后任务 1 在 `[4, 7)` 执行；任务 3 在前置任务 0 和 1 均结束后于 `[7, 9)` 执行，总完工时间为 **9**。
+
+<!-- section:hint1 -->
+为每个任务定义一个取值在 `[0, horizon - durations[i]]` 的整数开始时间变量。除任务间的先后顺序约束外，对所有任务施加一个累计资源全局约束，并最小化总完工时间。
+
+<!-- section:hint2 -->
+将所有任务的 `{ start: starts[i], duration: input.durations[i], demand: input.demands[i] }` 传入 `cumulative(tasks, input.capacity)`。以 `minimize(max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`)))` 为目标并用 `solver: "pumpkin"` 求解。

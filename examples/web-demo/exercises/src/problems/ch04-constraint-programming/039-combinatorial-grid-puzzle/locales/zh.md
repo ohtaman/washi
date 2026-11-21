@@ -52,3 +52,9 @@ givens 中的提示固定了对应单元格的数值，而 cages 中的每个区
 ```
 
 每行每列均为 `{1, 2, 3, 4}` 的排列，满足全部提示格与区域和约束（例如 `2 + 3 = 5`、`3 + 2 + 1 = 6`）。
+
+<!-- section:hint1 -->
+定义一个值域为 `[1, n]` 的 $N \times N$ 整数决策变量矩阵。对每一行、每一列以及每个区域（cage）施加全异约束，并添加已知提示格和区域求和等式约束。本题为纯可行性谜题，无需设置目标函数。
+
+<!-- section:hint2 -->
+对每行施加 `distinct(row)`，对每列 `c` 施加 `distinct(grid.map((row) => row[c]))`。对 `input.cages` 中的每个 `cage`，提取 `vars = cage.cells.map(([r, c]) => grid[r][c])`，同时约束 `expr\`${sum(vars)} == ${cage.targetSum}\`` 和 `distinct(vars)`，然后使用 `solver: "pumpkin"` 求解。

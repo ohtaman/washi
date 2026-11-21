@@ -19,25 +19,7 @@ export async function solve(input: P035Input): Promise<P035Output> {
     input.durations.reduce((acc, d) => acc + d, 0);
   const m = new Model("DisjointScheduling");
 
-  const starts = input.durations.map((d, i) =>
-    m.integer(`start_${i}`, { lb: input.releaseTimes[i], ub: horizon - d })
-  );
-
-  m.constraint(
-    input.precedences.map(
-      ([u, v]) => expr`${starts[u]} + ${input.durations[u]} <= ${starts[v]}`
-    )
-  );
-
-  // TODO: Group tasks by input.machines[i] and add a disjoint(...) constraint for each machine
-
-  m.objective(
-    minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`)))
-  );
+  // TODO: Model task start times, precedences, per-machine non-overlap, and makespan.
   await m.solve({ solver: "pumpkin" });
-
-  return {
-    starts: starts.map((v) => Math.round(v.value!) || 0),
-    makespan: Math.round(m.objectiveValue!) || 0,
-  };
+  throw new Error("Not implemented");
 }

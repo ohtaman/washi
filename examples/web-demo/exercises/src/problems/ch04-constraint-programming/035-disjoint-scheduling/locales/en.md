@@ -46,3 +46,9 @@ Tasks sharing the same machine cannot overlap in time, and each precedence pair 
 ```
 
 Task 0 runs `[0, 4)`, Task 3 runs `[4, 6)`, Task 1 runs `[6, 9)`, and Task 2 runs `[9, 14)` without overlap on Machine 0 while honoring release times and `0 -> 3`, giving makespan **14**.
+
+<!-- section:hint1 -->
+Introduce one integer start-time variable per task bounded below by its release time and above by `horizon - durations[i]`. Group tasks by their assigned machine and apply a disjunctive non-overlap constraint to each machine group alongside precedence constraints.
+
+<!-- section:hint2 -->
+For each machine, collect `{ start: starts[i], duration: input.durations[i] }` for tasks on that machine and enforce `disjoint(tasks)` (when the group is non-empty). Minimize `max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`))` using `solver: "pumpkin"`.

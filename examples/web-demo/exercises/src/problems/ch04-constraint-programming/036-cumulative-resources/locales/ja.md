@@ -47,3 +47,9 @@
 ```
 
 時刻 `[0, 3)` では作業 0 と作業 2 が並行して $2 + 1 = 3 \le 3$ を消費し、作業 0 完了後に作業 1 が `[4, 7)` で稼働、先行する作業 0・1 の完了後に作業 3 が `[7, 9)` で実行され、総完了時刻は **9** となります。
+
+<!-- section:hint1 -->
+各作業に対して `[0, horizon - durations[i]]` の範囲の整数開始時刻変数を定義します。依存作業間の先行制約に加えて、全作業を対象とした累積（cumulative）資源グローバル制約を 1 つ課し、総完了時刻を最小化します。
+
+<!-- section:hint2 -->
+全作業について `{ start: starts[i], duration: input.durations[i], demand: input.demands[i] }` を組み立てて `cumulative(tasks, input.capacity)` を追加してください。目的関数は `minimize(max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`)))` として `solver: "pumpkin"` で解きます。
