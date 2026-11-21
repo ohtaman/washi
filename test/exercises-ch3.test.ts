@@ -52,6 +52,7 @@ registerChapterExerciseSuite({
   expectedRuntimes: EXPECTED_RUNTIMES,
   objectiveTol: 1e-4,
   extractObjective: extractCh3Objective,
+  enforceScaffoldPolicy: true,
   checkAdversarial: async (problems) => {
     const byId = new Map(problems.map((p) => [p.meta.id, p]));
 

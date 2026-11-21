@@ -55,3 +55,10 @@ Beyond finding the minimum-cost dispatch quantities, management needs the margin
 ```
 
 Dispatch `[4, 10, 2]` satisfies `[30, 22] >= [30, 22]` and `20 <= 20` at cost $10 \times 4 + 14 \times 10 + 25 \times 2 =$ **230**, while duals `[6, 5, -3]` satisfy $30(6) + 22(5) + 20(-3) = 230$.
+
+
+<!-- section:hint1 -->
+Model the dispatch with one continuous variable per production unit, bounded below by zero and above by its capacity. Keep references to the minimum-requirement constraints and shared resource-cap constraints when adding them to the model so you can query their dual values after solving.
+
+<!-- section:hint2 -->
+After solving the minimization LP, read `c.dual!` in WaSHI (or `c.pi` in PuLP) for each requirement constraint followed by each resource-cap constraint. Both WaSHI and PuLP follow the sensitivity convention $\partial z^* / \partial \text{rhs}$: raising a $\ge$ requirement cannot lower minimum cost (so its dual is $\ge 0$), whereas relaxing a $\le$ resource cap cannot raise minimum cost (so its dual is $\le 0$), and any constraint with positive slack has dual `0`. Remember not to negate the duals—keep the solver's signed shadow prices directly.

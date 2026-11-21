@@ -63,3 +63,10 @@ Total operational cost combines base service costs, pairwise interaction costs, 
 ```
 
 Deploying services 0 and 3 (`[1, 0, 0, 1]`) delivers value $30 + 30 = 60 \ge 60$, activates no listed pairs, produces zone loads `[18, 18]` (peak `18`, deviations `2` and `2`), and totals $(40 + 45) + 6 \times 18 + 4(2 + 2) =$ **209**.
+
+
+<!-- section:hint1 -->
+Combine three linearization patterns in one MIP: binary variables for service selection, continuous $[0, 1]$ variables for pairwise interaction products, a scalar continuous epigraph variable for the peak zone load, and non-negative positive/negative deviation variable pairs for each zone's L1 target tracking.
+
+<!-- section:hint2 -->
+Each zone's load $L_r = \sum_i \text{loads}_{r,i} x_i$ feeds into both the epigraph cap ($L_r \le \text{peakLoad}$) and the L1 split ($L_r - \tau_r = d_r^+ - d_r^-$). For every pair `[i, j, s]`, enforce all three McCormick inequalities ($w_k \le x_i$, $w_k \le x_j$, $w_k \ge x_i + x_j - 1$) because interaction costs $s$ can be either negative (synergy savings, needing the upper bounds) or positive (interference overhead, needing the lower bound). Remember the minimum delivered capability constraint, and round `selected` and `pairProducts` cleanly in the output.

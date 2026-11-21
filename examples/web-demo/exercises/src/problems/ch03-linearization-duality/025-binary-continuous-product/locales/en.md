@@ -52,3 +52,10 @@ For each supplier, the team can optionally sign an annual discount contract for 
 ```
 
 Ordering `[50, 15, 30]` totals $95 \ge 95$ within bounds, activates only contract 0 (`z = [50, 0, 0]`), and costs $(20 \times 50 + 22 \times 15 + 18 \times 30) + 160 - 5 \times 50 =$ **1,780**.
+
+
+<!-- section:hint1 -->
+For each supplier, model three linked quantities: a binary variable for whether the discount contract is signed, a continuous order quantity bounded by the supplier's minimum and maximum order limits, and a continuous auxiliary variable representing their bilinear product.
+
+<!-- section:hint2 -->
+Use Glover's four-inequality exact linearization over $x_i \in [L_i, U_i]$ to enforce $z_i = b_i x_i$: two bounds driven by $b_i$ ($L_i b_i \le z_i \le U_i b_i$) force $z_i = 0$ when $b_i = 0$, while two shifted bounds driven by $(1 - b_i)$ ($x_i - U_i(1 - b_i) \le z_i \le x_i - L_i(1 - b_i)$) force $z_i = x_i$ when $b_i = 1$. Notice that since $z_i$ enters the minimization objective with a negative coefficient $-d_i$, omitting the upper bounds would let $z_i$ inflate artificially! Also enforce that total orders meet `totalDemand`.

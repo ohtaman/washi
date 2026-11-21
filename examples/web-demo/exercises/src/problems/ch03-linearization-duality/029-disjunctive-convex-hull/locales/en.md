@@ -60,3 +60,10 @@ Each operating band has its own fixed startup cost and marginal unit cost per un
 ```
 
 Running Unit 0 in band 2 (`[30, 45]`) at output `42` and keeping Unit 1 idle in band 0 (`[0, 0]`) meets total demand $42 + 0 = 42 \ge 42$ at cost $260 + 12 \times 42 =$ **764**.
+
+
+<!-- section:hint1 -->
+Use a disaggregated convex-hull formulation indexed by both unit and operating band: for each unit-band pair, declare a binary variable indicating whether that band is active and a non-negative continuous variable representing the unit's output in that band.
+
+<!-- section:hint2 -->
+Constrain each unit to select exactly one band ($\sum_k y_{ik} = 1$), and scale each band's interval by its indicator: $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$. This forces $x_{ik} = 0$ on every inactive band while confining the active band's output to $[L_{ik}, U_{ik}]$—avoiding weak Big-M relaxations and forbidding outputs in the gaps between bands. Sum $x_{ik}$ across all units and bands to satisfy `demand`, and recover each unit's selected band index and total output $\sum_k x_{ik}$.

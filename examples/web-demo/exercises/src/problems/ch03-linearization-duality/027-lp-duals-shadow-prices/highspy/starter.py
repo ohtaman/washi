@@ -13,13 +13,5 @@ def solve(input_data: dict) -> dict:
 
     prob = pulp.LpProblem("shadow_prices", pulp.LpMinimize)
 
-    quantities = [
-        pulp.LpVariable(f"x_{i}", lowBound=0, upBound=float(capacities[i]))
-        for i in range(n)
-    ]
-
-    # TODO:
-    # 1. Create >= constraints for min_reqs and <= constraints for max_res and add to prob
-    # 2. Minimize lpDot(costs, quantities), call prob.solve(pulp.HiGHS(msg=False))
-    # 3. Read c.pi for each requirement constraint followed by each resource cap constraint
+    # TODO: Build and solve the dispatch LP, then return quantities, shadow duals, and optimalCost.
     raise NotImplementedError("Not implemented")

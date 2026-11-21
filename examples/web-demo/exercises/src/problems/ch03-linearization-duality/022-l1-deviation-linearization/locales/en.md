@@ -48,3 +48,10 @@ Each unit of deviation above or below a channel's target incurs a priority penal
 ```
 
 Allocations `[25, 30, 45]` sum to $100$, spend $5 \times 25 + 2 \times 30 + 1 \times 45 = 230 \le 230$, and give weighted deviation $3 \lvert 25 - 40 \rvert + 2 \lvert 30 - 30 \rvert + 1 \lvert 45 - 30 \rvert =$ **60**.
+
+
+<!-- section:hint1 -->
+Declare a continuous allocation variable for each channel bounded between zero and its upper limit. To model absolute deviations linearly without binary variables, also introduce a pair of non-negative auxiliary variables per channel representing the positive overshoot above target and the negative shortfall below target.
+
+<!-- section:hint2 -->
+Express each channel's signed deviation from its target as the difference between its non-negative overshoot and shortfall variables, and penalize their sum in the minimization objective. Because penalty weights are non-negative, at least one of the two auxiliary variables vanishes automatically at optimality, linearizing the absolute value without binary indicators.
