@@ -62,3 +62,10 @@ Find a valid binary replacement schedule where no unavailable worker-slot pair i
 ```
 
 Worker 0 avoids unavailable slot 0 while Workers 0 and 2 swap slots 0 and 2 (`hammingDistance = 4`), satisfying demands `[1, 2, 2, 1]` and shift caps `[2, 2, 2]` for objective $50 \times 4 + 2(10 + 14 + 12) =$ **272**.
+
+
+<!-- section:hint1 -->
+Create a binary decision matrix indexed by worker and time slot representing the repaired schedule. Enforce hard constraints for outage exclusions, exact per-slot staffing demands, and per-worker shift limits, then minimize the weighted Hamming distance from the baseline schedule plus worker assignment costs.
+
+<!-- section:hint2 -->
+Because each `baseline[i][t]` is a known constant in $\{0, 1\}$, the Hamming flip indicator $|x_{i,t} - b_{i,t}|$ is already linear without extra auxiliary variables: it equals $x_{i,t}$ when $b_{i,t} = 0$ and $1 - x_{i,t}$ when $b_{i,t} = 1$. After solving, compute `hammingDistance` by counting changed cells (or evaluating the linear flip expression) and round binary values with `Math.round(v.value!)` in WaSHI or `round(pulp.value(v))` in PuLP.

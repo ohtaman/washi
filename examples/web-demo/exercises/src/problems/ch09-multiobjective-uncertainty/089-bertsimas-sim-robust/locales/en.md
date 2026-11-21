@@ -48,3 +48,10 @@ Rather than protecting against every product spiking simultaneously, management 
 ```
 
 Producing `[3, 3, 6]` uses $2(3) + 3(3) + 2(6) = 27$ nominal capacity plus worst-case $\Gamma = 1$ deviation $\max(1 \cdot 3, 1 \cdot 3, 0.5 \cdot 6) = 3$, totaling $30 \le 30$ with profit $12(3) + 16(3) + 10(6) =$ **144**.
+
+
+<!-- section:hint1 -->
+Alongside the bounded continuous production quantities, dualize the inner worst-case protection subproblem over the budget $\Gamma$ by introducing one scalar non-negative dual variable and one non-negative per-product dual variable. Together they form the exact linear robust counterpart of the capacity constraint.
+
+<!-- section:hint2 -->
+The key idea is LP duality on the inner worst-case protection problem: dualizing the $\Gamma$-budgeted adversary produces one scalar non-negative threshold dual and per-product non-negative excess duals whose sum bounds each product's worst-case deviation. Substituting the dual objective directly into the capacity constraint eliminates the inner maximization without any quadratic or enumerative terms.

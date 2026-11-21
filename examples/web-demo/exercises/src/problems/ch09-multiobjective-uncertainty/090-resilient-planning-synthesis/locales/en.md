@@ -64,3 +64,10 @@ Afterwards, one of several shock scenarios occurs according to known probabiliti
 ```
 
 Pre-committing `[0, 1, 0, 1]` costs $150 + 110 = 260$ and retains $22 + 16 - 10 = 28 \ge 28$ robust capacity; Scenario 0 needs zero changes, Scenario 1 swaps Unit 1 for Unit 0 (2 flips, capacity $34 \ge 34$), giving expected total cost $260 + 0.6(0) + 0.4(45 \times 2) =$ **296**.
+
+
+<!-- section:hint1 -->
+Combine a Stage-1 binary commitment vector and its Bertsimas-Sim dual protection variables with scenario-indexed Stage-2 binary recovery schedules, continuous Hamming-flip variables, and non-negative demand-shortfall variables. Stage 1 ensures worst-case surviving capacity meets `robustMinCap`, while Stage 2 adapts each scenario's schedule around outages and minimizes expected switching plus shortfall costs.
+
+<!-- section:hint2 -->
+For the Stage-1 lower-bound robust constraint, subtract the dual worst-case capacity loss: $\text{dot}(\text{capacities}, y) - \Gamma z - \sum_j p_j \ge \text{robustMinCap}$ with $z + p_j \ge \text{dropAmounts}_j \cdot y_j$ ($z, p_j \ge 0$). In each scenario $s$, force $w_{s,j} = 0$ when `offline[s][j] === 1`, linearize $|w_{s,j} - y_j|$ using $d_{s,j} \ge w_{s,j} - y_j$ and $d_{s,j} \ge y_j - w_{s,j}$ (continuous $d_{s,j} \in [0, 1]$ suffices), and round binary `committed` and `recovered` outputs cleanly.

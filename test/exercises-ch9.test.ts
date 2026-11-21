@@ -26,6 +26,7 @@ registerChapterExerciseSuite({
     "090": ["washi", "highspy"],
   },
   objectiveTol: 1e-2,
+  enforceScaffoldPolicy: true,
   extractObjective: (id, output) => {
     const rec = output as Record<string, unknown>;
     const keyMap: Record<string, string> = {

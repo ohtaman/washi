@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 An asset manager allocates capital across several assets whose weights must be non-negative, bounded individually below a maximum concentration cap, and sum to one. Under a discrete set of return scenarios with known probabilities, the portfolio loss in each scenario equals the negative portfolio return.
 
-To control severe tail losses without non-linear optimization, adopt the Rockafellar-Uryasev formulation of Conditional Value-at-Risk at confidence level alpha using a free Value-at-Risk threshold variable and non-negative tail excess variables. Choose portfolio weights to **minimize expected loss plus risk weight times CVaR**.
+To control severe tail losses without non-linear optimization, use the Rockafellar-Uryasev formulation of Conditional Value-at-Risk at confidence level alpha, returning the portfolio weights, auxiliary VaR threshold, and CVaR. Choose portfolio weights to **minimize expected loss plus risk weight times CVaR**.
 
 <!-- section:io -->
 ### Input
@@ -55,3 +55,10 @@ To control severe tail losses without non-linear optimization, adopt the Rockafe
 ```
 
 For `weights = [0, 0.3, 0.7]`, scenario returns are `[0.019, 0.029, 0.015, -0.032]`, yielding expected loss `-0.00775` and worst-25% tail loss `0.032`, so $-0.00775 + 2.0 \times 0.032 =$ **0.05625**.
+
+
+<!-- section:hint1 -->
+Introduce portfolio weights bounded between zero and the concentration cap that sum to one, together with one scalar auxiliary VaR threshold variable and one non-negative tail-excess variable per scenario. Each scenario's tail-excess variable captures how much the portfolio loss exceeds the VaR threshold in that scenario.
+
+<!-- section:hint2 -->
+The main pitfall is leaving the VaR threshold $\eta$ non-negative by default: pass `{ lb: -Infinity, ub: Infinity }` in WaSHI or `lowBound=None, upBound=None` in PuLP, because when all scenario returns are positive the optimal VaR threshold is negative. Use Rockafellar-Uryasev's hinge inequalities so each scenario's non-negative excess variable bounds the shortfall of portfolio loss above $\eta$, and weight CVaR against expected loss using `riskWeight`.

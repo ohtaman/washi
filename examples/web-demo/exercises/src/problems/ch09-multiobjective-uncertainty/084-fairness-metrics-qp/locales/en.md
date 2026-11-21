@@ -46,3 +46,10 @@ Pure cost minimization concentrates work on the cheapest teams up to their capac
 ```
 
 With `allocations = [9, 11, 10]`, total demand is $9 + 11 + 10 = 30$ (mean $\bar{x} = 10$), linear cost is $10(9) + 2(11) + 6(10) = 172$, and the variance penalty is $2 \times ((9 - 10)^2 + (11 - 10)^2 + (10 - 10)^2) = 4$, giving total objective **176**.
+
+
+<!-- section:hint1 -->
+Model one bounded continuous workload decision per team so that total demand is satisfied while balancing linear operating cost against variance across teams.
+
+<!-- section:hint2 -->
+Because total demand is fixed, the target mean allocation is a known constant rather than a decision-dependent expression. WaSHI's `expr` template tag natively compiles convex quadratic terms for HiGHS QP without manual piecewise linearization, and `m.objectiveValue!` includes any constant offset from expanding the squared deviations.

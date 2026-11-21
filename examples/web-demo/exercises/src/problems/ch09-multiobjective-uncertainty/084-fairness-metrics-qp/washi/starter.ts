@@ -14,17 +14,6 @@ export interface P084Output {
 }
 
 export async function solve(input: P084Input): Promise<P084Output> {
-  const n = input.unitCosts.length;
-  const mean = input.totalDemand / n;
-  const m = new Model("FairnessQP");
-
-  const x = input.minAlloc.map((lb, i) =>
-    m.continuous({ lb, ub: input.maxAlloc[i], name: `x_${i}` })
-  );
-
-  // TODO:
-  // 1. Add total demand conservation constraint: sum(x) == totalDemand
-  // 2. Minimize convex QP objective: dot(unitCosts, x) + fairnessWeight * sum((x - mean)^2)
-  // 3. Solve with HiGHS and return { allocations, totalCost }
+  // TODO: Build and solve the convex QP fairness model, then return the output.
   throw new Error("Not implemented");
 }

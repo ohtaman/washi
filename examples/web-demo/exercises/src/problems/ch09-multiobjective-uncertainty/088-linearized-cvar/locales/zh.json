@@ -18,7 +18,7 @@
     "m0": "返回值必须是包含 { weights, varThreshold, cvar, totalObjective } 的对象。",
     "m1": "weights[{p0}] = {p1} 超出允许范围 [0, {p2}]。",
     "m2": "资产权重之和必须等于 1（实际为 {p0}）。",
-    "m3": "varThreshold ({p0}) 对应的 Rockafellar-Uryasev 值 ({p1}) 不等于真实 CVaR ({p2})，请检查是否允许 eta 为自由无下界变量（lb: -Infinity）。",
+    "m3": "varThreshold ({p0}) 对应的 Rockafellar-Uryasev 值 ({p1}) 与真实 CVaR ({p2}) 不一致。",
     "m4": "返回的 cvar ({p0}) 与该权重组合的精确 CVaR ({p1}) 不一致。",
     "m5": "返回的 totalObjective ({p0}) 与期望损失加 riskWeight * CVaR 计算值 ({p1}) 不一致。",
     "m6": "权重可行，但 totalObjective ({p0}) 高于最小值 ({p1})。",

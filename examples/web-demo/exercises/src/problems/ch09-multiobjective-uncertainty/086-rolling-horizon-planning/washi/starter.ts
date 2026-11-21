@@ -19,17 +19,6 @@ export interface P086Output {
 }
 
 export async function solve(input: P086Input): Promise<P086Output> {
-  const T = input.actualDemands.length;
-  const produced: number[] = [];
-  const inventories: number[] = [];
-  const shortfalls: number[] = [];
-
-  // TODO:
-  // For each step t = 0 .. T - 1:
-  // 1. Solve a lookahead LP over window [t, min(T, t + windowLen)) using forecastDemands
-  //    and starting from current realized inventory invCurr (initialInventory at t = 0)
-  // 2. Commit ONLY x[0] as produced[t]
-  // 3. Apply actualDemands[t] to update realized inventory, shortfall, and accumulated realized cost
-  // 4. Return { produced, inventories, shortfalls, totalCost }
+  // TODO: Run the rolling-horizon MPC loop over all periods and return the output.
   throw new Error("Not implemented");
 }

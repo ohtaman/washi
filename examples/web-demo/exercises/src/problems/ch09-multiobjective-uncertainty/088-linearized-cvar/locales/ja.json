@@ -18,7 +18,7 @@
     "m0": "返り値は { weights, varThreshold, cvar, totalObjective } のオブジェクトである必要があります。",
     "m1": "weights[{p0}] = {p1} が許容範囲 [0, {p2}] を外れています。",
     "m2": "資産配分比率の合計が 1 である必要があります（実際: {p0}）。",
-    "m3": "varThreshold ({p0}) での Rockafellar-Uryasev 評価値 ({p1}) が真の CVaR ({p2}) と一致しません。eta を自由変数（lb: -Infinity）にしているか確認してください。",
+    "m3": "varThreshold ({p0}) での Rockafellar-Uryasev 評価値 ({p1}) が真の CVaR ({p2}) と一致しません。",
     "m4": "返された cvar ({p0}) が配分ウェイトに対する厳密な CVaR ({p1}) と一致しません。",
     "m5": "返された totalObjective ({p0}) が「期待損失＋riskWeight * CVaR」の計算値 ({p1}) と一致しません。",
     "m6": "実行可能ポートフォリオですが、totalObjective ({p0}) が最小値 ({p1}) より大きくなっています。",

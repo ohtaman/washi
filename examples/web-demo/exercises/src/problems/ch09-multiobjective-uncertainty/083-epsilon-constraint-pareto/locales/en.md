@@ -53,3 +53,10 @@ For each threshold in the input emission cap array, select binary projects withi
 ```
 
 For each threshold in `[0, 6, 12, 20]`, the selections stay within `budgetCap = 16` (`[0, 6, 11, 16]`) and emission caps (`[0, 6, 11, 20]`), yielding profits `[0, 45, 85, 125]` with total sum **255**.
+
+
+<!-- section:hint1 -->
+Iterate over each emission cap in the input array and solve an independent binary integer program for that threshold. Each subproblem uses a vector of binary project-selection variables subject to the shared capital budget and the current emission cap, maximizing total profit.
+
+<!-- section:hint2 -->
+Do not replace the $\varepsilon$-constraint sweep with a weighted-sum scalarization: discrete MIP Pareto frontiers can have non-convex (unsupported) points that no linear weight combination can recover. In WaSHI, build a fresh `Model` per threshold using `m.binary(n)` and `maximize(...)` (or `pulp.LpMaximize` in PuLP), round each binary value cleanly, and sum `frontierProfits` into `frontierSum`.
