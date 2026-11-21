@@ -183,4 +183,5 @@ registerChapterExerciseSuite({
   extractObjective,
   checkAdversarial: verifyAdversarialChecks,
   timeoutMs: 120_000,
+  enforceScaffoldPolicy: true,
 });

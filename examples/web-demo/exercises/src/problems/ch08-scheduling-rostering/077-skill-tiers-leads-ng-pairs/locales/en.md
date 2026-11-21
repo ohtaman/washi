@@ -69,3 +69,9 @@ Additionally, certain incompatible staff pairs cannot be assigned together to th
 ```
 
 On both days, shift 0 pairs senior 1 (`[0,1]`) with junior 2 (`[1,1]`)—avoiding forbidden pair `[0, 2]`—while shift 1 assigns senior 0 (`[1,0]`) to cover skill 0, yielding total cost $(20+20) + (16+16) + (10+10) =$ **92**.
+
+<!-- section:hint1 -->
+Introduce a three-dimensional binary variable for assigning staff member $i$ to shift $s$ on day $d$, with at most one shift per staff-day. Every active shift slot must simultaneously satisfy total headcount, senior leadership, per-skill coverage, and pairwise incompatibility rules.
+
+<!-- section:hint2 -->
+Only enforce the senior lead and skill-coverage inequalities on active shift slots where `demands[d][s] > 0`, so zero-demand shifts do not force unnecessary staffing. For each incompatible pair `[a, b]`, add $x_{a,d,s} + x_{b,d,s} \le 1$ per `(d, s)` slot so they cannot share the same shift while still being allowed on different shifts of the same day.

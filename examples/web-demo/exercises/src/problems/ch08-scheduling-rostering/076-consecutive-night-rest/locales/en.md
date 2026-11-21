@@ -57,3 +57,9 @@ To prevent fatigue, no staff member may work more than a specified maximum numbe
 ```
 
 Every staff member works at most 2 consecutive days and has zero Night (`2`) to Day (`0`) transitions, daily demands are satisfied, and total cost is $(10+10+10) + (14+14+14) + (11+12+11) + 15 =$ **121**.
+
+<!-- section:hint1 -->
+Use a three-dimensional binary assignment variable for staff member $i$, day $d$, and shift $s \in \{0, 1, 2\}$. In addition to daily shift coverage and at most one shift per staff-day, you need two temporal coupling rules across adjacent days: a rolling consecutive-workday limit and a forbidden shift transition rule.
+
+<!-- section:hint2 -->
+To cap consecutive working days at $K$, sum the daily working indicators ($\sum_s x_{i, \tau, s}$) over every rolling window of $K + 1$ consecutive days and bound that window sum by $K$; no auxiliary streak-counter variables are needed. Similarly, forbid Night-to-Day fatigue by bounding $x_{i,d,2} + x_{i,d+1,0} \le 1$ for every staff member $i$ and day $d < D - 1$.

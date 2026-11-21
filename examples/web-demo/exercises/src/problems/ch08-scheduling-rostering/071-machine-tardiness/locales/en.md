@@ -44,3 +44,9 @@ Two jobs cannot overlap on the machine at any time. Choose the start time of eve
 ```
 
 Running job 1 on $[2, 5)$, job 2 on $[5, 7)$, and job 0 on $[7, 11)$ respects all release dates without overlap and gives tardiness $[6, 0, 1]$, yielding total weighted tardiness $1 \times 6 + 5 \times 0 + 2 \times 1 =$ **8**.
+
+<!-- section:hint1 -->
+Use continuous start-time variables bounded below by each job's release date, alongside non-negative continuous tardiness variables per job. Because release dates and processing times may be fractional, model non-overlap between every pair of distinct jobs using pairwise binary precedence choices rather than time-indexed buckets.
+
+<!-- section:hint2 -->
+For each pair $(i, j)$ with $i < j$, a binary variable decides whether $i$ precedes $j$ or $j$ precedes $i$ via two Big-M disjunctive constraints. Derive a tight valid Big-M from the instance horizon $H = \max_k r_k + \sum_k p_k$, and bound each start time above by $H - p_j$ so $M = H$ safely deactivates the inactive branch without weakening the relaxation unnecessarily.

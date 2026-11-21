@@ -63,3 +63,9 @@ Every room-session block has a regular time capacity that may be extended up to 
 ```
 
 Cases 0–3 are each assigned to compatible rooms (`compatible[c][r] = 1`), with block loads `[4, 3]` in room 0 and `[3, 2]` in room 1 fitting within regular capacity `3` plus overtime `[[1, 0], [0, 0]]` (within `maxOvertime = 1`), case 4 unscheduled (`-1`), and net score $(60 + 85 + 45 + 70) - 25 \times 1 =$ **235**.
+
+<!-- section:hint1 -->
+Combine a three-dimensional binary assignment variable (case $c$, room $r$, session $s$) with a continuous non-negative overtime variable for each `(room, session)` block bounded above by `maxOvertime`. Each case may be scheduled at most once in a compatible room, and each block's total duration must fit within regular capacity plus its overtime.
+
+<!-- section:hint2 -->
+Because `overtimeCost` is positive and you are maximizing `netScore`, overtime variables naturally take the exact excess $\max(0, \text{load} - B)$ without needing binary indicator variables. Remember to fix incompatible `(c, r)` assignments to zero and decode unscheduled cases as `-1` in both `assignedRoom` and `assignedSession`.

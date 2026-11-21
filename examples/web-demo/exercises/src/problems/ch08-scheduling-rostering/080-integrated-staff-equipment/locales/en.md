@@ -65,3 +65,9 @@ Each staff member has a regular slot quota, a hard maximum slot limit, a base pe
 ```
 
 Slot 0 runs jobs 0 and 2 (equipment $1+1=2 \le 3$), slot 1 runs jobs 1 and 3 (equipment $2+1=3 \le 3$), staff 2 works 2 slots (1 overtime), and total cost is $(20 + 22 + 2 \times 18) + 16 \times 1 + (0 + 5 + 0 + 0) =$ **99**.
+
+<!-- section:hint1 -->
+Use a three-dimensional binary decision variable assigning procedure $j$ to staff member $i$ in timeslot $t$, paired with a non-negative overtime variable for each staff member. This couples procedure-level certification and slot preference with per-slot equipment pooling and per-staff workload limits.
+
+<!-- section:hint2 -->
+Exclude or fix to zero any `(j, i)` assignment where `certified[i][j] === 0`, and note that every procedure must be assigned to exactly one `(staff, slot)` pair. Enforce shared equipment capacity per slot $t$ across all jobs and staff, and linearize each staff member's overtime via $o_i \ge \text{work}_i - R_i$ with $o_i \ge 0$ and $\text{work}_i \le M_i$; because overtime costs are positive, $o_i$ is tight at the optimum without extra binaries.

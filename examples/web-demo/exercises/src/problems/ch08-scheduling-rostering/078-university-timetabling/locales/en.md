@@ -53,3 +53,9 @@ Courses taught by the same teacher or sharing any student cohort cannot be place
 ```
 
 Courses 1 and 2 run in slot 0 (rooms 0 and 1, teachers 0 and 1, cohorts 1 and 0), while courses 0 and 3 run in slot 1 (rooms 0 and 1, teachers 0 and 2, cohorts 0 and 1), meeting all capacities and avoiding all conflicts for score $6 + 9 + 10 + 9 =$ **34**.
+
+<!-- section:hint1 -->
+Use a three-dimensional binary decision variable indicating whether course $c$ is placed in room $r$ at timeslot $t$. Each course must choose one feasible `(room, slot)` pair, while rooms, teachers, and student cohorts each act as mutual-exclusion cliques within every timeslot.
+
+<!-- section:hint2 -->
+Filter out or fix to zero any `(c, r)` pair where `courseSizes[c] > roomCapacities[r]` so oversized classes never enter small rooms. For teachers and cohorts, group all courses sharing the same teacher or the same cohort ID and bound the sum of their assignments across all rooms in each slot $t$ by $1$ — clique-level sums are much tighter than pairwise inequalities.

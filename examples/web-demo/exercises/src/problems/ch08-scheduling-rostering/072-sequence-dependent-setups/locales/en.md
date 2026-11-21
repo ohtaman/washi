@@ -48,3 +48,9 @@ Choose a permutation of all jobs and their completion times to minimize the tota
 ```
 
 Processing jobs in sequence $0 \to 2 \to 1$ gives $C_0 = 3$ ($T_0 = 0$), $C_2 = 3 + 1 + 2 = 6$ ($T_2 = 1$), and $C_1 = 6 + 1 + 4 = 11$ ($T_1 = 3$), for a total tardiness of $0 + 1 + 3 =$ **4**.
+
+<!-- section:hint1 -->
+Model the job sequence as a single directed tour through all jobs plus a dummy depot node representing the start and end of the schedule. Alongside binary arc-selection variables between nodes, track continuous completion-time and non-negative tardiness variables for every job.
+
+<!-- section:hint2 -->
+Enforce out-degree and in-degree equal to one on every node (including the dummy depot) so the arcs form a cycle cover, then propagate completion times across job-to-job arcs via Big-M timing constraints. Because processing times are strictly positive, time propagation simultaneously enforces changeover delays and eliminates subtours without extra MTZ variables; derive $M = H + \max s_{ij}$ from a horizon $H = \sum_j p_j + (n - 1)\max s_{ij}$ and trace `order` starting from the depot's successor.
