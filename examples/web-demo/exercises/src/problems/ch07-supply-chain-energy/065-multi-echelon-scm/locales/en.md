@@ -70,3 +70,10 @@ Each DC acts strictly as a transshipment node whose total inbound flow from plan
 ```
 
 Opening both plants and DCs 0 and 2 satisfies all capacities, DC flow balance (`70 == 30+40`, `60 == 35+25`), and demands at total cost $1450 + 460 + 445 =$ **2,355**.
+
+
+<!-- section:hint1 -->
+Introduce binary opening decisions for each candidate plant and each candidate DC, along with continuous non-negative shipment matrices from plants to DCs and from DCs to customers. The network consists of two coupled echelons linked through the distribution centers.
+
+<!-- section:hint2 -->
+Bound each plant's total outbound flow by its capacity times its binary opening variable, and similarly bound each DC's total throughput by its capacity times its DC opening variable. Every DC must also satisfy strict flow conservation (total inflow from plants equals total outflow to customers), while every customer's total inflow must meet its demand.

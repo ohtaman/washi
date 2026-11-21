@@ -60,6 +60,7 @@ registerChapterExerciseSuite({
   expectedIds: EXPECTED_IDS,
   expectedRuntimes: EXPECTED_RUNTIMES,
   extractObjective,
+  enforceScaffoldPolicy: true,
   checkAdversarial: async (problems: ProblemDefinition[]) => {
     // Verify all 60 Chapter 7 markdown/editorial files render without KaTeX parse errors
     for (const p of problems) {

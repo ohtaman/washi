@@ -76,3 +76,10 @@ Each item starts with a given initial inventory, incurs a fixed setup cost whene
 ```
 
 Releasing 27 units of item 0 at period 2 ($L_0 = 1$) supplies periods 3 and 4 while pulling 54 units of item 1 at period 2 (released at period 1 with $L_1 = 1$) and 162 units of item 2 at period 1 ($L_2 = 0$), giving total cost $580 + 1332 + 24 =$ **1,936**.
+
+
+<!-- section:hint1 -->
+Model $N \times T$ matrices for binary setup indicators, non-negative integer order releases, and non-negative ending inventories for every item and period. Each item's inventory balance couples its own delayed order arrivals with both external demand and dependent demand triggered by parent item releases.
+
+<!-- section:hint2 -->
+Units of item $i$ released at period $t - L_i$ arrive in period $t$ (so arrivals are zero when $t < L_i$), whereas releasing a parent item $j$ in period $t$ consumes `bom[i][j]` units of child $i$ immediately in period $t$. Because `production` must be integer (`m.integer` in WaSHI or `cat="Integer"` in PuLP), link it to the binary setup using the per-item period capacity.

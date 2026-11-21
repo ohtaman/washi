@@ -64,3 +64,10 @@ In each period, the total machine time consumed by all items—both unit process
 ```
 
 Pre-building 11 units of item 1 in period 0 keeps period 1 machine usage at $12 + 15 + 1.5(30) + 2.0(14) = 100 \le 100$, giving total cost $4(120 + 150) + 11 \times 2.5 =$ **1,107.5**.
+
+
+<!-- section:hint1 -->
+Define per-item, per-period binary setup indicators, continuous production quantities, and non-negative ending inventory variables arranged as $I \times T$ matrices. The model combines independent per-item inventory balance chains with a shared machine-time constraint in every period.
+
+<!-- section:hint2 -->
+When linking item production to its setup binary, use the tightest valid upper bound—such as the item's remaining cumulative demand from period $t$ onward—rather than an arbitrary large constant. In each period's machine-capacity constraint, sum both the variable processing time and the fixed setup time over all items.

@@ -62,3 +62,10 @@
 ```
 
 谷时段充电至 `soc = 78`，并在第 3–4 高负荷时段放电削峰，将全周期电网负荷压平至 `[70, 80, 80, 80, 70.6, 80]`（`peakLoad = 80`）同时末期恢复 `soc = 30`，总电费为 $93.968 + 8 \times 80 =$ **733.968**。
+
+
+<!-- section:hint1 -->
+为每一期定义充电功率、放电功率、期末荷电状态（SOC）及电网净购电功率的连续变量，每期再定义一个防止同时充放电的二元模式指示变量，并定义一个表示峰值电网负荷的标量变量。
+
+<!-- section:hint2 -->
+在 SOC 状态转移方程中，充电增加 $\eta_c c_t$ 而放电减少 $d_t / \eta_d$，电网净购电满足 `baseLoads[t] + charge[t] - discharge[t] >= 0`。使用二元模式变量对充放电进行互斥关联（`charge[t] <= maxPower * mode[t]` 与 `discharge[t] <= maxPower * (1 - mode[t])`），将末期 SOC 下界设为 $\max(\text{minSoc}, \text{minFinalSoc})$，并对所有时段约束 `peakLoad >= gridLoad[t]` 以线性化需量电费。
