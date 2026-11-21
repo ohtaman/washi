@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 Up to K vehicles leave depot 0 at time earliest[0] and must serve every customer once before returning to depot 0 no later than latest[0]. Each location has a service time window [earliest[i], latest[i]] and a required service duration; if a vehicle arrives early it waits until earliest[i], but arriving after latest[i] is forbidden.
 
-Formulate the Vehicle Routing Problem with Time Windows using Big-M arrival-time linking constraints and **minimize total travel cost**.
+Route up to K vehicles from depot 0 to serve every customer within its time window and return before the depot deadline, **minimizing total travel cost**.
 
 <!-- section:io -->
 ### Input
@@ -55,3 +55,9 @@ Formulate the Vehicle Routing Problem with Time Windows using Big-M arrival-time
 ```
 
 Route `[0, 1, 0]` waits until `t = 10` at customer 1 (distance 6), while `[0, 3, 2, 4, 0]` starts service at `t = [5, 12, 22]` within all windows and returns at `28 <= 40` (distance 21), giving total travel cost $6 + 21 =$ **27**.
+
+<!-- section:hint1 -->
+Model binary arc variables between every pair of distinct locations, continuous service-start time variables bounded by `[earliest[i], latest[i]]`, and auxiliary visit-order potentials for customers. Fix the depot departure time, enforce customer degree 1, and cap the balanced depot degree by `maxVehicles`.
+
+<!-- section:hint2 -->
+Link service-start times along active arcs `(i, j)` with instance-derived Big-M inequalities ($t_i + s_i + d_{ij} - t_j \le M_{ij}(1 - x_{ij})$ where $M_{ij} = \max(0, l_i + s_i + d_{ij} - e_j)$), and also enforce the depot return deadline on arcs `(i, 0)`. Watch out for zero-time colocated customers (`service + dist == 0`): time constraints alone allow zero-duration customer-only cycles, so include MTZ visit-order constraints on customer arcs as well.

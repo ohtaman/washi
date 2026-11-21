@@ -48,3 +48,9 @@ Choose a subset of sites and links forming a single connected component containi
 ```
 
 Activating nodes `{0, 2, 3, 4}` linked along `0-2-3-4` forms one connected tree from root `0`, earning $0 + 2 + 12 + 10 = 24$ in prizes minus $7 + 3 + 2 = 12$ in link costs for a net value of **12**.
+
+<!-- section:hint1 -->
+Model binary node-activation and undirected edge-selection variables, with the root node fixed as active. To guarantee connectivity back to the root, orient each undirected edge into two directed flow variables carrying a single commodity from root 0 to every other activated node.
+
+<!-- section:hint2 -->
+An edge can only be built if both endpoints are active ($w_e \le y_u, y_v$), and flow in either direction on edge $e$ can only be positive when $w_e = 1$ (bounded by $n - 1$). Root 0 emits one unit of commodity for each active non-root node ($\text{outflow}(0) - \text{inflow}(0) = \sum_{v \ge 1} y_v$), while every non-root node consumes $y_v$ units ($\text{inflow}(v) - \text{outflow}(v) = y_v$), making any disconnected high-prize island infeasible.
