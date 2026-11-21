@@ -4,22 +4,19 @@ import pulp
 def solve(
     supplies,
     demands,
-    arrivalTimes,
-    dueTimes,
-    inDoorCaps,
-    outDoorCaps,
-    handlingCosts,
-    transferTimes,
-    delayCost,
+    arrival_times,
+    due_times,
+    in_door_caps,
+    out_door_caps,
+    handling_costs,
+    transfer_times,
+    delay_cost,
 ) -> dict:
     """Return {"inDoor": list[int], "outDoor": list[int], "flows": list[list[list[float]]], "departures": list[float], "totalCost": float}."""
-    arrivals = arrivalTimes
-    dues = dueTimes
-    in_caps = inDoorCaps
-    out_caps = outDoorCaps
-    handling_costs = handlingCosts
-    transfer_times = transferTimes
-    delay_cost = delayCost
+    arrivals = arrival_times
+    dues = due_times
+    in_caps = in_door_caps
+    out_caps = out_door_caps
 
     n_in = len(supplies)
     n_out = len(demands)

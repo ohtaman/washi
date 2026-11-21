@@ -1,12 +1,10 @@
 import pulp
 
 
-def solve(numTerritories, demands, demandBounds, hubCosts, adjEdges, dist) -> dict:
+def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -> dict:
     """Return {"territories": list[dict], "totalCost": float}."""
-    num_t = numTerritories
-    min_d, max_d = demandBounds
-    hub_costs = hubCosts
-    adj_edges = adjEdges
+    num_t = num_territories
+    min_d, max_d = demand_bounds
     n = len(demands)
 
     prob = pulp.LpProblem("connected_territory_routing", pulp.LpMinimize)

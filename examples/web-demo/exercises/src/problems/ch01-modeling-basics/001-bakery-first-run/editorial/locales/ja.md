@@ -30,5 +30,5 @@ m.constraint(expr`${c} + 2 * ${l} <= ${input.butterCap}`, "butter");
 **PuLP (Python)**
 
 ```python
-prob += c + 2 * l <= butterCap, "butter"
+prob += c + 2 * l <= butter_cap, "butter"
 ```

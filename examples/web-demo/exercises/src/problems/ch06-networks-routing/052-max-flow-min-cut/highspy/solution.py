@@ -1,9 +1,9 @@
 import pulp
 
 
-def solve(nodeCount, source, sink, edges) -> dict:
+def solve(node_count, source, sink, edges) -> dict:
     """Return {"flows": list[float], "cutEdges": list[int], "maxFlow": float}."""
-    n = nodeCount
+    n = node_count
     s = source
     t = sink
 

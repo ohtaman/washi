@@ -5,14 +5,14 @@ def solve(
     costs,
     capacities,
     yields,
-    minRequirements,
-    resourceUsages,
-    maxResources,
+    min_requirements,
+    resource_usages,
+    max_resources,
 ) -> dict:
     """Return {"quantities": list[float], "duals": list[float], "optimalCost": float}."""
-    min_reqs = minRequirements
-    usages = resourceUsages
-    max_res = maxResources
+    min_reqs = min_requirements
+    usages = resource_usages
+    max_res = max_resources
     n = len(costs)
 
     prob = pulp.LpProblem("shadow_prices", pulp.LpMinimize)

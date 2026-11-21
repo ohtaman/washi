@@ -34,6 +34,14 @@ export interface HighspyBatchResult {
   error?: string;
 }
 
+/** Convert camelCase JSON input field names to Python snake_case parameter names. */
+export function toSnakeCase(name: string): string {
+  return name
+    .replace(/(.)([A-Z][a-z]+)/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase();
+}
+
 /** Extract parameter names from `def solve(...) -> dict:` (supports multi-line and type annotations). */
 export function extractPySolveParams(source: string): string[] | null {
   const m = source.match(/^def\s+solve\s*\(([\s\S]*?)\)\s*->\s*dict\s*:/m);
@@ -60,11 +68,15 @@ export function extractPySolveParams(source: string): string[] | null {
 export function runHighspyBatch(jobs: HighspyJob[]): Record<string, HighspyBatchResult> {
   if (jobs.length === 0) return {};
   const script = `
-import json, sys, traceback, math
+import json, re, sys, traceback, math
 try:
     import numpy as np
 except Exception:
     np = None
+
+def to_snake(name):
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
 
 def to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
@@ -97,7 +109,7 @@ for job in jobs:
         fn = ns.get("solve")
         if not callable(fn):
             raise RuntimeError("Missing solve() function")
-        outs = [to_jsonable(fn(**inp)) for inp in job["inputs"]]
+        outs = [to_jsonable(fn(**{to_snake(k): v for k, v in inp.items()})) for inp in job["inputs"]]
         results[job["id"]] = {"ok": True, "outputs": outs}
     except Exception:
         results[job["id"]] = {"ok": False, "error": traceback.format_exc()}
@@ -232,7 +244,9 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
         );
 
         if (isDual) {
-          const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>);
+          const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>).map(
+            toSnakeCase
+          );
           expect(prob.highspyStarter).toContain("import pulp");
           expect(extractPySolveParams(prob.highspyStarter)).toEqual(expectedPyParams);
           expect(prob.highspyStarter).toContain('"""Return {');

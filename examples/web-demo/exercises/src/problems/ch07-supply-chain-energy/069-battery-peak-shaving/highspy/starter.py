@@ -2,16 +2,16 @@ import pulp
 
 
 def solve(
-    baseLoads,
+    base_loads,
     prices,
-    demandCharge,
+    demand_charge,
     capacity,
-    minSoc,
-    initSoc,
-    minFinalSoc,
-    maxPower,
-    etaCharge,
-    etaDischarge,
+    min_soc,
+    init_soc,
+    min_final_soc,
+    max_power,
+    eta_charge,
+    eta_discharge,
 ) -> dict:
     """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
     # TODO: Build and solve the model, then return the output.

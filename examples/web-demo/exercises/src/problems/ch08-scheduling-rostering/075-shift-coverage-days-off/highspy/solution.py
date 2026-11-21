@@ -1,12 +1,8 @@
 import pulp
 
 
-def solve(demands, shiftCosts, minShifts, maxShifts, daysOff) -> dict:
+def solve(demands, shift_costs, min_shifts, max_shifts, days_off) -> dict:
     """Return {"schedule": list[list[int]], "totalCost": float}."""
-    shift_costs = shiftCosts
-    min_shifts = minShifts
-    max_shifts = maxShifts
-    days_off = daysOff
     num_staff = len(shift_costs)
     num_days = len(demands)
     num_shifts = len(demands[0])

@@ -4,12 +4,12 @@ import pulp
 def solve(
     demands,
     capacities,
-    prodCosts,
-    unitPrice,
-    holdCost,
-    backorderCost,
-    lostSalePenalty,
-    initialInventory,
+    prod_costs,
+    unit_price,
+    hold_cost,
+    backorder_cost,
+    lost_sale_penalty,
+    initial_inventory,
 ) -> dict:
     """Return {"production": list[float], "sales": list[float], "inventory": list[float], "backlog": list[float], "lostSales": list[float], "netProfit": float}."""
     # TODO: Build and solve the model, then return the output.

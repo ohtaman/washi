@@ -1,11 +1,15 @@
 import pulp
 
 
-def solve(budget, costs, values, mutexGroups, exactGroups, atLeastOneGroups) -> dict:
+def solve(
+    budget,
+    costs,
+    values,
+    mutex_groups,
+    exact_groups,
+    at_least_one_groups,
+) -> dict:
     """Return {"selected": list[int], "totalValue": float}."""
-    mutex_groups = mutexGroups
-    exact_groups = exactGroups
-    at_least_one_groups = atLeastOneGroups
     n = len(costs)
 
     prob = pulp.LpProblem("cardinality_selection", pulp.LpMaximize)

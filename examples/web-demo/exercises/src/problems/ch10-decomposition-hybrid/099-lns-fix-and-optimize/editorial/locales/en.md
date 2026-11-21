@@ -46,7 +46,7 @@ for _ in range(10):
     improved = False
     for start in range(0, n_periods - win + 1):
         candidate = _solve_window(
-            demands, setupCosts, prodCosts, holdCost, capacities, best["setups"], start, start + win
+            demands, setup_costs, prod_costs, hold_cost, capacities, best["setups"], start, start + win
         )
         if candidate is not None and candidate["totalCost"] < best["totalCost"] - 1e-6:
             best = candidate

@@ -2,13 +2,13 @@ import pulp
 
 
 def solve(
-    unitCosts,
+    unit_costs,
     hours,
     targets,
-    shortfallPenalties,
-    excessPenalties,
-    machineCap,
-    minTotal,
+    shortfall_penalties,
+    excess_penalties,
+    machine_cap,
+    min_total,
 ) -> dict:
     """Return {"quantities": list[float], "shortfalls": list[float], "excesses": list[float], "totalCost": float}."""
     # TODO: Build and solve the elastic LP model, then return the output.

@@ -2,20 +2,15 @@ import pulp
 
 
 def solve(
-    unitCosts,
+    unit_costs,
     hours,
     targets,
-    shortfallPenalties,
-    excessPenalties,
-    machineCap,
-    minTotal,
+    shortfall_penalties,
+    excess_penalties,
+    machine_cap,
+    min_total,
 ) -> dict:
     """Return {"quantities": list[float], "shortfalls": list[float], "excesses": list[float], "totalCost": float}."""
-    unit_costs = unitCosts
-    shortfall_penalties = shortfallPenalties
-    excess_penalties = excessPenalties
-    machine_cap = machineCap
-    min_total = minTotal
     n = len(unit_costs)
 
     prob = pulp.LpProblem("elastic_soft_penalties", pulp.LpMinimize)

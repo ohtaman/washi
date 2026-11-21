@@ -2,13 +2,13 @@ import pulp
 
 
 def solve(
-    externalDemands,
+    external_demands,
     bom,
-    leadTimes,
-    initialInventory,
-    setupCosts,
-    prodCosts,
-    holdCosts,
+    lead_times,
+    initial_inventory,
+    setup_costs,
+    prod_costs,
+    hold_costs,
     capacities,
 ) -> dict:
     """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "totalCost": float}."""

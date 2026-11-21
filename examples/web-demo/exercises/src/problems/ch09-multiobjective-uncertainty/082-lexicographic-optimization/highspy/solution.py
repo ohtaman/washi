@@ -1,11 +1,8 @@
 import pulp
 
 
-def solve(coverage, crews, opCosts, maxCrews, targetDemand, slack) -> dict:
+def solve(coverage, crews, op_costs, max_crews, target_demand, slack) -> dict:
     """Return {"selected": list[int], "obj1": float, "obj2": float}."""
-    op_costs = opCosts
-    max_crews = maxCrews
-    target_demand = targetDemand
     n = len(coverage)
 
     # Stage 1: minimize primary unmet demand shortfall

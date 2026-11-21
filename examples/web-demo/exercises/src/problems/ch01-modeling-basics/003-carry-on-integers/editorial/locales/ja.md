@@ -39,5 +39,5 @@ counts = [
     pulp.LpVariable(f"item_{i}", lowBound=0, upBound=cap, cat=pulp.LpInteger)
     for i, cap in enumerate(max_counts)
 ]
-prob += pulp.lpDot(weights, counts) <= maxWeight
+prob += pulp.lpDot(weights, counts) <= max_weight
 ```

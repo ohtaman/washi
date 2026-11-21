@@ -3,9 +3,9 @@ import pulp
 
 def _solve_window(
     demands,
-    setupCosts,
-    prodCosts,
-    holdCost,
+    setup_costs,
+    prod_costs,
+    hold_cost,
     capacities,
     fixed_setups: list[int],
     win_start: int,
@@ -31,9 +31,9 @@ def _solve_window(
     inv = [pulp.LpVariable(f"inv_{t}", lowBound=0) for t in range(n_periods)]
 
     prob += (
-        pulp.lpDot(setupCosts, y)
-        + pulp.lpDot(prodCosts, p)
-        + holdCost * pulp.lpSum(inv)
+        pulp.lpDot(setup_costs, y)
+        + pulp.lpDot(prod_costs, p)
+        + hold_cost * pulp.lpSum(inv)
     )
 
     for t in range(n_periods):
@@ -55,12 +55,20 @@ def _solve_window(
     }
 
 
-def solve(demands, setupCosts, prodCosts, holdCost, capacities, initialPlan, windowSize) -> dict:
+def solve(
+    demands,
+    setup_costs,
+    prod_costs,
+    hold_cost,
+    capacities,
+    initial_plan,
+    window_size,
+) -> dict:
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "totalCost": float}."""
     n_periods = len(demands)
-    win = max(1, min(n_periods, int(windowSize)))
+    win = max(1, min(n_periods, int(window_size)))
     best = _solve_window(
-        demands, setupCosts, prodCosts, holdCost, capacities, list(initialPlan), 0, 0
+        demands, setup_costs, prod_costs, hold_cost, capacities, list(initial_plan), 0, 0
     )
     if best is None:
         raise RuntimeError("Initial plan is infeasible")
@@ -70,9 +78,9 @@ def solve(demands, setupCosts, prodCosts, holdCost, capacities, initialPlan, win
         for start in range(0, n_periods - win + 1):
             candidate = _solve_window(
                 demands,
-                setupCosts,
-                prodCosts,
-                holdCost,
+                setup_costs,
+                prod_costs,
+                hold_cost,
                 capacities,
                 best["setups"],
                 start,
@@ -85,6 +93,6 @@ def solve(demands, setupCosts, prodCosts, holdCost, capacities, initialPlan, win
             break
 
     verified = _solve_window(
-        demands, setupCosts, prodCosts, holdCost, capacities, best["setups"], 0, 0
+        demands, setup_costs, prod_costs, hold_cost, capacities, best["setups"], 0, 0
     )
     return verified if verified is not None else best

@@ -3,24 +3,18 @@ import pulp
 
 def solve(
     demands,
-    regCap,
-    otCap,
-    invCap,
-    initialInventory,
-    minFinalInventory,
-    regCost,
-    otCost,
-    holdCost,
+    reg_cap,
+    ot_cap,
+    inv_cap,
+    initial_inventory,
+    min_final_inventory,
+    reg_cost,
+    ot_cost,
+    hold_cost,
 ) -> dict:
     """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "totalCost": float}."""
-    reg_cap = regCap
-    ot_cap = otCap
-    inv_cap = invCap
-    init_inv = initialInventory
-    min_end_inv = minFinalInventory
-    reg_cost = regCost
-    ot_cost = otCost
-    hold_cost = holdCost
+    init_inv = initial_inventory
+    min_end_inv = min_final_inventory
     T = len(demands)
 
     prob = pulp.LpProblem("production_inventory", pulp.LpMinimize)

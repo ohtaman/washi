@@ -3,19 +3,15 @@ import pulp
 
 def solve(
     budget,
-    unitReturns,
-    fixedCosts,
-    minLevels,
-    maxLevels,
+    unit_returns,
+    fixed_costs,
+    min_levels,
+    max_levels,
     prerequisites,
     conjunctions,
     conflicts,
 ) -> dict:
     """Return {"active": list[int], "levels": list[float], "netProfit": float}."""
-    unit_returns = unitReturns
-    fixed_costs = fixedCosts
-    min_levels = minLevels
-    max_levels = maxLevels
     n = len(unit_returns)
 
     prob = pulp.LpProblem("conditional_logic_big_m", pulp.LpMaximize)

@@ -2,16 +2,16 @@ import pulp
 
 
 def solve(
-    fixedCosts,
+    fixed_costs,
     capacities,
-    dropAmounts,
+    drop_amounts,
     gamma,
-    robustMinCap,
+    robust_min_cap,
     probs,
     demands,
     offline,
-    disruptionCost,
-    shortfallPenalty,
+    disruption_cost,
+    shortfall_penalty,
 ) -> dict:
     """Return {"committed": list[int], "recovered": list[list[int]], "totalCost": float}."""
     # TODO: Build and solve the resilient planning and recovery MIP, then return the output.

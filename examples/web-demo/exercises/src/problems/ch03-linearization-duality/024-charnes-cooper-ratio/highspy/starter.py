@@ -2,21 +2,21 @@ import pulp
 
 
 def solve(
-    numCoeffs,
-    numConst,
-    denCoeffs,
-    denConst,
+    num_coeffs,
+    num_const,
+    den_coeffs,
+    den_const,
     usages,
     capacities,
-    upperBounds,
+    upper_bounds,
 ) -> dict:
     """Return {"x": list[float], "maxRatio": float}."""
-    num_c = numCoeffs
-    num_0 = numConst
-    den_c = denCoeffs
-    den_0 = denConst
+    num_c = num_coeffs
+    num_0 = num_const
+    den_c = den_coeffs
+    den_0 = den_const
     caps = capacities
-    ubs = upperBounds
+    ubs = upper_bounds
     n = len(num_c)
 
     prob = pulp.LpProblem("charnes_cooper_ratio", pulp.LpMaximize)

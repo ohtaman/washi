@@ -55,7 +55,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
-  - Python (`highspy/{starter,solution}.py`): declare `def solve(<input_fields...>) -> dict:` accepting the problem's input fields directly as parameters, with a concise `"""Return {...}."""` schema docstring matching `PNNNOutput`.
+  - Python (`highspy/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters, with a concise `"""Return {...}."""` schema docstring matching `PNNNOutput`.
 - **Idiomatic WaSHI (TypeScript)**:
   - **Prefer `.map()` + batch `m.constraint([...])` over C-style `for (let i = 0; ...)` loops**:
     ```ts

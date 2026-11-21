@@ -4,7 +4,7 @@
 
 ## 1. 採点の仕組み（`solve(input)`） {#solve-contract}
 
-- どの問題も、入力を受け取って結果の JSON オブジェクト（Python なら `dict`）を返す関数 **`solve(...)`** を 1 つ実装します（**WaSHI (TypeScript)** では `solve(input)`、**PuLP (Python)** では各入力フィールドを直接引数で受け取る `solve(field1, field2, ...)`）。
+- どの問題も、入力を受け取って結果の JSON オブジェクト（Python なら `dict`）を返す関数 **`solve(...)`** を 1 つ実装します（**WaSHI (TypeScript)** では `solve(input)`、**PuLP (Python)** では各入力フィールドを `snake_case` に変換して直接引数で受け取る `solve(field_1, field_2, ...)`）。
 - **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、せっかくなので、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
 - **「実行して採点」** を押すと、テストケースごとに `solve(input)` が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
 - **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。

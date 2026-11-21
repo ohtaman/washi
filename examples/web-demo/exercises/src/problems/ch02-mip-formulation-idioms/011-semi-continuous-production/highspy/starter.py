@@ -1,12 +1,10 @@
 import pulp
 
 
-def solve(margins, minBatches, maxBatches, resourceUsages, resourceCap) -> dict:
+def solve(margins, min_batches, max_batches, resource_usages, resource_cap) -> dict:
     """Return {"active": list[int], "quantities": list[float], "totalMargin": float}."""
-    min_batches = minBatches
-    max_batches = maxBatches
-    usages = resourceUsages
-    cap = resourceCap
+    usages = resource_usages
+    cap = resource_cap
     n = len(margins)
 
     prob = pulp.LpProblem("semi_continuous_production", pulp.LpMaximize)

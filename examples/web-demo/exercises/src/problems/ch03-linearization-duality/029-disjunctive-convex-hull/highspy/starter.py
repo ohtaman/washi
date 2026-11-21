@@ -1,12 +1,8 @@
 import pulp
 
 
-def solve(demand, bandLbs, bandUbs, fixedCosts, unitCosts) -> dict:
+def solve(demand, band_lbs, band_ubs, fixed_costs, unit_costs) -> dict:
     """Return {"modes": list[int], "outputs": list[float], "totalCost": float}."""
-    band_lbs = bandLbs
-    band_ubs = bandUbs
-    fixed_costs = fixedCosts
-    unit_costs = unitCosts
     n_units = len(band_lbs)
     n_bands = len(band_lbs[0])
 

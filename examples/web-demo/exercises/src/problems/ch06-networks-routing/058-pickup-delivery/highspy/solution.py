@@ -1,12 +1,12 @@
 import pulp
 
 
-def solve(dist, requests, capacity, maxVehicles, maxStopsPerVehicle) -> dict:
+def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict:
     """Return {"routes": list[list[int]], "totalDistance": float}."""
     reqs = requests
     cap = capacity
-    max_v = maxVehicles
-    max_stops = maxStopsPerVehicle
+    max_v = max_vehicles
+    max_stops = max_stops_per_vehicle
     n = len(dist)
 
     prob = pulp.LpProblem("pickup_delivery", pulp.LpMinimize)

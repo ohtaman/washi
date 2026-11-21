@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(profits, budgets, emissions, budgetCap, epsilons) -> dict:
+def solve(profits, budgets, emissions, budget_cap, epsilons) -> dict:
     """Return {"selections": list[list[int]], "frontierProfits": list[float], "frontierSum": float}."""
-    budget_cap = budgetCap
     n = len(profits)
 
     selections = []

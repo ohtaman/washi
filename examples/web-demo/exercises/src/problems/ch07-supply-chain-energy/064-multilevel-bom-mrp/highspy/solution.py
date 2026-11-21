@@ -2,22 +2,18 @@ import pulp
 
 
 def solve(
-    externalDemands,
+    external_demands,
     bom,
-    leadTimes,
-    initialInventory,
-    setupCosts,
-    prodCosts,
-    holdCosts,
+    lead_times,
+    initial_inventory,
+    setup_costs,
+    prod_costs,
+    hold_costs,
     capacities,
 ) -> dict:
     """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "totalCost": float}."""
-    ext_demands = externalDemands
-    lead_times = leadTimes
-    init_inv = initialInventory
-    setup_costs = setupCosts
-    prod_costs = prodCosts
-    hold_costs = holdCosts
+    ext_demands = external_demands
+    init_inv = initial_inventory
     n_items = len(ext_demands)
     T = len(ext_demands[0]) if n_items > 0 else 0
 

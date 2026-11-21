@@ -5,9 +5,9 @@ def solve(
     baseline,
     unavailable,
     demands,
-    maxShifts,
-    workerCosts,
-    disruptionWeight,
+    max_shifts,
+    worker_costs,
+    disruption_weight,
 ) -> dict:
     """Return {"schedule": list[list[int]], "hammingDistance": int, "totalObjective": float}."""
     # TODO: Build and solve the minimum-disruption rescheduling MIP, then return the output.

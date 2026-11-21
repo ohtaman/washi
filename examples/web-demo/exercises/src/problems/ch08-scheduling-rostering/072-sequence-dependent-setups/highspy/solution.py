@@ -1,11 +1,11 @@
 import pulp
 
 
-def solve(processingTimes, setupMatrix, dueDates) -> dict:
+def solve(processing_times, setup_matrix, due_dates) -> dict:
     """Return {"order": list[int], "completions": list[float], "totalTardiness": float}."""
-    p = processingTimes
-    s = setupMatrix
-    d = dueDates
+    p = processing_times
+    s = setup_matrix
+    d = due_dates
     n = len(p)
     max_setup = max((max(row) for row in s), default=0)
     horizon = sum(p) + max(0, n - 1) * max_setup

@@ -2,21 +2,19 @@ import pulp
 
 
 def solve(
-    plantFixedCosts,
-    plantCaps,
-    dcFixedCosts,
-    dcCaps,
+    plant_fixed_costs,
+    plant_caps,
+    dc_fixed_costs,
+    dc_caps,
     demands,
-    plantDcCosts,
-    dcCustomerCosts,
+    plant_dc_costs,
+    dc_customer_costs,
 ) -> dict:
     """Return {"openPlants": list[int], "openDcs": list[int], "plantToDc": list[list[float]], "dcToCustomer": list[list[float]], "totalCost": float}."""
-    plant_fixed = plantFixedCosts
-    plant_caps = plantCaps
-    dc_fixed = dcFixedCosts
-    dc_caps = dcCaps
-    p2d_costs = plantDcCosts
-    d2c_costs = dcCustomerCosts
+    plant_fixed = plant_fixed_costs
+    dc_fixed = dc_fixed_costs
+    p2d_costs = plant_dc_costs
+    d2c_costs = dc_customer_costs
     n_plants = len(plant_caps)
     n_dcs = len(dc_caps)
     n_custs = len(demands)

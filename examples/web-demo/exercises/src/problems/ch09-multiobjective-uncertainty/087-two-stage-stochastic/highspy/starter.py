@@ -2,10 +2,10 @@ import pulp
 
 
 def solve(
-    orderCosts,
-    shortageCosts,
-    salvageValues,
-    warehouseCap,
+    order_costs,
+    shortage_costs,
+    salvage_values,
+    warehouse_cap,
     probs,
     demands,
 ) -> dict:

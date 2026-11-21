@@ -2,23 +2,19 @@ import pulp
 
 
 def solve(
-    fixedCosts,
+    fixed_costs,
     capacities,
-    dropAmounts,
+    drop_amounts,
     gamma,
-    robustMinCap,
+    robust_min_cap,
     probs,
     demands,
     offline,
-    disruptionCost,
-    shortfallPenalty,
+    disruption_cost,
+    shortfall_penalty,
 ) -> dict:
     """Return {"committed": list[int], "recovered": list[list[int]], "totalCost": float}."""
-    fixed_costs = fixedCosts
-    drop_amounts = dropAmounts
-    robust_min_cap = robustMinCap
-    disruption_cost = disruptionCost
-    shortfall_pen = shortfallPenalty
+    shortfall_pen = shortfall_penalty
     n = len(fixed_costs)
     S = len(probs)
 

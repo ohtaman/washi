@@ -52,9 +52,9 @@ def _solve_bpp(weights: list, bin_cap: int, covers: list, relax: bool):
     return prob, used, assign
 
 
-def solve(weights, binCapacity) -> dict:
+def solve(weights, bin_capacity) -> dict:
     """Return {"assignments": list[int], "binsUsed": int, "lpBound": float}."""
-    bin_cap = binCapacity
+    bin_cap = bin_capacity
     n = len(weights)
     covers = _build_extended_covers(weights, bin_cap)
 

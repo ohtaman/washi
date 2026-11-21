@@ -1,10 +1,9 @@
 import pulp
 
 
-def solve(demands, distances, coverageRadius, maxFacilities) -> dict:
+def solve(demands, distances, coverage_radius, max_facilities) -> dict:
     """Return {"open": list[int], "covered": list[int], "totalCoveredDemand": float}."""
-    radius = coverageRadius
-    max_facilities = maxFacilities
+    radius = coverage_radius
     n = len(demands)
     m_sites = len(distances[0]) if n > 0 else 0
 

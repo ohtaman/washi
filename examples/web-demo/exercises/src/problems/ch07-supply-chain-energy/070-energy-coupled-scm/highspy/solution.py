@@ -3,33 +3,25 @@ import pulp
 
 def solve(
     demands,
-    setupCost,
-    holdCost,
-    prodCap,
-    setupPower,
-    unitPower,
-    baseLoads,
+    setup_cost,
+    hold_cost,
+    prod_cap,
+    setup_power,
+    unit_power,
+    base_loads,
     prices,
-    demandCharge,
-    batteryCap,
-    initSoc,
-    maxPower,
-    etaCharge,
-    etaDischarge,
+    demand_charge,
+    battery_cap,
+    init_soc,
+    max_power,
+    eta_charge,
+    eta_discharge,
 ) -> dict:
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
-    setup_cost = setupCost
-    hold_cost = holdCost
-    prod_cap = prodCap
-    setup_power = setupPower
-    unit_power = unitPower
-    base_loads = baseLoads
-    demand_charge = demandCharge
-    bat_cap = batteryCap
-    init_soc = initSoc
-    p_max = maxPower
-    eta_c = etaCharge
-    eta_d = etaDischarge
+    bat_cap = battery_cap
+    p_max = max_power
+    eta_c = eta_charge
+    eta_d = eta_discharge
     T = len(demands)
 
     prob = pulp.LpProblem("energy_coupled_scm", pulp.LpMinimize)

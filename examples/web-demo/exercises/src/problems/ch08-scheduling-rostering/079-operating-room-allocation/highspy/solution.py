@@ -5,16 +5,15 @@ def solve(
     durations,
     priorities,
     compatible,
-    numSessions,
-    regularCapacity,
-    maxOvertime,
-    overtimeCost,
+    num_sessions,
+    regular_capacity,
+    max_overtime,
+    overtime_cost,
 ) -> dict:
     """Return {"assignedRoom": list[int], "assignedSession": list[int], "overtime": list[list[float]], "netScore": float}."""
-    num_sessions = numSessions
-    reg_cap = regularCapacity
-    max_ot = maxOvertime
-    ot_cost = overtimeCost
+    reg_cap = regular_capacity
+    max_ot = max_overtime
+    ot_cost = overtime_cost
     num_cases = len(durations)
     num_rooms = len(compatible[0])
 

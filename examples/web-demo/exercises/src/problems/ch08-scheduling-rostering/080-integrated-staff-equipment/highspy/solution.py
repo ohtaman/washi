@@ -3,22 +3,17 @@ import pulp
 
 def solve(
     certified,
-    equipNeeds,
-    equipCap,
-    slotPenalties,
-    staffCosts,
-    regularLimits,
-    maxLimits,
-    overtimeCosts,
+    equip_needs,
+    equip_cap,
+    slot_penalties,
+    staff_costs,
+    regular_limits,
+    max_limits,
+    overtime_costs,
 ) -> dict:
     """Return {"assignedStaff": list[int], "assignedSlot": list[int], "overtime": list[float], "totalCost": float}."""
-    equip_needs = equipNeeds
-    equip_cap = equipCap
-    slot_penalties = slotPenalties
-    staff_costs = staffCosts
-    reg_limits = regularLimits
-    max_limits = maxLimits
-    ot_costs = overtimeCosts
+    reg_limits = regular_limits
+    ot_costs = overtime_costs
     num_staff = len(certified)
     num_jobs = len(equip_needs)
     num_slots = len(slot_penalties[0])

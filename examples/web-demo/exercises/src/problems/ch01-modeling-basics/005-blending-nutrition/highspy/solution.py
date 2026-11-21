@@ -2,17 +2,15 @@ import pulp
 
 
 def solve(
-    targetBatch,
+    target_batch,
     costs,
     availabilities,
     compositions,
-    minRatios,
-    maxRatios,
+    min_ratios,
+    max_ratios,
 ) -> dict:
     """Return {"amounts": list[float], "totalCost": float}."""
-    target = targetBatch
-    min_ratios = minRatios
-    max_ratios = maxRatios
+    target = target_batch
     n_raw = len(costs)
     n_elem = len(min_ratios)
 

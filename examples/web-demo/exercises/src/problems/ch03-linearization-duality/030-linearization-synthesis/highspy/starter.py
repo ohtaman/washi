@@ -2,20 +2,16 @@ import pulp
 
 
 def solve(
-    baseCosts,
+    base_costs,
     values,
-    minValue,
+    min_value,
     loads,
     targets,
-    devWeights,
-    peakWeight,
+    dev_weights,
+    peak_weight,
     pairs,
 ) -> dict:
     """Return {"selected": list[int], "pairProducts": list[int], "peakLoad": float, "totalCost": float}."""
-    base_costs = baseCosts
-    min_value = minValue
-    dev_weights = devWeights
-    peak_weight = peakWeight
     n = len(base_costs)
     m_zones = len(loads)
     P = len(pairs)

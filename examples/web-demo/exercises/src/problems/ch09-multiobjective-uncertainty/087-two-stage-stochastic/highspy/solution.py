@@ -2,18 +2,14 @@ import pulp
 
 
 def solve(
-    orderCosts,
-    shortageCosts,
-    salvageValues,
-    warehouseCap,
+    order_costs,
+    shortage_costs,
+    salvage_values,
+    warehouse_cap,
     probs,
     demands,
 ) -> dict:
     """Return {"orders": list[float], "expectedCost": float}."""
-    order_costs = orderCosts
-    shortage_costs = shortageCosts
-    salvage_values = salvageValues
-    warehouse_cap = warehouseCap
     n = len(order_costs)
     S = len(probs)
 

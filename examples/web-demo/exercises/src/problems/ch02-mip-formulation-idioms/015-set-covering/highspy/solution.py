@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(numElements, costs, sets) -> dict:
+def solve(num_elements, costs, sets) -> dict:
     """Return {"selected": list[int], "totalCost": float}."""
-    num_elements = numElements
     m_count = len(costs)
 
     prob = pulp.LpProblem("set_covering", pulp.LpMinimize)

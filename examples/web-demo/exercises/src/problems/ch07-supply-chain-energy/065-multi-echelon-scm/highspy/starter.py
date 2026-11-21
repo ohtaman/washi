@@ -2,13 +2,13 @@ import pulp
 
 
 def solve(
-    plantFixedCosts,
-    plantCaps,
-    dcFixedCosts,
-    dcCaps,
+    plant_fixed_costs,
+    plant_caps,
+    dc_fixed_costs,
+    dc_caps,
     demands,
-    plantDcCosts,
-    dcCustomerCosts,
+    plant_dc_costs,
+    dc_customer_costs,
 ) -> dict:
     """Return {"openPlants": list[int], "openDcs": list[int], "plantToDc": list[list[float]], "dcToCustomer": list[list[float]], "totalCost": float}."""
     # TODO: Build and solve the model, then return the output.

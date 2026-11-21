@@ -1,12 +1,15 @@
 import pulp
 
 
-def solve(demands, setupCosts, holdCosts, unitTimes, setupTimes, capacities) -> dict:
+def solve(
+    demands,
+    setup_costs,
+    hold_costs,
+    unit_times,
+    setup_times,
+    capacities,
+) -> dict:
     """Return {"setups": list[list[int]], "production": list[list[float]], "inventory": list[list[float]], "totalCost": float}."""
-    setup_costs = setupCosts
-    hold_costs = holdCosts
-    unit_times = unitTimes
-    setup_times = setupTimes
     n_items = len(demands)
     T = len(capacities)
 
