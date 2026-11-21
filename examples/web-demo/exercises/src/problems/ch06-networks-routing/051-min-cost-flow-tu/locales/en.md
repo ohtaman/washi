@@ -46,3 +46,9 @@ Model this problem as a pure continuous linear program to find non-negative arc 
 ```
 
 At node 0 outflow is $6 + 4 = 10$, nodes 1 and 2 have net balance $0$, node 3 receives $4 + 6 = 10$, and total cost is $6\times 2 + 4\times 4 + 2\times 1 + 4\times 3 + 6\times 2 =$ **54**.
+
+<!-- section:hint1 -->
+Model one non-negative continuous flow variable per directed arc, bounded above by its capacity. Organize the network constraints per node by balancing total outgoing flow minus total incoming flow against that node's net supply, and minimize the total shipping cost across all arcs.
+
+<!-- section:hint2 -->
+Because the directed node-arc incidence matrix is totally unimodular and all supplies and capacities are integers, every extreme-point optimal solution of the pure continuous LP is guaranteed to be integral—no integer or binary variables are needed. Return the continuous `v.value!` (or `float(pulp.value(v))` in Python) directly without rounding, normalizing `-0` to `0` if needed.

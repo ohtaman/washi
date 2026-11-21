@@ -57,3 +57,9 @@ Formulate the Pickup and Delivery Problem as a mixed-integer program to **minimi
 ```
 
 Route `[0, 1, 3, 2, 4, 0]` picks up request 0 (`load = 3`) and request 1 (`load = 7 <= 7`) before delivering `2` (`load = 4`) and `4` (`load = 0`), obeying pairing, precedence, and stop limits with distance $2 + 1 + 4 + 1 + 8 =$ **16**.
+
+<!-- section:hint1 -->
+Index binary arc variables by vehicle `k` so you can enforce same-vehicle pairing directly. Also introduce continuous visit-order variables and continuous cumulative-load variables per location, enforcing that every non-depot stop is visited once, flow is conserved per vehicle, and each vehicle's total stops stay within `maxStopsPerVehicle`.
+
+<!-- section:hint2 -->
+Because load rises at pickups and drops at deliveries, standard monotonic MTZ load variables cannot be used for subtour elimination—keep separate visit-order variables $t_i$ (with $t_0 = 0$) for subtour elimination and pickup-before-delivery precedence ($t_p + 1 \le t_d$), and separate load variables $L_i \in [0, Q]$ with $L_0 = 0$ that update by $+q_r$ at pickups and $-q_r$ at deliveries via Big-M linking along active arcs.

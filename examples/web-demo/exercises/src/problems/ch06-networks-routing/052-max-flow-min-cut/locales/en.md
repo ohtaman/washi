@@ -52,3 +52,9 @@ Compute the maximum flow that can be sent from source to sink using a linear pro
 ```
 
 Net flow leaving node 0 is $8 + 5 =$ **13**, node 1 balances $8 = 4 + 4$, node 2 balances $5 + 4 = 9$, and removing `cutEdges = [1, 2, 3]` blocks every path from `0` to `3` with total cut capacity $5 + 4 + 4 =$ **13**.
+
+<!-- section:hint1 -->
+Model one non-negative continuous flow variable per directed arc bounded by its capacity. Enforce zero net flow conservation at every intermediate node (excluding `source` and `sink`), and maximize the net flow leaving `source`.
+
+<!-- section:hint2 -->
+Do not collect saturated edges blindly—a saturated arc inside a cycle or behind another bottleneck is not necessarily part of a minimum cut. Instead, run a BFS/DFS from `source` in the residual graph of the optimal flow (traversing `from -> to` when `flow < cap - 1e-6` and backward `to -> from` when `flow > 1e-6`) to find the reachable set $S$, then take all original arcs crossing from $S$ to $V \setminus S$.

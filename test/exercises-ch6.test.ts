@@ -25,6 +25,7 @@ const ZERO_TIME_VRPTW_INPUT = {
 registerChapterExerciseSuite({
   chapter: 6,
   dirName: "ch06-networks-routing",
+  enforceScaffoldPolicy: true,
   expectedIds: ["051", "052", "053", "054", "055", "056", "057", "058", "059", "060"],
   expectedRuntimes: {
     "051": ["washi", "highspy"],

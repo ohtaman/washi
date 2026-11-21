@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 A regional service planner must partition n zones into K contiguous sales territories, each anchored by one chosen hub zone. Every territory must form a single connected subgraph along the border adjacency graph (zero isolated exclaves), carry total zone demand within the specified balance bounds, and operate one closed routing tour visiting all zones in that territory.
 
-Combine single-commodity flow connectivity, balanced demand constraints, hub selection, and intra-territory TSP routing into a unified MIP to **minimize total hub setup plus tour routing cost**.
+Partition the n zones into K contiguous territories—each anchored at one chosen hub, respecting the demand balance bounds, and served by a single closed tour through all its zones—to **minimize total hub setup plus tour routing cost**.
 
 <!-- section:io -->
 ### Input
@@ -57,3 +57,9 @@ Combine single-commodity flow connectivity, balanced demand constraints, hub sel
 ```
 
 Territory `{0, 1, 2}` (demand `10 in [6, 11]`, connected via `0-1-2`) has hub `0` (cost 5) and tour `[0, 2, 1, 0]` (distance 12), while `{3, 4}` (demand `7 in [6, 11]`, connected via `3-4`) has hub `4` (cost 6) and tour `[4, 3, 4]` (distance 6), totaling $(5 + 6) + (12 + 6) =$ **29**.
+
+<!-- section:hint1 -->
+Model binary zone-to-territory assignment variables and binary hub-selection indicators (a zone can only host a hub for the territory it belongs to), enforcing that each zone belongs to one territory, each territory has one hub, and territory demand lies within `demandBounds`. Add two coupled network layers: single-commodity flow over `adjEdges` per territory for geographic contiguity, and directed tour arcs with visit-order potentials for intra-territory TSP tours.
+
+<!-- section:hint2 -->
+For contiguity in territory `k`, let the chosen hub inject a continuous supply $s_{ik} \le n h_{ik}$ and send one unit of flow to every zone $i$ in $y_{ik}$ along `adjEdges` (with flow on `(u, v)` gated by both $y_{uk}$ and $y_{vk}$). For routing, prevent cross-territory tour arcs ($y_{ik} - y_{jk} \le 1 - x_{ij}$) and anchor MTZ subtour elimination at each territory's hub ($u_i + 1 - u_j \le n (1 - x_{ij} + \sum_k h_{jk})$) so the potential resets only when returning to a hub.

@@ -21,14 +21,6 @@ export interface P053Output {
 }
 
 export async function solve(input: P053Input): Promise<P053Output> {
-  const m = new Model("RCSP");
-  const x = m.binary(input.edges.length, { prefix: "x" });
-
-  // TODO:
-  // 1. Add s->t unit flow conservation for each node v in 0..input.nodeCount-1
-  //    (outflow - inflow == 1 at source, -1 at sink, 0 elsewhere)
-  // 2. Enforce total resource <= input.maxResource
-  // 3. Minimize total path cost, solve, and return
-  //    { selected: x.map((v) => Math.round(v.value!) || 0), totalCost: m.objectiveValue! }
+  // TODO: Build and solve the resource-constrained shortest path MIP, then return the output.
   throw new Error("Not implemented");
 }
