@@ -2,11 +2,11 @@
 
 A concise reference for reading problem statements, building optimization models, and interpreting judge verdicts across **Optimization 100**.
 
-## 1. How Judging Works (`solve(input)`) {#solve-contract}
+## 1. How Judging Works (`solve()`) {#solve-contract}
 
-- Every exercise asks you to implement a single function: `solve(input)` in **WaSHI (TypeScript)** or `solve(<snake_case_fields...>)` in **PuLP (Python)** (where camelCase input fields are mapped to `snake_case` keyword arguments).
+- Every exercise asks you to implement a single `solve` function: `solve(input)` in **WaSHI (TypeScript)** (receiving an input object and returning an output object) or `solve(<snake_case_fields...>)` in **PuLP (Python)** (receiving each camelCase input field as a `snake_case` keyword argument and returning a `dict`).
 - WaSHI itself is a TypeScript / JavaScript library (not a Python package); **PuLP (Python)** runs PuLP backed by HiGHS inside Pyodide so Python users can practice in the browser and compare idioms side by side.
-- Pressing **Run & Judge** calls your function once per test case with a JSON input object and checks the object (or Python `dict`) you return.
+- Pressing **Run & Judge** calls your `solve` function once per test case and checks the object (or Python `dict`) you return.
 - Solving an exercise in **either** runtime marks it solved (`✓`). Console logs are shown for debugging, while grading always inspects the return value.
 
 ## 2. Core Building Blocks {#building-blocks}
