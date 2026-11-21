@@ -10,13 +10,31 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
 - **Minimal Input Schema**: Avoid splitting constants into excessive scalar fields (e.g., do not expose 8 separate camelCase coefficients for a 2-variable LP). Keep inputs to the essential dimensions (`2`–`4` clean fields, concise vectors, or a single matrix).
 - **Concise Problem Tab (`locales/{en,ja,zh}.md`)**:
   - Header `# #NNN. <Title>` followed by:
-    - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No backticks (enforced by tests) and no repetitive UI/terminology tutorials.
+    - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No backticks (enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
     - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`).
     - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
   - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
   - Target 3–5 test cases per exercise (with 5 cases as the standard for Chapter 1+) covering boundary, binding-constraint, rectangular/dimension-varying, and fractional/zero-activity cases.
   - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, `dict` in Python); keep `#001`–`#100` purely focused on optimization modeling.
   - Keep cross-exercise definitions (decision variables, bounds, verdicts, LP vs. MIP, solver statuses) in `src/guide/locales/{en,ja,zh}.md` rather than repeating them in every problem.
+  - Keep judge messages (`locales/*.json` → `judge.m*`) diagnostic: report what is wrong with the output, not which cuts, variables, or steps to add.
+
+### Scaffolding & Hint Ladder (Chapter 2+)
+
+Difficulty must come from *deciding* the model, not from transcribing comments. Chapter 1 keeps its onboarding-style starters; from Chapter 2 onward, scaffolding decreases monotonically and guidance lives in collapsible problem-tab hints instead of starter comments (enforced by `test/helpers/exercises-scaffold-policy.ts` via `enforceScaffoldPolicy: true` in each chapter suite):
+
+| Chapter | `meta.scaffold` | Starter may provide |
+| --- | --- | --- |
+| 2 | `fill-in` | Interfaces, size derivations, `Model` / `LpProblem`, and decision-variable declarations |
+| 3–5 | `fill-in` or `scratch` | Interfaces, size derivations, and `Model` / `LpProblem` — **no decision-variable declarations** |
+| 6–10 | `scratch` | Imports, interfaces, non-modeling helpers outside `solve()`, and a `solve()` body containing only a TODO comment plus `throw new Error("Not implemented")` / `raise NotImplementedError` |
+
+- **Starter comments**: at most 3 comment lines per starter, written as goals in words (e.g., "Build and solve the model, then return the output."). Never include formulas or code-level recipes (`<=`, `>=`, `==`, `!=`, `sum(`, `dot(`, `lpSum(`, `lpDot(`, `` expr` ``), step-by-step algorithms, or variable lists.
+- **Hint ladder** in every `locales/{en,ja,zh}.md`, appended after `section:example`:
+  - `<!-- section:hint1 -->` (Decision Variables & Structure): which decisions to model and how the model is organized (per item, per period, master vs. subproblem), in words. No formulas.
+  - `<!-- section:hint2 -->` (Key Constraints & Pitfalls): the non-obvious modeling idea or trap, plus WaSHI / PuLP API names when the exercise depends on one (e.g., `m.relax()`, `solveColumnGeneration`). Short inline math is acceptable; no fenced code blocks and no complete formulation.
+  - Leave `section:formulation` empty: the complete model and implementation belong to the Editorial tab.
+- **Calibration**: keep `difficulty` and `estimatedMinutes` consistent with the scaffold level (a `scratch` exercise takes longer than the same model as `fill-in`).
 
 ---
 

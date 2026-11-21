@@ -9,6 +9,7 @@ import { runWashiExerciseCode } from "../../examples/web-demo/exercises/src/runn
 import type { ProblemDefinition, ProblemRole, RuntimeId } from "../../examples/web-demo/exercises/src/types.js";
 import { parseProblemMarkdown, renderSafeMarkdown } from "../../examples/web-demo/exercises/src/ui/markdown.js";
 import { killZ3Threads } from "../../src/modeler/solvers/z3.js";
+import { checkScaffoldPolicy } from "./exercises-scaffold-policy.js";
 
 export const GAMEY_COPY_RE =
   /\bBoss\b|\u30dc\u30b9|\bQuest\b|\u30af\u30a8\u30b9\u30c8|\u{1f451}|\u2605|\u2606|\u9053\u5834|\u9053\u573a|\u901a\u5173|\u5173\u5361/ui;
@@ -106,6 +107,11 @@ export interface ChapterSuiteOptions {
   extractObjective?: (id: string, output: unknown, input: unknown) => number | null;
   checkAdversarial?: (problems: ProblemDefinition[]) => Promise<void> | void;
   timeoutMs?: number;
+  /**
+   * Enforce the Chapter 2+ scaffolding & hint-ladder policy (see exercises/AGENTS.md).
+   * Chapter 1 keeps its onboarding-style starters and therefore does not opt in.
+   */
+  enforceScaffoldPolicy?: boolean;
 }
 
 export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
@@ -119,12 +125,36 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
     extractObjective,
     checkAdversarial,
     timeoutMs = 120_000,
+    enforceScaffoldPolicy = false,
   } = opts;
 
   describe(`Exercises Chapter ${chapter} (#${expectedIds[0]}-#${expectedIds[expectedIds.length - 1]})`, () => {
     if (usesZ3) {
       afterAll(async () => {
         await killZ3Threads();
+      });
+    }
+
+    if (enforceScaffoldPolicy) {
+      it("follows the scaffolding & hint-ladder policy (no formula recipes in starters)", async () => {
+        const errors: string[] = [];
+        for (const prob of PROBLEMS.filter((p) => p.meta.chapter === chapter)) {
+          const sections: Record<string, { hint1: string; hint2: string; formulation: string }> = {};
+          for (const locale of ["en", "ja", "zh"] as const) {
+            sections[locale] = parseProblemMarkdown(await prob.loadMarkdown(locale));
+          }
+          errors.push(
+            ...checkScaffoldPolicy({
+              id: prob.meta.id,
+              chapter,
+              scaffold: prob.meta.scaffold,
+              washiStarter: prob.washiStarter,
+              highspyStarter: prob.highspyStarter,
+              sections,
+            })
+          );
+        }
+        expect(errors).toEqual([]);
       });
     }
 
