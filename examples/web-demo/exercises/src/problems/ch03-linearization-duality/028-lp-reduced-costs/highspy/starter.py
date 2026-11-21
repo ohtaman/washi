@@ -10,10 +10,5 @@ def solve(input_data: dict) -> dict:
 
     prob = pulp.LpProblem("reduced_costs", pulp.LpMinimize)
 
-    quantities = [pulp.LpVariable(f"x_{j}", lowBound=0) for j in range(n)]
-
-    # TODO:
-    # 1. Add >= constraints for each requirement in min_reqs
-    # 2. Minimize lpDot(costs, quantities), call prob.solve(pulp.HiGHS(msg=False))
-    # 3. Return {"quantities": ..., "reducedCosts": [v.dj ...], "optimalCost": ...}
+    # TODO: Build and solve the production LP, then return quantities, reducedCosts, and optimalCost.
     raise NotImplementedError("Not implemented")

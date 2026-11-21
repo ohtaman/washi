@@ -19,14 +19,6 @@ export async function solve(input: P024Input): Promise<P024Output> {
   const n = input.numCoeffs.length;
   const m = new Model("CharnesCooperRatio");
 
-  const y = m.continuous(n, { lb: 0, prefix: "y" });
-  const t = m.continuous("t", { lb: 0 });
-
-  // TODO:
-  // 1. Add Charnes-Cooper normalization: dot(input.denCoeffs, y) + input.denConst * t == 1
-  // 2. Homogenize resource limits: dot(input.usages[k], y) <= input.capacities[k] * t
-  // 3. Homogenize upper bounds: y[j] <= input.upperBounds[j] * t
-  // 4. Maximize dot(input.numCoeffs, y) + input.numConst * t, solve,
-  //    and recover x[j] = y[j].value! / t.value! and maxRatio = m.objectiveValue!
+  // TODO: Formulate the Charnes-Cooper LP, maximize the linearized ratio, and recover x and maxRatio.
   throw new Error("Not implemented");
 }

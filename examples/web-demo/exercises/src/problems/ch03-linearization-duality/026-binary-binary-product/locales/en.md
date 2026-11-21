@@ -51,3 +51,10 @@ Choose which modules to build and compute the exact pairwise activation indicato
 ```
 
 Selecting modules 0 and 1 (`[1, 1, 0, 0]`) spends $30 + 25 = 55 \le 60$, activates only pair `(0, 1)` (`pairProducts = [1, 0, 0, 0]`), and yields $40 + 35 + 25 =$ **100**.
+
+
+<!-- section:hint1 -->
+Declare one binary decision variable per candidate module and one continuous auxiliary variable in $[0, 1]$ per listed interaction pair. Because the module choices are binary, the McCormick inequalities force the pair variables to take exact integer values `0` or `1` without needing extra binary declarations.
+
+<!-- section:hint2 -->
+Enforce the exact McCormick envelope for $w_k = x_i x_j$: two upper bounds ($w_k \le x_i$ and $w_k \le x_j$) prevent $w_k$ from turning on unless both modules are selected, and one lower bound ($w_k \ge x_i + x_j - 1$) forces $w_k$ to `1` whenever both are selected. Both directions are essential here because interaction weights $s$ can be either positive (synergy, where the solver would otherwise try to overstate $w_k$) or negative (conflict, where the solver would otherwise try to understate $w_k$). Round `pairProducts` cleanly when returning integer outputs.

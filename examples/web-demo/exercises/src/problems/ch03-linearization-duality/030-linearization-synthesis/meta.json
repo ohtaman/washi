@@ -6,7 +6,7 @@
   "role": "capstone",
   "scaffold": "fill-in",
   "difficulty": 5,
-  "estimatedMinutes": 16,
+  "estimatedMinutes": 24,
   "paradigms": [
     "MIP"
   ],

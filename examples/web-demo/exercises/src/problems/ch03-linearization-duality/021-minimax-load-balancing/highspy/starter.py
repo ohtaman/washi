@@ -10,18 +10,5 @@ def solve(input_data: dict) -> dict:
 
     prob = pulp.LpProblem("minimax_load_balancing", pulp.LpMinimize)
 
-    assignments = [
-        [
-            pulp.LpVariable(f"x_{i}_{j}", lowBound=0, upBound=float(compatible[i][j]))
-            for j in range(n_servers)
-        ]
-        for i in range(n_jobs)
-    ]
-    peak = pulp.LpVariable("peak", lowBound=0)
-
-    # TODO:
-    # 1. Enforce full assignment for each job: sum_j assignments[i][j] == 1
-    # 2. Enforce peak load cap on each server j: sum_i weights[i] * assignments[i][j] <= peak
-    # 3. Minimize peak, call prob.solve(pulp.HiGHS(msg=False)),
-    #    and return {"assignments": ..., "peakLoad": ...}
+    # TODO: Declare variables, enforce job assignments and server peak bounds, and minimize peak load.
     raise NotImplementedError("Not implemented")

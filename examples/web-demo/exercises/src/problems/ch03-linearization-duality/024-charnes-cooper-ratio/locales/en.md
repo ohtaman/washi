@@ -52,3 +52,10 @@ Choose the non-negative activity vector within all resource and upper limits to 
 ```
 
 Setting `x = [0, 6]` satisfies $0 + 6 \le 8$ and `[0, 6] <= [5, 6]`, giving numerator $9 \times 6 + 10 = 64$, denominator $2 \times 6 + 8 = 20$, and ratio $64 / 20 =$ **3.2**.
+
+
+<!-- section:hint1 -->
+Instead of solving directly in the original activity variables, apply the Charnes-Cooper transformation: introduce a non-negative scalar homogenization variable representing the reciprocal of the denominator, together with scaled non-negative activity variables representing their product with that scalar.
+
+<!-- section:hint2 -->
+The main pitfall is forgetting to homogenize the original per-activity upper bounds: in the scaled model, every upper bound and resource limit must be multiplied by the scalar denominator variable rather than kept constant. Also check that the denominator's constant offset keeps the scaling factor strictly positive so the original activities can be recovered by division.

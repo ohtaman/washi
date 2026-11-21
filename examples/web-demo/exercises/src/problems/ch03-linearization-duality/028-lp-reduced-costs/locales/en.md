@@ -47,3 +47,10 @@ Engineering teams ask how much each unused process's unit cost would need to dro
 ```
 
 Using `quantities = [5, 6, 0, 0]` meets `[17, 16]` at cost $10 \times 5 + 14 \times 6 =$ **134**, while the dual values `[6, 2]` yield reduced costs `24 - (6*2 + 2*3) = 6` and `30 - (6*3 + 2*1) = 10` for the two unused processes.
+
+
+<!-- section:hint1 -->
+Introduce one non-negative continuous decision variable per process representing how much of that process to run.
+
+<!-- section:hint2 -->
+After solving the LP, read each variable's reduced cost via `v.reducedCost!` in WaSHI (or `v.dj` in PuLP). Do not compute or negate raw costs manually: in a minimization LP with non-negative variables, active basic variables have reduced cost `0` while unused variables have non-negative reduced costs that measure the cost improvement needed to enter the basis. Return the solver's exact values without artificial rounding.

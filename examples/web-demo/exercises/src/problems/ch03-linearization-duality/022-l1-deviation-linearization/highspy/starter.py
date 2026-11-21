@@ -13,16 +13,5 @@ def solve(input_data: dict) -> dict:
 
     prob = pulp.LpProblem("l1_deviation", pulp.LpMinimize)
 
-    allocations = [
-        pulp.LpVariable(f"x_{i}", lowBound=0, upBound=float(upper_bounds[i]))
-        for i in range(n)
-    ]
-    d_plus = [pulp.LpVariable(f"dp_{i}", lowBound=0) for i in range(n)]
-    d_minus = [pulp.LpVariable(f"dm_{i}", lowBound=0) for i in range(n)]
-
-    # TODO:
-    # 1. Enforce total output equality and budget <= budget
-    # 2. Split deviations: allocations[i] - targets[i] == d_plus[i] - d_minus[i]
-    # 3. Minimize sum_i weights[i] * (d_plus[i] + d_minus[i]),
-    #    call prob.solve(pulp.HiGHS(msg=False)), and return {"allocations": ..., "totalDeviation": ...}
+    # TODO: Build and solve the weighted L1 deviation LP, then return the output.
     raise NotImplementedError("Not implemented")

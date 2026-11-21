@@ -16,11 +16,6 @@ export async function solve(input: P028Input): Promise<P028Output> {
   const n = input.costs.length;
   const m = new Model("ReducedCosts");
 
-  const quantities = m.continuous(n, { lb: 0, prefix: "x" });
-
-  // TODO:
-  // 1. Add >= constraints for each requirement: dot(input.yields[k], quantities) >= input.minRequirements[k]
-  // 2. Minimize dot(input.costs, quantities) and await m.solve()
-  // 3. Return { quantities: v.value!, reducedCosts: v.reducedCost!, optimalCost: m.objectiveValue! }
+  // TODO: Build and solve the production LP, then return quantities, reducedCosts, and optimalCost.
   throw new Error("Not implemented");
 }
