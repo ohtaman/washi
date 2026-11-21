@@ -18,7 +18,7 @@
     "m0": "Output must be an object { channels, totalCost }.",
     "m1": "channels[{p0}] must be an integer (received {p1}).",
     "m2": "channels[{p0}] must lie in [0, {p1}] (received {p2}).",
-    "m3": "Channel {p0} is assigned to more than one transmitter. Apply distinct(channels)!",
+    "m3": "Channel {p0} is assigned to more than one transmitter; all transmitters must use distinct channels.",
     "m4": "Adjacent-conflict pair ({p0}, {p1}) received channels {p2} and {p3}, violating |c_u - c_v| >= 2.",
     "m5": "Reported totalCost ({p0}) does not match computed weighted channel cost ({p1}).",
     "m6": "Valid distinct channel assignment, but totalCost ({p0}) exceeds optimal ({p1}).",

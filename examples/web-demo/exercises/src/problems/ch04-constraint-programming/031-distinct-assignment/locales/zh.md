@@ -44,3 +44,9 @@
 ```
 
 分配 `[0, 2, 1]` 互不重复，对干扰对 `(0, 1)` 满足 $|0 - 2| = 2 \ge 2$，总加权成本为 $10 \times 0 + 6 \times 2 + 4 \times 1 =$ **16**。
+
+<!-- section:hint1 -->
+为每个发射台定义一个取值范围为 `[0, numChannels - 1]` 的整数决策变量。使用全异（AllDifferent）全局约束表示所有发射台不能共用信道，并为每对干扰发射台添加信道间隔约束。
+
+<!-- section:hint2 -->
+对信道变量数组施加 `distinct(channels)` 约束，并对 `input.adjacentConflicts` 中的每对 `[u, v]` 添加 `expr\`abs(${channels[u]} - ${channels[v]}) >= 2\``。使用 `minimize(expr\`dot(${input.weights}, ${channels})\`)` 最小化加权总成本，并通过 `solver: "pumpkin"` 求解。

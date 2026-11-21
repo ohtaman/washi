@@ -64,3 +64,9 @@ allowedRules に列挙された正の互換テーブルでは指定部品の組�
 ```
 
 選択 `[0, 1, 1]` は `(0, 1)` が `allowedRules[0]` に含まれ、部品 `(1, 2)` の禁止ペア `(1, 0)`・`(0, 0)` も回避し、総コストは $10 + 18 + 14 =$ **42** です。
+
+<!-- section:hint1 -->
+各部品に対して利用可能なオプション番号を値域とする整数決定変数を 1 つずつ定義します。正の互換性ルールと負の禁止ルールの両方を対象部品の変数タプルに対するテーブル制約として表現し、選択されたオプション価格の合計を最小化します。
+
+<!-- section:hint2 -->
+`input.allowedRules` には `allowed(vars, rule.tuples)`、`input.forbiddenRules` には `not(allowed(vars, rule.tuples))` を適用し、`rule.vars` を対応する部品変数へ写像します。各部品の価格は `at(costs, choices[c])` で参照し、その `sum(...)` を最小化して `solver: "pumpkin"` で解いてください。

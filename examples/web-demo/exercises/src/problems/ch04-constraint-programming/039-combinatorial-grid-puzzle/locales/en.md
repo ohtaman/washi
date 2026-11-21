@@ -52,3 +52,9 @@ Fixed clues in givens pin specific cells to given digits, and every region in ca
 ```
 
 Every row and column permutes `{1, 2, 3, 4}`, all givens match (`(0,0)=1, (1,1)=4, (2,3)=3`), and every cage sums cleanly with distinct entries (for example `2 + 3 = 5` and `3 + 2 + 1 = 6`).
+
+<!-- section:hint1 -->
+Introduce an $N \times N$ matrix of integer decision variables with domain `[1, n]`. Enforce all-different constraints on every row, every column, and every cage, alongside equality constraints for fixed givens and cage sums. No objective is needed for this pure feasibility puzzle.
+
+<!-- section:hint2 -->
+Apply `distinct(row)` to each row and `distinct(grid.map((row) => row[c]))` to each column `c`. For each `cage` in `input.cages`, gather `vars = cage.cells.map(([r, c]) => grid[r][c])` and constrain both `expr\`${sum(vars)} == ${cage.targetSum}\`` and `distinct(vars)`, then solve with `solver: "pumpkin"`.

@@ -19,31 +19,7 @@ export async function solve(input: P038Input): Promise<P038Output> {
   const hostIndices = Array.from({ length: K }, (_, k) => k);
   const m = new Model("HostPackingSymmetry");
 
-  const hosts = m.integer(n, { lb: 0, ub: K - 1, prefix: "host" });
-  const assign = input.sizes.map((_, i) => m.binary(K, { prefix: `assign_${i}` }));
-  const load = m.integer(K, { lb: 0, ub: input.capacity, prefix: "load" });
-  const used = m.binary(K, { prefix: "used" });
-
-  m.constraint(assign.map((row) => expr`sum(${row}) == 1`));
-  m.constraint(
-    assign.map((row, i) => expr`dot(${hostIndices}, ${row}) == ${hosts[i]}`)
-  );
-  m.constraint(
-    load.map(
-      (ld, k) => expr`dot(${input.sizes}, ${assign.map((row) => row[k])}) == ${ld}`
-    )
-  );
-  m.constraint(load.map((ld, k) => expr`${ld} <= ${input.capacity} * ${used[k]}`));
-  m.constraint(load.map((ld, k) => expr`${ld} >= ${used[k]}`));
-
-  // TODO 1: Add anti-affinity conflicts: hosts[u] != hosts[v] for each [u, v] in input.conflicts
-  // TODO 2: Break identical-host permutation symmetry (e.g. used[k] >= used[k + 1] and load[k] >= load[k + 1])
-
-  m.objective(minimize(sum(used)));
+  // TODO: Model VM-to-host placement, capacity, anti-affinity, symmetry breaking, and objective.
   await m.solve({ solver: "pumpkin" });
-
-  return {
-    hosts: hosts.map((v) => Math.round(v.value!) || 0),
-    usedHosts: Math.round(m.objectiveValue!) || 0,
-  };
+  throw new Error("Not implemented");
 }

@@ -44,3 +44,9 @@
 ```
 
 矩形 1（`2×4`）置于 `(0, 0)` 占据 `[0, 2) × [0, 4)`，矩形 2（`3×2`）置于 `(3, 0)` 占据 `[3, 6) × [0, 2)`，矩形 0（`4×3`）置于 `(2, 2)` 占据 `[2, 6) × [2, 5)`，互不重叠且总高度为 **5**。
+
+<!-- section:hint1 -->
+为每个矩形定义两个整数坐标变量：$x_i \in [0, \text{stripWidth} - \text{widths}[i]]$ 和 $y_i \in [0, \text{maxHeight} - \text{heights}[i]]$。任意两个不同的矩形必须在左、右、下、上四个正交方向中至少满足一个分离关系。
+
+<!-- section:hint2 -->
+对每对矩形 $i < j$，使用 `or(...)` 组合四个方向的分离不等式（`x[i] + widths[i] <= x[j]`、`x[j] + widths[j] <= x[i]`、`y[i] + heights[i] <= y[j]`、`y[j] + heights[j] <= y[i]`）。以 `minimize(max(y.map((yi, i) => expr\`${yi} + ${input.heights[i]}\`)))` 为目标，并通过 `solver: "pumpkin"` 求解。

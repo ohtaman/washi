@@ -46,3 +46,9 @@
 ```
 
 机器 0 依次无重叠地执行任务 0 `[0, 4)`、任务 3 `[4, 6)`、任务 1 `[6, 9)` 和任务 2 `[9, 14)`，同时满足释放时间与先后约束 `0 -> 3`，总完工时间为 **14**。
+
+<!-- section:hint1 -->
+为每个任务定义一个下界为释放时间、上界为 `horizon - durations[i]` 的整数开始时间变量。除先后约束外，按所属机器对任务分组，并对每台机器施加不重叠析取约束。
+
+<!-- section:hint2 -->
+对每台机器收集其任务列表 `{ start: starts[i], duration: input.durations[i] }`，若非空则施加 `disjoint(tasks)` 约束。以 `minimize(max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`)))` 为目标，并通过 `solver: "pumpkin"` 求解。

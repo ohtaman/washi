@@ -44,3 +44,9 @@
 ```
 
 矩形 1（`2×4`）を `(0, 0)` に、矩形 2（`3×2`）を `(3, 0)` に配置し、その右上の空間 `(2, 2)` に矩形 0（`4×3`）を置くと、重なりなしで総高さ **5** に収まります。
+
+<!-- section:hint1 -->
+各矩形に対して 2 つの整数座標変数 $x_i \in [0, \text{stripWidth} - \text{widths}[i]]$ と $y_i \in [0, \text{maxHeight} - \text{heights}[i]]$ を導入します。相異なる 2 つの矩形は、左・右・下・上の 4 方向のいずれか少なくとも 1 つで分離されている必要があります。
+
+<!-- section:hint2 -->
+各ペア $i < j$ について、`or(...)` の中に 4 方向の分離不等式（`x[i] + widths[i] <= x[j]`、`x[j] + widths[j] <= x[i]`、`y[i] + heights[i] <= y[j]`、`y[j] + heights[j] <= y[i]`）を並べて非重複を強制します。目的関数 `minimize(max(y.map((yi, i) => expr\`${yi} + ${input.heights[i]}\`)))` を `solver: "pumpkin"` で解いてください。

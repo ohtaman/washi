@@ -46,3 +46,9 @@ Each anti-affinity pair [u, v] in conflicts cannot run on the same host, and no 
 ```
 
 Host 0 runs VMs `{1, 3}` (load $4 + 3 = 7 \le 10$), Host 1 runs VM `{2}` (load $7 \le 10$), and Host 2 runs VM `{0}` (load $4 \le 10$), separating conflicting pair `(0, 1)` across **3** active hosts.
+
+<!-- section:hint1 -->
+Channel between an integer host-index variable per VM and a binary VM-to-host assignment matrix, paired with per-host integer load variables and binary active-host indicators. Because all physical hosts are identical, add ordering constraints across hosts to eliminate symmetric permutations.
+
+<!-- section:hint2 -->
+Link `hosts[i]` to `assign[i]` via `dot(hostIndices, assign[i]) == hosts[i]`, relate `load[k]` to `used[k]` via `load[k] <= capacity * used[k]` and `load[k] >= used[k]`, and forbid conflicts with `hosts[u] != hosts[v]`. Break host symmetry with `used[k] >= used[k + 1]` and `load[k] >= load[k + 1]`, then minimize `sum(used)` using `solver: "pumpkin"`.

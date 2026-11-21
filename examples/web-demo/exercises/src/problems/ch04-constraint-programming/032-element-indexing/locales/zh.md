@@ -42,3 +42,9 @@
 ```
 
 指派 `[0, 2, 1]` 使用了 3 台互不相同的机器，总成本为 `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42**。
+
+<!-- section:hint1 -->
+无需构建 $n \times m$ 的二元指派矩阵，而是为每项作业定义一个取值范围为 `[0, numMachines - 1]` 的整数变量，表示其分配的机器编号，并要求所有作业分配到互不相同的机器。
+
+<!-- section:hint2 -->
+使用 `distinct(assignment)` 防止多份作业共用同一台机器。每项作业的成本可通过 Element 约束 `at(row, assignment[i])` 索引读取，然后以 `minimize(sum(input.costs.map((row, i) => at(row, assignment[i]))))` 为目标并用 `solver: "pumpkin"` 求解。

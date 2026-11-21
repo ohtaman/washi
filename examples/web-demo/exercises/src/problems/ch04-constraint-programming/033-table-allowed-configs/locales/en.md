@@ -64,3 +64,9 @@ Positive compatibility tables in allowedRules require the selected options of th
 ```
 
 Choices `[0, 1, 1]` satisfy `(choices[0], choices[1]) = (0, 1)` in `allowedRules[0]`, avoid `(1, 0)` and `(0, 0)` on components `(1, 2)`, and cost $10 + 18 + 14 =$ **42**.
+
+<!-- section:hint1 -->
+Introduce one integer decision variable per component whose domain covers its available option indices. Express both positive compatibility tables and negative conflict tables directly over the corresponding component variable tuples, and sum the selected option costs as the objective.
+
+<!-- section:hint2 -->
+Use `allowed(vars, rule.tuples)` for each rule in `input.allowedRules` and `not(allowed(vars, rule.tuples))` for each rule in `input.forbiddenRules`, mapping `rule.vars` to the component choice variables. Compute each component's price with `at(costs, choices[c])` and minimize their `sum(...)` using `solver: "pumpkin"`.

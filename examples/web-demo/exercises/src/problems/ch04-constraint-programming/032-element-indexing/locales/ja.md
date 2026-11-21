@@ -42,3 +42,9 @@
 ```
 
 割当 `[0, 2, 1]` は 3 つの異なる機械を選び、総コストは `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42** となります。
+
+<!-- section:hint1 -->
+$n \times m$ のバイナリ行列を作る代わりに、各作業に対して `[0, numMachines - 1]` の機械番号を表す整数変数を 1 つずつ定義します。すべての作業が相異なる機械を使うように制約します。
+
+<!-- section:hint2 -->
+機械の重複を防ぐために `distinct(assignment)` を追加します。各作業のコストは Element 制約 `at(row, assignment[i])` で参照できるため、`sum(input.costs.map((row, i) => at(row, assignment[i])))` を `minimize` し、`solver: "pumpkin"` で解いてください。

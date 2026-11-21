@@ -36,6 +36,7 @@ registerChapterExerciseSuite({
   dirName: "ch04-constraint-programming",
   expectedIds: EXPECTED_IDS,
   expectedRuntimes: EXPECTED_RUNTIMES,
+  enforceScaffoldPolicy: true,
   extractObjective,
   checkAdversarial: async (problems) => {
     for (const prob of problems) {

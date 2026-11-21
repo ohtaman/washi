@@ -64,3 +64,9 @@
 ```
 
 方案 `[0, 1, 1]` 满足组件 `(0, 1)` 为 `(0, 1)` 在正表中、组件 `(1, 2)` 为 `(1, 1)` 未命中禁用表，总成本为 $10 + 18 + 14 =$ **42**。
+
+<!-- section:hint1 -->
+为每个组件定义一个整数决策变量，其取值范围为该组件的可选配置索引。将正兼容性表和负禁用表直接建模为对应组件变量元组上的表约束，并以所选配置价格之和作为最小化目标。
+
+<!-- section:hint2 -->
+对 `input.allowedRules` 中的每条规则使用 `allowed(vars, rule.tuples)`，对 `input.forbiddenRules` 中的每条规则使用 `not(allowed(vars, rule.tuples))`，其中 `vars` 由 `rule.vars` 映射到对应组件变量。使用 `at(costs, choices[c])` 读取各组件价格，并对 `sum(...)` 最小化后用 `solver: "pumpkin"` 求解。
