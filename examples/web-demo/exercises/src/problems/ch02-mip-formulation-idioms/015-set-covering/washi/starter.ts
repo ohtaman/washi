@@ -16,8 +16,6 @@ export async function solve(input: P015Input): Promise<P015Output> {
   const m = new Model("SetCovering");
   const selected = m.binary(mCount, { prefix: "set" });
 
-  // TODO:
-  // 1. For each element i in 0..input.numElements-1, enforce sum_{j : i in sets[j]} selected[j] >= 1
-  // 2. Minimize dot(input.costs, selected), solve, and return { selected, totalCost }
+  // TODO: Ensure every element is covered by at least one selected package, minimize total cost, and return the result.
   throw new Error("Not implemented");
 }

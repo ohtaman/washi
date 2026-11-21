@@ -27,10 +27,6 @@ export async function solve(input: P019Input): Promise<P019Output> {
     tiers.map((_, k) => m.continuous(`q_${s}_${k}`, { lb: 0 }))
   );
 
-  // TODO:
-  // 1. For each supplier s, allow at most one active tier: sum(tierSelected[s]) <= 1
-  // 2. For each (s, k), link semi-continuous tier bounds: minQty * y <= q <= maxQty * y
-  // 3. Enforce total purchased across all tiers >= input.demand
-  // 4. Minimize total cost sum(unitPrice * q), solve, and return { tierSelected, tierQuantities, totalCost }
+  // TODO: Enforce at most one tier per supplier, link tier quantity bounds, meet total demand, minimize cost, and return the result.
   throw new Error("Not implemented");
 }

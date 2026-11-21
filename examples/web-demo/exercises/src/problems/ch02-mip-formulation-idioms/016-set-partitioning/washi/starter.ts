@@ -16,8 +16,6 @@ export async function solve(input: P016Input): Promise<P016Output> {
   const m = new Model("SetPartitioning");
   const selected = m.binary(mCount, { prefix: "route" });
 
-  // TODO:
-  // 1. For each task i in 0..input.numTasks-1, require sum_{j : i in routes[j]} selected[j] == 1
-  // 2. Minimize dot(input.costs, selected), solve, and return { selected, totalCost }
+  // TODO: Ensure every task is covered exactly once, minimize total cost, and return the result.
   throw new Error("Not implemented");
 }

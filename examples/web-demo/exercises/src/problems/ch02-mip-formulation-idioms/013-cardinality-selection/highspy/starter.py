@@ -14,8 +14,5 @@ def solve(input_data: dict) -> dict:
     prob = pulp.LpProblem("cardinality_selection", pulp.LpMaximize)
     selected = [pulp.LpVariable(f"sel_{i}", cat=pulp.LpBinary) for i in range(n)]
 
-    # TODO:
-    # 1. Add budget constraint <= budget
-    # 2. Add mutex (<= 1), exact-k (== count), and at-least-one (>= 1) group constraints
-    # 3. Maximize total value, solve with HiGHS, and return {"selected": ..., "totalValue": ...}
+    # TODO: Enforce budget and group cardinality rules, maximize total value, and return the result.
     raise NotImplementedError("Not implemented")

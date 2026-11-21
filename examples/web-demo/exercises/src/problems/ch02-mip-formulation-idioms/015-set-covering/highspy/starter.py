@@ -11,7 +11,5 @@ def solve(input_data: dict) -> dict:
     prob = pulp.LpProblem("set_covering", pulp.LpMinimize)
     selected = [pulp.LpVariable(f"set_{j}", cat=pulp.LpBinary) for j in range(m_count)]
 
-    # TODO:
-    # 1. For each element i in range(num_elements), require sum(selected[j] for j if i in sets[j]) >= 1
-    # 2. Minimize total cost, solve with HiGHS, and return {"selected": ..., "totalCost": ...}
+    # TODO: Ensure every element is covered by at least one selected package, minimize total cost, and return the result.
     raise NotImplementedError("Not implemented")

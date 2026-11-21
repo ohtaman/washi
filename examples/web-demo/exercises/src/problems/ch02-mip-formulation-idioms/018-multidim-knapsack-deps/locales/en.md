@@ -49,3 +49,9 @@ Technical architecture also imposes prerequisite pairs where shipping one featur
 ```
 
 Selecting features `{0, 3, 4}` uses `5 + 5 + 3 = 13 <= 13` of resource 0 and `3 + 4 + 6 = 13 <= 13` of resource 1, respects prerequisite `3 -> 0` and incompatibility `[1, 2]`, and yields total value $8 + 19 + 15 =$ **42**.
+
+<!-- section:hint1 -->
+Each candidate feature is a binary selection variable. The model combines one knapsack capacity constraint per resource dimension with pairwise logical constraints for prerequisites and incompatibilities.
+
+<!-- section:hint2 -->
+Each row `weights[k]` corresponds to a separate resource capacity constraint against `capacities[k]`. A prerequisite `[a, b]` linearizes as $x_a \le x_b$, and an incompatible pair `[c, d]` linearizes as $x_c + x_d \le 1$.

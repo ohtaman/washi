@@ -22,9 +22,6 @@ export async function solve(input: P020Input): Promise<P020Output> {
     input.demands.map((_, j) => m.continuous(`ship_${i}_${j}`, { lb: 0 }))
   );
 
-  // TODO:
-  // 1. Link facility capacity to opening switch: sum(shipments[i]) <= capacities[i] * open[i]
-  // 2. Enforce every customer's demand: sum_i shipments[i][j] >= demands[j]
-  // 3. Minimize dot(fixedCosts, open) + dot(unitCosts, shipments), solve, and return result
+  // TODO: Link facility capacity to opening decisions, enforce customer demands, minimize total cost, and return the result.
   throw new Error("Not implemented");
 }

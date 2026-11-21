@@ -15,17 +15,5 @@ def solve(input_data: dict) -> dict:
     active = [pulp.LpVariable(f"active_{i}", cat=pulp.LpBinary) for i in range(n)]
     quantities = [pulp.LpVariable(f"qty_{i}", lowBound=0) for i in range(n)]
 
-    for i in range(n):
-        prob += quantities[i] <= max_batches[i] * active[i]
-    # TODO: Add minimum-batch linking constraint:
-    # min_batches[i] * active[i] <= quantities[i] for each i
-
-    prob += pulp.lpDot(usages, quantities) <= cap
-    prob += pulp.lpDot(margins, quantities)
-    prob.solve(pulp.HiGHS(msg=False))
-
-    return {
-        "active": [round(pulp.value(v)) for v in active],
-        "quantities": [float(pulp.value(v)) for v in quantities],
-        "totalMargin": float(pulp.value(prob.objective)),
-    }
+    # TODO: Link each product's semi-continuous bounds, enforce the resource cap, maximize total margin, and return the output.
+    raise NotImplementedError("Not implemented")

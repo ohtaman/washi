@@ -52,3 +52,9 @@ Because the station limit may prevent covering every zone simultaneously, choose
 ```
 
 Opening sites 0 and 1 ($2 \le 2$) puts a station within radius 5 of zones 0, 1, 2, and 3, covering total demand $40 + 35 + 30 + 25 =$ **130**.
+
+<!-- section:hint1 -->
+The model uses two binary decision vectors: one for which candidate sites are opened and one for which demand zones are covered. You need a limit on the total number of open sites and a linking constraint per zone ensuring it can only be marked covered if a reachable site is open.
+
+<!-- section:hint2 -->
+For each zone $i$, filter the sites $j$ with `distances[i][j] <= coverageRadius` and require `covered[i]` to be at most the sum of `open[j]` over those reachable sites (which forces `covered[i] = 0` when no reachable site is open). Because maximizing covered demand rewards setting `covered[i] = 1` whenever possible, no lower-bound linking is needed.

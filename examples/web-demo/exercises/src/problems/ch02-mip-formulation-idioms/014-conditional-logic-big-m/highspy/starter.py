@@ -17,9 +17,5 @@ def solve(input_data: dict) -> dict:
     active = [pulp.LpVariable(f"act_{i}", cat=pulp.LpBinary) for i in range(n)]
     levels = [pulp.LpVariable(f"lvl_{i}", lowBound=0) for i in range(n)]
 
-    # TODO:
-    # 1. Link conditional continuous ranges: min_levels[i] * active[i] <= levels[i] <= max_levels[i] * active[i]
-    # 2. Add total budget constraint sum(levels) <= budget
-    # 3. Linearize prerequisites, conjunctions, and conflicts on binary variables
-    # 4. Maximize net profit, solve with HiGHS, and return dict
+    # TODO: Link conditional operating ranges, enforce budget and logical rules, maximize net profit, and return the result.
     raise NotImplementedError("Not implemented")

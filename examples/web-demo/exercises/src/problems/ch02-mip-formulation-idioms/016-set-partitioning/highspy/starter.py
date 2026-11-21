@@ -11,7 +11,5 @@ def solve(input_data: dict) -> dict:
     prob = pulp.LpProblem("set_partitioning", pulp.LpMinimize)
     selected = [pulp.LpVariable(f"route_{j}", cat=pulp.LpBinary) for j in range(m_count)]
 
-    # TODO:
-    # 1. For each task i in range(num_tasks), enforce sum(selected[j] for j if i in routes[j]) == 1
-    # 2. Minimize total cost, solve with HiGHS, and return {"selected": ..., "totalCost": ...}
+    # TODO: Ensure every task is covered exactly once, minimize total cost, and return the result.
     raise NotImplementedError("Not implemented")
