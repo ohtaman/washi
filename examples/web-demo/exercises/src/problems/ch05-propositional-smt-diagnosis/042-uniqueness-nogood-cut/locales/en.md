@@ -52,3 +52,10 @@ Given Boolean variables and propositional rules, first check whether a satisfyin
 ```
 
 Evaluating each rule under `{ a: true, b: true, c: false, d: true }` confirms that `"a"`, `implies(a, b)`, `xor(b, c)`, and `implies(and(a, not(c)), d)` all hold, and no other truth vector over `["a", "b", "c", "d"]` satisfies all four rules, so both `satisfiable` and `unique` are `true`.
+
+
+<!-- section:hint1 -->
+Declare one Boolean variable per entry in `vars` and add every rule to the model. Solve once to find an initial satisfying assignment; if one exists, exclude that exact truth vector and check whether a second satisfying assignment remains.
+
+<!-- section:hint2 -->
+Use `m.bool(input.vars)` and `await m.check({ solver: "z3" })` for the first satisfiability check. To block the found assignment `a`, add a no-good clause `or(...)` over all variables where each literal is `not(bools[v])` if `a[v]` is true and `bools[v]` otherwise, then re-run `m.check({ solver: "z3" })`—the solution is unique iff the second check returns `"Unsat"`.

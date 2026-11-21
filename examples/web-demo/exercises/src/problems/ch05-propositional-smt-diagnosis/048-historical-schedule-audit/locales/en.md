@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 Before deploying updated rules or investigating past incidents, compliance teams audit recorded historical assignments against formal Boolean and integer-arithmetic constraints without invoking a solver search.
 
-Build a model containing the Boolean variables, bounded integer variables, and named compliance rules, run deterministic solution verification against the supplied historical record, and report whether the record is valid along with every violated rule ID sorted lexicographically.
+Given the Boolean variables, bounded integer variables, named compliance rules, and a historical variable assignment, deterministically audit the assignment without invoking a solver search and report whether the record is valid along with every violated rule ID sorted lexicographically.
 
 <!-- section:io -->
 ### Input
@@ -57,3 +57,10 @@ Build a model containing the Boolean variables, bounded integer variables, and n
 ```
 
 Under `candidateValues`, `R1` holds (`nightShift` and `seniorOnDuty` are both `true`), `R2` holds vacuously (`hazardFlag = false`), and `R3` holds (`overtimeHours = 2 <= 4`).
+
+
+<!-- section:hint1 -->
+Declare the Boolean and bounded integer variables on the model and register each compliance rule under its rule ID so any violation can be attributed by name. Then verify the supplied historical assignment directly against the model without running a solver.
+
+<!-- section:hint2 -->
+Use `m.bool(input.boolVars)`, `m.integer(spec.name, { lb: spec.lb, ub: spec.ub })`, and `m.constraint(compileSmt(r.expr, bools, ints), r.id)`. Call `m.verify({ values: input.candidateValues })` (synchronous, no Z3 search needed) and collect unique `v.name` entries from `report.violations`, sorted lexicographically.

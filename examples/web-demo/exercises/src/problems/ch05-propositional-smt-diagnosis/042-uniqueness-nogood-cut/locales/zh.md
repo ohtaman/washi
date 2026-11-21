@@ -52,3 +52,10 @@
 ```
 
 将赋值 `a = true, b = true, c = false, d = true` 代入四条规则均成立，且变量集 `["a", "b", "c", "d"]` 上不存在其他同时满足四条规则的赋值，因此 `satisfiable` 与 `unique` 均为 `true`。
+
+
+<!-- section:hint1 -->
+为 `vars` 中的每个变量声明一个布尔决策变量，并将所有规则加入模型。先求解一次以寻找初始可满足赋值；若存在解，则排除该精确真值向量并检查是否还存在第二个可满足赋值。
+
+<!-- section:hint2 -->
+使用 `m.bool(input.vars)` 与 `await m.check({ solver: "z3" })` 进行首次可满足性检查。要屏蔽已找到的赋值 `a`，可添加一条覆盖所有变量的 `or(...)` 禁止子句（no-good cut）：若 `a[v]` 为真则取 `not(bools[v])`，否则取 `bools[v]`；随后再次调用 `m.check({ solver: "z3" })`，当且仅当第二次返回 `"Unsat"` 时解唯一。

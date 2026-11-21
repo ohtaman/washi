@@ -62,3 +62,10 @@ Installing a specific package version can require one of several candidate depen
 ```
 
 Because `app@1.0` conflicts with `legacy@1.0`, `http@1.0` is ruled out, leaving `{ app@1.0, http@2.0, tls@1.2 }` with `3` installed packages.
+
+
+<!-- section:hint1 -->
+Introduce a Boolean selection decision for every `(package, version)` pair. Enforce at most one version per package, require at least one version for each root package, and express each dependency requirement and pairwise conflict over those selection decisions while minimizing the total number of installed versions.
+
+<!-- section:hint2 -->
+Because Z3 minimizes arithmetic `Var` expressions while logical combinators (`implies`, `or`, `not`, `and`) operate on `BoolVar`, pair each `m.bool(...)` variable with an `m.binary(...)` indicator linked in both directions via `implies`. Solve with `minimize(sum(allUsed))` and `await m.solve({ solver: "z3" })`, checking `res.status === "Optimal"`.

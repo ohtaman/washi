@@ -43,11 +43,6 @@ export interface P046Output {
 }
 
 export async function solve(input: P046Input): Promise<P046Output> {
-  // TODO:
-  // 1. Build a WaSHI Model with named constraints for every rule (r.id) and call await m.check({ solver: "z3" }).
-  // 2. Seed candidate core with res.unsatCore (or all rule IDs).
-  // 3. Run deletion-based contraction: for each ruleId in candidate, check candidate \ {ruleId} on a fresh Model;
-  //    if still "Unsat", drop ruleId (or shrink to the returned unsatCore).
-  // 4. Return { coreRules: core.sort() }.
+  // TODO: Extract an irreducible minimal unsatisfiable subset (MUS) of rule IDs using Z3 and return them sorted.
   throw new Error("Not implemented");
 }

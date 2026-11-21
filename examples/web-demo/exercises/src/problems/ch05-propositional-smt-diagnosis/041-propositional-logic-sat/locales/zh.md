@@ -50,3 +50,10 @@
 ```
 
 当 `override = false` 且 `vpn = true` 时，`not(override)`、`xor(vpn, override)` 与 `or(badge, vpn)` 均成立，且由 `badge = true` 蕴含 `mfa = true`。
+
+
+<!-- section:hint1 -->
+为 `vars` 中的每个条目创建一个布尔决策变量，并补全 `compileFormula`，将所有命题联结词映射到 WaSHI 逻辑原语。`rules` 中的每一条规则都作为模型的一条约束加入。
+
+<!-- section:hint2 -->
+使用 `m.bool(input.vars)` 声明布尔变量，在 `compileFormula` 中补全 `implies(...)` 与 `xor(...)`，然后调用 `await m.check({ solver: "z3" })` 进行无目标函数的可满足性检查。当状态为 `"Sat"` 时，从 `bools[name].value` 读取各变量真值；否则返回 `satisfiable: false` 与 `assignment: null`。

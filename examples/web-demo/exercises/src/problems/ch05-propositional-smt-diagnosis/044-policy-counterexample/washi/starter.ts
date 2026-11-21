@@ -67,16 +67,7 @@ function compileSmt(
 
 export async function solve(input: P044Input): Promise<P044Output> {
   const m = new Model("PolicyCounterexample");
-  const bools = m.bool(input.boolVars);
-  const ints: Record<string, Var> = {};
-  for (const spec of input.intVars) {
-    ints[spec.name] = m.integer(spec.name, { lb: spec.lb, ub: spec.ub });
-  }
 
-  // TODO:
-  // 1. Add all rules from input.rules as constraints on m.
-  // 2. Assert the negation of input.safeInvariant: not(compileSmt(input.safeInvariant, bools, ints)).
-  // 3. Call await m.check({ solver: "z3" }).
-  //    If "Sat", return { hasViolation: true, counterexample }; if "Unsat", return { hasViolation: false, counterexample: null }.
+  // TODO: Declare Boolean and bounded integer variables, encode the policy and safety check, and solve with Z3.
   throw new Error("Not implemented");
 }

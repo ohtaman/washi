@@ -50,3 +50,10 @@ Given the list of Boolean variable names and propositional rules, decide whether
 ```
 
 With `override = false` and `vpn = true`, both `not(override)` and `xor(vpn, override)` hold, `or(badge, vpn)` is true, and `badge = true` implies `mfa = true`.
+
+
+<!-- section:hint1 -->
+Create one Boolean decision variable per entry in `vars`, and complete `compileFormula` so every propositional connective maps to its WaSHI logic primitive. Each item in `rules` becomes a constraint on the model.
+
+<!-- section:hint2 -->
+Use `m.bool(input.vars)` to declare the Boolean variables, `implies(...)` and `xor(...)` in `compileFormula`, and `await m.check({ solver: "z3" })` to test satisfiability without an objective. When the status is `"Sat"`, read each variable's truth value from `bools[name].value`; otherwise return `satisfiable: false` and `assignment: null`.

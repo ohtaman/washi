@@ -49,3 +49,10 @@
 ```
 
 由于基础规则包含 `guest => not(admin)`，`R2` 永不触发（死规则）；而 `admin => mfa` 与 `R1`（`admin => audit`）联合已推出 `R3` 的结论，故 `R3` 为冗余规则。
+
+
+<!-- section:hint1 -->
+按顺序处理 `input.rules`，维护由 `baseRules` 和此前所有触发规则的蕴含式组成的累积策略。对每条规则，先检验其触发条件在累积策略下是否可达；若可达，再检验当触发条件成立时其结论是否可能不成立。
+
+<!-- section:hint2 -->
+每次执行 Z3 检查（`await m.check({ solver: "z3" })`）时都创建一个带 `m.bool(input.vars)` 的新 `Model`。若 `prior` 加上 `r.condition` 返回 `"Unsat"` 则为死规则（dead）；否则若 `prior`、`r.condition` 与 `not(r.effect)` 联合返回 `"Unsat"` 则为冗余规则（redundant）。进入下一条规则前始终将 `implies(r.condition, r.effect)` 追加到 `prior`，并将两个输出数组按字典序排序返回。

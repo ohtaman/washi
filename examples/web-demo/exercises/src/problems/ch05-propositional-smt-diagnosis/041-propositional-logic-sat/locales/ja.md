@@ -50,3 +50,10 @@
 ```
 
 `override = false` かつ `vpn = true` とすることで `not(override)` と `xor(vpn, override)`、`or(badge, vpn)` が成り立ち、`badge = true` から `mfa = true` も満たされます。
+
+
+<!-- section:hint1 -->
+`vars` の各要素に対して真偽値決定変数を 1 つずつ作成し、`compileFormula` で論理結合子（含意・排他的論理和）を WaSHI の論理プリミティブへ対応づけます。`rules` の各要素をモデルの制約として登録します。
+
+<!-- section:hint2 -->
+`m.bool(input.vars)` で真偽値変数を宣言し、`compileFormula` 内で `implies(...)` と `xor(...)` を補完したうえで、目的関数なしの充足可能性判定 `await m.check({ solver: "z3" })` を呼び出します。ステータスが `"Sat"` なら `bools[name].value` から各変数の真偽値を取り出し、それ以外は `satisfiable: false`、`assignment: null` を返します。

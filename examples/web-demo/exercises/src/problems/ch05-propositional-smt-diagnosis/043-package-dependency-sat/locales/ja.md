@@ -62,3 +62,10 @@
 ```
 
 `app@1.0` と `legacy@1.0` が競合するため `http@1.0` は選べず、`{ app@1.0, http@2.0, tls@1.2 }` の `3` 個が最小構成となります。
+
+
+<!-- section:hint1 -->
+すべての `(package, version)` ペアに対して導入有無を表す真偽値変数を設けます。各パッケージは高々 1 バージョン、各ルートパッケージは必ず 1 バージョンが選ばれるようにし、依存関係と競合関係を表現したうえで、導入パッケージ総数を最小化します。
+
+<!-- section:hint2 -->
+Z3 で最小化するのは算術変数 `Var` の和であり、論理結合子（`implies`, `or`, `not`, `and`）は `BoolVar` 上で動作するため、各 `m.bool(...)` に `m.binary(...)` 指示変数を対応づけて双方向の `implies` で連結します。`minimize(sum(allUsed))` と `await m.solve({ solver: "z3" })` で解き、`res.status === "Optimal"` を確認してください。

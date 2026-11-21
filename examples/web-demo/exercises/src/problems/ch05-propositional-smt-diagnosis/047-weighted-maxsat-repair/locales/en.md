@@ -56,3 +56,10 @@ Given Boolean variables, mandatory hard rules, and weighted soft rules, find a t
 ```
 
 Setting `tls = true, legacyApi = false, fastMode = false, audit = true` satisfies both hard rules and violates only `S2` for a total penalty of `2` (compared to violating `S1` at cost `5`).
+
+
+<!-- section:hint1 -->
+Model the system state with Boolean variables for `vars`, and pair each soft rule with a binary relaxation indicator that is `1` when that soft rule is allowed to be violated. Enforce every hard rule unconditionally, and minimize the weighted sum of the relaxation indicators.
+
+<!-- section:hint2 -->
+Declare `m.bool(input.vars)` and `m.binary(...)` indicators `viol[k]` for each soft rule `k`. Guard each soft rule with `or(softExpr, expr\`${viol[k]} == 1\`)`—minimizing `dot(weights, viol)` with positive weights naturally keeps `viol[k] = 0` whenever the soft rule can hold—and solve via `minimize(dot(weights, viol))` and `await m.solve({ solver: "z3" })`.

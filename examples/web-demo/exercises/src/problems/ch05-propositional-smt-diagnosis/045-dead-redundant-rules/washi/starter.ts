@@ -47,10 +47,6 @@ function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): Logi
 }
 
 export async function solve(input: P045Input): Promise<P045Output> {
-  // TODO:
-  // Iterate sequentially over rule r in input.rules against prior = [...baseRules, ...earlierRules]:
-  // 1. Check satisfiability of [...prior, r.condition] via Z3: if "Unsat", push r.id to deadRules.
-  // 2. Otherwise check [...prior, r.condition, { not: r.effect }] via Z3: if "Unsat", push r.id to redundantRules.
-  // 3. Append implies(r.condition, r.effect) to prior, and return both arrays sorted lexicographically.
+  // TODO: Sequentially check each rule for deadness and redundancy against prior rules, then return sorted IDs.
   throw new Error("Not implemented");
 }

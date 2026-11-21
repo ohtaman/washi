@@ -65,3 +65,10 @@ Every shipment must avoid a scheduled dock maintenance blackout interval, no two
 ```
 
 Shipment 0 runs in Standard mode over `[0, 2.5]` before the `[3, 4]` blackout (`0` tardiness), and Shipment 1 switches to Express mode over `[4, 5]` with fee `15` and tardiness `12 * (5 - 3) = 24`, totaling `39`.
+
+
+<!-- section:hint1 -->
+For each shipment, model a Boolean mode choice (Express vs. Standard) together with continuous start, end, and non-negative tardiness variables. Express mode unlocks a shorter duration and its own time window, while all shipments must avoid the dock blackout interval and never overlap each other.
+
+<!-- section:hint2 -->
+Pair each `m.bool(...)` mode variable with an `m.binary(...)` flag for arithmetic sums and objective terms (`sum(expFlag) <= maxExpress` and express fees). Use `implies(...)` and `not(...)` to enforce mode-dependent windows and durations, and use `or(...)` directly for both blackout avoidance (`end[i] <= blackout[0]` or `start[i] >= blackout[1]`) and pairwise non-overlap (`end[i] <= start[j]` or `end[j] <= start[i]`), solving with `await m.solve({ solver: "z3" })`.

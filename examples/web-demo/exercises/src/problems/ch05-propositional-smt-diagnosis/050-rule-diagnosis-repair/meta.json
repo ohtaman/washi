@@ -6,7 +6,7 @@
   "role": "capstone",
   "scaffold": "scratch",
   "difficulty": 5,
-  "estimatedMinutes": 20,
+  "estimatedMinutes": 30,
   "paradigms": [
     "SMT"
   ],

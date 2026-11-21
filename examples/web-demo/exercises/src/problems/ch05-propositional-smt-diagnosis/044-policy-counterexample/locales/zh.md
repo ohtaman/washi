@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 安全策略引擎在布尔属性标志与有界整数属性上定义了一组访问规则，并要求所有合规状态都必须满足给定的安全不变量。
 
-请使用反驳验证思路：将全部策略规则与安全不变量的逻辑否定联合加入 SMT 约束。若可满足，则返回破坏不变量的具体反例状态；若不可满足，则证明策略完全安全。
+请判断是否存在同时满足全部策略规则却违反安全不变量的状态。若存在，则返回具体的反例状态；若不存在，则确认策略无违规。
 
 <!-- section:io -->
 ### 输入
@@ -54,3 +54,10 @@
 ```
 
 该状态满足全部策略规则（`portTier = 1` 且 `external = true` 触发 `allowSsh = true`），却因 `mfaVerified = false` 违反了 `safeInvariant`。
+
+
+<!-- section:hint1 -->
+为 `boolVars` 中的每个条目声明布尔变量，为 `intVars` 中的每个条目声明有界整数变量，并使用 `compileSmt` 编译策略规则。要搜索反例，需向求解器询问是否存在满足所有策略规则但使安全不变量为假的状态。
+
+<!-- section:hint2 -->
+使用 `m.bool(input.boolVars)` 与 `m.integer(spec.name, { lb: spec.lb, ub: spec.ub })` 声明变量，加入 `input.rules` 中的所有规则并断言 `not(compileSmt(input.safeInvariant, bools, ints))`。调用 `await m.check({ solver: "z3" })`：若返回 `"Sat"`，则通过 `.value` 读取反例（整数用 `Math.round` 取整）；若返回 `"Unsat"`，则证明不变量恒成立。

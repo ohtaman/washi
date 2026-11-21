@@ -42,17 +42,7 @@ function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): Logi
 
 export async function solve(input: P042Input): Promise<P042Output> {
   const m = new Model("UniquenessCheck");
-  const bools = m.bool(input.vars);
 
-  input.rules.forEach((rule, i) => {
-    m.constraint(compileFormula(rule, bools), `rule_${i}`);
-  });
-
-  // TODO:
-  // 1. Run await m.check({ solver: "z3" }); if status !== "Sat", return { satisfiable: false, assignment: null, unique: false }.
-  // 2. Capture the first assignment from bools[name].value.
-  // 3. Add a no-good cut blocking that exact assignment:
-  //    or(...input.vars.map((name) => (assignment[name] ? not(bools[name]) : bools[name])))
-  // 4. Re-run await m.check({ solver: "z3" }) and return unique = (secondRes.status === "Unsat").
+  // TODO: Declare Boolean variables, check satisfiability, and test uniqueness by blocking any found assignment.
   throw new Error("Not implemented");
 }

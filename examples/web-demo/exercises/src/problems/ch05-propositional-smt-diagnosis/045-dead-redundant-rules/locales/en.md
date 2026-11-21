@@ -49,3 +49,10 @@ Evaluate the ordered list of trigger rules sequentially on top of the base rules
 ```
 
 `R2` is dead because `guest` implies `not(admin)` in `baseRules`; `R3` is redundant because `admin => mfa` (base) and `admin => audit` (`R1`) already force `and(mfa, audit)`.
+
+
+<!-- section:hint1 -->
+Process `input.rules` in order, maintaining the accumulated policy built from `baseRules` and all earlier trigger rules as implications. For each rule, first test whether its trigger condition is ever reachable under the accumulated policy, and if it is reachable, test whether its effect can ever fail when the trigger fires.
+
+<!-- section:hint2 -->
+Create a fresh `Model` with `m.bool(input.vars)` for each Z3 check (`await m.check({ solver: "z3" })`). A rule is dead if `prior` plus `r.condition` is `"Unsat"`; otherwise it is redundant if `prior` plus `r.condition` plus `not(r.effect)` is `"Unsat"`. Always append `implies(r.condition, r.effect)` to `prior` before moving to the next rule, and sort both output arrays lexicographically.

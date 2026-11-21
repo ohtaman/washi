@@ -40,11 +40,6 @@ export interface P047Output {
 }
 
 export async function solve(input: P047Input): Promise<P047Output> {
-  // TODO:
-  // 1. Create m.bool(input.vars) and assert every rule in input.hardRules.
-  // 2. For each soft rule k, create a binary relaxation indicator viol[k] = m.binary(...) and assert:
-  //    or(softExpr[k], expr`${viol[k]} == 1`).
-  // 3. Minimize dot(weights, viol) with await m.solve({ solver: "z3" }) and return
-  //    { assignment, violatedRules, totalPenalty }.
+  // TODO: Enforce all hard rules, relax soft rules with weighted penalty indicators, and minimize total penalty with Z3.
   throw new Error("Not implemented");
 }

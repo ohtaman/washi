@@ -56,11 +56,6 @@ export interface P050Output {
 }
 
 export async function solve(input: P050Input): Promise<P050Output> {
-  // TODO:
-  // 1. Check joint consistency of hardRules + softRules using m.check({ solver: "z3" }).
-  //    If "Sat", return { consistent: true, minimalCore: [], relaxedRules: [], repairCost: 0, repairedAssignment }.
-  // 2. If "Unsat", extract a minimal unsatisfiable subset (minimalCore) via res.unsatCore + deletion contraction.
-  // 3. Solve a weighted MaxSAT repair model over hardRules + relaxed softRules via m.solve({ solver: "z3" })
-  //    to compute minimum-weight relaxedRules, repairCost, and repairedAssignment.
+  // TODO: Check joint consistency, extract a minimal unsat core if inconsistent, and synthesize a minimum-cost repair with Z3.
   throw new Error("Not implemented");
 }

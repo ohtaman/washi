@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 A security policy engine defines operational rules over Boolean request flags and bounded integer attributes, alongside a required safety invariant that every admissible state is expected to guarantee.
 
-To formally verify the policy by refutation, assert all policy rules together with the logical negation of the safety invariant. If the combined SMT formula is satisfiable, return a concrete counterexample state; if unsatisfiable, confirm that no violation exists.
+Determine whether any state satisfies all policy rules while violating the safety invariant. If such a state exists, return a concrete counterexample; otherwise confirm that no violation exists.
 
 <!-- section:io -->
 ### Input
@@ -54,3 +54,10 @@ To formally verify the policy by refutation, assert all policy rules together wi
 ```
 
 This packet satisfies every policy rule (`portTier = 1` with `external = true` triggers `allowSsh = true`) yet violates `safeInvariant` because `mfaVerified = false`.
+
+
+<!-- section:hint1 -->
+Declare one Boolean variable per entry in `boolVars` and one bounded integer variable per entry in `intVars`, then compile the policy rules using `compileSmt`. To search for a counterexample, ask the solver for a state that satisfies all policy rules while falsifying the safety invariant.
+
+<!-- section:hint2 -->
+Use `m.bool(input.boolVars)` and `m.integer(spec.name, { lb: spec.lb, ub: spec.ub })`, add every rule in `input.rules`, and assert `not(compileSmt(input.safeInvariant, bools, ints))`. Call `await m.check({ solver: "z3" })`: `"Sat"` yields a concrete counterexample via `.value` (round integer values with `Math.round`), while `"Unsat"` proves the invariant holds.
