@@ -1,14 +1,15 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    baseline,
+    unavailable,
+    demands,
+    max_shifts,
+    worker_costs,
+    disruption_weight,
+) -> dict:
     """Return {"schedule": list[list[int]], "hammingDistance": int, "totalObjective": float}."""
-    baseline = input_data["baseline"]
-    unavailable = input_data["unavailable"]
-    demands = input_data["demands"]
-    max_shifts = input_data["maxShifts"]
-    worker_costs = input_data["workerCosts"]
-    disruption_weight = input_data["disruptionWeight"]
     m_workers = len(baseline)
     n_slots = len(demands)
 

@@ -76,8 +76,11 @@ export function extractTsSolveBody(source: string): string | null {
 /** Return the indented body of `def solve(...)` (Python). */
 export function extractPySolveBody(source: string): string | null {
   const lines = source.split("\n");
-  const idx = lines.findIndex((l) => /^def\s+solve\s*\(/.test(l));
+  let idx = lines.findIndex((l) => /^def\s+solve\s*\(/.test(l));
   if (idx < 0) return null;
+  while (idx < lines.length && !/\)\s*(->\s*[^:]+)?:\s*$/.test(lines[idx])) {
+    idx++;
+  }
   const body: string[] = [];
   for (let i = idx + 1; i < lines.length; i++) {
     const line = lines[i];

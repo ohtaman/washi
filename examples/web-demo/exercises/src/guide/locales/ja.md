@@ -2,11 +2,11 @@
 
 **数理最適化100本ノック** を進めるうえで必要な、問題の読み方・モデリングの基本用語・採点結果の見方をまとめたリファレンスです。
 
-## 1. 採点の仕組み（`solve(input)`） {#solve-contract}
+## 1. 採点の仕組み（`solve()`） {#solve-contract}
 
-- どの問題も、入力を受け取って結果の JSON オブジェクト（Python なら `dict`）を返す関数 **`solve(input)`** を 1 つ実装します。
+- どの問題も、**WaSHI (TypeScript)** では入力オブジェクトを受け取る **`solve(input)`**、**PuLP (Python)** では各入力フィールドを `snake_case` に変換して引数で受け取る **`solve(field_1, field_2, ...)`** を 1 つ実装し、結果のオブジェクト（Python なら `dict`）を返します。
 - **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、せっかくなので、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
-- **「実行して採点」** を押すと、テストケースごとに `solve(input)` が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
+- **「実行して採点」** を押すと、テストケースごとに `solve` 関数が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
 - **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。
 
 ## 2. モデルの基本構成要素 {#building-blocks}

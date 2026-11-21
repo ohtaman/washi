@@ -1,11 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(budget, costs, values) -> dict:
     """Return {"selected": list[int], "totalValue": float}."""
-    budget = input_data["budget"]
-    costs = input_data["costs"]
-    values = input_data["values"]
     n = len(costs)
 
     prob = pulp.LpProblem("project_knapsack", pulp.LpMaximize)

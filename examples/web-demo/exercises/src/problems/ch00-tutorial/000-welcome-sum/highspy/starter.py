@@ -1,4 +1,4 @@
-def solve(input_data: dict) -> dict:
+def solve(a, b) -> dict:
     """Return {"sum": int}."""
-    # TODO: Return {"sum": input_data["a"] + input_data["b"]}
+    # TODO: Return {"sum": a + b}
     return {"sum": 0}

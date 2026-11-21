@@ -1,13 +1,10 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(margins, fixed_costs, capacities, material_usages, material_cap) -> dict:
     """Return {"open": list[int], "quantities": list[float], "netProfit": float}."""
-    margins = input_data["margins"]
-    fixed_costs = input_data["fixedCosts"]
-    capacities = input_data["capacities"]
-    mat_usages = input_data["materialUsages"]
-    mat_cap = input_data["materialCap"]
+    mat_usages = material_usages
+    mat_cap = material_cap
     n = len(margins)
 
     prob = pulp.LpProblem("line_activation", pulp.LpMaximize)

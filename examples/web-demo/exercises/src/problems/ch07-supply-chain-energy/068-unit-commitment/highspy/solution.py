@@ -1,16 +1,18 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    demands,
+    p_min,
+    p_max,
+    ramp_limit,
+    min_up,
+    min_down,
+    startup_costs,
+    fuel_costs,
+) -> dict:
     """Return {"commitment": list[list[int]], "generation": list[list[float]], "totalCost": float}."""
-    demands = input_data["demands"]
-    p_min = input_data["pMin"]
-    p_max = input_data["pMax"]
-    ramp = input_data["rampLimit"]
-    min_up = input_data["minUp"]
-    min_down = input_data["minDown"]
-    startup_costs = input_data["startupCosts"]
-    fuel_costs = input_data["fuelCosts"]
+    ramp = ramp_limit
     G = len(p_min)
     T = len(demands)
 

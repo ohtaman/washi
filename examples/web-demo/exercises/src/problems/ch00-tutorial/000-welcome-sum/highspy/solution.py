@@ -1,3 +1,3 @@
-def solve(input_data: dict) -> dict:
+def solve(a, b) -> dict:
     """Return {"sum": int}."""
-    return {"sum": input_data["a"] + input_data["b"]}
+    return {"sum": a + b}

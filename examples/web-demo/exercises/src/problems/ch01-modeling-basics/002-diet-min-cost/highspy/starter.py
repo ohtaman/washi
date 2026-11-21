@@ -1,7 +1,7 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(min_protein, min_fiber) -> dict:
     """Return {"oats": float, "beans": float, "totalCost": float}."""
     prob = pulp.LpProblem("diet", pulp.LpMinimize)
 

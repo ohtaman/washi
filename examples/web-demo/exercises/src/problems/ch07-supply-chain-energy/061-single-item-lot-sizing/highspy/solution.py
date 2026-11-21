@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(demands, setup_costs, prod_costs, hold_costs, capacities) -> dict:
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "totalCost": float}."""
-    demands = input_data["demands"]
-    setup_costs = input_data["setupCosts"]
-    prod_costs = input_data["prodCosts"]
-    hold_costs = input_data["holdCosts"]
-    capacities = input_data["capacities"]
     T = len(demands)
 
     prob = pulp.LpProblem("single_item_lot_sizing_fl", pulp.LpMinimize)

@@ -1,15 +1,19 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    durations,
+    priorities,
+    compatible,
+    num_sessions,
+    regular_capacity,
+    max_overtime,
+    overtime_cost,
+) -> dict:
     """Return {"assignedRoom": list[int], "assignedSession": list[int], "overtime": list[list[float]], "netScore": float}."""
-    durations = input_data["durations"]
-    priorities = input_data["priorities"]
-    compatible = input_data["compatible"]
-    num_sessions = input_data["numSessions"]
-    reg_cap = input_data["regularCapacity"]
-    max_ot = input_data["maxOvertime"]
-    ot_cost = input_data["overtimeCost"]
+    reg_cap = regular_capacity
+    max_ot = max_overtime
+    ot_cost = overtime_cost
     num_cases = len(durations)
     num_rooms = len(compatible[0])
 

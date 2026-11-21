@@ -59,13 +59,17 @@ async function ensurePyodideWithHighspy(): Promise<PyodideInstance> {
       // Register persistent JSON serializer & harness once per worker lifecycle.
       // Execute synchronously via runPython() inside the Web Worker (no runPythonAsync / JSPI).
       pyodide.runPython(`
-import json, math, io, contextlib, traceback
+import json, math, io, contextlib, re, traceback
 import highspy
 import pulp
 try:
     import numpy as np
 except Exception:
     np = None
+
+def _washi_to_snake(name):
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
 
 def __washi_to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
@@ -193,13 +197,13 @@ def __washi_run_batch(code_str, inputs_json):
             exec(compile(code_str, "solution.py", "exec"), ns)
             fn = ns.get("solve")
             if not callable(fn):
-                raise RuntimeError("Could not find Python function solve(input_data).")
+                raise RuntimeError("Could not find Python function solve(...).")
             outputs = []
             metrics = []
             for inp in inputs:
                 _washi_tracked_models.clear()
                 _washi_tracked_pulp_models.clear()
-                raw_out = fn(inp)
+                raw_out = fn(**{_washi_to_snake(k): v for k, v in inp.items()})
                 outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(_washi_current_metrics())
         return json.dumps({

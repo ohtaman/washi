@@ -7,6 +7,7 @@ import { applySolverStatusToVerdict } from "../examples/web-demo/exercises/src/p
 import { parseProblemMarkdown, renderSafeMarkdown } from "../examples/web-demo/exercises/src/ui/markdown.js";
 import { runWashiExerciseCode } from "../examples/web-demo/exercises/src/runner/washi-runner.js";
 import { CHAPTERS, PROBLEMS } from "../examples/web-demo/exercises/src/problems/registry.js";
+import { extractPySolveParams, toSnakeCase } from "./helpers/exercises-chapter-harness.js";
 
 const GAMEY_COPY_RE =
   /\bBoss\b|\u30dc\u30b9|\u{1f451}|\u30af\u30a8\u30b9\u30c8|\u6483\u7834|\u901a\u5173|\u5173\u5361|\u9053\u5834|\u9053\u573a|\u6311\u6226/ui;
@@ -47,11 +48,15 @@ function runHighspyBatch(
   jobs: Array<{ id: string; code: string; inputs: unknown[] }>
 ): Record<string, { ok: boolean; outputs?: unknown[]; error?: string }> {
   const script = `
-import json, sys, traceback, math
+import json, re, sys, traceback, math
 try:
     import numpy as np
 except Exception:
     np = None
+
+def to_snake(name):
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
 
 def to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
@@ -83,8 +88,8 @@ for job in jobs:
         exec(compile(job["code"], f"solution_{job['id']}.py", "exec"), ns)
         fn = ns.get("solve")
         if not callable(fn):
-            raise RuntimeError("Missing solve(input_data) function")
-        outs = [to_jsonable(fn(inp)) for inp in job["inputs"]]
+            raise RuntimeError("Missing solve() function")
+        outs = [to_jsonable(fn(**{to_snake(k): v for k, v in inp.items()})) for inp in job["inputs"]]
         results[job["id"]] = {"ok": True, "outputs": outs}
     except Exception:
         results[job["id"]] = {"ok": False, "error": traceback.format_exc()}
@@ -137,7 +142,11 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(prob.washiStarter).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
       expect(prob.washiSolution).toContain(`interface P${prob.meta.id}Output`);
       expect(prob.washiSolution).toContain(`solve(input: P${prob.meta.id}Input): Promise<P${prob.meta.id}Output>`);
-      expect(prob.highspyStarter).toContain("def solve(input_data: dict) -> dict:");
+      const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>).map(
+        toSnakeCase
+      );
+      expect(extractPySolveParams(prob.highspyStarter)).toEqual(expectedPyParams);
+      expect(extractPySolveParams(prob.highspySolution)).toEqual(expectedPyParams);
       expect(prob.highspyStarter).toContain('"""Return {');
       expect(prob.highspySolution).toContain('"""Return {');
       expect(prob.meta.runtimes).toEqual(["washi", "highspy"]);

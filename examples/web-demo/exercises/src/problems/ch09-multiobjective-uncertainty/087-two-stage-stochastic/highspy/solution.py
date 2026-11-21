@@ -1,14 +1,15 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    order_costs,
+    shortage_costs,
+    salvage_values,
+    warehouse_cap,
+    probs,
+    demands,
+) -> dict:
     """Return {"orders": list[float], "expectedCost": float}."""
-    order_costs = input_data["orderCosts"]
-    shortage_costs = input_data["shortageCosts"]
-    salvage_values = input_data["salvageValues"]
-    warehouse_cap = input_data["warehouseCap"]
-    probs = input_data["probs"]
-    demands = input_data["demands"]
     n = len(order_costs)
     S = len(probs)
 
