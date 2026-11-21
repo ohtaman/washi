@@ -35,12 +35,6 @@ export interface P049Output {
 }
 
 export async function solve(input: P049Input): Promise<P049Output> {
-  // TODO:
-  // 1. Declare express (m.bool), expFlag (m.binary), and continuous start/end/tardy variables.
-  // 2. Link express[i] with expFlag[i], enforce mode-dependent windows/durations via implies(...),
-  //    blackout avoidance via or(end[i] <= blackout[0], start[i] >= blackout[1]),
-  //    pairwise dock non-overlap via or(end[i] <= start[j], end[j] <= start[i]),
-  //    sum(expFlag) <= maxExpress, and tardy[i] >= end[i] - dueTime.
-  // 3. Minimize express fees + tardiness penalties via await m.solve({ solver: "z3" }).
+  // TODO: Model mode choices, time windows, blackout/dock disjunctions, and tardiness, then minimize total cost with Z3.
   throw new Error("Not implemented");
 }

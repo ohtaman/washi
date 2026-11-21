@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 在部署新规或复盘历史调度事件时，审计系统无需执行求解搜索，而是直接对照形式化布尔与线性整数规则对既有记录进行确定性校验。
 
-请根据输入构造包含布尔变量、有界整数变量和命名规则的模型，对候选历史赋值运行校验，返回整体是否合规以及所有违规规则 ID（按字典序排列）。
+给定布尔变量、有界整数变量、命名合规规则以及历史变量赋值，在不调用求解器搜索的情况下对该赋值执行确定性审计，返回是否全部合规以及按字典序排列的违规规则 ID 列表。
 
 <!-- section:io -->
 ### 输入
@@ -57,3 +57,10 @@
 ```
 
 在 `candidateValues` 下，`R1`（`nightShift` 与 `seniorOnDuty` 均为 `true`）、`R2`（`hazardFlag = false` 自动成立）和 `R3`（`overtimeHours = 2 <= 4`）均满足要求。
+
+
+<!-- section:hint1 -->
+在模型中声明布尔变量和有界整数变量，并以每条合规规则的 ID 作为约束名称进行注册，以便按名称归因违规规则。随后直接针对模型验证给定的历史赋值，而无需运行求解器搜索。
+
+<!-- section:hint2 -->
+使用 `m.bool(input.boolVars)`、`m.integer(spec.name, { lb: spec.lb, ub: spec.ub })` 和 `m.constraint(compileSmt(r.expr, bools, ints), r.id)`。调用 `m.verify({ values: input.candidateValues })`（同步方法，无需 Z3 搜索），从 `report.violations` 中收集去重后的 `v.name` 并按字典序排序。

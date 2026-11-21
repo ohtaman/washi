@@ -62,3 +62,10 @@
 ```
 
 由于 `app@1.0` 与 `legacy@1.0` 冲突，无法选择 `http@1.0`，因此最少安装 `3` 个软件包：`{ app@1.0, http@2.0, tls@1.2 }`。
+
+
+<!-- section:hint1 -->
+为每一对 `(package, version)` 引入一个布尔选择变量。限制每个软件包至多安装一个版本、每个根软件包必须安装一个版本，并在这些选择变量上表达依赖与冲突约束，同时最小化已安装软件包的总数。
+
+<!-- section:hint2 -->
+由于 Z3 最小化的是算术 `Var` 表达式，而逻辑组合子（`implies`、`or`、`not`、`and`）作用于 `BoolVar`，请将每个 `m.bool(...)` 与一个 `m.binary(...)` 指示变量配对，并用双向 `implies` 关联。使用 `minimize(sum(allUsed))` 与 `await m.solve({ solver: "z3" })` 求解，并检查 `res.status === "Optimal"`。

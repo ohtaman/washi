@@ -56,3 +56,10 @@
 ```
 
 `tls = true, legacyApi = false, fastMode = false, audit = true` とすると全ハードルールを満たし、違反は `S2` のみで最小ペナルティ合計 `2` となります（`S1` を破る場合の重み `5` より小さい値です）。
+
+
+<!-- section:hint1 -->
+`vars` に対応する真偽値変数でシステム状態を表現し、各ソフトルールにはそのルールを緩和（違反）することを許す二値緩和指示変数を 1 つずつ対応づけます。すべてのハードルールを無条件に課し、緩和指示変数の重み付き和を最小化します。
+
+<!-- section:hint2 -->
+`m.bool(input.vars)` と各ソフトルール `k` 用の `m.binary(...)` 指示変数 `viol[k]` を宣言し、ソフトルールは `or(softExpr, expr\`${viol[k]} == 1\`)` として登録します。正の重みのもとで `minimize(dot(weights, viol))` を `await m.solve({ solver: "z3" })` で解けば、満たせるソフトルールでは自然に `viol[k] = 0` になります。

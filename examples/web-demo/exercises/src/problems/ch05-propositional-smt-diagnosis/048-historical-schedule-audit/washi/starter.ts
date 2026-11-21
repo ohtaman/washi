@@ -72,15 +72,7 @@ function compileSmt(
 
 export async function solve(input: P048Input): Promise<P048Output> {
   const m = new Model("HistoricalAudit");
-  const bools = m.bool(input.boolVars);
-  const ints: Record<string, Var> = {};
-  for (const spec of input.intVars) {
-    ints[spec.name] = m.integer(spec.name, { lb: spec.lb, ub: spec.ub });
-  }
 
-  // TODO:
-  // 1. Register each rule r in input.rules on m with name r.id.
-  // 2. Call m.verify({ values: input.candidateValues }) (without solving!).
-  // 3. Extract unique violated rule names sorted lexicographically and return { valid: report.valid, violatedRules }.
+  // TODO: Declare variables, register named rules, verify candidateValues without solving, and return sorted violations.
   throw new Error("Not implemented");
 }

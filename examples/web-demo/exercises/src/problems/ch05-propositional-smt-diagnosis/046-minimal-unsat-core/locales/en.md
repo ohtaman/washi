@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 When a collection of named Boolean and bounded-integer rules is unsatisfiable, a raw solver core may still contain extra rules that are not strictly needed for the contradiction.
 
-Extract an irreducible minimal unsatisfiable subset (MUS) by starting from Z3's unsatisfiable core and applying deletion-based contraction: keep only rules whose removal makes the remaining subset satisfiable.
+Extract an irreducible minimal unsatisfiable subset (MUS) of rule IDs—a subset that is unsatisfiable, such that removing any single rule from it makes the remaining subset satisfiable—and return the IDs sorted lexicographically.
 
 <!-- section:io -->
 ### Input
@@ -47,3 +47,10 @@ Extract an irreducible minimal unsatisfiable subset (MUS) by starting from Z3's 
 ```
 
 `{ R1, R2, R4 }` is unsatisfiable (`a = true`, `a => b`, `not(b)`), and removing any one of those three rules leaves a satisfiable subset.
+
+
+<!-- section:hint1 -->
+Start from a candidate unsatisfiable subset of rules (such as the raw unsatisfiable core returned by the solver) and iteratively test whether each rule is essential. Whenever removing a rule leaves the remaining subset unsatisfiable, drop that rule permanently.
+
+<!-- section:hint2 -->
+Attach each rule's ID as its constraint name (`m.constraint(compileSmt(r.expr, bools, ints), r.id)`) so `await m.check({ solver: "z3" })` populates `res.unsatCore` when `"Unsat"`. For deletion-based contraction, build a fresh `Model` for each candidate subset without `ruleId`; if it is still `"Unsat"`, shrink the candidate to `res.unsatCore` (or drop `ruleId`), then sort the final `coreRules` lexicographically.

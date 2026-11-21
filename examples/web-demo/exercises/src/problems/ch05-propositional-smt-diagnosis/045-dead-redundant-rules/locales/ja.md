@@ -49,3 +49,10 @@
 ```
 
 基本ルール `guest => not(admin)` により `R2` は発火不能（デッド）であり、`admin => mfa` と `R1`（`admin => audit`）から `R3` の帰結が常に従うため `R3` は冗長です。
+
+
+<!-- section:hint1 -->
+`baseRules` と先行するトリガールールの含意を蓄積したポリシーを保持しながら、`input.rules` を先頭から順に処理します。各ルールについて、まず蓄積ポリシーのもとでトリガー条件が到達可能かを調べ、到達可能であればトリガー発火時に帰結が破られ得るかを調べます。
+
+<!-- section:hint2 -->
+Z3 判定（`await m.check({ solver: "z3" })`）ごとに `m.bool(input.vars)` を持つ新しい `Model` を作成します。`prior` と `r.condition` が `"Unsat"` なら dead、そうでなければ `prior`・`r.condition`・`not(r.effect)` の組が `"Unsat"` なら redundant です。次のルールへ進む前に `implies(r.condition, r.effect)` を `prior` に追加し、両配列を辞書順にソートして返してください。

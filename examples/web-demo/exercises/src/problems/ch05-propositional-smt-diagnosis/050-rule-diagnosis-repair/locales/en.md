@@ -64,3 +64,10 @@ First check whether all hard and soft rules are jointly consistent. If consisten
 ```
 
 `{ H1, H2, S1, S2 }` forms the irreducible conflict (`prod => mfa`, `not(mfa && legacy)`, `prod`, `legacy`); relaxing `S2` (weight `2`) restores full feasibility with `prod = mfa = audit = true, legacy = false, tier = 2`.
+
+
+<!-- section:hint1 -->
+Structure the workflow in two stages over the same Boolean and bounded integer state variables: first check joint satisfiability of all hard and soft rules together; if unsatisfiable, extract an irreducible minimal core over all named rules and separately solve a weighted soft-rule relaxation problem.
+
+<!-- section:hint2 -->
+For consistency and MUS extraction, register every hard and soft rule with its `id` as the constraint name and use `await m.check({ solver: "z3" })` plus `res.unsatCore` with deletion-based contraction. For minimum-weight repair, keep hard rules unconditional, pair each soft rule with a binary relaxation indicator `viol[k]` via `or(softExpr, expr\`${viol[k]} == 1\`)`, and minimize `dot(weights, viol)` with `await m.solve({ solver: "z3" })`.

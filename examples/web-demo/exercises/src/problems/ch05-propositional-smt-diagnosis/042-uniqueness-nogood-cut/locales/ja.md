@@ -52,3 +52,10 @@
 ```
 
 割当 `a = true, b = true, c = false, d = true` を各ルールに代入すると 4 本すべてが成り立ち、さらに `["a", "b", "c", "d"]` の他の真理値割当はいずれも全ルールを同時に満たさないため、`satisfiable: true` かつ `unique: true` となります。
+
+
+<!-- section:hint1 -->
+`vars` の各要素に対して真偽値変数を宣言し、すべてのルールをモデルに追加します。まず 1 回解いて充足割当を探し、見つかった場合はその真理値ベクトルを禁止して別の解が残るかを再確認します。
+
+<!-- section:hint2 -->
+`m.bool(input.vars)` と `await m.check({ solver: "z3" })` で最初の充足可能性を判定します。見つかった割当 `a` を排除するには、各変数 `v` について `a[v]` が真なら `not(bools[v])`、偽なら `bools[v]` を並べた `or(...)` による禁止節（no-good cut）を追加し、再度 `m.check({ solver: "z3" })` を実行して `"Unsat"` なら一意（`unique = true`）と判定します。

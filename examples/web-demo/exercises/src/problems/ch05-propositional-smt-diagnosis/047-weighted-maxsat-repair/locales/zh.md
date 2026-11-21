@@ -56,3 +56,10 @@
 ```
 
 令 `tls = true, legacyApi = false, fastMode = false, audit = true` 满足全部硬规则，仅违背 `S2`，总惩罚权重为 `2`（优于违背 `S1` 的权重 `5`）。
+
+
+<!-- section:hint1 -->
+为 `vars` 声明布尔变量来表示系统状态，并为每条软规则配对一个二元松弛指示变量，当该软规则被允许违反时取 `1`。无条件强制所有硬规则，并最小化松弛指示变量的加权和。
+
+<!-- section:hint2 -->
+声明 `m.bool(input.vars)` 以及每条软规则 `k` 对应的 `m.binary(...)` 指示变量 `viol[k]`，并用 `or(softExpr, expr\`${viol[k]} == 1\`)` 保护每条软规则——在正权重下通过 `minimize(dot(weights, viol))` 与 `await m.solve({ solver: "z3" })` 求解时，只要软规则能够成立，`viol[k]` 就会自然取 `0`。

@@ -33,19 +33,13 @@ function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): Logi
   if ("not" in node) return not(compileFormula(node.not, bools));
   if ("and" in node) return and(...node.and.map((c) => compileFormula(c, bools)));
   if ("or" in node) return or(...node.or.map((c) => compileFormula(c, bools)));
-  // TODO: Implement the "implies" and "xor" branches using implies(...) and xor(...)
+  // TODO: Implement the "implies" and "xor" branches.
   throw new Error("Not implemented: handle implies and xor");
 }
 
 export async function solve(input: P041Input): Promise<P041Output> {
   const m = new Model("PropositionalSAT");
-  const bools = m.bool(input.vars);
 
-  // TODO: Register each compiled rule on m, call await m.check({ solver: "z3" }),
-  // and return { satisfiable: true, assignment } when res.status === "Sat",
-  // or { satisfiable: false, assignment: null } otherwise.
-  input.rules.forEach((rule, i) => {
-    m.constraint(compileFormula(rule, bools), `rule_${i}`);
-  });
+  // TODO: Declare Boolean variables, add the compiled rules, and check satisfiability with Z3.
   throw new Error("Not implemented");
 }

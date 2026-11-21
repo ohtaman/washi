@@ -316,5 +316,6 @@ registerChapterExerciseSuite({
   usesZ3: true,
   extractObjective,
   checkAdversarial: checkCh05Adversarial,
+  enforceScaffoldPolicy: true,
   timeoutMs: 180_000,
 });
