@@ -4,9 +4,9 @@
   "chapter": 10,
   "order": 7,
   "role": "applied",
-  "scaffold": "fill-in",
+  "scaffold": "scratch",
   "difficulty": 5,
-  "estimatedMinutes": 35,
+  "estimatedMinutes": 45,
   "paradigms": [
     "LP",
     "MIP"

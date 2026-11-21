@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 In Sales & Operations Planning (S&OP), production planners inherit hard engineering mandates together with weighted soft management policies that may mutually contradict or collectively fail to cover aggregate customer demand. Before computing a production schedule, an engineer must isolate the contradiction and minimally repair the policy set.
 
-Build a two-phase WaSHI hybrid solver pipeline. First, use Z3 SMT feasibility checking and unsatCore conflict extraction inside an Implicit Hitting Set loop to drop the minimum-weight subset of soft policies needed to restore satisfiability across all hard mandates and total demand capacity. Second, solve a HiGHS mixed-integer program over the repaired policies to allocate production quantities while minimizing fixed startup costs, unit production costs, and disruption penalties relative to the baseline line schedule.
+Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming. First, identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable. Second, allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
 
 <!-- section:io -->
 ### Input
@@ -60,3 +60,9 @@ Build a two-phase WaSHI hybrid solver pipeline. First, use Z3 SMT feasibility ch
 ```
 
 Dropping `soft_idle_2` (weight `10 < 18`) resolves the contradiction with `hard_min_backup`. Running `[1, 1, 1, 0]` incurs fixed cost `400`, production cost `760`, and one line flip penalty `40`, totaling **1200**.
+
+<!-- section:hint1 -->
+Split the problem into two sequential stages. Stage 1 finds a minimum-weight subset of soft rules to drop so that the remaining rules and total capacity can satisfy demand. Stage 2 fixes the surviving rule set and solves a production-rescheduling MIP for binary line activations, continuous production quantities, and deviations from `baselineActive`.
+
+<!-- section:hint2 -->
+In Stage 1, run an Implicit Hitting Set loop: build a Z3 model (`await smt.check({ solver: "z3" })`) linking boolean line variables to binary integers for capacity coverage, assert hard and non-dropped soft rules named by `rule.id`, and whenever `status === "Unsat"`, read `res.unsatCore` to add a hitting-set cut ($\sum_{r \in \text{core} \cap \text{soft}} \text{drop}_r \ge 1$) to a HiGHS binary drop-selection MIP minimizing $\sum_r w_r \text{drop}_r$. In Stage 2, model disruption with $\delta_i \ge y_i - \text{baseline}_i$ and $\delta_i \ge \text{baseline}_i - y_i$ in a HiGHS MIP over the retained rules.

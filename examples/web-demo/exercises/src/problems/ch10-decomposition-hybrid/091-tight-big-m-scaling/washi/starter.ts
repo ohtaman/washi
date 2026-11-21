@@ -15,22 +15,6 @@ export interface P091Output {
 }
 
 export async function solve(input: P091Input): Promise<P091Output> {
-  const n = input.fixedCosts.length;
-  const m = new Model("TightBigMProduction");
-
-  const open = m.binary(n, { prefix: "open" });
-  const quantities = input.capacities.map((cap, i) =>
-    m.continuous(`qty_${i}`, { lb: 0, ub: Math.min(cap, input.demand) })
-  );
-
-  // TODO:
-  // 1. Link each production variable using tight instance-derived Big-M:
-  //    M_i = Math.min(input.capacities[i], input.demand)
-  //    quantities[i] <= M_i * open[i]
-  // 2. Enforce total production sum(quantities) >= input.demand
-  // 3. Minimize dot(input.fixedCosts, open) + dot(input.unitCosts, quantities)
-  // 4. Call await m.relax() to record lpBound = m.objectiveValue!,
-  //    then call await m.solve() for the integer solution, and return
-  //    { open, quantities, totalCost, lpBound }
+  // TODO: Build and solve the tight Big-M MIP and its LP relaxation, then return the output.
   throw new Error("Not implemented");
 }

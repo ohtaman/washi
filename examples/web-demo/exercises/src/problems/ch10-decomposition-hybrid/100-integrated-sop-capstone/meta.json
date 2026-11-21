@@ -4,9 +4,9 @@
   "chapter": 10,
   "order": 10,
   "role": "capstone",
-  "scaffold": "fill-in",
+  "scaffold": "scratch",
   "difficulty": 5,
-  "estimatedMinutes": 45,
+  "estimatedMinutes": 60,
   "paradigms": [
     "LP",
     "MIP",
