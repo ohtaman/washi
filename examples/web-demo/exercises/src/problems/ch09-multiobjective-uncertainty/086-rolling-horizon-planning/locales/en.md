@@ -56,3 +56,10 @@ However, only the immediate production decision for the current period is commit
 ```
 
 Planning with `windowLen = 2` commits `[20, 20, 10, 10]`, maintaining realized inventories `[10, 20, 0, 0]` and zero shortfalls for total cost $(20 \times 9 + 20 \times 13 + 10 \times 25 + 10 \times 11) + 2 \times (10 + 20) =$ **860**.
+
+
+<!-- section:hint1 -->
+Simulate the planning horizon one period at a time while carrying forward the realized inventory. At each period, build and solve a fresh lookahead linear program over a bounded lookahead window with production, ending-inventory, and shortfall decisions for each period in the window.
+
+<!-- section:hint2 -->
+Inside each lookahead LP, optimize strictly against `forecastDemands` (truncated at the horizon end)—never peek at `actualDemands`. Commit only the first period's production decision from that LP, then update the true inventory and realized shortfall against `actualDemands[t]` and accumulate the realized period cost.

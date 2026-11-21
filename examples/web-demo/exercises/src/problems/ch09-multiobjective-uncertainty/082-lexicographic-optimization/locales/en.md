@@ -50,3 +50,10 @@ First, find the minimum achievable unmet demand shortfall within the crew budget
 ```
 
 Selecting units 2 and 3 uses $4 + 2 = 6 \le 6$ crews and covers $15 + 8 = 23 \ge 22$ demand (`obj1 = 0`), with secondary operating cost $260 + 120 =$ **380**.
+
+
+<!-- section:hint1 -->
+Solve two sequential mixed-integer programs over binary unit-selection variables and the crew-capacity constraint. Stage 1 introduces a non-negative continuous shortfall variable to find the smallest achievable unmet demand; Stage 2 fixes that minimum shortfall bound (plus any allowed slack) as a hard constraint and minimizes secondary operating cost.
+
+<!-- section:hint2 -->
+Avoid combining both objectives with a single large weight, which can fail to preserve strict priority or respect the exact degradation tolerance `slack`. In Stage 2, enforce $\text{covered} \ge \text{targetDemand} - (\text{bestObj1} + \text{slack})$ (with a small tolerance if needed for floating-point `bestObj1`, or compute `obj1` cleanly from the Stage-2 `selected` vector via `Math.max(0, targetDemand - covered)`), and round binary selections using `Math.round(v.value!)` in WaSHI or `round(pulp.value(v))` in PuLP.

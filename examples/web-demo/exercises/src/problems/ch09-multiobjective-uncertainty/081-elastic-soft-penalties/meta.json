@@ -4,9 +4,9 @@
   "chapter": 9,
   "order": 1,
   "role": "intro",
-  "scaffold": "fill-in",
-  "difficulty": 2,
-  "estimatedMinutes": 8,
+  "scaffold": "scratch",
+  "difficulty": 3,
+  "estimatedMinutes": 12,
   "paradigms": [
     "LP"
   ],

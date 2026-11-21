@@ -50,3 +50,10 @@
 ```
 
 选择单元 2 与 3 消耗人力 $4 + 2 = 6 \le 6$，覆盖能力为 $15 + 8 = 23 \ge 22$（`obj1 = 0`），运营总成本为 $260 + 120 =$ **380**。
+
+
+<!-- section:hint1 -->
+使用表示各单元是否被选中的二元决策变量及班组容量约束，依次求解两个混合整数规划（MIP）模型。第一阶段引入一个非负连续短缺量变量来求得可达到的最小未满足需求；第二阶段将该最小短缺量加上允许退化松弛量作为硬约束固定下来，再最小化次级运营成本。
+
+<!-- section:hint2 -->
+不要试图用大权重将两个目标合并为单目标加权和，因为这可能破坏严格优先级或无法准确满足退化容差 `slack`。在第二阶段中施加约束 $\text{covered} \ge \text{targetDemand} - (\text{bestObj1} + \text{slack})$，并根据第二阶段求得的 `selected` 向量按 `Math.max(0, targetDemand - covered)` 计算最终的 `obj1`。在 WaSHI 中使用 `Math.round(v.value!)`、在 PuLP 中使用 `round(pulp.value(v))` 对二元解取整。

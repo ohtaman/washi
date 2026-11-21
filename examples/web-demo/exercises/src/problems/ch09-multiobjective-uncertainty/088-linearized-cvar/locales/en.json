@@ -18,7 +18,7 @@
     "m0": "Output must be an object { weights, varThreshold, cvar, totalObjective }.",
     "m1": "weights[{p0}] = {p1} falls outside [0, {p2}].",
     "m2": "Portfolio weights must sum to 1 (received {p0}).",
-    "m3": "varThreshold ({p0}) yields Rockafellar-Uryasev value {p1}, not matching minimum CVaR {p2}. Check that eta is unconstrained (lb: -Infinity).",
+    "m3": "varThreshold ({p0}) yields Rockafellar-Uryasev value {p1}, which does not match minimum CVaR ({p2}).",
     "m4": "Reported cvar ({p0}) does not match exact CVaR ({p1}) for the returned weights.",
     "m5": "Reported totalObjective ({p0}) does not match expected loss plus riskWeight * CVaR ({p1}).",
     "m6": "Feasible portfolio, but totalObjective ({p0}) exceeds minimum ({p1}).",

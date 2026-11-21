@@ -54,3 +54,10 @@ Each product also has a soft production target. Falling below target incurs a pe
 ```
 
 With `quantities = [10, 10, 3]`, machine hours are $2(10) + 2(10) + 2(3) = 46 \le 46$, target deviations are `shortfalls = [0, 0, 7]` and `excesses = [0, 0, 0]`, and total cost is $(4 \times 10 + 5 \times 10 + 3 \times 3) + 15 \times 7 =$ **204**.
+
+
+<!-- section:hint1 -->
+Model three non-negative continuous decision vectors indexed by product: the production quantities, the shortfall below each target, and the excess above each target. Keep the machine-hour limit and minimum total output as hard constraints on the production quantities, while treating each product's target as a soft goal.
+
+<!-- section:hint2 -->
+The key property of elastic target tracking is that when both shortfall and excess penalties are non-negative, expressing a soft target as an equality with non-negative shortfall and excess slacks prevents artificial infeasibility while guaranteeing at least one slack vanishes at an optimum—no binary indicators are needed. Use `m.continuous(...)` in WaSHI or `pulp.LpVariable(..., lowBound=0)` in PuLP.
