@@ -2,14 +2,14 @@ import type { ProblemDefinition } from "../types.js";
 import { hydrateProblem } from "../hydrate.js";
 
 // #031
-import p031Meta from "./031-distinct-assignment/meta.json";
-import p031Cases from "./031-distinct-assignment/cases.json";
-import p031En from "./031-distinct-assignment/locales/en.json";
-import p031Ja from "./031-distinct-assignment/locales/ja.json";
-import p031Zh from "./031-distinct-assignment/locales/zh.json";
-import p031WashiStarter from "./031-distinct-assignment/washi/starter.ts?raw";
-import p031WashiSolution from "./031-distinct-assignment/washi/solution.ts?raw";
-import { judge as p031Judge } from "./031-distinct-assignment/judge.js";
+import p031Meta from "./031-weighted-n-queens/meta.json";
+import p031Cases from "./031-weighted-n-queens/cases.json";
+import p031En from "./031-weighted-n-queens/locales/en.json";
+import p031Ja from "./031-weighted-n-queens/locales/ja.json";
+import p031Zh from "./031-weighted-n-queens/locales/zh.json";
+import p031WashiStarter from "./031-weighted-n-queens/washi/starter.ts?raw";
+import p031WashiSolution from "./031-weighted-n-queens/washi/solution.ts?raw";
+import { judge as p031Judge } from "./031-weighted-n-queens/judge.js";
 
 // #032
 import p032Meta from "./032-element-indexing/meta.json";
@@ -72,14 +72,14 @@ import p037WashiSolution from "./037-2d-rectangle-packing/washi/solution.ts?raw"
 import { judge as p037Judge } from "./037-2d-rectangle-packing/judge.js";
 
 // #038
-import p038Meta from "./038-symmetry-breaking/meta.json";
-import p038Cases from "./038-symmetry-breaking/cases.json";
-import p038En from "./038-symmetry-breaking/locales/en.json";
-import p038Ja from "./038-symmetry-breaking/locales/ja.json";
-import p038Zh from "./038-symmetry-breaking/locales/zh.json";
-import p038WashiStarter from "./038-symmetry-breaking/washi/starter.ts?raw";
-import p038WashiSolution from "./038-symmetry-breaking/washi/solution.ts?raw";
-import { judge as p038Judge } from "./038-symmetry-breaking/judge.js";
+import p038Meta from "./038-graph-coloring-symmetry/meta.json";
+import p038Cases from "./038-graph-coloring-symmetry/cases.json";
+import p038En from "./038-graph-coloring-symmetry/locales/en.json";
+import p038Ja from "./038-graph-coloring-symmetry/locales/ja.json";
+import p038Zh from "./038-graph-coloring-symmetry/locales/zh.json";
+import p038WashiStarter from "./038-graph-coloring-symmetry/washi/starter.ts?raw";
+import p038WashiSolution from "./038-graph-coloring-symmetry/washi/solution.ts?raw";
+import { judge as p038Judge } from "./038-graph-coloring-symmetry/judge.js";
 
 // #039
 import p039Meta from "./039-combinatorial-grid-puzzle/meta.json";
@@ -107,14 +107,14 @@ export const CH04_PROBLEMS: ProblemDefinition[] = [
     rawCases: p031Cases,
     locales: { en: p031En, ja: p031Ja, zh: p031Zh },
     markdownLoaders: {
-      en: () => import("./031-distinct-assignment/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./031-distinct-assignment/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./031-distinct-assignment/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./031-weighted-n-queens/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./031-weighted-n-queens/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./031-weighted-n-queens/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./031-distinct-assignment/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./031-distinct-assignment/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./031-distinct-assignment/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./031-weighted-n-queens/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./031-weighted-n-queens/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./031-weighted-n-queens/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p031WashiStarter,
     washiSolution: p031WashiSolution,
@@ -233,14 +233,14 @@ export const CH04_PROBLEMS: ProblemDefinition[] = [
     rawCases: p038Cases,
     locales: { en: p038En, ja: p038Ja, zh: p038Zh },
     markdownLoaders: {
-      en: () => import("./038-symmetry-breaking/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./038-symmetry-breaking/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./038-symmetry-breaking/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./038-graph-coloring-symmetry/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./038-graph-coloring-symmetry/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./038-graph-coloring-symmetry/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./038-symmetry-breaking/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./038-symmetry-breaking/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./038-symmetry-breaking/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./038-graph-coloring-symmetry/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./038-graph-coloring-symmetry/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./038-graph-coloring-symmetry/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p038WashiStarter,
     washiSolution: p038WashiSolution,
