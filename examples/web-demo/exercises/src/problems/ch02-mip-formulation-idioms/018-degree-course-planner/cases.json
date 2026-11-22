@@ -1,0 +1,75 @@
+[
+  {
+    "id": "case_0",
+    "input": {
+      "interest": [8, 24, 22, 19, 15],
+      "requirements": [
+        [5, 6, 4, 5, 3],
+        [3, 6, 5, 4, 6]
+      ],
+      "caps": [13, 13],
+      "prerequisites": [[0, 3]],
+      "timeConflicts": [[1, 2]]
+    },
+    "expectedOptimal": 42
+  },
+  {
+    "id": "case_1",
+    "input": {
+      "interest": [10, 18, 25, 16, 22, 14],
+      "requirements": [
+        [3, 4, 5, 3, 6, 2],
+        [2, 3, 4, 4, 3, 3],
+        [1, 2, 3, 2, 4, 2]
+      ],
+      "caps": [14, 11, 8],
+      "prerequisites": [[0, 1], [1, 2], [3, 4]],
+      "timeConflicts": [[2, 4], [1, 5]]
+    },
+    "expectedOptimal": 53
+  },
+  {
+    "id": "case_2",
+    "input": {
+      "interest": [5, 30, 18, 20, 14],
+      "requirements": [
+        [6, 4, 5, 4, 3],
+        [4, 5, 3, 4, 4]
+      ],
+      "caps": [12, 11],
+      "prerequisites": [[0, 1], [2, 3]],
+      "timeConflicts": [[1, 3]]
+    },
+    "expectedOptimal": 52
+  },
+  {
+    "id": "case_3",
+    "input": {
+      "interest": [12, 19, 15, 24, 17, 21, 13],
+      "requirements": [
+        [2.5, 3.5, 2.0, 4.5, 3.0, 4.0, 2.5],
+        [1.5, 2.5, 3.0, 2.0, 2.5, 3.5, 2.0]
+      ],
+      "caps": [12.5, 9.5],
+      "prerequisites": [[0, 3], [2, 5]],
+      "timeConflicts": [[1, 4], [3, 6]]
+    },
+    "expectedOptimal": 70
+  },
+  {
+    "id": "case_4",
+    "input": {
+      "interest": [11, 17, 23, 14, 20, 18, 25, 16],
+      "requirements": [
+        [3, 4, 5, 2, 4, 3, 6, 3],
+        [2, 3, 4, 3, 2, 4, 3, 2],
+        [1, 2, 3, 2, 3, 1, 4, 2],
+        [4, 3, 2, 5, 3, 4, 3, 3]
+      ],
+      "caps": [15, 12, 10, 13],
+      "prerequisites": [[0, 2], [3, 6], [1, 4]],
+      "timeConflicts": [[2, 6], [4, 5], [0, 7]]
+    },
+    "expectedOptimal": 57
+  }
+]

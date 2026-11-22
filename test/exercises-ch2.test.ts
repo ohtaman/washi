@@ -11,6 +11,8 @@ function extractCh2Objective(_id: string, output: unknown): number | null {
     "totalValue",
     "netProfit",
     "totalCoveredDemand",
+    "totalEnjoyment",
+    "totalInterest",
   ]) {
     if (typeof rec[key] === "number" && Number.isFinite(rec[key])) {
       return rec[key] as number;
@@ -218,24 +220,39 @@ registerChapterExerciseSuite({
       ).toBe("SUBOPTIMAL");
     }
 
-    // #014: Prerequisite, conjunction trigger, conflict, range violation, and suboptimality
+    // #014: Party invite implication, conflict, group quota, gift range, malformed, and suboptimality
     {
       const p = byId.get("014")!;
       const c0 = p.cases[0];
       expect(
-        p.judge(c0.input, { active: [0, 1, 0, 0, 1], levels: [0, 22, 0, 0, 24], netProfit: 789 }, c0.expectedOptimal, "en").status
-      ).toBe("VIOLATION");
+        p.judge(c0.input, { invite: [1, 1, 1], giftBudget: [8, 19, 18, 10, 0], totalEnjoyment: 329 }, c0.expectedOptimal, "en").status
+      ).toBe("RUNTIME_ERROR");
       expect(
-        p.judge(c0.input, { active: [1, 1, 1, 0, 0], levels: [13, 22, 20, 0, 0], netProfit: 797 }, c0.expectedOptimal, "en").status
-      ).toBe("VIOLATION");
+        p.judge(c0.input, { invite: [1, 1, 1, 1, 0], giftBudget: [8, 19, 18, 10, 0], totalEnjoyment: Number.NaN }, c0.expectedOptimal, "en").status
+      ).toBe("RUNTIME_ERROR");
+      // Implication violation: guest 1 invited without guest 0
       expect(
-        p.judge(c0.input, { active: [0, 0, 1, 0, 1], levels: [0, 0, 20, 0, 24], netProfit: 790 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { invite: [0, 1, 1, 1, 0], giftBudget: [0, 20, 18, 10, 0], totalEnjoyment: 308 }, c0.expectedOptimal, "en").status
       ).toBe("VIOLATION");
+      // Conflict violation: guests 2 and 4 both invited
       expect(
-        p.judge(c0.input, { active: [1, 1, 0, 0, 1], levels: [5, 22, 0, 0, 24], netProfit: 729 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { invite: [1, 0, 1, 0, 1], giftBudget: [8, 0, 18, 0, 22], totalEnjoyment: 274 }, c0.expectedOptimal, "en").status
       ).toBe("VIOLATION");
+      // Group rule violation: 0 guests invited from [0, 2, 3]
       expect(
-        p.judge(c0.input, { active: [0, 0, 1, 0, 0], levels: [0, 0, 20, 0, 0], netProfit: 405 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { invite: [0, 0, 0, 0, 1], giftBudget: [0, 0, 0, 0, 22], totalEnjoyment: 110 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Conditional gift range violation: guest 0 giftBudget 5 < minSpend 8
+      expect(
+        p.judge(c0.input, { invite: [1, 1, 1, 1, 0], giftBudget: [5, 20, 18, 12, 0], totalEnjoyment: 334 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Objective tampering
+      expect(
+        p.judge(c0.input, { invite: [1, 1, 1, 1, 0], giftBudget: [8, 19, 18, 10, 0], totalEnjoyment: 999 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Feasible but suboptimal
+      expect(
+        p.judge(c0.input, { invite: [1, 0, 1, 0, 0], giftBudget: [15, 0, 18, 0, 0], totalEnjoyment: 178 }, c0.expectedOptimal, "en").status
       ).toBe("SUBOPTIMAL");
     }
 
@@ -282,21 +299,35 @@ registerChapterExerciseSuite({
       ).toBe("AC");
     }
 
-    // #018: Multidimensional knapsack resource 1 overflow, prereq, incompatibles, and suboptimality
+    // #018: Course planner category cap overflow, prerequisite, time conflict, malformed, and suboptimality
     {
       const p = byId.get("018")!;
       const c0 = p.cases[0];
       expect(
-        p.judge(c0.input, { selected: [1, 0, 1, 0, 1], totalValue: 45 }, c0.expectedOptimal, "en").status
-      ).toBe("VIOLATION");
+        p.judge(c0.input, { take: [1, 0, 0], totalInterest: 42 }, c0.expectedOptimal, "en").status
+      ).toBe("RUNTIME_ERROR");
       expect(
-        p.judge(c0.input, { selected: [0, 1, 0, 1, 0], totalValue: 43 }, c0.expectedOptimal, "en").status
-      ).toBe("VIOLATION");
+        p.judge(c0.input, { take: [1, 0, 0, 1, 1], totalInterest: Number.NaN }, c0.expectedOptimal, "en").status
+      ).toBe("RUNTIME_ERROR");
+      // Category 1 cap overflow (3 + 5 + 6 = 14 > 13)
       expect(
-        p.judge(c0.input, { selected: [0, 1, 1, 0, 0], totalValue: 46 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { take: [1, 0, 1, 0, 1], totalInterest: 45 }, c0.expectedOptimal, "en").status
       ).toBe("VIOLATION");
+      // Prerequisite violation: course 3 taken without prerequisite 0
       expect(
-        p.judge(c0.input, { selected: [1, 0, 0, 1, 0], totalValue: 27 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { take: [0, 0, 0, 1, 1], totalInterest: 34 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Time conflict violation: courses 1 and 2 both taken
+      expect(
+        p.judge(c0.input, { take: [0, 1, 1, 0, 0], totalInterest: 46 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Objective tampering
+      expect(
+        p.judge(c0.input, { take: [1, 0, 0, 1, 1], totalInterest: 99 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Feasible but suboptimal
+      expect(
+        p.judge(c0.input, { take: [1, 0, 0, 1, 0], totalInterest: 27 }, c0.expectedOptimal, "en").status
       ).toBe("SUBOPTIMAL");
     }
 
