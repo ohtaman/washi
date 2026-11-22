@@ -3,14 +3,15 @@ import pulp
 
 def solve(input_data: dict) -> dict:
     """Return {"selected": list[int], "pairProducts": list[int], "totalValue": float}."""
-    values = input_data["values"]
+    power = input_data["power"]
     costs = input_data["costs"]
     budget = input_data["budget"]
+    max_party_size = input_data["maxPartySize"]
     pairs = input_data["pairs"]
-    n = len(values)
+    n = len(power)
     P = len(pairs)
 
-    prob = pulp.LpProblem("binary_binary_product", pulp.LpMaximize)
+    prob = pulp.LpProblem("rpg_party_synergy", pulp.LpMaximize)
 
-    # TODO: Build and solve the quadratic module selection MIP, then return the output.
+    # TODO: Build and solve the RPG party synergy MIP, then return the output.
     raise NotImplementedError("Not implemented")
