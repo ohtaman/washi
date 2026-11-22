@@ -1,0 +1,26 @@
+{
+  "title": "#003. Coin Change Puzzle",
+  "subtitle": "Use integer variables with upper bounds and an equality constraint to minimize total coins.",
+  "tags": [
+    "MIP",
+    "Integer Variables",
+    "Equality Constraint",
+    "Minimization"
+  ],
+  "caseNames": [
+    "Non-standard coin pouch",
+    "Limited large coins",
+    "Exact single denomination",
+    "Five-denomination purse",
+    "Tight four-coin register"
+  ],
+  "judge": {
+    "m0": "Output must be an object { counts, totalCoins }.",
+    "m1": "counts[{p0}] must be an integer (received {p1}).",
+    "m2": "counts[{p0}] = {p1} must be within [0, {p2}].",
+    "m3": "Total amount ({p0}) does not equal targetAmount ({p1}).",
+    "m4": "Reported totalCoins ({p0}) does not match computed coin count ({p1}).",
+    "m5": "Feasible change, but totalCoins ({p0}) exceeds optimal ({p1}).",
+    "m6": "Optimal coin change achieved (totalCoins = {p0})!"
+  }
+}

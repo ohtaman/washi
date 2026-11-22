@@ -1,10 +1,10 @@
 import type { JudgeResult, Locale } from "../../../types.js";
 import {
   accepted,
-  formatTemplate,
   checkIntegrality,
   expectFiniteNumber,
   expectNumericArray,
+  formatTemplate,
   isRecord,
   roundNice,
   runtimeError,
@@ -18,15 +18,14 @@ import zhLoc from "./locales/zh.json";
 const JMSG = { en: enLoc.judge, ja: jaLoc.judge, zh: zhLoc.judge };
 
 export interface P003Input {
-  maxWeight: number;
-  weights: number[];
-  values: number[];
+  denominations: number[];
   maxCounts: number[];
+  targetAmount: number;
 }
 
 export interface P003Output {
   counts: number[];
-  totalValue: number;
+  totalCoins: number;
 }
 
 export function judge(
@@ -36,20 +35,27 @@ export function judge(
   locale: Locale
 ): JudgeResult {
   if (!isRecord(output)) {
-    return runtimeError(
-      JMSG[locale].m0
-    );
+    return runtimeError(JMSG[locale].m0);
   }
 
-  const n = input.weights.length;
-  const counts = expectNumericArray(output.counts, n, { en: "counts", ja: "counts", zh: "counts" }, locale);
+  const n = input.denominations.length;
+  const counts = expectNumericArray(
+    output.counts,
+    n,
+    { en: "counts", ja: "counts", zh: "counts" },
+    locale
+  );
   if (typeof counts === "string") return runtimeError(counts);
 
-  const valCheck = expectFiniteNumber(output.totalValue, { en: "totalValue", ja: "totalValue", zh: "totalValue" }, locale);
-  if (typeof valCheck === "string") return runtimeError(valCheck);
+  const coinsCheck = expectFiniteNumber(
+    output.totalCoins,
+    { en: "totalCoins", ja: "totalCoins", zh: "totalCoins" },
+    locale
+  );
+  if (typeof coinsCheck === "string") return runtimeError(coinsCheck);
 
-  let weightUsed = 0;
-  let valueSum = 0;
+  let amountSum = 0;
+  let coinSum = 0;
   for (let i = 0; i < n; i++) {
     const q = counts[i];
     if (!checkIntegrality(q)) {
@@ -63,29 +69,29 @@ export function judge(
         formatTemplate(JMSG[locale].m2, { p0: i, p1: qInt, p2: input.maxCounts[i] })
       );
     }
-    weightUsed += input.weights[i] * qInt;
-    valueSum += input.values[i] * qInt;
+    amountSum += input.denominations[i] * qInt;
+    coinSum += qInt;
   }
 
-  if (weightUsed > input.maxWeight + 1e-4) {
+  if (Math.abs(amountSum - input.targetAmount) > 1e-4) {
     return violation(
-      formatTemplate(JMSG[locale].m3, { p0: weightUsed, p1: input.maxWeight })
+      formatTemplate(JMSG[locale].m3, { p0: amountSum, p1: input.targetAmount })
     );
   }
 
-  const preview = `counts=[${counts.map((c) => Math.round(c)).join(", ")}] | weight=${weightUsed}/${input.maxWeight}`;
+  const preview = `counts=[${counts.map((c) => Math.round(c)).join(", ")}] | amount=${amountSum}/${input.targetAmount}`;
 
-  if (Math.abs(valCheck - valueSum) > 1e-2) {
+  if (Math.abs(coinsCheck - coinSum) > 1e-2) {
     return violation(
-      formatTemplate(JMSG[locale].m4, { p0: roundNice(valCheck), p1: valueSum })
+      formatTemplate(JMSG[locale].m4, { p0: roundNice(coinsCheck), p1: coinSum })
     );
   }
 
-  if (valueSum < expectedOptimal - 1e-2) {
+  if (coinSum > expectedOptimal + 1e-2) {
     return suboptimal(
-      valueSum,
+      coinSum,
       expectedOptimal,
-      formatTemplate(JMSG[locale].m5, { p0: valueSum, p1: expectedOptimal }),
+      formatTemplate(JMSG[locale].m5, { p0: coinSum, p1: expectedOptimal }),
       preview
     );
   }
