@@ -1,0 +1,120 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "n": 3,
+      "categories": {
+        "color": ["red", "blue", "green"],
+        "pet": ["cat", "dog", "bird"],
+        "drink": ["tea", "coffee", "water"]
+      },
+      "clues": [
+        { "type": "at", "position": 0, "category": "color", "value": "red" },
+        { "type": "same", "a": ["color", "red"], "b": ["drink", "tea"] },
+        { "type": "leftOf", "left": ["color", "green"], "right": ["color", "blue"], "immediate": true },
+        { "type": "implies", "a": ["color", "blue"], "b": ["pet", "dog"] },
+        { "type": "nextTo", "a": ["pet", "cat"], "b": ["drink", "water"] },
+        { "type": "notTogether", "a": ["color", "green"], "b": ["drink", "coffee"] }
+      ]
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "n": 4,
+      "categories": {
+        "house": ["amber", "cedar", "maple", "pine"],
+        "hobby": ["chess", "gardening", "pottery", "violin"],
+        "snack": ["apple", "cookie", "nut", "pretzel"]
+      },
+      "clues": [
+        { "type": "at", "position": 2, "category": "house", "value": "maple" },
+        { "type": "at", "position": 0, "category": "snack", "value": "apple" },
+        { "type": "same", "a": ["house", "amber"], "b": ["hobby", "violin"] },
+        { "type": "same", "a": ["house", "pine"], "b": ["hobby", "pottery"] },
+        { "type": "leftOf", "left": ["house", "amber"], "right": ["house", "cedar"] },
+        { "type": "leftOf", "left": ["hobby", "chess"], "right": ["snack", "cookie"], "immediate": true },
+        { "type": "nextTo", "a": ["hobby", "violin"], "b": ["snack", "apple"] },
+        { "type": "notTogether", "a": ["house", "pine"], "b": ["snack", "pretzel"] },
+        { "type": "implies", "a": ["house", "cedar"], "b": ["snack", "cookie"] },
+        { "type": "notTogether", "a": ["house", "amber"], "b": ["snack", "nut"] }
+      ]
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "n": 4,
+      "categories": {
+        "person": ["alice", "bob", "cara", "dan"],
+        "role": ["backend", "design", "ops", "pm"],
+        "os": ["bsd", "linux", "macos", "windows"],
+        "drink": ["espresso", "matcha", "soda", "tea"]
+      },
+      "clues": [
+        { "type": "at", "position": 0, "category": "person", "value": "alice" },
+        { "type": "at", "position": 3, "category": "os", "value": "bsd" },
+        { "type": "same", "a": ["person", "alice"], "b": ["role", "design"] },
+        { "type": "implies", "a": ["role", "design"], "b": ["os", "macos"] },
+        { "type": "leftOf", "left": ["person", "bob"], "right": ["person", "cara"], "immediate": true },
+        { "type": "same", "a": ["person", "bob"], "b": ["drink", "espresso"] },
+        { "type": "nextTo", "a": ["role", "pm"], "b": ["os", "bsd"] },
+        { "type": "implies", "a": ["role", "ops"], "b": ["drink", "soda"] },
+        { "type": "notTogether", "a": ["role", "backend"], "b": ["os", "windows"] },
+        { "type": "leftOf", "left": ["drink", "matcha"], "right": ["drink", "tea"] }
+      ]
+    },
+    "expectedOptimal": 1
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "n": 3,
+      "categories": {
+        "color": ["red", "blue", "green"],
+        "pet": ["cat", "dog", "fox"],
+        "drink": ["juice", "milk", "tea"]
+      },
+      "clues": [
+        { "type": "at", "position": 0, "category": "color", "value": "red" },
+        { "type": "leftOf", "left": ["color", "red"], "right": ["color", "blue"], "immediate": true },
+        { "type": "leftOf", "left": ["color", "blue"], "right": ["color", "green"], "immediate": true },
+        { "type": "same", "a": ["color", "red"], "b": ["pet", "cat"] },
+        { "type": "nextTo", "a": ["pet", "cat"], "b": ["pet", "dog"] },
+        { "type": "notTogether", "a": ["color", "blue"], "b": ["pet", "dog"] }
+      ]
+    },
+    "expectedOptimal": 0
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "n": 5,
+      "categories": {
+        "color": ["blue", "green", "ivory", "red", "yellow"],
+        "nation": ["brit", "dane", "german", "norwegian", "swede"],
+        "pet": ["bird", "cat", "dog", "fish", "horse"],
+        "drink": ["beer", "coffee", "milk", "tea", "water"]
+      },
+      "clues": [
+        { "type": "at", "position": 0, "category": "nation", "value": "norwegian" },
+        { "type": "at", "position": 2, "category": "drink", "value": "milk" },
+        { "type": "at", "position": 2, "category": "pet", "value": "bird" },
+        { "type": "same", "a": ["nation", "brit"], "b": ["color", "red"] },
+        { "type": "same", "a": ["nation", "swede"], "b": ["pet", "dog"] },
+        { "type": "same", "a": ["nation", "dane"], "b": ["drink", "tea"] },
+        { "type": "leftOf", "left": ["color", "ivory"], "right": ["color", "green"], "immediate": true },
+        { "type": "same", "a": ["color", "ivory"], "b": ["drink", "coffee"] },
+        { "type": "same", "a": ["color", "green"], "b": ["drink", "beer"] },
+        { "type": "same", "a": ["color", "yellow"], "b": ["pet", "cat"] },
+        { "type": "nextTo", "a": ["nation", "norwegian"], "b": ["color", "blue"] },
+        { "type": "nextTo", "a": ["pet", "horse"], "b": ["pet", "cat"] },
+        { "type": "same", "a": ["nation", "german"], "b": ["pet", "fish"] },
+        { "type": "notTogether", "a": ["pet", "bird"], "b": ["drink", "beer"] }
+      ]
+    },
+    "expectedOptimal": 1
+  }
+]

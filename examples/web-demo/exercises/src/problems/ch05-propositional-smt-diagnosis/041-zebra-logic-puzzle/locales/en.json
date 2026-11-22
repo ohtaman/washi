@@ -1,0 +1,31 @@
+{
+  "title": "#041. Zebra Logic Grid Puzzle",
+  "subtitle": "Model exact-one assignments and structured positional/relational clues with Z3 Boolean variables.",
+  "tags": [
+    "SMT",
+    "SAT",
+    "Logic Grid",
+    "Zebra Puzzle",
+    "Intro"
+  ],
+  "caseNames": [
+    "3-house color, pet, and drink puzzle",
+    "4-house hobby and snack puzzle",
+    "4-person engineering seating puzzle",
+    "3-house contradictory clue set",
+    "5-house mini-Einstein puzzle"
+  ],
+  "judge": {
+    "m0": "Output must be an object { satisfiable, assignment }.",
+    "m1": "When satisfiable is false, assignment must be null.",
+    "m2": "Puzzle is satisfiable, yet output returned satisfiable: false.",
+    "m3": "Clue {p0} is violated by the returned assignment.",
+    "m4": "Verified unsatisfiable: no assignment satisfies all clues.",
+    "m5": "Valid Zebra puzzle assignment found!",
+    "m6": "assignment must be an array of length {p0}.",
+    "m7": "assignment[{p0}] must be an object.",
+    "m8": "assignment[{p0}].{p1} must be a string.",
+    "m9": "Unknown value \"{p1}\" for category \"{p0}\".",
+    "m10": "Duplicate value \"{p1}\" in category \"{p0}\"."
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "#046. Contradictory-Clue Minesweeper Diagnosis (MUS)",
+  "subtitle": "Combine Z3 unsatCore with deletion-based contraction to isolate an irreducible minimal set of conflicting puzzle clues.",
+  "tags": [
+    "SMT",
+    "Unsat Core",
+    "MUS",
+    "Minesweeper",
+    "Conflict Diagnosis"
+  ],
+  "caseNames": [
+    "2x2 mine-count conflict with safe cells",
+    "2x3 overlapping region cap conflict",
+    "Shortcut clue inside non-minimal core",
+    "Odd-parity difference cycle with decoys",
+    "3x3 board equality and count conflict"
+  ],
+  "judge": {
+    "m0": "Output must be an object { coreRules }.",
+    "m1": "Duplicate clue ID \"{p0}\" in coreRules.",
+    "m2": "Unknown clue ID \"{p0}\" in coreRules.",
+    "m3": "coreRules cannot be empty.",
+    "m4": "Returned subset [{p0}] is actually satisfiable (not a contradictory clue set).",
+    "m5": "Returned core [{p0}] is NOT minimal: removing clue \"{p1}\" still leaves a contradiction.",
+    "m6": "Verified minimal unsatisfiable subset (MUS) of {p0} clues!"
+  }
+}
