@@ -62,16 +62,16 @@ import p025HighspySolution from "./025-binary-continuous-product/highspy/solutio
 import { judge as p025Judge } from "./025-binary-continuous-product/judge.js";
 
 // #026
-import p026Meta from "./026-binary-binary-product/meta.json";
-import p026Cases from "./026-binary-binary-product/cases.json";
-import p026En from "./026-binary-binary-product/locales/en.json";
-import p026Ja from "./026-binary-binary-product/locales/ja.json";
-import p026Zh from "./026-binary-binary-product/locales/zh.json";
-import p026WashiStarter from "./026-binary-binary-product/washi/starter.ts?raw";
-import p026WashiSolution from "./026-binary-binary-product/washi/solution.ts?raw";
-import p026HighspyStarter from "./026-binary-binary-product/highspy/starter.py?raw";
-import p026HighspySolution from "./026-binary-binary-product/highspy/solution.py?raw";
-import { judge as p026Judge } from "./026-binary-binary-product/judge.js";
+import p026Meta from "./026-rpg-party-synergy/meta.json";
+import p026Cases from "./026-rpg-party-synergy/cases.json";
+import p026En from "./026-rpg-party-synergy/locales/en.json";
+import p026Ja from "./026-rpg-party-synergy/locales/ja.json";
+import p026Zh from "./026-rpg-party-synergy/locales/zh.json";
+import p026WashiStarter from "./026-rpg-party-synergy/washi/starter.ts?raw";
+import p026WashiSolution from "./026-rpg-party-synergy/washi/solution.ts?raw";
+import p026HighspyStarter from "./026-rpg-party-synergy/highspy/starter.py?raw";
+import p026HighspySolution from "./026-rpg-party-synergy/highspy/solution.py?raw";
+import { judge as p026Judge } from "./026-rpg-party-synergy/judge.js";
 
 // #027
 import p027Meta from "./027-lp-duals-shadow-prices/meta.json";
@@ -227,14 +227,14 @@ export const CH03_PROBLEMS: ProblemDefinition[] = [
     rawCases: p026Cases,
     locales: { en: p026En, ja: p026Ja, zh: p026Zh },
     markdownLoaders: {
-      en: () => import("./026-binary-binary-product/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./026-binary-binary-product/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./026-binary-binary-product/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./026-rpg-party-synergy/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./026-rpg-party-synergy/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./026-rpg-party-synergy/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./026-binary-binary-product/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./026-binary-binary-product/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./026-binary-binary-product/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./026-rpg-party-synergy/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./026-rpg-party-synergy/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./026-rpg-party-synergy/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p026WashiStarter,
     washiSolution: p026WashiSolution,

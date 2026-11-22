@@ -1,0 +1,78 @@
+[
+  {
+    "nameKey": 0,
+    "input": {
+      "cells": ["A1", "A2", "B1", "B2"],
+      "clues": [
+        { "id": "C1", "type": "mineCount", "cells": ["A1", "A2", "B1", "B2"], "count": 2 },
+        { "id": "C2", "type": "safe", "cell": "A1" },
+        { "id": "C3", "type": "safe", "cell": "A2" },
+        { "id": "C4", "type": "mineCount", "cells": ["B1", "B2"], "count": 1 },
+        { "id": "C5", "type": "atMost", "cells": ["A1", "B1"], "count": 1 },
+        { "id": "C6", "type": "impliesMine", "ifMine": "A2", "thenMine": "B2" }
+      ]
+    },
+    "expectedOptimal": 4
+  },
+  {
+    "nameKey": 1,
+    "input": {
+      "cells": ["A1", "A2", "A3", "B1", "B2", "B3"],
+      "clues": [
+        { "id": "C1", "type": "mineCount", "cells": ["A1", "A2", "B1", "B2"], "count": 3 },
+        { "id": "C2", "type": "atMost", "cells": ["A1", "A2"], "count": 1 },
+        { "id": "C3", "type": "safe", "cell": "B1" },
+        { "id": "C4", "type": "atLeast", "cells": ["A3", "B3"], "count": 1 },
+        { "id": "C5", "type": "mineCount", "cells": ["A2", "A3", "B2", "B3"], "count": 2 },
+        { "id": "C6", "type": "impliesMine", "ifMine": "B1", "thenMine": "B3" }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 2,
+    "input": {
+      "cells": ["A1", "A2", "B1", "B2", "C1", "C2"],
+      "clues": [
+        { "id": "C1", "type": "mine", "cell": "A1" },
+        { "id": "C2", "type": "impliesMine", "ifMine": "A1", "thenMine": "A2" },
+        { "id": "C3", "type": "impliesMine", "ifMine": "A2", "thenMine": "B1" },
+        { "id": "C4", "type": "safe", "cell": "B1" },
+        { "id": "C5", "type": "impliesMine", "ifMine": "A1", "thenMine": "B1" },
+        { "id": "C6", "type": "mineCount", "cells": ["C1", "C2"], "count": 1 }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 3,
+    "input": {
+      "cells": ["A1", "A2", "B1", "B2", "C1"],
+      "clues": [
+        { "id": "C1", "type": "different", "a": "A1", "b": "A2" },
+        { "id": "C2", "type": "different", "a": "A2", "b": "B1" },
+        { "id": "C3", "type": "different", "a": "B1", "b": "A1" },
+        { "id": "C4", "type": "safe", "cell": "B2" },
+        { "id": "C5", "type": "mineCount", "cells": ["B2", "C1"], "count": 1 },
+        { "id": "C6", "type": "impliesMine", "ifMine": "C1", "thenMine": "A1" }
+      ]
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "nameKey": 4,
+    "input": {
+      "cells": ["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3"],
+      "clues": [
+        { "id": "C1", "type": "mineCount", "cells": ["A1", "A2", "A3"], "count": 1 },
+        { "id": "C2", "type": "same", "a": "A1", "b": "A2" },
+        { "id": "C3", "type": "same", "a": "A2", "b": "A3" },
+        { "id": "C4", "type": "mineCount", "cells": ["B1", "B2", "B3"], "count": 2 },
+        { "id": "C5", "type": "atLeast", "cells": ["C1", "C2", "C3"], "count": 1 },
+        { "id": "C6", "type": "impliesMine", "ifMine": "B1", "thenMine": "C1" },
+        { "id": "C7", "type": "different", "a": "B2", "b": "C2" }
+      ]
+    },
+    "expectedOptimal": 3
+  }
+]

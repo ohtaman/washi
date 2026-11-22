@@ -170,10 +170,39 @@ registerChapterExerciseSuite({
       expect(badZ.status).toBe("VIOLATION");
     }
 
-    // #026: Reject non-equal w_ij != x_i x_j and omitting lower McCormick bound
+    // #026: Reject malformed outputs, slot/budget caps, w_ij != x_i x_j, omitting lower McCormick bound, and suboptimal parties
     {
       const p = byId.get("026")!;
       const c0 = p.cases[0];
+
+      const badShape = p.judge(
+        c0.input,
+        { selected: [1, 1], pairProducts: [1, 0, 0, 0], totalValue: 100 },
+        c0.expectedOptimal,
+        "en"
+      );
+      expect(badShape.ok).toBe(false);
+      expect(badShape.status).toBe("RUNTIME_ERROR");
+
+      const badSlotCap = p.judge(
+        c0.input,
+        { selected: [1, 0, 1, 1], pairProducts: [0, 0, 1, 1], totalValue: 120 },
+        c0.expectedOptimal,
+        "en"
+      );
+      expect(badSlotCap.ok).toBe(false);
+      expect(badSlotCap.status).toBe("VIOLATION");
+
+      const c2 = p.cases[2];
+      const badBudget = p.judge(
+        c2.input,
+        { selected: [1, 1, 0, 0], pairProducts: [0, 0], totalValue: 55 },
+        c2.expectedOptimal,
+        "en"
+      );
+      expect(badBudget.ok).toBe(false);
+      expect(badBudget.status).toBe("VIOLATION");
+
       const zeroW = p.judge(
         c0.input,
         { selected: [1, 1, 0, 0], pairProducts: [0, 0, 0, 0], totalValue: 75 },
@@ -208,6 +237,24 @@ registerChapterExerciseSuite({
       );
       expect(cheatVerdict.ok).toBe(false);
       expect(cheatVerdict.status).toBe("VIOLATION");
+
+      const subopt = p.judge(
+        c0.input,
+        { selected: [1, 0, 0, 1], pairProducts: [0, 0, 1, 0], totalValue: 75 },
+        c0.expectedOptimal,
+        "en"
+      );
+      expect(subopt.ok).toBe(false);
+      expect(subopt.status).toBe("SUBOPTIMAL");
+
+      const ac = p.judge(
+        c0.input,
+        { selected: [1, 1, 0, 0], pairProducts: [1, 0, 0, 0], totalValue: 100 },
+        c0.expectedOptimal,
+        "en"
+      );
+      expect(ac.ok).toBe(true);
+      expect(ac.status).toBe("AC");
     }
 
     // #027: Reject wrong dual signs, non-zero slack duals, and verify WaSHI == PuLP duals to <= 1e-4

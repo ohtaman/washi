@@ -1,0 +1,24 @@
+{
+  "id": "038",
+  "slug": "graph-coloring-symmetry",
+  "chapter": 4,
+  "order": 8,
+  "role": "applied",
+  "scaffold": "fill-in",
+  "difficulty": 4,
+  "estimatedMinutes": 20,
+  "paradigms": [
+    "CP"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "pumpkin"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

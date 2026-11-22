@@ -1,0 +1,28 @@
+{
+  "title": "#079. e-Sports League Match & Venue Scheduling",
+  "subtitle": "Assign league matches to compatible venues and timeslots maximizing viewership scores minus capped overtime penalties.",
+  "tags": [
+    "MIP",
+    "e-Sports Scheduling",
+    "Bin Packing",
+    "Overtime Tradeoff"
+  ],
+  "caseNames": [
+    "5-match 2-venue selective broadcast",
+    "6-match 2-venue tight overtime cap",
+    "7-match 3-venue stage compatibility",
+    "8-match fractional broadcast durations",
+    "10-match 3-venue high-density schedule"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignedVenue, assignedSlot, overtime, netScore }.",
+    "m1": "Field \"overtime\" must be a {p0}x{p1} matrix.",
+    "m2": "Match {p0} assignment (venue={p1}, slot={p2}) must be (-1, -1) or valid indices.",
+    "m3": "Match {p0} cannot be assigned to incompatible venue {p1}.",
+    "m4": "Overtime in venue {p0}, slot {p1} ({p2}) exceeds allowed range [0, {p3}].",
+    "m5": "Venue {p0}, slot {p1} load ({p2}) exceeds regular length plus overtime ({p3}).",
+    "m6": "Reported netScore ({p0}) does not match computed viewership score minus overtime cost ({p1}).",
+    "m7": "Valid league schedule, but net score ({p0}) is below maximum ({p1}).",
+    "m8": "Optimal e-Sports venue schedule found (netScore = {p0})!"
+  }
+}

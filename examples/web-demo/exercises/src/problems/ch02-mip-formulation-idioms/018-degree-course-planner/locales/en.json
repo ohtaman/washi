@@ -1,0 +1,27 @@
+{
+  "title": "#018. University Degree & Prerequisite Course Planner",
+  "subtitle": "Select courses under multi-category workload caps, prerequisite pairs, and schedule conflicts.",
+  "tags": [
+    "MIP",
+    "Multidimensional Knapsack",
+    "Dependencies",
+    "Incompatibility"
+  ],
+  "caseNames": [
+    "5-course 2-category semester plan",
+    "6-course 3-category prerequisite chain",
+    "5-course tight prerequisite bottleneck",
+    "7-course decimal workload caps",
+    "8-course 4-category degree audit"
+  ],
+  "judge": {
+    "m0": "Output must be an object { take, totalInterest }.",
+    "m1": "take[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Category {p0} workload ({p1}) exceeds cap ({p2}).",
+    "m3": "Prerequisite violated: taking course {p0} requires taking prerequisite course {p1}.",
+    "m4": "Time conflict violated: courses {p0} and {p1} cannot both be taken.",
+    "m5": "Reported totalInterest ({p0}) does not match computed interest ({p1}).",
+    "m6": "Feasible course plan, but totalInterest ({p0}) is below optimal ({p1}).",
+    "m7": "Optimal course plan found (totalInterest = {p0})!"
+  }
+}

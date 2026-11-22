@@ -26,16 +26,16 @@ import p002HighspySolution from "./002-diet-min-cost/highspy/solution.py?raw";
 import { judge as p002Judge } from "./002-diet-min-cost/judge.js";
 
 // #003
-import p003Meta from "./003-carry-on-integers/meta.json";
-import p003Cases from "./003-carry-on-integers/cases.json";
-import p003En from "./003-carry-on-integers/locales/en.json";
-import p003Ja from "./003-carry-on-integers/locales/ja.json";
-import p003Zh from "./003-carry-on-integers/locales/zh.json";
-import p003WashiStarter from "./003-carry-on-integers/washi/starter.ts?raw";
-import p003WashiSolution from "./003-carry-on-integers/washi/solution.ts?raw";
-import p003HighspyStarter from "./003-carry-on-integers/highspy/starter.py?raw";
-import p003HighspySolution from "./003-carry-on-integers/highspy/solution.py?raw";
-import { judge as p003Judge } from "./003-carry-on-integers/judge.js";
+import p003Meta from "./003-coin-change-puzzle/meta.json";
+import p003Cases from "./003-coin-change-puzzle/cases.json";
+import p003En from "./003-coin-change-puzzle/locales/en.json";
+import p003Ja from "./003-coin-change-puzzle/locales/ja.json";
+import p003Zh from "./003-coin-change-puzzle/locales/zh.json";
+import p003WashiStarter from "./003-coin-change-puzzle/washi/starter.ts?raw";
+import p003WashiSolution from "./003-coin-change-puzzle/washi/solution.ts?raw";
+import p003HighspyStarter from "./003-coin-change-puzzle/highspy/starter.py?raw";
+import p003HighspySolution from "./003-coin-change-puzzle/highspy/solution.py?raw";
+import { judge as p003Judge } from "./003-coin-change-puzzle/judge.js";
 
 // #004
 import p004Meta from "./004-general-product-mix/meta.json";
@@ -167,14 +167,14 @@ export const CH01_PROBLEMS: ProblemDefinition[] = [
     rawCases: p003Cases,
     locales: { en: p003En, ja: p003Ja, zh: p003Zh },
     markdownLoaders: {
-      en: () => import("./003-carry-on-integers/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./003-carry-on-integers/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./003-carry-on-integers/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./003-coin-change-puzzle/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./003-coin-change-puzzle/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./003-coin-change-puzzle/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./003-carry-on-integers/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./003-carry-on-integers/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./003-carry-on-integers/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./003-coin-change-puzzle/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./003-coin-change-puzzle/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./003-coin-change-puzzle/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p003WashiStarter,
     washiSolution: p003WashiSolution,

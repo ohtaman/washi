@@ -922,7 +922,7 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     expect(() => importProgressJson('{"version": 1, "solved": {"bad": {"runtimes": ["invalid"]}}}')).toThrow();
   });
 
-  it("migrates v1 progress to v2 by resetting incompatible #001/#002 entries while preserving #003+ progress", () => {
+  it("migrates v1/v2 progress to v3 by resetting legacy #001/#002/#003 entries while preserving #004+ progress", () => {
     const map = new Map<string, string>();
     const storage = {
       getItem: (k: string) => map.get(k) ?? null,
@@ -936,27 +936,59 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
         "001": { runtimes: ["washi"], bestMs: 12, solvedAt: "2026-11-18T00:00:00Z" },
         "002": { runtimes: ["highspy"], solvedAt: "2026-11-18T00:00:00Z" },
         "003": { runtimes: ["washi"], bestMs: 18, solvedAt: "2026-11-18T00:00:00Z" },
+        "004": { runtimes: ["washi"], bestMs: 25, solvedAt: "2026-11-18T00:00:00Z" },
       },
       drafts: {
         "001": { washi: "// legacy 8-field bakery code" },
         "002": { washi: "// legacy ice-cream code", highspy: "# legacy ice-cream python" },
-        "003": { washi: "// valid #003 code" },
+        "003": { washi: "// legacy carry-on code", highspy: "# legacy carry-on python" },
+        "004": { washi: "// valid #004 code" },
       },
     });
     map.set(PROGRESS_STORAGE_KEY, v1Raw);
 
-    const migrated = loadProgress(storage);
-    expect(migrated.version).toBe(2);
-    expect(migrated.solved["001"]).toBeUndefined();
-    expect(migrated.solved["002"]).toBeUndefined();
-    expect(migrated.solved["003"]?.runtimes).toEqual(["washi"]);
-    expect(migrated.drafts["001"]).toBeUndefined();
-    expect(migrated.drafts["002"]).toBeUndefined();
-    expect(migrated.drafts["003"]?.washi).toBe("// valid #003 code");
+    const migratedV1 = loadProgress(storage);
+    expect(migratedV1.version).toBe(3);
+    expect(migratedV1.solved["001"]).toBeUndefined();
+    expect(migratedV1.solved["002"]).toBeUndefined();
+    expect(migratedV1.solved["003"]).toBeUndefined();
+    expect(migratedV1.solved["004"]?.runtimes).toEqual(["washi"]);
+    expect(migratedV1.drafts["001"]).toBeUndefined();
+    expect(migratedV1.drafts["002"]).toBeUndefined();
+    expect(migratedV1.drafts["003"]).toBeUndefined();
+    expect(migratedV1.drafts["004"]?.washi).toBe("// valid #004 code");
 
-    const persisted = JSON.parse(map.get(PROGRESS_STORAGE_KEY)!);
-    expect(persisted.version).toBe(2);
-    expect(persisted.drafts["002"]).toBeUndefined();
+    const persistedV1 = JSON.parse(map.get(PROGRESS_STORAGE_KEY)!);
+    expect(persistedV1.version).toBe(3);
+    expect(persistedV1.drafts["003"]).toBeUndefined();
+
+    const v2Raw = JSON.stringify({
+      version: 2,
+      solved: {
+        "001": { runtimes: ["washi"], solvedAt: "2026-11-20T00:00:00Z" },
+        "003": { runtimes: ["highspy"], solvedAt: "2026-11-20T00:00:00Z" },
+        "004": { runtimes: ["washi"], solvedAt: "2026-11-20T00:00:00Z" },
+      },
+      drafts: {
+        "001": { washi: "// valid v2 #001 code" },
+        "003": { washi: "// legacy carry-on code" },
+      },
+    });
+    map.set(PROGRESS_STORAGE_KEY, v2Raw);
+
+    const migratedV2 = loadProgress(storage);
+    expect(migratedV2.version).toBe(3);
+    expect(migratedV2.solved["001"]?.runtimes).toEqual(["washi"]);
+    expect(migratedV2.solved["003"]).toBeUndefined();
+    expect(migratedV2.solved["004"]?.runtimes).toEqual(["washi"]);
+    expect(migratedV2.drafts["001"]?.washi).toBe("// valid v2 #001 code");
+    expect(migratedV2.drafts["003"]).toBeUndefined();
+
+    const importedV2 = importProgressJson(v2Raw);
+    expect(importedV2.version).toBe(3);
+    expect(importedV2.solved["003"]).toBeUndefined();
+    expect(importedV2.drafts["003"]).toBeUndefined();
+    expect(importedV2.solved["001"]?.runtimes).toEqual(["washi"]);
   });
 
   it("handles SecurityError thrown by window.localStorage property getter without crashing", () => {

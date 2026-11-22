@@ -1,0 +1,27 @@
+{
+  "title": "#026. RPG Party Synergy Maximization",
+  "subtitle": "Linearize pairwise hero synergy and rivalry products w_{ij} = x_i x_j using McCormick inequalities.",
+  "tags": [
+    "MIP",
+    "Quadratic Binary",
+    "McCormick",
+    "Synergy"
+  ],
+  "caseNames": [
+    "4-hero tavern roster (budget 60, 2 slots)",
+    "5-hero guild party with synergy and rivalry",
+    "Tight-budget 4-hero solo expedition",
+    "6-hero dungeon squad with mixed bonds",
+    "7-hero raid roster"
+  ],
+  "judge": {
+    "m0": "Output must be an object { selected, pairProducts, totalValue }.",
+    "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "Total recruitment cost ({p0}) exceeds budget ({p1}).",
+    "m3": "pairProducts[{p0}] for pair ({p1}, {p2}) received {p3}, expected x[{p1}] * x[{p2}] = {p4}.",
+    "m4": "Reported totalValue ({p0}) does not match computed power plus pair bonus value ({p1}).",
+    "m5": "Valid party, but totalValue ({p0}) is below optimal ({p1}).",
+    "m6": "Optimal RPG party found (totalValue = {p0})!",
+    "m7": "Party size ({p0}) exceeds maxPartySize ({p1})."
+  }
+}
