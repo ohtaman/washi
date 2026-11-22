@@ -2,14 +2,14 @@ import type { ProblemDefinition } from "../../types.js";
 import { hydrateProblem, type RawProblemCase } from "../hydrate.js";
 
 // #041
-import p041Meta from "./041-propositional-logic-sat/meta.json";
-import p041Cases from "./041-propositional-logic-sat/cases.json";
-import p041En from "./041-propositional-logic-sat/locales/en.json";
-import p041Ja from "./041-propositional-logic-sat/locales/ja.json";
-import p041Zh from "./041-propositional-logic-sat/locales/zh.json";
-import p041WashiStarter from "./041-propositional-logic-sat/washi/starter.ts?raw";
-import p041WashiSolution from "./041-propositional-logic-sat/washi/solution.ts?raw";
-import { judge as p041Judge, type P041Input } from "./041-propositional-logic-sat/judge.js";
+import p041Meta from "./041-zebra-logic-puzzle/meta.json";
+import p041Cases from "./041-zebra-logic-puzzle/cases.json";
+import p041En from "./041-zebra-logic-puzzle/locales/en.json";
+import p041Ja from "./041-zebra-logic-puzzle/locales/ja.json";
+import p041Zh from "./041-zebra-logic-puzzle/locales/zh.json";
+import p041WashiStarter from "./041-zebra-logic-puzzle/washi/starter.ts?raw";
+import p041WashiSolution from "./041-zebra-logic-puzzle/washi/solution.ts?raw";
+import { judge as p041Judge, type P041Input } from "./041-zebra-logic-puzzle/judge.js";
 
 // #042
 import p042Meta from "./042-uniqueness-nogood-cut/meta.json";
@@ -52,14 +52,14 @@ import p045WashiSolution from "./045-dead-redundant-rules/washi/solution.ts?raw"
 import { judge as p045Judge, type P045Input } from "./045-dead-redundant-rules/judge.js";
 
 // #046
-import p046Meta from "./046-minimal-unsat-core/meta.json";
-import p046Cases from "./046-minimal-unsat-core/cases.json";
-import p046En from "./046-minimal-unsat-core/locales/en.json";
-import p046Ja from "./046-minimal-unsat-core/locales/ja.json";
-import p046Zh from "./046-minimal-unsat-core/locales/zh.json";
-import p046WashiStarter from "./046-minimal-unsat-core/washi/starter.ts?raw";
-import p046WashiSolution from "./046-minimal-unsat-core/washi/solution.ts?raw";
-import { judge as p046Judge, type P046Input } from "./046-minimal-unsat-core/judge.js";
+import p046Meta from "./046-puzzle-clue-diagnosis/meta.json";
+import p046Cases from "./046-puzzle-clue-diagnosis/cases.json";
+import p046En from "./046-puzzle-clue-diagnosis/locales/en.json";
+import p046Ja from "./046-puzzle-clue-diagnosis/locales/ja.json";
+import p046Zh from "./046-puzzle-clue-diagnosis/locales/zh.json";
+import p046WashiStarter from "./046-puzzle-clue-diagnosis/washi/starter.ts?raw";
+import p046WashiSolution from "./046-puzzle-clue-diagnosis/washi/solution.ts?raw";
+import { judge as p046Judge, type P046Input } from "./046-puzzle-clue-diagnosis/judge.js";
 
 // #047
 import p047Meta from "./047-weighted-maxsat-repair/meta.json";
@@ -107,14 +107,14 @@ export const CH05_PROBLEMS: ProblemDefinition[] = [
     rawCases: p041Cases as unknown as RawProblemCase<P041Input>[],
     locales: { en: p041En, ja: p041Ja, zh: p041Zh },
     markdownLoaders: {
-      en: () => import("./041-propositional-logic-sat/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./041-propositional-logic-sat/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./041-propositional-logic-sat/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./041-zebra-logic-puzzle/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./041-zebra-logic-puzzle/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./041-zebra-logic-puzzle/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./041-propositional-logic-sat/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./041-propositional-logic-sat/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./041-propositional-logic-sat/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./041-zebra-logic-puzzle/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./041-zebra-logic-puzzle/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./041-zebra-logic-puzzle/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p041WashiStarter,
     washiSolution: p041WashiSolution,
@@ -197,14 +197,14 @@ export const CH05_PROBLEMS: ProblemDefinition[] = [
     rawCases: p046Cases as unknown as RawProblemCase<P046Input>[],
     locales: { en: p046En, ja: p046Ja, zh: p046Zh },
     markdownLoaders: {
-      en: () => import("./046-minimal-unsat-core/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./046-minimal-unsat-core/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./046-minimal-unsat-core/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./046-puzzle-clue-diagnosis/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./046-puzzle-clue-diagnosis/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./046-puzzle-clue-diagnosis/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./046-minimal-unsat-core/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./046-minimal-unsat-core/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./046-minimal-unsat-core/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./046-puzzle-clue-diagnosis/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./046-puzzle-clue-diagnosis/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./046-puzzle-clue-diagnosis/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p046WashiStarter,
     washiSolution: p046WashiSolution,
