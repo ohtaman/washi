@@ -165,7 +165,7 @@
     },
     "8": {
       "title": "Scheduling, Staff Rostering, Timetabling & Allocation",
-      "description": "Tardiness & setup-dependent scheduling, job-shop (MIP vs CP), RCPSP, rolling night-rest rosters, skill & pair constraints, university timetabling, and OR slot allocation."
+      "description": "Tardiness & setup-dependent scheduling, job-shop (MIP vs CP), RCPSP, rolling night-rest rosters, skill & pair constraints, university timetabling, and sports/e-sports venue scheduling."
     },
     "9": {
       "title": "Multi-Objective Tradeoffs, Fairness, Rescheduling & Uncertainty",

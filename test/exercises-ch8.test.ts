@@ -152,15 +152,18 @@ async function verifyAdversarialChecks(problems: ProblemDefinition[]): Promise<v
     expect(p.judge(c0.input, { rooms: [0, 1, 1, 0], slots: [0, 1, 0, 1], totalScore: 37 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
   }
 
-  // #079: malformed overtime matrix RUNTIME_ERROR, incompatible room, overtime > maxOvertime, capacity load exceeded, (-1, 0) mismatch
+  // #079: malformed overtime matrix & NaN RUNTIME_ERROR, incompatible venue, overtime > maxOvertime, capacity load exceeded, (-1, 0) mismatch, suboptimal, AC
   {
     const p = byId.get("079")!;
     const c0 = p.cases[0];
-    expect(p.judge(c0.input, { assignedRoom: [0, 0, 1, 1, -1], assignedSession: [1, 0, 1, 0, -1], overtime: [[1, 0]], netScore: 235 }, c0.expectedOptimal, "en").status).toBe("RUNTIME_ERROR");
-    expect(p.judge(c0.input, { assignedRoom: [0, 1, 1, 0, -1], assignedSession: [1, 0, 1, 0, -1], overtime: [[0, 0], [1, 0]], netScore: 235 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
-    expect(p.judge(c0.input, { assignedRoom: [0, 0, 1, 1, 1], assignedSession: [1, 0, 1, 0, 1], overtime: [[1, 0], [0, 2]], netScore: 205 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
-    expect(p.judge(c0.input, { assignedRoom: [0, 0, 1, 1, -1], assignedSession: [1, 0, 1, 0, -1], overtime: [[0, 0], [0, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
-    expect(p.judge(c0.input, { assignedRoom: [0, 0, 1, 1, -1], assignedSession: [1, 0, 1, 0, 0], overtime: [[1, 0], [0, 0]], netScore: 235 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+    expect(p.judge(c0.input, { assignedVenue: [1, 0, 1, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[1, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("RUNTIME_ERROR");
+    expect(p.judge(c0.input, { assignedVenue: [1, Number.NaN, 1, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[1, 0], [0, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("RUNTIME_ERROR");
+    expect(p.judge(c0.input, { assignedVenue: [1, 1, 0, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[0, 0], [1, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+    expect(p.judge(c0.input, { assignedVenue: [1, 0, 1, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[2, 0], [0, 0]], netScore: 235 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+    expect(p.judge(c0.input, { assignedVenue: [1, 0, 1, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[0, 0], [0, 0]], netScore: 285 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+    expect(p.judge(c0.input, { assignedVenue: [1, 0, 1, 0, -1], assignedSlot: [1, 0, 0, 1, 0], overtime: [[1, 0], [0, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+    expect(p.judge(c0.input, { assignedVenue: [-1, 0, 1, 0, -1], assignedSlot: [-1, 0, 0, 1, -1], overtime: [[1, 0], [0, 0]], netScore: 205 }, c0.expectedOptimal, "en").status).toBe("SUBOPTIMAL");
+    expect(p.judge(c0.input, { assignedVenue: [1, 0, 1, 0, -1], assignedSlot: [1, 0, 0, 1, -1], overtime: [[1, 0], [0, 0]], netScore: 260 }, c0.expectedOptimal, "en").status).toBe("AC");
   }
 
   // #080: uncertified staff, staff double-booked in slot, shared equipment exceeded, maxLimits exceeded, under-reported overtime

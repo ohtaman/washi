@@ -2,8 +2,8 @@
   {
     "nameKey": 0,
     "input": {
-      "durations": [3, 4, 2, 3, 2],
-      "priorities": [60, 85, 45, 70, 20],
+      "durations": [2, 4, 3, 3, 2],
+      "scores": [55, 95, 70, 65, 18],
       "compatible": [
         [1, 1],
         [1, 0],
@@ -11,18 +11,18 @@
         [1, 1],
         [1, 1]
       ],
-      "numSessions": 2,
-      "regularCapacity": 3,
+      "numSlots": 2,
+      "regularLength": 3,
       "maxOvertime": 1,
       "overtimeCost": 25
     },
-    "expectedOptimal": 235
+    "expectedOptimal": 260
   },
   {
     "nameKey": 1,
     "input": {
       "durations": [3, 2, 4, 3, 2, 3],
-      "priorities": [55, 40, 90, 65, 50, 30],
+      "scores": [60, 42, 92, 68, 48, 35],
       "compatible": [
         [1, 1],
         [1, 1],
@@ -31,18 +31,18 @@
         [1, 1],
         [1, 0]
       ],
-      "numSessions": 2,
-      "regularCapacity": 3,
+      "numSlots": 2,
+      "regularLength": 3,
       "maxOvertime": 2,
-      "overtimeCost": 18
+      "overtimeCost": 15
     },
-    "expectedOptimal": 264
+    "expectedOptimal": 280
   },
   {
     "nameKey": 2,
     "input": {
       "durations": [4, 3, 2, 5, 3, 2, 3],
-      "priorities": [80, 50, 45, 95, 60, 25, 55],
+      "scores": [85, 52, 48, 98, 64, 30, 58],
       "compatible": [
         [1, 0, 1],
         [1, 1, 0],
@@ -52,18 +52,18 @@
         [1, 1, 1],
         [0, 1, 0]
       ],
-      "numSessions": 2,
-      "regularCapacity": 3,
+      "numSlots": 2,
+      "regularLength": 3,
       "maxOvertime": 2,
       "overtimeCost": 20
     },
-    "expectedOptimal": 330
+    "expectedOptimal": 355
   },
   {
     "nameKey": 3,
     "input": {
       "durations": [2.5, 3.5, 2.0, 4.0, 1.5, 3.0, 2.5, 2.0],
-      "priorities": [50, 75, 40, 90, 35, 68, 55, 28],
+      "scores": [52, 78, 42, 92, 36, 70, 56, 30],
       "compatible": [
         [1, 1, 0],
         [1, 0, 1],
@@ -74,18 +74,18 @@
         [1, 1, 0],
         [0, 0, 1]
       ],
-      "numSessions": 2,
-      "regularCapacity": 3.0,
+      "numSlots": 2,
+      "regularLength": 3.0,
       "maxOvertime": 1.5,
       "overtimeCost": 22
     },
-    "expectedOptimal": 369
+    "expectedOptimal": 382
   },
   {
     "nameKey": 4,
     "input": {
       "durations": [3, 4, 2, 3, 5, 2, 4, 3, 2, 3],
-      "priorities": [65, 88, 42, 70, 105, 38, 82, 62, 24, 52],
+      "scores": [68, 90, 44, 72, 108, 40, 84, 64, 26, 54],
       "compatible": [
         [1, 1, 0],
         [1, 0, 1],
@@ -98,11 +98,11 @@
         [1, 1, 1],
         [1, 0, 0]
       ],
-      "numSessions": 2,
-      "regularCapacity": 4,
+      "numSlots": 2,
+      "regularLength": 4,
       "maxOvertime": 2,
       "overtimeCost": 18
     },
-    "expectedOptimal": 514
+    "expectedOptimal": 534
   }
 ]
