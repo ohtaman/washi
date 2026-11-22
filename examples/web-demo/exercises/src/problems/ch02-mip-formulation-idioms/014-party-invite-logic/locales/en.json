@@ -1,0 +1,30 @@
+{
+  "title": "#014. Party Invitation & Seating Logic Puzzle",
+  "subtitle": "Model guest invitations, conditional gift budgets, implications, conflicts, and group quotas with tight Big-M bounds.",
+  "tags": [
+    "MIP",
+    "Big-M",
+    "Logical Constraints",
+    "Implication"
+  ],
+  "caseNames": [
+    "5-guest dinner with plus-one and rivalry",
+    "5-guest celebration with strict pair requirement",
+    "4-guest small gathering with tight budget",
+    "6-guest reception with chained implications",
+    "7-guest banquet with multiple group quotas"
+  ],
+  "judge": {
+    "m0": "Output must be an object { invite, giftBudget, totalEnjoyment }.",
+    "m1": "invite[{p0}] must be binary 0 or 1 (received {p1}).",
+    "m2": "giftBudget[{p0}] cannot be negative (received {p1}).",
+    "m3": "Guest {p0} giftBudget ({p1}) violates conditional range [{p3}, {p4}] for invite[{p0}] = {p2}.",
+    "m4": "Total gift spending ({p0}) exceeds budget ({p1}).",
+    "m5": "Implication violated: inviting guest {p0} requires inviting guest {p1}.",
+    "m6": "Conflict violated: guests {p0} and {p1} cannot both be invited.",
+    "m7": "Group rule {p0} violated: invited {p1} guest(s), but at least {p2} required.",
+    "m8": "Reported totalEnjoyment ({p0}) does not match computed enjoyment ({p1}).",
+    "m9": "Feasible guest list, but totalEnjoyment ({p0}) is below optimal ({p1}).",
+    "m10": "Optimal party guest list found (totalEnjoyment = {p0})!"
+  }
+}
