@@ -14,16 +14,16 @@ import p081HighspySolution from "./081-elastic-soft-penalties/highspy/solution.p
 import { judge as p081Judge } from "./081-elastic-soft-penalties/judge.js";
 
 // #082
-import p082Meta from "./082-lexicographic-optimization/meta.json";
-import p082Cases from "./082-lexicographic-optimization/cases.json";
-import p082En from "./082-lexicographic-optimization/locales/en.json";
-import p082Ja from "./082-lexicographic-optimization/locales/ja.json";
-import p082Zh from "./082-lexicographic-optimization/locales/zh.json";
-import p082WashiStarter from "./082-lexicographic-optimization/washi/starter.ts?raw";
-import p082WashiSolution from "./082-lexicographic-optimization/washi/solution.ts?raw";
-import p082HighspyStarter from "./082-lexicographic-optimization/highspy/starter.py?raw";
-import p082HighspySolution from "./082-lexicographic-optimization/highspy/solution.py?raw";
-import { judge as p082Judge } from "./082-lexicographic-optimization/judge.js";
+import p082Meta from "./082-sharehouse-rent-division/meta.json";
+import p082Cases from "./082-sharehouse-rent-division/cases.json";
+import p082En from "./082-sharehouse-rent-division/locales/en.json";
+import p082Ja from "./082-sharehouse-rent-division/locales/ja.json";
+import p082Zh from "./082-sharehouse-rent-division/locales/zh.json";
+import p082WashiStarter from "./082-sharehouse-rent-division/washi/starter.ts?raw";
+import p082WashiSolution from "./082-sharehouse-rent-division/washi/solution.ts?raw";
+import p082HighspyStarter from "./082-sharehouse-rent-division/highspy/starter.py?raw";
+import p082HighspySolution from "./082-sharehouse-rent-division/highspy/solution.py?raw";
+import { judge as p082Judge } from "./082-sharehouse-rent-division/judge.js";
 
 // #083
 import p083Meta from "./083-epsilon-constraint-pareto/meta.json";
@@ -145,14 +145,14 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     rawCases: p082Cases,
     locales: { en: p082En, ja: p082Ja, zh: p082Zh },
     markdownLoaders: {
-      en: () => import("./082-lexicographic-optimization/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./082-lexicographic-optimization/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./082-lexicographic-optimization/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./082-sharehouse-rent-division/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./082-sharehouse-rent-division/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./082-sharehouse-rent-division/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./082-lexicographic-optimization/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./082-lexicographic-optimization/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./082-lexicographic-optimization/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./082-sharehouse-rent-division/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./082-sharehouse-rent-division/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./082-sharehouse-rent-division/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p082WashiStarter,
     washiSolution: p082WashiSolution,
