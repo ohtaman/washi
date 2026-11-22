@@ -1,9 +1,10 @@
-import { Model, dot, expr, maximize } from "@ohtaman/washi";
+import { Model, dot, expr, maximize, sum } from "@ohtaman/washi";
 
 export interface P026Input {
-  values: number[];
+  power: number[];
   costs: number[];
   budget: number;
+  maxPartySize: number;
   pairs: number[][];
 }
 
@@ -14,10 +15,10 @@ export interface P026Output {
 }
 
 export async function solve(input: P026Input): Promise<P026Output> {
-  const n = input.values.length;
+  const n = input.power.length;
   const P = input.pairs.length;
-  const m = new Model("BinaryBinaryProduct");
+  const m = new Model("RpgPartySynergy");
 
-  // TODO: Build and solve the quadratic module selection MIP, then return the output.
+  // TODO: Build and solve the RPG party synergy MIP, then return the output.
   throw new Error("Not implemented");
 }

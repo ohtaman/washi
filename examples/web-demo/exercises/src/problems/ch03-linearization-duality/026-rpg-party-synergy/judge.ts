@@ -19,9 +19,10 @@ import zhLoc from "./locales/zh.json";
 const JMSG = { en: enLoc.judge, ja: jaLoc.judge, zh: zhLoc.judge };
 
 export interface P026Input {
-  values: number[];
+  power: number[];
   costs: number[];
   budget: number;
+  maxPartySize: number;
   pairs: number[][];
 }
 
@@ -41,7 +42,7 @@ export function judge(
     return runtimeError(JMSG[locale].m0);
   }
 
-  const n = input.values.length;
+  const n = input.power.length;
   const P = input.pairs.length;
   const selectedRaw = expectNumericArray(
     output.selected,
@@ -67,6 +68,7 @@ export function judge(
   if (typeof valCheck === "string") return runtimeError(valCheck);
 
   const selClean: number[] = [];
+  let partySize = 0;
   let totalCost = 0;
   let trueValue = 0;
   for (let i = 0; i < n; i++) {
@@ -79,8 +81,18 @@ export function judge(
       return violation(formatTemplate(JMSG[locale].m1, { p0: i, p1: vInt }));
     }
     selClean.push(vInt);
+    partySize += vInt;
     totalCost += input.costs[i] * vInt;
-    trueValue += input.values[i] * vInt;
+    trueValue += input.power[i] * vInt;
+  }
+
+  if (partySize > input.maxPartySize) {
+    return violation(
+      formatTemplate(JMSG[locale].m7, {
+        p0: partySize,
+        p1: input.maxPartySize,
+      })
+    );
   }
 
   if (totalCost > input.budget + 1e-4) {
@@ -94,7 +106,7 @@ export function judge(
 
   const wClean: number[] = [];
   for (let k = 0; k < P; k++) {
-    const [i, j, synergy] = input.pairs[k];
+    const [i, j, bonus] = input.pairs[k];
     const wk = pairRaw[k];
     const expectedW = selClean[i] * selClean[j];
     if (!approxEqual(wk, expectedW, 1e-4)) {
@@ -109,7 +121,7 @@ export function judge(
       );
     }
     wClean.push(expectedW);
-    trueValue += synergy * expectedW;
+    trueValue += bonus * expectedW;
   }
 
   if (!approxEqual(valCheck, trueValue, 1e-2)) {
@@ -121,7 +133,7 @@ export function judge(
     );
   }
 
-  const preview = `x=[${selClean.join(", ")}] | w=[${wClean.join(", ")}] | cost=${totalCost}/${input.budget}`;
+  const preview = `x=[${selClean.join(", ")}] | w=[${wClean.join(", ")}] | size=${partySize}/${input.maxPartySize} | cost=${totalCost}/${input.budget}`;
 
   if (trueValue < expectedOptimal - 1e-2) {
     return suboptimal(

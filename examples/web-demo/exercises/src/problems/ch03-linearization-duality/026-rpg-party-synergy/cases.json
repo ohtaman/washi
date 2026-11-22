@@ -2,19 +2,20 @@
   {
     "nameKey": 0,
     "input": {
-      "values": [
+      "power": [
         40,
         35,
         30,
         25
       ],
       "costs": [
-        30,
+        25,
         25,
         20,
         15
       ],
       "budget": 60,
+      "maxPartySize": 2,
       "pairs": [
         [
           0,
@@ -43,7 +44,7 @@
   {
     "nameKey": 1,
     "input": {
-      "values": [
+      "power": [
         50,
         45,
         40,
@@ -58,6 +59,7 @@
         15
       ],
       "budget": 85,
+      "maxPartySize": 3,
       "pairs": [
         [
           0,
@@ -91,7 +93,7 @@
   {
     "nameKey": 2,
     "input": {
-      "values": [
+      "power": [
         25,
         30,
         20,
@@ -104,6 +106,7 @@
         25
       ],
       "budget": 15,
+      "maxPartySize": 2,
       "pairs": [
         [
           0,
@@ -122,7 +125,7 @@
   {
     "nameKey": 3,
     "input": {
-      "values": [
+      "power": [
         45,
         38,
         42,
@@ -139,6 +142,7 @@
         22
       ],
       "budget": 80,
+      "maxPartySize": 4,
       "pairs": [
         [
           0,
@@ -177,7 +181,7 @@
   {
     "nameKey": 4,
     "input": {
-      "values": [
+      "power": [
         55,
         48,
         44,
@@ -195,7 +199,8 @@
         18,
         15
       ],
-      "budget": 105,
+      "budget": 110,
+      "maxPartySize": 4,
       "pairs": [
         [
           0,
