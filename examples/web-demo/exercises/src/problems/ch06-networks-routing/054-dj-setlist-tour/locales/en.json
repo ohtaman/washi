@@ -1,0 +1,26 @@
+{
+  "title": "#054. DJ Setlist Sequencing",
+  "subtitle": "Order all N tracks into a smooth cycle starting and ending at the opener/encore using Miller-Tucker-Zemlin subtour elimination.",
+  "tags": [
+    "MIP",
+    "TSP",
+    "MTZ",
+    "Core"
+  ],
+  "caseNames": [
+    "4-track warm-up club set",
+    "5-track genre-shift set",
+    "5-track tempo-bridge set",
+    "6-track late-night club set",
+    "7-track festival headline set"
+  ],
+  "judge": {
+    "m0": "Output must be an object { setlist, totalCost }.",
+    "m1": "setlist[{p0}] = {p1} must be an integer track index in [0, {p2}].",
+    "m2": "Track {p0} appears more than once in setlist (subtour or incomplete set detected).",
+    "m3": "setlist must start at opener track 0 (received setlist[0] = {p0}).",
+    "m4": "Reported totalCost ({p0}) does not match computed cycle transition cost ({p1}).",
+    "m5": "Valid full-setlist cycle, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m6": "Minimum-jarring subtour-free setlist found (totalCost = {p0})!"
+  }
+}

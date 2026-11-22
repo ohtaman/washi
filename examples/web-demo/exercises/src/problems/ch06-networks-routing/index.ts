@@ -38,16 +38,16 @@ import p053HighspySolution from "./053-rcsp-shortest-path/highspy/solution.py?ra
 import { judge as p053Judge } from "./053-rcsp-shortest-path/judge.js";
 
 // #054
-import p054Meta from "./054-tsp-mtz/meta.json";
-import p054Cases from "./054-tsp-mtz/cases.json";
-import p054En from "./054-tsp-mtz/locales/en.json";
-import p054Ja from "./054-tsp-mtz/locales/ja.json";
-import p054Zh from "./054-tsp-mtz/locales/zh.json";
-import p054WashiStarter from "./054-tsp-mtz/washi/starter.ts?raw";
-import p054WashiSolution from "./054-tsp-mtz/washi/solution.ts?raw";
-import p054HighspyStarter from "./054-tsp-mtz/highspy/starter.py?raw";
-import p054HighspySolution from "./054-tsp-mtz/highspy/solution.py?raw";
-import { judge as p054Judge } from "./054-tsp-mtz/judge.js";
+import p054Meta from "./054-dj-setlist-tour/meta.json";
+import p054Cases from "./054-dj-setlist-tour/cases.json";
+import p054En from "./054-dj-setlist-tour/locales/en.json";
+import p054Ja from "./054-dj-setlist-tour/locales/ja.json";
+import p054Zh from "./054-dj-setlist-tour/locales/zh.json";
+import p054WashiStarter from "./054-dj-setlist-tour/washi/starter.ts?raw";
+import p054WashiSolution from "./054-dj-setlist-tour/washi/solution.ts?raw";
+import p054HighspyStarter from "./054-dj-setlist-tour/highspy/starter.py?raw";
+import p054HighspySolution from "./054-dj-setlist-tour/highspy/solution.py?raw";
+import { judge as p054Judge } from "./054-dj-setlist-tour/judge.js";
 
 // #055
 import p055Meta from "./055-flow-graph-connectivity/meta.json";
@@ -74,16 +74,16 @@ import p056HighspySolution from "./056-cvrp-routing/highspy/solution.py?raw";
 import { judge as p056Judge } from "./056-cvrp-routing/judge.js";
 
 // #057
-import p057Meta from "./057-vrptw-time-windows/meta.json";
-import p057Cases from "./057-vrptw-time-windows/cases.json";
-import p057En from "./057-vrptw-time-windows/locales/en.json";
-import p057Ja from "./057-vrptw-time-windows/locales/ja.json";
-import p057Zh from "./057-vrptw-time-windows/locales/zh.json";
-import p057WashiStarter from "./057-vrptw-time-windows/washi/starter.ts?raw";
-import p057WashiSolution from "./057-vrptw-time-windows/washi/solution.ts?raw";
-import p057HighspyStarter from "./057-vrptw-time-windows/highspy/starter.py?raw";
-import p057HighspySolution from "./057-vrptw-time-windows/highspy/solution.py?raw";
-import { judge as p057Judge } from "./057-vrptw-time-windows/judge.js";
+import p057Meta from "./057-theme-park-itinerary/meta.json";
+import p057Cases from "./057-theme-park-itinerary/cases.json";
+import p057En from "./057-theme-park-itinerary/locales/en.json";
+import p057Ja from "./057-theme-park-itinerary/locales/ja.json";
+import p057Zh from "./057-theme-park-itinerary/locales/zh.json";
+import p057WashiStarter from "./057-theme-park-itinerary/washi/starter.ts?raw";
+import p057WashiSolution from "./057-theme-park-itinerary/washi/solution.ts?raw";
+import p057HighspyStarter from "./057-theme-park-itinerary/highspy/starter.py?raw";
+import p057HighspySolution from "./057-theme-park-itinerary/highspy/solution.py?raw";
+import { judge as p057Judge } from "./057-theme-park-itinerary/judge.js";
 
 // #058
 import p058Meta from "./058-pickup-delivery/meta.json";
@@ -187,14 +187,14 @@ export const CH06_PROBLEMS: ProblemDefinition[] = [
     rawCases: p054Cases,
     locales: { en: p054En, ja: p054Ja, zh: p054Zh },
     markdownLoaders: {
-      en: () => import("./054-tsp-mtz/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./054-tsp-mtz/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./054-tsp-mtz/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./054-dj-setlist-tour/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./054-dj-setlist-tour/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./054-dj-setlist-tour/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./054-tsp-mtz/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./054-tsp-mtz/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./054-tsp-mtz/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./054-dj-setlist-tour/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./054-dj-setlist-tour/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./054-dj-setlist-tour/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p054WashiStarter,
     washiSolution: p054WashiSolution,
@@ -247,14 +247,14 @@ export const CH06_PROBLEMS: ProblemDefinition[] = [
     rawCases: p057Cases,
     locales: { en: p057En, ja: p057Ja, zh: p057Zh },
     markdownLoaders: {
-      en: () => import("./057-vrptw-time-windows/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./057-vrptw-time-windows/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./057-vrptw-time-windows/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./057-theme-park-itinerary/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./057-theme-park-itinerary/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./057-theme-park-itinerary/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./057-vrptw-time-windows/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./057-vrptw-time-windows/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./057-vrptw-time-windows/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./057-theme-park-itinerary/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./057-theme-park-itinerary/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./057-theme-park-itinerary/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p057WashiStarter,
     washiSolution: p057WashiSolution,
