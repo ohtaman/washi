@@ -1,0 +1,90 @@
+[
+  {
+    "input": {
+      "denominations": [
+        1,
+        3,
+        4
+      ],
+      "maxCounts": [
+        4,
+        2,
+        1
+      ],
+      "targetAmount": 6
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "input": {
+      "denominations": [
+        1,
+        5,
+        10,
+        25
+      ],
+      "maxCounts": [
+        4,
+        4,
+        1,
+        1
+      ],
+      "targetAmount": 45
+    },
+    "expectedOptimal": 4
+  },
+  {
+    "input": {
+      "denominations": [
+        2,
+        5,
+        7
+      ],
+      "maxCounts": [
+        5,
+        3,
+        2
+      ],
+      "targetAmount": 14
+    },
+    "expectedOptimal": 2
+  },
+  {
+    "input": {
+      "denominations": [
+        1,
+        4,
+        6,
+        9,
+        15
+      ],
+      "maxCounts": [
+        5,
+        3,
+        2,
+        2,
+        1
+      ],
+      "targetAmount": 27
+    },
+    "expectedOptimal": 3
+  },
+  {
+    "input": {
+      "denominations": [
+        2,
+        5,
+        11,
+        13
+      ],
+      "maxCounts": [
+        4,
+        3,
+        2,
+        1
+      ],
+      "targetAmount": 23
+    },
+    "expectedOptimal": 3
+  }
+]

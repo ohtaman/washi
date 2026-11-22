@@ -18,8 +18,11 @@ export interface DraftEntry {
 // shown stale starter/solution code or unearned solved badges.
 const V1_TO_V2_RESET_IDS = new Set(["001", "002"]);
 
+// Exercises whose schemas were replaced in v3 (migrating from v1 or v2):
+const V2_TO_V3_RESET_IDS = new Set(["003"]);
+
 export interface ProgressState {
-  version: 2;
+  version: 3;
   solved: Record<string, SolvedEntry>;
   drafts: Record<string, DraftEntry>;
   tutorialDismissed?: boolean;
@@ -27,7 +30,7 @@ export interface ProgressState {
 
 export function createEmptyProgress(): ProgressState {
   return {
-    version: 2,
+    version: 3,
     solved: {},
     drafts: {},
     tutorialDismissed: false,
@@ -43,10 +46,14 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
     throw new Error("Invalid progress JSON: expected an object.");
   }
   const obj = raw as Record<string, unknown>;
-  if (obj.version !== 1 && obj.version !== 2) {
+  if (obj.version !== 1 && obj.version !== 2 && obj.version !== 3) {
     throw new Error(`Unsupported progress version: ${String(obj.version)}.`);
   }
   const migratingFromV1 = obj.version === 1;
+  const migratingFromPreV3 = obj.version === 1 || obj.version === 2;
+  const shouldResetId = (id: string): boolean =>
+    (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) ||
+    (migratingFromPreV3 && V2_TO_V3_RESET_IDS.has(id));
   if (typeof obj.solved !== "object" || obj.solved === null || Array.isArray(obj.solved)) {
     throw new Error("Invalid progress JSON: 'solved' must be an object.");
   }
@@ -60,7 +67,7 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
     if (!Array.isArray(entry.runtimes) || entry.runtimes.some((r) => !isValidRuntime(r))) {
       throw new Error(`Invalid runtimes array for "${id}".`);
     }
-    if (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) {
+    if (shouldResetId(id)) {
       continue;
     }
     const uniqueRuntimes = Array.from(new Set(entry.runtimes));
@@ -97,7 +104,7 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
         if (typeof dObj.highspy !== "string") throw new Error(`Invalid highspy draft for "${id}".`);
         draft.highspy = dObj.highspy;
       }
-      if (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) {
+      if (shouldResetId(id)) {
         continue;
       }
       if (draft.washi !== undefined || draft.highspy !== undefined) {
@@ -108,12 +115,12 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
 
   return {
     state: {
-      version: 2,
+      version: 3,
       solved,
       drafts,
       ...(obj.tutorialDismissed === true ? { tutorialDismissed: true } : { tutorialDismissed: false }),
     },
-    migrated: migratingFromV1,
+    migrated: migratingFromPreV3,
   };
 }
 

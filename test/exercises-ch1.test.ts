@@ -35,7 +35,7 @@ const itHighspy = hasUv ? it : it.skip;
 
 function extractObjectiveValue(output: unknown): number {
   const rec = output as Record<string, unknown>;
-  for (const key of ["sum", "totalProfit", "totalCost", "totalValue", "netProfit"]) {
+  for (const key of ["sum", "totalProfit", "totalCost", "totalValue", "netProfit", "totalCoins"]) {
     if (typeof rec[key] === "number" && Number.isFinite(rec[key])) {
       return rec[key] as number;
     }
@@ -277,6 +277,18 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       const nullVerdict = prob.judge(prob.cases[0].input, null, prob.cases[0].expectedOptimal, "en");
       expect(nullVerdict.ok).toBe(false);
       expect(nullVerdict.status).toBe("RUNTIME_ERROR");
+
+      // #003 (Coin Change Puzzle) adversarial judge checks
+      if (prob.meta.id === "003") {
+        const c0 = prob.cases[0];
+        expect(prob.judge(c0.input, { counts: [0, 0.5, 1], totalCoins: 1.5 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+        expect(prob.judge(c0.input, { counts: [0, 0, 2], totalCoins: 2 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+        expect(prob.judge(c0.input, { counts: [1, 1, 0], totalCoins: 2 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+        expect(prob.judge(c0.input, { counts: [0, 2, 0], totalCoins: 3 }, c0.expectedOptimal, "en").status).toBe("VIOLATION");
+        expect(prob.judge(c0.input, { counts: [2, 0, 1], totalCoins: 3 }, c0.expectedOptimal, "en").status).toBe("SUBOPTIMAL");
+        expect(prob.judge(c0.input, { counts: [0, 2, 0], totalCoins: 2 }, c0.expectedOptimal, "en").status).toBe("AC");
+        expect(prob.judge(c0.input, { counts: [0, 2], totalCoins: 2 }, c0.expectedOptimal, "en").status).toBe("RUNTIME_ERROR");
+      }
 
       // #010 (Production line activation) must reject exceeding capacity when line is closed
       if (prob.meta.id === "010") {
