@@ -1,0 +1,27 @@
+{
+  "title": "#031. Weighted N-Queens",
+  "subtitle": "Place N non-attacking queens on a weighted chessboard using distinct() and element indexing on Pumpkin CP.",
+  "tags": [
+    "CP",
+    "AllDifferent",
+    "distinct",
+    "N-Queens"
+  ],
+  "caseNames": [
+    "4x4 weighted chessboard",
+    "5x5 weighted chessboard",
+    "6x6 weighted chessboard",
+    "7x7 weighted chessboard",
+    "8x8 weighted chessboard"
+  ],
+  "judge": {
+    "m0": "Output must be an object { cols, totalCost }.",
+    "m1": "cols[{p0}] must be an integer (received {p1}).",
+    "m2": "cols[{p0}] must lie in [0, {p1}] (received {p2}).",
+    "m3": "Column {p0} contains more than one queen; all queens must be in distinct columns.",
+    "m4": "Queen at row {p0}, column {p1} attacks an earlier queen along a diagonal.",
+    "m5": "Reported totalCost ({p0}) does not match computed board cost ({p1}).",
+    "m6": "Valid non-attacking queen placement, but totalCost ({p0}) exceeds optimal ({p1}).",
+    "m7": "Optimal weighted N-Queens placement found (totalCost = {p0})!"
+  }
+}
