@@ -4,20 +4,21 @@
 
 ## 1. 採点の仕組み（`solve(input)`） {#solve-contract}
 
-- どの問題も、入力を受け取って結果の JSON オブジェクト（Python なら `dict`）を返す関数 **`solve(input)`** を 1 つ実装します。
-- **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、せっかくなので、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
-- **「実行して採点」** を押すと、テストケースごとに `solve(input)` が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
-- **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。
+- **WaSHI** は TypeScript / JavaScript 用の数理最適化ライブラリです。しかし、数理最適化には Python ユーザーが多いため、Pythonでもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
+- どの問題でも **`solve`** という名前の関数を実装します。`solve` 関数は、 **WaSHI (TypeScript)** では問題毎に指定された入力オブジェクトを受け取ります。 **PuLP (Python)** では入力オブジェクトのフィールド名を `snake_case` に変換して引数で受け取ります（例えば `{"param1": 1, "param2": 2}` なら `solve(param1=1, param2=2)` という形で受け取ります）。
+- **「実行して採点」** を押すと、テストケースごとに `solve` 関数が呼ばれ、戻り値が制約を満たしているか、目的関数値が正しいか、自動的に検証され、正しければ **AC**（正解） となります。
+- **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方で **AC** が得られると解答済み（`✓`）になります。
+
 
 ## 2. モデルの基本構成要素 {#building-blocks}
 
 | 用語 | 意味 | WaSHI (TS) | PuLP (Python) |
 | --- | --- | --- | --- |
 | **決定変数** (Decision Variable) | ソルバーが最適な値を決める未知数。 | `m.continuous(...)` / `m.integer(...)` / `m.binary(...)` | `pulp.LpVariable(..., cat=pulp.LpContinuous / LpInteger / LpBinary)` |
-| **上下界** (Bounds) | 単一変数にかかる範囲制限（例：$x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
-| **線形式** (Linear Expression) | 変数の定数倍の和＋定数（例：$2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` または `dot(...)` | `2 * x + 3 * y` または `pulp.lpSum(...)` |
+| **上下界** (Bounds) | 変数の範囲制限（例：$x \ge 0$）。 | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
+| **線形式** (Linear Expression) | 変数の定数倍と定数の和の形で表せる数式（例：$2x + 3y$）。 | ``expr`2 * ${x} + 3 * ${y}` `` または `dot(...)` | `2 * x + 3 * y` または `pulp.lpSum(...)` |
 | **制約** (Constraint) | 有効な解が必ず満たさなければならない等式・不等式（`<=`, `>=`, `==`）。 | ``m.constraint(expr`... <= ...`)`` | `prob += ... <= ...` |
-| **目的関数** (Objective) | 最小化または最大化したいスカラー指標（利益・コストなど）。 | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` ＋ `prob += ...` |
+| **目的関数** (Objective) | 最小化または最大化したい値（利益・コストなど）。 | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` ＋ `prob += ...` |
 
 ### 変数の種類 {#variable-types}
 
@@ -29,7 +30,7 @@
 
 | 採点結果 | 意味 | よくある原因 |
 | --- | --- | --- |
-| **AC** | 正解（全テストケースで制約を満たし最適解と一致） | モデルと戻り値の両方が正しい状態です。 |
+| **AC** | 正解（全テストケースで制約を満たし最適解と一致） | - |
 | **SUBOPTIMAL** | 実行可能だが最適ではない | `minimize` と `maximize` の逆転、目的係数の抜け、不要な強い制約など。 |
 | **VIOLATION** | 問題の制約ルールに違反している | 制約の書き忘れ、`<=` と `>=` の向き逆転、小数を無理やり丸めたなど。 |
 | **INFEASIBLE** | すべての制約を同時に満たす解が存在しない | 矛盾する制約（例：$x \ge 10$ かつ $x \le 5$）を入れている。 |
@@ -51,11 +52,7 @@
 
 ## 5. 関連リンク・参考リソース {#resources}
 
-組合せ最適化を中心に、数理最適化・制約プログラミング（LP / MIP / CP / SMT）の問題理解と定式化に役立つ公式ドキュメントと参考資料を紹介します。
-
-### 参考資料の使い分け
-
-定式化の基本や実践的なテクニックを学ぶには、MO-book、MOSEK Modeling Cookbook、opt100 が参考になります。制約プログラミング（CP）には MiniZinc Handbook、論理制約や SMT には Online Z3 Guide が役立ちます。WaSHI での実装方法については WaSHI 公式ドキュメントを参照してください。
+組合せ最適化を中心に、数理最適化・制約プログラミング（LP / MIP / CP / SMT）の問題理解と定式化に役立つ公式ドキュメントと参考資料を紹介します。定式化の基本や実践的なテクニックを学ぶには、MO-book、MOSEK Modeling Cookbook、opt100 が参考になります。制約プログラミング（CP）には MiniZinc Handbook、論理制約や SMT には Online Z3 Guide が役立ちます。WaSHI での実装方法については WaSHI 公式ドキュメントを参照してください。
 
 ### モデリングライブラリ・ソルバー公式ドキュメント
 
