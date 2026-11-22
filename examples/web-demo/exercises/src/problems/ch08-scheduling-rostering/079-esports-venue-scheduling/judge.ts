@@ -20,17 +20,17 @@ const JMSG = { en: enLoc.judge, ja: jaLoc.judge, zh: zhLoc.judge };
 
 export interface P079Input {
   durations: number[];
-  priorities: number[];
+  scores: number[];
   compatible: number[][];
-  numSessions: number;
-  regularCapacity: number;
+  numSlots: number;
+  regularLength: number;
   maxOvertime: number;
   overtimeCost: number;
 }
 
 export interface P079Output {
-  assignedRoom: number[];
-  assignedSession: number[];
+  assignedVenue: number[];
+  assignedSlot: number[];
   overtime: number[][];
   netScore: number;
 }
@@ -45,35 +45,35 @@ export function judge(
     return runtimeError(JMSG[locale].m0);
   }
 
-  const C = input.durations.length;
-  const R = input.compatible[0].length;
-  const S = input.numSessions;
+  const M = input.durations.length;
+  const V = input.compatible[0].length;
+  const S = input.numSlots;
 
-  const roomRaw = expectNumericArray(
-    output.assignedRoom,
-    C,
-    { en: "assignedRoom", ja: "assignedRoom", zh: "assignedRoom" },
+  const venueRaw = expectNumericArray(
+    output.assignedVenue,
+    M,
+    { en: "assignedVenue", ja: "assignedVenue", zh: "assignedVenue" },
     locale
   );
-  if (typeof roomRaw === "string") return runtimeError(roomRaw);
+  if (typeof venueRaw === "string") return runtimeError(venueRaw);
 
-  const sessionRaw = expectNumericArray(
-    output.assignedSession,
-    C,
-    { en: "assignedSession", ja: "assignedSession", zh: "assignedSession" },
+  const slotRaw = expectNumericArray(
+    output.assignedSlot,
+    M,
+    { en: "assignedSlot", ja: "assignedSlot", zh: "assignedSlot" },
     locale
   );
-  if (typeof sessionRaw === "string") return runtimeError(sessionRaw);
+  if (typeof slotRaw === "string") return runtimeError(slotRaw);
 
-  if (!Array.isArray(output.overtime) || output.overtime.length !== R) {
-    return runtimeError(formatTemplate(JMSG[locale].m1, { p0: R, p1: S }));
+  if (!Array.isArray(output.overtime) || output.overtime.length !== V) {
+    return runtimeError(formatTemplate(JMSG[locale].m1, { p0: V, p1: S }));
   }
   const overtime: number[][] = [];
-  for (let r = 0; r < R; r++) {
+  for (let v = 0; v < V; v++) {
     const row = expectNumericArray(
-      output.overtime[r],
+      output.overtime[v],
       S,
-      { en: `overtime[${r}]`, ja: `overtime[${r}]`, zh: `overtime[${r}]` },
+      { en: `overtime[${v}]`, ja: `overtime[${v}]`, zh: `overtime[${v}]` },
       locale
     );
     if (typeof row === "string") return runtimeError(row);
@@ -87,61 +87,61 @@ export function judge(
   );
   if (typeof scoreCheck === "string") return runtimeError(scoreCheck);
 
-  const loads = Array.from({ length: R }, () => new Array(S).fill(0));
-  const rooms: number[] = [];
-  const sessions: number[] = [];
-  let totalPriority = 0;
+  const loads = Array.from({ length: V }, () => new Array(S).fill(0));
+  const venues: number[] = [];
+  const slots: number[] = [];
+  let totalScore = 0;
 
-  for (let c = 0; c < C; c++) {
-    if (!checkIntegrality(roomRaw[c]) || !checkIntegrality(sessionRaw[c])) {
+  for (let m = 0; m < M; m++) {
+    if (!checkIntegrality(venueRaw[m]) || !checkIntegrality(slotRaw[m])) {
       return violation(
         formatTemplate(JMSG[locale].m2, {
-          p0: c,
-          p1: roundNice(roomRaw[c]),
-          p2: roundNice(sessionRaw[c]),
+          p0: m,
+          p1: roundNice(venueRaw[m]),
+          p2: roundNice(slotRaw[m]),
         })
       );
     }
-    const r = Math.round(roomRaw[c]);
-    const s = Math.round(sessionRaw[c]);
-    if (r === -1 && s === -1) {
-      rooms.push(-1);
-      sessions.push(-1);
+    const v = Math.round(venueRaw[m]);
+    const s = Math.round(slotRaw[m]);
+    if (v === -1 && s === -1) {
+      venues.push(-1);
+      slots.push(-1);
       continue;
     }
-    if (r < 0 || r >= R || s < 0 || s >= S) {
-      return violation(formatTemplate(JMSG[locale].m2, { p0: c, p1: r, p2: s }));
+    if (v < 0 || v >= V || s < 0 || s >= S) {
+      return violation(formatTemplate(JMSG[locale].m2, { p0: m, p1: v, p2: s }));
     }
-    if (input.compatible[c][r] !== 1) {
-      return violation(formatTemplate(JMSG[locale].m3, { p0: c, p1: r }));
+    if (input.compatible[m][v] !== 1) {
+      return violation(formatTemplate(JMSG[locale].m3, { p0: m, p1: v }));
     }
-    rooms.push(r);
-    sessions.push(s);
-    loads[r][s] += input.durations[c];
-    totalPriority += input.priorities[c];
+    venues.push(v);
+    slots.push(s);
+    loads[v][s] += input.durations[m];
+    totalScore += input.scores[m];
   }
 
   let totalOvertime = 0;
-  for (let r = 0; r < R; r++) {
+  for (let v = 0; v < V; v++) {
     for (let s = 0; s < S; s++) {
-      const ot = overtime[r][s];
+      const ot = overtime[v][s];
       if (ot < -1e-4 || ot > input.maxOvertime + 1e-4) {
         return violation(
           formatTemplate(JMSG[locale].m4, {
-            p0: r,
+            p0: v,
             p1: s,
             p2: roundNice(ot),
             p3: input.maxOvertime,
           })
         );
       }
-      const maxAllowed = input.regularCapacity + ot;
-      if (loads[r][s] > maxAllowed + 1e-4) {
+      const maxAllowed = input.regularLength + ot;
+      if (loads[v][s] > maxAllowed + 1e-4) {
         return violation(
           formatTemplate(JMSG[locale].m5, {
-            p0: r,
+            p0: v,
             p1: s,
-            p2: roundNice(loads[r][s]),
+            p2: roundNice(loads[v][s]),
             p3: roundNice(maxAllowed),
           })
         );
@@ -150,7 +150,7 @@ export function judge(
     }
   }
 
-  const recomputed = totalPriority - input.overtimeCost * totalOvertime;
+  const recomputed = totalScore - input.overtimeCost * totalOvertime;
   if (!approxEqual(scoreCheck, recomputed, 1e-2)) {
     return violation(
       formatTemplate(JMSG[locale].m6, {
@@ -160,7 +160,7 @@ export function judge(
     );
   }
 
-  const preview = `rooms=[${rooms.join(", ")}] | sessions=[${sessions.join(", ")}] | netScore=${roundNice(recomputed)}`;
+  const preview = `venues=[${venues.join(", ")}] | slots=[${slots.join(", ")}] | netScore=${roundNice(recomputed)}`;
 
   if (recomputed < expectedOptimal - 1e-2) {
     return suboptimal(

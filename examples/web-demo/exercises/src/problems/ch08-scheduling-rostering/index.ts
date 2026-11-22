@@ -94,16 +94,16 @@ import p078HighspySolution from "./078-university-timetabling/highspy/solution.p
 import { judge as p078Judge } from "./078-university-timetabling/judge.js";
 
 // #079
-import p079Meta from "./079-operating-room-allocation/meta.json";
-import p079Cases from "./079-operating-room-allocation/cases.json";
-import p079En from "./079-operating-room-allocation/locales/en.json";
-import p079Ja from "./079-operating-room-allocation/locales/ja.json";
-import p079Zh from "./079-operating-room-allocation/locales/zh.json";
-import p079WashiStarter from "./079-operating-room-allocation/washi/starter.ts?raw";
-import p079WashiSolution from "./079-operating-room-allocation/washi/solution.ts?raw";
-import p079HighspyStarter from "./079-operating-room-allocation/highspy/starter.py?raw";
-import p079HighspySolution from "./079-operating-room-allocation/highspy/solution.py?raw";
-import { judge as p079Judge } from "./079-operating-room-allocation/judge.js";
+import p079Meta from "./079-esports-venue-scheduling/meta.json";
+import p079Cases from "./079-esports-venue-scheduling/cases.json";
+import p079En from "./079-esports-venue-scheduling/locales/en.json";
+import p079Ja from "./079-esports-venue-scheduling/locales/ja.json";
+import p079Zh from "./079-esports-venue-scheduling/locales/zh.json";
+import p079WashiStarter from "./079-esports-venue-scheduling/washi/starter.ts?raw";
+import p079WashiSolution from "./079-esports-venue-scheduling/washi/solution.ts?raw";
+import p079HighspyStarter from "./079-esports-venue-scheduling/highspy/starter.py?raw";
+import p079HighspySolution from "./079-esports-venue-scheduling/highspy/solution.py?raw";
+import { judge as p079Judge } from "./079-esports-venue-scheduling/judge.js";
 
 // #080
 import p080Meta from "./080-integrated-staff-equipment/meta.json";
@@ -279,14 +279,14 @@ export const CH08_PROBLEMS: ProblemDefinition[] = [
     rawCases: p079Cases,
     locales: { en: p079En, ja: p079Ja, zh: p079Zh },
     markdownLoaders: {
-      en: () => import("./079-operating-room-allocation/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./079-operating-room-allocation/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./079-operating-room-allocation/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./079-esports-venue-scheduling/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./079-esports-venue-scheduling/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./079-esports-venue-scheduling/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./079-operating-room-allocation/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./079-operating-room-allocation/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./079-operating-room-allocation/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./079-esports-venue-scheduling/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./079-esports-venue-scheduling/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./079-esports-venue-scheduling/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p079WashiStarter,
     washiSolution: p079WashiSolution,
