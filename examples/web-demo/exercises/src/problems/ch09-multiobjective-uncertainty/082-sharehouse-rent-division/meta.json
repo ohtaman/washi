@@ -1,6 +1,6 @@
 {
   "id": "082",
-  "slug": "lexicographic-optimization",
+  "slug": "sharehouse-rent-division",
   "chapter": 9,
   "order": 2,
   "role": "core",
@@ -8,7 +8,8 @@
   "difficulty": 3,
   "estimatedMinutes": 16,
   "paradigms": [
-    "MIP"
+    "MIP",
+    "LP"
   ],
   "runtimes": [
     "washi",
