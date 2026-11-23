@@ -15,7 +15,7 @@ $$
 ## Key Points
 
 - **Integer vs. continuous**: With continuous variables (LP relaxation), a solver could take fractional pieces such as `1.75` of an item to achieve a higher but physically invalid objective. Switching to integer variables turns the model into a Mixed-Integer Program (**MIP**).
-- **Safe integer extraction**: Solver floating-point tolerances can produce `1.999999999` or `-0` for integer variables, so normalize outputs with `Math.round(v.value!) || 0` (`round(pulp.value(c))` in Python).
+- **Safe integer extraction**: WaSHI automatically normalizes `Integer` / `Binary` `v.value` entries to exact integers, so `v.value!` can be used directly. In PuLP (Python), solver tolerances can still return `1.999999999` or `-0.0`, so round outputs with `round(pulp.value(c))`.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

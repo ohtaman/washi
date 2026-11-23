@@ -1,7 +1,7 @@
 # #003. Carry-On Packing & Integers
 
 <!-- section:scenario -->
-You are packing a travel bag with up to a given total weight limit. For each item type, you know its unit weight, value, and maximum allowed count, and you must decide an **integer** quantity of each item (from zero up to its individual cap) to **maximize total value** without exceeding the bag weight limit.
+You are packing a carry-on travel bag up to a given total weight limit. For each item type, you know its unit weight, value, and how many you have available on hand (its maximum count), and you must decide an **integer** quantity of each item (from zero up to its available count) to **maximize total value** without exceeding the bag weight limit.
 
 The starter code currently has two deliberate gaps: it uses continuous variables instead of integer variables, and it omits the total weight limit constraint.
 

@@ -15,7 +15,7 @@ $$
 ## 核心要点
 
 - **连续松弛（LP）与整数规划（MIP）的区别**：若变量保持连续，求解器可能会算出例如 `1.75` 件物品这样不合实际的分数解；声明为整数变量后，求解器会严格在整数可行域内寻优。
-- **结果取整归一化**：由于内部浮点容差，整数变量取值有时会表现为 `1.999999999` 或 `-0`，读取结果时建议使用 `Math.round(v.value!) || 0`（Python 中使用 `round(pulp.value(c))`）。
+- **整数值的安全读取**：WaSHI 会自动将 `Integer` / `Binary` 变量的 `v.value` 归一化为精确整数，可直接使用 `v.value!`；而在 PuLP (Python) 中，求解器浮点容差仍可能返回 `1.999999999` 或 `-0.0`，建议用 `round(pulp.value(c))` 取整。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点

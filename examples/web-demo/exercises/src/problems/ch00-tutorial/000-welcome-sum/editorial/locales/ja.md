@@ -1,6 +1,6 @@
 ## アプローチ
 
-ソルバーは使わず、入力の `a` と `b` を足して `{ sum }` をそのまま `return` します。
+入力の `a` と `b` を足して `{ sum }` をそのまま `return` します（ソルバーは使いません）。
 
 ## 数式
 
@@ -25,5 +25,5 @@ return { sum: input.a + input.b };
 **PuLP (Python)**
 
 ```python
-return {"sum": input_data["a"] + input_data["b"]}
+return {"sum": a + b}
 ```
