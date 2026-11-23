@@ -1,0 +1,24 @@
+{
+  "id": "046",
+  "slug": "puzzle-clue-diagnosis",
+  "chapter": 5,
+  "order": 6,
+  "role": "applied",
+  "scaffold": "scratch",
+  "difficulty": 4,
+  "estimatedMinutes": 22,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

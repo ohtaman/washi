@@ -1,0 +1,33 @@
+{
+  "title": "#057. Theme Park Group Itinerary (Time Windows)",
+  "subtitle": "Schedule up to K friend groups from the park entrance to visit every attraction within its [earliest, latest] opening window using Big-M arrival linking.",
+  "tags": [
+    "MIP",
+    "CP",
+    "Time Windows",
+    "Routing",
+    "Applied"
+  ],
+  "caseNames": [
+    "4 attractions, morning wait & tight slot",
+    "4 attractions, park closing deadline",
+    "5 attractions, staggered opening windows",
+    "5 attractions, 3-group split schedule",
+    "6 attractions, 2-group day trip"
+  ],
+  "judge": {
+    "m0": "Output must be an object { itineraries, totalCost }.",
+    "m1": "Field \"itineraries\" must be an array of group itineraries.",
+    "m2": "Used {p0} groups, exceeding maxGroups = {p1}.",
+    "m3": "Itinerary {p0} must be an integer array of length at least 3 ([0, ..., 0]).",
+    "m4": "Itinerary {p0} must start and end at entrance 0.",
+    "m5": "Attraction index {p0} is out of valid range [1, {p1}].",
+    "m6": "Attraction {p0} is visited more than once.",
+    "m7": "Attraction {p0} earliest feasible start ({p1}) exceeds latest window ({p2}).",
+    "m8": "Itinerary {p0} returns to entrance at {p1}, exceeding park closing time ({p2}).",
+    "m9": "Attraction {p0} was not visited by any group.",
+    "m10": "Reported totalCost ({p0}) does not match computed walking travel time ({p1}).",
+    "m11": "Time-window feasible itineraries, but totalCost ({p0}) exceeds minimum ({p1}).",
+    "m12": "Minimum-travel time-window feasible itineraries found (totalCost = {p0})!"
+  }
+}

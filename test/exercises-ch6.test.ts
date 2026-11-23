@@ -10,16 +10,16 @@ import {
 const hasUv = spawnSync("uv", ["--version"], { encoding: "utf-8" }).status === 0;
 const itHighspy = hasUv ? it : it.skip;
 
-const ZERO_TIME_VRPTW_INPUT = {
-  dist: [
+const ZERO_TIME_ITINERARY_INPUT = {
+  travelTimes: [
     [0, 1, 1],
     [1, 0, 0],
     [1, 0, 0],
   ],
   earliest: [0, 0, 0],
   latest: [3, 3, 3],
-  service: [0, 0, 0],
-  maxVehicles: 1,
+  visitDurations: [0, 0, 0],
+  maxGroups: 1,
 };
 
 registerChapterExerciseSuite({
@@ -97,11 +97,11 @@ registerChapterExerciseSuite({
     expect(v53Cycle.status).toBe("VIOLATION");
     expect(v53Cycle.message).toMatch(/cycle|simple/i);
 
-    // #054: Reject subtours / duplicate cities and suboptimal tours
+    // #054: Reject subtours / duplicate tracks and suboptimal setlists
     const p054 = byId.get("054")!;
     const v54Subtour = p054.judge(
       p054.cases[0].input,
-      { tour: [0, 2, 0, 2], totalCost: 10 },
+      { setlist: [0, 2, 0, 2], totalCost: 10 },
       p054.cases[0].expectedOptimal,
       "en"
     );
@@ -111,12 +111,21 @@ registerChapterExerciseSuite({
 
     const v54Subopt = p054.judge(
       p054.cases[0].input,
-      { tour: [0, 1, 2, 3], totalCost: 45 },
+      { setlist: [0, 1, 2, 3], totalCost: 40 },
       p054.cases[0].expectedOptimal,
       "en"
     );
     expect(v54Subopt.ok).toBe(false);
     expect(v54Subopt.status).toBe("SUBOPTIMAL");
+
+    expect(
+      p054.judge(
+        p054.cases[0].input,
+        { setlist: [0, 2, 1], totalCost: 18 },
+        p054.cases[0].expectedOptimal,
+        "en"
+      ).status
+    ).toBe("RUNTIME_ERROR");
 
     // #055: Reject disconnected high-prize island cluster {3, 4} omitted from root 0
     const p055 = byId.get("055")!;
@@ -142,17 +151,26 @@ registerChapterExerciseSuite({
     expect(v56Cap.status).toBe("VIOLATION");
     expect(v56Cap.message).toMatch(/capacity/i);
 
-    // #057: Reject time window violation & depot closing deadline violation
+    // #057: Reject time window violation, closing deadline violation, and suboptimal itineraries
     const p057 = byId.get("057")!;
     const v57Window = p057.judge(
       p057.cases[0].input,
-      { routes: [[0, 1, 2, 3, 4, 0]], totalCost: 20 },
+      { itineraries: [[0, 1, 2, 3, 4, 0]], totalCost: 21 },
       p057.cases[0].expectedOptimal,
       "en"
     );
     expect(v57Window.ok).toBe(false);
     expect(v57Window.status).toBe("VIOLATION");
-    expect(v57Window.message).toMatch(/window|deadline/i);
+    expect(v57Window.message).toMatch(/window|closing/i);
+
+    const v57Subopt = p057.judge(
+      p057.cases[0].input,
+      { itineraries: [[0, 3, 0], [0, 2, 1, 4, 0]], totalCost: 31 },
+      p057.cases[0].expectedOptimal,
+      "en"
+    );
+    expect(v57Subopt.ok).toBe(false);
+    expect(v57Subopt.status).toBe("SUBOPTIMAL");
 
     // #058: Reject cross-route split request and reversed delivery-before-pickup order
     const p058 = byId.get("058")!;
@@ -252,15 +270,15 @@ registerChapterExerciseSuite({
     expect(v60Imbalance.status).toBe("VIOLATION");
     expect(v60Imbalance.message).toMatch(/balance bounds/i);
 
-    // #057: Zero-time colocated customers must not allow customer-only subtours (WaSHI)
+    // #057: Zero-time colocated attractions must not allow attraction-only subtours (WaSHI)
     {
       const zeroTimeRun = await runWashiExerciseCode(p057.washiSolution, [
-        structuredClone(ZERO_TIME_VRPTW_INPUT),
+        structuredClone(ZERO_TIME_ITINERARY_INPUT),
       ]);
       expect(zeroTimeRun.ok).toBe(true);
-      const out = zeroTimeRun.outputs[0] as { routes: number[][]; totalCost: number };
+      const out = zeroTimeRun.outputs[0] as { itineraries: number[][]; totalCost: number };
       expect(out.totalCost).toBeCloseTo(2, 6);
-      expect(p057.judge(ZERO_TIME_VRPTW_INPUT, out, 2, "en").status).toBe("AC");
+      expect(p057.judge(ZERO_TIME_ITINERARY_INPUT, out, 2, "en").status).toBe("AC");
     }
 
     // Shape-before-violation RUNTIME_ERROR checks across Ch6 judges (#052, #056, #057, #058, #060)
@@ -283,7 +301,7 @@ registerChapterExerciseSuite({
     expect(
       p057.judge(
         p057.cases[0].input,
-        { routes: [[0, 1, 0], [0, 2, 0], [0, "bad"]], totalCost: 10 },
+        { itineraries: [[0, 1, 0], [0, 2, 0], [0, "bad"]], totalCost: 10 },
         p057.cases[0].expectedOptimal,
         "en"
       ).status
@@ -318,13 +336,13 @@ registerChapterExerciseSuite({
 describe("Exercises Chapter 6 Python parity (#057 zero-time)", () => {
   const p057 = PROBLEMS.find((p) => p.meta.chapter === 6 && p.meta.id === "057")!;
 
-  itHighspy("eliminates zero-time customer subtours in PuLP solution.py", () => {
+  itHighspy("eliminates zero-time attraction subtours in PuLP solution.py", () => {
     const batch = runHighspyBatch([
-      { id: "057_zero", code: p057.highspySolution, inputs: [ZERO_TIME_VRPTW_INPUT] },
+      { id: "057_zero", code: p057.highspySolution, inputs: [ZERO_TIME_ITINERARY_INPUT] },
     ]);
     expect(batch["057_zero"].ok).toBe(true);
-    const out = batch["057_zero"].outputs![0] as { routes: number[][]; totalCost: number };
+    const out = batch["057_zero"].outputs![0] as { itineraries: number[][]; totalCost: number };
     expect(out.totalCost).toBeCloseTo(2, 6);
-    expect(p057.judge(ZERO_TIME_VRPTW_INPUT, out, 2, "en").status).toBe("AC");
+    expect(p057.judge(ZERO_TIME_ITINERARY_INPUT, out, 2, "en").status).toBe("AC");
   });
 });

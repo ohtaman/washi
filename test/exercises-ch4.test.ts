@@ -23,7 +23,7 @@ const EXPECTED_RUNTIMES = Object.fromEntries(
 function extractObjective(id: string, output: unknown): number | null {
   if (id === "039") return null;
   const rec = output as Record<string, unknown>;
-  for (const key of ["totalCost", "totalDistance", "makespan", "height", "usedHosts"]) {
+  for (const key of ["totalCost", "totalDistance", "makespan", "height", "usedColors"]) {
     if (typeof rec[key] === "number" && Number.isFinite(rec[key])) {
       return rec[key] as number;
     }
@@ -58,18 +58,30 @@ registerChapterExerciseSuite({
 
     const byId = Object.fromEntries(problems.map((p) => [p.meta.id, p]));
 
-    // #031: broken distinct (duplicate channels) -> VIOLATION and full input table constraint renders in EN/JA/ZH
+    // #031: weighted N-Queens -> RUNTIME_ERROR / VIOLATION / SUBOPTIMAL / AC
     const p31 = byId["031"];
     for (const locale of ["en", "ja", "zh"] as const) {
       const rendered = renderSafeMarkdown(await p31.loadMarkdown(locale));
-      expect(rendered).toContain("<code>abs(channels[u] - channels[v]) &gt;= 2</code>");
+      expect(rendered).toContain("<code>costMatrix[r][c]</code>");
     }
     expect(
-      p31.judge(p31.cases[0].input, { channels: [0, 2, 0], totalCost: 12 }, p31.cases[0].expectedOptimal, "en").status
+      p31.judge(p31.cases[0].input, { cols: [1, 3, 0], totalCost: 8 }, p31.cases[0].expectedOptimal, "en").status
+    ).toBe("RUNTIME_ERROR");
+    expect(
+      p31.judge(p31.cases[0].input, { cols: [1, 3, 0, NaN], totalCost: 8 }, p31.cases[0].expectedOptimal, "en").status
+    ).toBe("RUNTIME_ERROR");
+    expect(
+      p31.judge(p31.cases[0].input, { cols: [1, 1, 0, 2], totalCost: 8 }, p31.cases[0].expectedOptimal, "en").status
     ).toBe("VIOLATION");
     expect(
-      p31.judge(p31.cases[0].input, { channels: [0, 1, 2], totalCost: 14 }, p31.cases[0].expectedOptimal, "en").status
+      p31.judge(p31.cases[0].input, { cols: [0, 2, 1, 3], totalCost: 26 }, p31.cases[0].expectedOptimal, "en").status
     ).toBe("VIOLATION");
+    expect(
+      p31.judge(p31.cases[0].input, { cols: [2, 0, 3, 1], totalCost: 28 }, p31.cases[0].expectedOptimal, "en").status
+    ).toBe("SUBOPTIMAL");
+    expect(
+      p31.judge(p31.cases[0].input, { cols: [1, 3, 0, 2], totalCost: 8 }, p31.cases[0].expectedOptimal, "en").status
+    ).toBe("AC");
 
     // #032: broken distinct assignment -> VIOLATION; valid suboptimal -> SUBOPTIMAL
     const p32 = byId["032"];
@@ -116,14 +128,26 @@ registerChapterExerciseSuite({
       p37.judge(p37.cases[0].input, { x: [4, 0, 0], y: [0, 0, 0], height: 4 }, p37.cases[0].expectedOptimal, "en").status
     ).toBe("VIOLATION");
 
-    // #038: anti-affinity conflict / host capacity exceeded -> VIOLATION
+    // #038: graph coloring -> RUNTIME_ERROR / VIOLATION / SUBOPTIMAL / AC
     const p38 = byId["038"];
     expect(
-      p38.judge(p38.cases[0].input, { hosts: [0, 0, 1, 1], usedHosts: 2 }, p38.cases[0].expectedOptimal, "en").status
+      p38.judge(p38.cases[0].input, { colors: [0, 1, 2, 0], usedColors: 3 }, p38.cases[0].expectedOptimal, "en").status
+    ).toBe("RUNTIME_ERROR");
+    expect(
+      p38.judge(p38.cases[0].input, { colors: [0, 0, 1, 0, 1], usedColors: 2 }, p38.cases[0].expectedOptimal, "en").status
     ).toBe("VIOLATION");
     expect(
-      p38.judge(p38.cases[0].input, { hosts: [1, 0, 0, 2], usedHosts: 3 }, p38.cases[0].expectedOptimal, "en").status
+      p38.judge(p38.cases[0].input, { colors: [0, 1, 2, 0, 2], usedColors: 2 }, p38.cases[0].expectedOptimal, "en").status
     ).toBe("VIOLATION");
+    expect(
+      p38.judge(p38.cases[0].input, { colors: [0, 1, 2, 3, 0], usedColors: 4 }, p38.cases[0].expectedOptimal, "en").status
+    ).toBe("SUBOPTIMAL");
+    expect(
+      p38.judge(p38.cases[0].input, { colors: [0, 1, 2, 0, 2], usedColors: 3 }, p38.cases[0].expectedOptimal, "en").status
+    ).toBe("AC");
+    expect(
+      p38.judge(p38.cases[0].input, { colors: [2, 0, 1, 2, 1], usedColors: 3 }, p38.cases[0].expectedOptimal, "en").status
+    ).toBe("AC");
 
     // #039: duplicate row/col or wrong cage sum -> VIOLATION
     const p39 = byId["039"];

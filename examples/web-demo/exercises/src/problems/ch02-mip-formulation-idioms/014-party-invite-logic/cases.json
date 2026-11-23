@@ -1,0 +1,84 @@
+[
+  {
+    "id": "case_0",
+    "input": {
+      "budget": 55,
+      "baseEnjoyment": [10, 25, 30, 15, 22],
+      "bonusRates": [2, 5, 6, 3, 4],
+      "minSpend": [8, 12, 10, 10, 14],
+      "maxSpend": [15, 20, 18, 14, 22],
+      "implications": [[1, 0]],
+      "conflicts": [[2, 4]],
+      "groupRules": [
+        { "guests": [0, 2, 3], "minCount": 1 }
+      ]
+    },
+    "expectedOptimal": 329
+  },
+  {
+    "id": "case_1",
+    "input": {
+      "budget": 48,
+      "baseEnjoyment": [12, 18, 28, 14, 24],
+      "bonusRates": [1, 4, 5, 2, 6],
+      "minSpend": [10, 10, 12, 8, 14],
+      "maxSpend": [16, 18, 20, 15, 22],
+      "implications": [[2, 0], [4, 3]],
+      "conflicts": [[1, 4]],
+      "groupRules": [
+        { "guests": [1, 2], "minCount": 1 },
+        { "guests": [0, 3, 4], "minCount": 2 }
+      ]
+    },
+    "expectedOptimal": 272
+  },
+  {
+    "id": "case_2",
+    "input": {
+      "budget": 30,
+      "baseEnjoyment": [20, 16, 25, 12],
+      "bonusRates": [3, 5, 2, 4],
+      "minSpend": [8, 10, 12, 6],
+      "maxSpend": [14, 16, 18, 12],
+      "implications": [[1, 0]],
+      "conflicts": [[0, 2]],
+      "groupRules": [
+        { "guests": [1, 2, 3], "minCount": 1 }
+      ]
+    },
+    "expectedOptimal": 176
+  },
+  {
+    "id": "case_3",
+    "input": {
+      "budget": 70,
+      "baseEnjoyment": [8, 15, 22, 18, 26, 20],
+      "bonusRates": [2, 3, 5, 4, 6, 3],
+      "minSpend": [6, 10, 12, 10, 14, 10],
+      "maxSpend": [12, 16, 20, 18, 24, 16],
+      "implications": [[2, 1], [1, 0], [4, 3]],
+      "conflicts": [[2, 5], [0, 3]],
+      "groupRules": [
+        { "guests": [0, 3, 5], "minCount": 2 }
+      ]
+    },
+    "expectedOptimal": 328
+  },
+  {
+    "id": "case_4",
+    "input": {
+      "budget": 85,
+      "baseEnjoyment": [14, 20, 18, 24, 16, 28, 22],
+      "bonusRates": [2, 4, 3, 5, 2, 6, 4],
+      "minSpend": [8, 12, 10, 14, 8, 15, 12],
+      "maxSpend": [15, 20, 18, 22, 16, 25, 20],
+      "implications": [[3, 1], [5, 2]],
+      "conflicts": [[1, 6], [3, 5]],
+      "groupRules": [
+        { "guests": [0, 1, 2], "minCount": 2 },
+        { "guests": [4, 5, 6], "minCount": 1 }
+      ]
+    },
+    "expectedOptimal": 426
+  }
+]

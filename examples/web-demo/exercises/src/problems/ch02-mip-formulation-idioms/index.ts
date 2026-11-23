@@ -38,16 +38,16 @@ import p013HighspySolution from "./013-cardinality-selection/highspy/solution.py
 import { judge as p013Judge } from "./013-cardinality-selection/judge.js";
 
 // #014
-import p014Meta from "./014-conditional-logic-big-m/meta.json";
-import p014Cases from "./014-conditional-logic-big-m/cases.json";
-import p014En from "./014-conditional-logic-big-m/locales/en.json";
-import p014Ja from "./014-conditional-logic-big-m/locales/ja.json";
-import p014Zh from "./014-conditional-logic-big-m/locales/zh.json";
-import p014WashiStarter from "./014-conditional-logic-big-m/washi/starter.ts?raw";
-import p014WashiSolution from "./014-conditional-logic-big-m/washi/solution.ts?raw";
-import p014HighspyStarter from "./014-conditional-logic-big-m/highspy/starter.py?raw";
-import p014HighspySolution from "./014-conditional-logic-big-m/highspy/solution.py?raw";
-import { judge as p014Judge } from "./014-conditional-logic-big-m/judge.js";
+import p014Meta from "./014-party-invite-logic/meta.json";
+import p014Cases from "./014-party-invite-logic/cases.json";
+import p014En from "./014-party-invite-logic/locales/en.json";
+import p014Ja from "./014-party-invite-logic/locales/ja.json";
+import p014Zh from "./014-party-invite-logic/locales/zh.json";
+import p014WashiStarter from "./014-party-invite-logic/washi/starter.ts?raw";
+import p014WashiSolution from "./014-party-invite-logic/washi/solution.ts?raw";
+import p014HighspyStarter from "./014-party-invite-logic/highspy/starter.py?raw";
+import p014HighspySolution from "./014-party-invite-logic/highspy/solution.py?raw";
+import { judge as p014Judge } from "./014-party-invite-logic/judge.js";
 
 // #015
 import p015Meta from "./015-set-covering/meta.json";
@@ -86,16 +86,16 @@ import p017HighspySolution from "./017-maximal-covering-location/highspy/solutio
 import { judge as p017Judge } from "./017-maximal-covering-location/judge.js";
 
 // #018
-import p018Meta from "./018-multidim-knapsack-deps/meta.json";
-import p018Cases from "./018-multidim-knapsack-deps/cases.json";
-import p018En from "./018-multidim-knapsack-deps/locales/en.json";
-import p018Ja from "./018-multidim-knapsack-deps/locales/ja.json";
-import p018Zh from "./018-multidim-knapsack-deps/locales/zh.json";
-import p018WashiStarter from "./018-multidim-knapsack-deps/washi/starter.ts?raw";
-import p018WashiSolution from "./018-multidim-knapsack-deps/washi/solution.ts?raw";
-import p018HighspyStarter from "./018-multidim-knapsack-deps/highspy/starter.py?raw";
-import p018HighspySolution from "./018-multidim-knapsack-deps/highspy/solution.py?raw";
-import { judge as p018Judge } from "./018-multidim-knapsack-deps/judge.js";
+import p018Meta from "./018-degree-course-planner/meta.json";
+import p018Cases from "./018-degree-course-planner/cases.json";
+import p018En from "./018-degree-course-planner/locales/en.json";
+import p018Ja from "./018-degree-course-planner/locales/ja.json";
+import p018Zh from "./018-degree-course-planner/locales/zh.json";
+import p018WashiStarter from "./018-degree-course-planner/washi/starter.ts?raw";
+import p018WashiSolution from "./018-degree-course-planner/washi/solution.ts?raw";
+import p018HighspyStarter from "./018-degree-course-planner/highspy/starter.py?raw";
+import p018HighspySolution from "./018-degree-course-planner/highspy/solution.py?raw";
+import { judge as p018Judge } from "./018-degree-course-planner/judge.js";
 
 // #019
 import p019Meta from "./019-piecewise-volume-discount/meta.json";
@@ -187,14 +187,14 @@ export const CH02_PROBLEMS: ProblemDefinition[] = [
     rawCases: p014Cases,
     locales: { en: p014En, ja: p014Ja, zh: p014Zh },
     markdownLoaders: {
-      en: () => import("./014-conditional-logic-big-m/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./014-conditional-logic-big-m/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./014-conditional-logic-big-m/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./014-party-invite-logic/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./014-party-invite-logic/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./014-party-invite-logic/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./014-conditional-logic-big-m/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./014-conditional-logic-big-m/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./014-conditional-logic-big-m/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./014-party-invite-logic/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./014-party-invite-logic/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./014-party-invite-logic/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p014WashiStarter,
     washiSolution: p014WashiSolution,
@@ -267,14 +267,14 @@ export const CH02_PROBLEMS: ProblemDefinition[] = [
     rawCases: p018Cases,
     locales: { en: p018En, ja: p018Ja, zh: p018Zh },
     markdownLoaders: {
-      en: () => import("./018-multidim-knapsack-deps/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./018-multidim-knapsack-deps/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./018-multidim-knapsack-deps/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./018-degree-course-planner/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./018-degree-course-planner/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./018-degree-course-planner/locales/zh.md?raw").then((m) => m.default),
     },
     editorialLoaders: {
-      en: () => import("./018-multidim-knapsack-deps/editorial/locales/en.md?raw").then((m) => m.default),
-      ja: () => import("./018-multidim-knapsack-deps/editorial/locales/ja.md?raw").then((m) => m.default),
-      zh: () => import("./018-multidim-knapsack-deps/editorial/locales/zh.md?raw").then((m) => m.default),
+      en: () => import("./018-degree-course-planner/editorial/locales/en.md?raw").then((m) => m.default),
+      ja: () => import("./018-degree-course-planner/editorial/locales/ja.md?raw").then((m) => m.default),
+      zh: () => import("./018-degree-course-planner/editorial/locales/zh.md?raw").then((m) => m.default),
     },
     washiStarter: p018WashiStarter,
     washiSolution: p018WashiSolution,

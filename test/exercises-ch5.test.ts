@@ -124,26 +124,40 @@ async function checkCh05Adversarial(problems: ProblemDefinition[]): Promise<void
   );
   expect(fakeCe44.status).toBe("VIOLATION");
 
-  // #046: Non-minimal unsat core rejection (VIOLATION)
+  // #046: Non-minimal, satisfiable, and malformed unsat core rejection
   const p046 = byId.get("046")!;
-  // Case 0 has unique MUS ["R1", "R2", "R4"]; adding decoy "R3" or returning all rules is non-minimal
+  // Case 0 has unique MUS ["C1", "C2", "C3", "C4"]; adding decoy "C5" is non-minimal
   const nonMin46 = p046.judge(
     p046.cases[0].input,
-    { coreRules: ["R1", "R2", "R3", "R4"] },
+    { coreRules: ["C1", "C2", "C3", "C4", "C5"] },
     p046.cases[0].expectedOptimal,
     "en"
   );
   expect(nonMin46.ok).toBe(false);
   expect(nonMin46.status).toBe("VIOLATION");
 
-  // Also test shortcut non-minimal core in Case 2: ["R1", "R2", "R3", "R4", "R5"] is non-minimal
+  // Also test shortcut non-minimal core in Case 2: ["C1", "C2", "C3", "C4", "C5"] is non-minimal
   const nonMin46Case2 = p046.judge(
     p046.cases[2].input,
-    { coreRules: ["R1", "R2", "R3", "R4", "R5"] },
+    { coreRules: ["C1", "C2", "C3", "C4", "C5"] },
     p046.cases[2].expectedOptimal,
     "ja"
   );
   expect(nonMin46Case2.status).toBe("VIOLATION");
+
+  // Satisfiable subset must be rejected with VIOLATION
+  const sat46 = p046.judge(
+    p046.cases[0].input,
+    { coreRules: ["C1", "C2", "C5"] },
+    p046.cases[0].expectedOptimal,
+    "en"
+  );
+  expect(sat46.status).toBe("VIOLATION");
+
+  // Malformed coreRules must return RUNTIME_ERROR
+  expect(
+    p046.judge(p046.cases[0].input, { coreRules: [123] }, p046.cases[0].expectedOptimal, "en").status
+  ).toBe("RUNTIME_ERROR");
 
   // #048: Missed-violation rejection (both direct judge and runWashiExerciseCode + applySolverStatusToVerdict)
   const p048 = byId.get("048")!;
@@ -245,16 +259,60 @@ async function checkCh05Adversarial(problems: ProblemDefinition[]): Promise<void
     }
   }
   const rendered41En = renderSafeMarkdown(await byId.get("041")!.loadMarkdown("en"));
-  expect(rendered41En).toContain("Valid Boolean assignment for every variable");
+  expect(rendered41En).toContain("assigned value at each position");
   const rendered43En = renderSafeMarkdown(await p043.loadMarkdown("en"));
   expect(rendered43En).toContain("Chosen version per package");
   expect(rendered43En).toContain("Minimized count of installed packages");
 
-  // Shape-before-violation RUNTIME_ERROR checks on #041, #042, #043
+  // Shape-before-violation RUNTIME_ERROR & VIOLATION checks on #041, #042, #043
   const p041 = byId.get("041")!;
   expect(
-    p041.judge(p041.cases[0].input, { satisfiable: true, assignment: { badge: "yes" } }, 1, "en").status
+    p041.judge(
+      p041.cases[0].input,
+      { satisfiable: true, assignment: [{ color: 123, pet: "cat", drink: "tea" }, {}, {}] },
+      1,
+      "en"
+    ).status
   ).toBe("RUNTIME_ERROR");
+  expect(
+    p041.judge(p041.cases[0].input, { satisfiable: false, assignment: [] }, 1, "en").status
+  ).toBe("RUNTIME_ERROR");
+  expect(
+    p041.judge(p041.cases[4].input, { satisfiable: false, assignment: null }, 1, "en").status
+  ).toBe("VIOLATION");
+  expect(
+    p041.judge(p041.cases[0].input, { satisfiable: false, assignment: null }, 1, "en").status
+  ).toBe("VIOLATION");
+  expect(
+    p041.judge(
+      p041.cases[0].input,
+      {
+        satisfiable: true,
+        assignment: [
+          { color: "red", pet: "cat", drink: "tea" },
+          { color: "red", pet: "bird", drink: "water" },
+          { color: "blue", pet: "dog", drink: "coffee" },
+        ],
+      },
+      1,
+      "en"
+    ).status
+  ).toBe("VIOLATION");
+  expect(
+    p041.judge(
+      p041.cases[0].input,
+      {
+        satisfiable: true,
+        assignment: [
+          { color: "green", pet: "cat", drink: "tea" },
+          { color: "red", pet: "bird", drink: "water" },
+          { color: "blue", pet: "dog", drink: "coffee" },
+        ],
+      },
+      1,
+      "en"
+    ).status
+  ).toBe("VIOLATION");
   expect(
     p042.judge(p042.cases[0].input, { satisfiable: true, unique: true, assignment: null }, 1, "en").status
   ).toBe("RUNTIME_ERROR");

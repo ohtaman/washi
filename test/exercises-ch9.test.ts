@@ -31,7 +31,7 @@ registerChapterExerciseSuite({
     const rec = output as Record<string, unknown>;
     const keyMap: Record<string, string> = {
       "081": "totalCost",
-      "082": "obj2",
+      "082": "minSurplus",
       "083": "frontierSum",
       "084": "totalCost",
       "085": "totalObjective",
@@ -67,21 +67,38 @@ registerChapterExerciseSuite({
       ).toBe("SUBOPTIMAL");
     }
 
-    // #082: Naive single-stage scalarization breaks Stage-1 priority; Stage-2 suboptimal & slack-ignoring fail
+    // #082: Stage-1 suboptimal assignment, Stage-2 envy/rent violations, and unfair envy-free split fail
     {
       const p = getProblem(problems, "082");
       const c0 = p.cases[0];
+      // Malformed output -> RUNTIME_ERROR
       expect(
-        p.judge(c0.input, { selected: [0, 1, 0, 1], obj1: 2, obj2: 300 }, c0.expectedOptimal, "en").status
+        p.judge(c0.input, { assignment: [0, 1], rents: [600, 500, 400], totalValuation: 2100, minSurplus: 200 }, c0.expectedOptimal, "en").status
+      ).toBe("RUNTIME_ERROR");
+      // Duplicate room assignment -> VIOLATION
+      expect(
+        p.judge(c0.input, { assignment: [0, 0, 2], rents: [600, 500, 400], totalValuation: 2000, minSurplus: 200 }, c0.expectedOptimal, "en").status
       ).toBe("VIOLATION");
+      // Suboptimal Stage-1 assignment [0, 2, 1] (totalValuation 1750 < 2100) -> VIOLATION
       expect(
-        p.judge(c0.input, { selected: [1, 1, 0, 0], obj1: 0, obj2: 480 }, c0.expectedOptimal, "en").status
-      ).toBe("SUBOPTIMAL");
-      const c2 = p.cases[2];
-      // Ignoring allowed slack=4 gives obj1=0 but much higher cost (1200+350 = 1550? or [1,0,1,1] cost 1670 > 860)
+        p.judge(c0.input, { assignment: [0, 2, 1], rents: [600, 450, 450], totalValuation: 1750, minSurplus: 0 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Negative rent -> VIOLATION
       expect(
-        p.judge(c2.input, { selected: [1, 0, 1, 1, 0, 0], obj1: 0, obj2: 1670 }, c2.expectedOptimal, "en").status
+        p.judge(c0.input, { assignment: [0, 1, 2], rents: [1000, 600, -100], totalValuation: 2100, minSurplus: -200 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Envy-freeness violated: equal rent [500, 500, 500] on Case 0? Wait: [500, 500, 500] is envy-free (surpluses 300, 200, 100) -> SUBOPTIMAL
+      expect(
+        p.judge(c0.input, { assignment: [0, 1, 2], rents: [500, 500, 500], totalValuation: 2100, minSurplus: 100 }, c0.expectedOptimal, "en").status
       ).toBe("SUBOPTIMAL");
+      // Envy-freeness violated: rents [800, 350, 350] gives roommate 0 surplus 0 in room 0 vs 150 in room 1 -> VIOLATION
+      expect(
+        p.judge(c0.input, { assignment: [0, 1, 2], rents: [800, 350, 350], totalValuation: 2100, minSurplus: 0 }, c0.expectedOptimal, "en").status
+      ).toBe("VIOLATION");
+      // Optimal solution -> AC
+      expect(
+        p.judge(c0.input, { assignment: [0, 1, 2], rents: [600, 500, 400], totalValuation: 2100, minSurplus: 200 }, c0.expectedOptimal, "en").status
+      ).toBe("AC");
     }
 
     // #083: Missing unsupported Pareto point or exceeding epsilon cap

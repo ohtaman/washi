@@ -1,0 +1,24 @@
+{
+  "id": "041",
+  "slug": "zebra-logic-puzzle",
+  "chapter": 5,
+  "order": 1,
+  "role": "intro",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 15,
+  "paradigms": [
+    "SMT"
+  ],
+  "runtimes": [
+    "washi"
+  ],
+  "solvers": [
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

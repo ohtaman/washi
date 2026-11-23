@@ -1,0 +1,31 @@
+{
+  "title": "#082. Share-House Room & Fair Rent Division",
+  "subtitle": "Assign rooms to maximize total roommate valuation first, then divide total rent envy-freely to maximize the minimum roommate surplus.",
+  "tags": [
+    "MIP",
+    "LP",
+    "Lexicographic",
+    "Fair Division",
+    "Two-Stage"
+  ],
+  "caseNames": [
+    "3-roommate distinct preferences",
+    "3-roommate contested room",
+    "4-roommate cross-preference house",
+    "5-roommate skewed room values",
+    "6-roommate share-house"
+  ],
+  "judge": {
+    "m0": "Output must be an object { assignment, rents, totalValuation, minSurplus }.",
+    "m1": "assignment[{p0}] must be an integer room index in [0, {p1}] (received {p2}).",
+    "m2": "Room {p0} is assigned to more than one roommate.",
+    "m3": "rents[{p0}] must be non-negative (received {p1}).",
+    "m4": "Sum of rents ({p0}) does not equal totalRent ({p1}).",
+    "m5": "Reported totalValuation ({p0}) does not match computed sum ({p1}).",
+    "m6": "Stage-1 totalValuation ({p0}) is below the maximum achievable valuation ({p1}).",
+    "m7": "Envy-freeness violated: roommate {p0} gets surplus {p2} in room {p1}, but would get {p4} in room {p3}.",
+    "m8": "Reported minSurplus ({p0}) does not match computed minimum surplus ({p1}).",
+    "m9": "Assignment is envy-free, but minSurplus ({p0}) is below the fair maximum ({p1}).",
+    "m10": "Envy-free assignment and fair rent division verified (minSurplus = {p0})."
+  }
+}

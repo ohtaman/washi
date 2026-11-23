@@ -1,0 +1,26 @@
+{
+  "id": "082",
+  "slug": "sharehouse-rent-division",
+  "chapter": 9,
+  "order": 2,
+  "role": "core",
+  "scaffold": "scratch",
+  "difficulty": 3,
+  "estimatedMinutes": 16,
+  "paradigms": [
+    "MIP",
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}
