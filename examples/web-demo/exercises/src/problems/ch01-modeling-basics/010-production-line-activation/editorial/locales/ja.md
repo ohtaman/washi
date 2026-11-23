@@ -1,6 +1,6 @@
 ## アプローチ
 
-各ラインの稼働有無を表す 0-1 変数 `open` と生産量を表す連続変数 `quantities` を対にし、`quantities[i] <= capacities[i] * open[i]` で稼働と生産上限を連動させたうえで、共有原材料上限のもとで純利益（粗利 − 固定費）を最大化します。
+各ラインの稼働有無を表す 0-1 変数 `open` と生産量を表す連続変数 `quantities` を対にし、`quantities[i] <= capacities[i] * open[i]` で稼働と生産上限を連動させたうえで、樹脂ペレットの在庫上限のもとで純利益（粗利 − 固定費）を最大化します。
 
 ## 数理モデル
 
@@ -20,6 +20,8 @@ $$
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+0-1 変数 `open[i]` と連続変数 `quantities[i]` を `quantities[i] <= capacities[i] * open[i]` で連動させ、粗利と固定費の差を 1 本の目的関数にまとめます。
 
 **WaSHI (TypeScript)**
 

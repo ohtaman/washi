@@ -1,6 +1,6 @@
 ## アプローチ
 
-各原料の投入量を在庫上限つき連続変数（`0 <= x_i <= availabilities[i]`）として宣言し、総重量の等式 `sum(amounts) == targetBatch` と元素ごとの絶対量上下限を加え、総材料費を最小化します。
+各原料地金の投入量を在庫上限つき連続変数（`0 <= x_i <= availabilities[i]`）として定義し、総重量の等式 `sum(amounts) == targetBatch` と成分ごとの絶対量上下限を加え、総材料費を最小化します。
 
 ## 数理モデル
 
@@ -20,6 +20,8 @@ $$
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+`compositions[i][k]` は行が原料地金・列が成分のため、列ベクトルを取り出して内積をとり、下限と上限の 2 本の制約をまとめて構築します。
 
 **WaSHI (TypeScript)**
 

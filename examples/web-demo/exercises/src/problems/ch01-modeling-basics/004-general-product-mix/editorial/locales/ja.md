@@ -1,6 +1,6 @@
 ## アプローチ
 
-製品数に応じた非負連続変数の配列 `quantities` を宣言し、各資源行 `usages[k]` ごとに上限制約 `dot(usages[k], quantities) <= capacities[k]` を並べて総利益 `dot(margins, quantities)` を最大化します。
+フレーバー数に応じた非負連続変数の配列 `quantities` を定義し、各材料・設備行 `usages[k]` ごとに上限制約 `dot(usages[k], quantities) <= capacities[k]` を並べて総利益 `dot(margins, quantities)` を最大化します。
 
 ## 数理モデル
 
@@ -19,6 +19,8 @@ $$
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+フレーバー数や材料・設備の数がデータによって変わるため、`.map()`（WaSHI）やリスト内包表記（PuLP）で制約を動的に生成し、`dot` / `pulp.lpDot` で内積を簡潔に記述します。
 
 **WaSHI (TypeScript)**
 

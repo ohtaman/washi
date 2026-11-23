@@ -1,6 +1,6 @@
 ## アプローチ
 
-各期の通常生産 `regular`・残業生産 `overtime`・期末在庫 `inventory` を能力上限・最終安全在庫下限つき連続変数として宣言し、連続する期間どうしを在庫収支等式で結んで総コストを最小化します。
+各期の通常生産台数 `regular`・残業生産台数 `overtime`・期末在庫台数 `inventory` を能力上限・最終安全在庫下限つき連続変数として定義し、連続する期間どうしを在庫収支等式で結んで総コストを最小化します。
 
 ## 数理モデル
 
@@ -20,6 +20,8 @@ $$
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+第 0 期（`t === 0`）のみ定数 `initialInventory` を参照し、それ以降は前期の変数 `inventory[t - 1]` を参照して各期の在庫収支等式を結びます。
 
 **WaSHI (TypeScript)**
 

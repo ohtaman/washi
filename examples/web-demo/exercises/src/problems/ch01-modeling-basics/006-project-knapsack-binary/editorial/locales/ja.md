@@ -1,6 +1,6 @@
 ## アプローチ
 
-各候補プロジェクトの採否を表す 0-1 バイナリ変数（`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`）を宣言し、予算上限制約 `dot(costs, selected) <= budget` のもとで期待価値の合計を最大化します。
+各防災設備の導入有無を表す 0-1 バイナリ変数（`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`）を定義し、予算上限制約 `dot(costs, selected) <= budget` のもとで期待スコアの合計を最大化します。
 
 ## 数理モデル
 
@@ -15,10 +15,12 @@ $$
 ## ポイント
 
 - **貪欲法が最適にならない理由（0-1 ナップサック）**: コスパ（価値/費用）の高い順に選ぶだけでは、端数の予算が余ってしまい全体最適（例では価値 `36`）に届かないケースがあります。MIP ソルバーなら全組合せの中から最適集合を見つけられます。
-- **0-1 変数の丸め**: 浮動小数点の許容誤差による `0.999999999` や `-0` を防ぐため、取り出し時には `Math.round(v.value!) || 0`（Python は `round(pulp.value(v))`）を使います。
+- **0-1 変数の取り出し**: PuLP (Python) では浮動小数点の許容誤差により `0.999999999` や `-0.0` が返ることがあるため、取り出し時は `round(pulp.value(v))` で整数へ丸めます。WaSHI では `Binary` 変数の `v.value` は内部で整数へ自動正規化されるため `v.value!` をそのまま使えます。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+各設備の選択を `m.binary(...)`（PuLP は `cat=pulp.LpBinary`）で表し、予算制約と目的関数の和を `dot` / `pulp.lpDot` で簡潔に記述します。
 
 **WaSHI (TypeScript)**
 
