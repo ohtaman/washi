@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(travel_times, earliest, latest, visit_durations, max_groups) -> dict:
     """Return {"itineraries": list[list[int]], "totalCost": float}."""
-    travel_times = input_data["travelTimes"]
-    earliest = input_data["earliest"]
-    latest = input_data["latest"]
-    visit_durations = input_data["visitDurations"]
-    max_groups = input_data["maxGroups"]
     n = len(travel_times)
 
     prob = pulp.LpProblem("theme_park_itinerary", pulp.LpMinimize)

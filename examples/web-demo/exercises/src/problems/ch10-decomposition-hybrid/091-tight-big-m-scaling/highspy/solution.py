@@ -1,11 +1,7 @@
 import pulp
 
 
-def _solve_variant(input_data: dict, relax: bool):
-    fixed_costs = input_data["fixedCosts"]
-    unit_costs = input_data["unitCosts"]
-    capacities = input_data["capacities"]
-    demand = input_data["demand"]
+def _solve_variant(fixed_costs, unit_costs, capacities, demand, relax: bool):
     n = len(fixed_costs)
 
     prob = pulp.LpProblem("tight_big_m", pulp.LpMinimize)
@@ -26,10 +22,12 @@ def _solve_variant(input_data: dict, relax: bool):
     return prob, open_vars, quantities
 
 
-def solve(input_data: dict) -> dict:
+def solve(fixed_costs, unit_costs, capacities, demand) -> dict:
     """Return {"open": list[int], "quantities": list[float], "totalCost": float, "lpBound": float}."""
-    lp_prob, _, _ = _solve_variant(input_data, relax=True)
-    mip_prob, open_vars, quantities = _solve_variant(input_data, relax=False)
+    lp_prob, _, _ = _solve_variant(fixed_costs, unit_costs, capacities, demand, relax=True)
+    mip_prob, open_vars, quantities = _solve_variant(
+        fixed_costs, unit_costs, capacities, demand, relax=False
+    )
 
     return {
         "open": [round(pulp.value(v)) for v in open_vars],

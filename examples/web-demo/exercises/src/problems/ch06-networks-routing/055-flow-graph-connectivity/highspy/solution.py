@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(prizes, edges) -> dict:
     """Return {"selectedNodes": list[int], "selectedEdges": list[int], "netValue": float}."""
-    prizes = input_data["prizes"]
-    edges = input_data["edges"]
     n = len(prizes)
     m = len(edges)
 

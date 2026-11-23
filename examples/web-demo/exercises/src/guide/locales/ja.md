@@ -2,13 +2,12 @@
 
 **数理最適化100本ノック** を進めるうえで必要な、問題の読み方・モデリングの基本用語・採点結果の見方をまとめたリファレンスです。
 
-## 1. 採点の仕組み（`solve(input)`） {#solve-contract}
+## 1. 採点の仕組み（`solve()`） {#solve-contract}
 
-- **WaSHI** は TypeScript / JavaScript 用の数理最適化ライブラリです。しかし、数理最適化には Python ユーザーが多いため、Pythonでもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
-- どの問題でも **`solve`** という名前の関数を実装します。`solve` 関数は、 **WaSHI (TypeScript)** では問題毎に指定された入力オブジェクトを受け取ります。 **PuLP (Python)** では入力オブジェクトのフィールド名を `snake_case` に変換して引数で受け取ります（例えば `{"param1": 1, "param2": 2}` なら `solve(param1=1, param2=2)` という形で受け取ります）。
-- **「実行して採点」** を押すと、テストケースごとに `solve` 関数が呼ばれ、戻り値が制約を満たしているか、目的関数値が正しいか、自動的に検証され、正しければ **AC**（正解） となります。
-- **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方で **AC** が得られると解答済み（`✓`）になります。
-
+- どの問題も、**WaSHI (TypeScript)** では入力オブジェクトを受け取る **`solve(input)`**、**PuLP (Python)** では各入力フィールドを `snake_case` に変換して引数で受け取る **`solve(field_1, field_2, ...)`** を 1 つ実装し、結果のオブジェクト（Python なら `dict`）を返します。
+- **WaSHI** 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、せっかくなので、Python ユーザーもブラウザ上でそのまま練習・比較できるよう、定番の **PuLP (Python)**（ソルバーは HiGHS）を Pyodide 上で動かせるようにしています。
+- **「実行して採点」** を押すと、テストケースごとに `solve` 関数が呼ばれ、戻り値の制約充足と目的値が自動検証されます。
+- **WaSHI (TypeScript)** と **PuLP (Python)** のどちらか一方を **AC** にすると解答済み（`✓`）になります。`console.log` や `print` の出力はデバッグ確認用として画面に表示されます。
 
 ## 2. モデルの基本構成要素 {#building-blocks}
 

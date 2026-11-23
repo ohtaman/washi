@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(distances) -> dict:
     """Return {"tour": list[int], "totalDistance": float, "iterations": int}."""
-    distances = input_data["distances"]
     n = len(distances)
 
     prob = pulp.LpProblem("symmetric_tsp_dfj", pulp.LpMinimize)

@@ -1,15 +1,19 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(
+    durations,
+    scores,
+    compatible,
+    num_slots,
+    regular_length,
+    max_overtime,
+    overtime_cost,
+) -> dict:
     """Return {"assignedVenue": list[int], "assignedSlot": list[int], "overtime": list[list[float]], "netScore": float}."""
-    durations = input_data["durations"]
-    scores = input_data["scores"]
-    compatible = input_data["compatible"]
-    num_slots = input_data["numSlots"]
-    reg_len = input_data["regularLength"]
-    max_ot = input_data["maxOvertime"]
-    ot_cost = input_data["overtimeCost"]
+    reg_len = regular_length
+    max_ot = max_overtime
+    ot_cost = overtime_cost
     num_matches = len(durations)
     num_venues = len(compatible[0])
 

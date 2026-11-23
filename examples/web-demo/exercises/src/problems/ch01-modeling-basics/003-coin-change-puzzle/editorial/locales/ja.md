@@ -41,6 +41,6 @@ counts = [
     pulp.LpVariable(f"coin_{i}", lowBound=0, upBound=cap, cat=pulp.LpInteger)
     for i, cap in enumerate(max_counts)
 ]
-prob += pulp.lpDot(denominations, counts) == input_data["targetAmount"]
+prob += pulp.lpDot(denominations, counts) == target_amount
 prob += pulp.lpSum(counts)
 ```

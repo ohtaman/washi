@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(returns, probs, alpha, risk_weight, max_weight) -> dict:
     """Return {"weights": list[float], "varThreshold": float, "cvar": float, "totalObjective": float}."""
-    returns = input_data["returns"]
-    probs = input_data["probs"]
-    alpha = input_data["alpha"]
-    risk_weight = input_data["riskWeight"]
-    max_weight = input_data["maxWeight"]
     S = len(returns)
     n = len(returns[0])
 

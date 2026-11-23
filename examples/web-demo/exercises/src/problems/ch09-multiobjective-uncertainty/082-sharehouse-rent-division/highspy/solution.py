@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
+def solve(valuations, total_rent) -> dict:
     """Return {"assignment": list[int], "rents": list[float], "totalValuation": float, "minSurplus": float}."""
-    valuations = input_data["valuations"]
-    total_rent = input_data["totalRent"]
     n = len(valuations)
 
     # Stage 1: MIP to find a welfare-maximizing room assignment
