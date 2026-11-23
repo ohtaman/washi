@@ -18,7 +18,12 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **+1** | Natural title phrasing | Uses natural phrasing rather than stiff or literal translations. |
 | **+1** | Backticks for identifiers | Wraps I/O field names, function names, and type names in inline backticks. |
 | **-1** | Backticks for numbers | Wraps plain numeric constants in inline backticks. |
-| **-1** | Unnatural or redundant wording | Contains awkward, redundant, or non-standard phrasing. |
+| **-1** | Unnatural or redundant wording | Contains awkward, redundant, stiff literal translations, or unnecessary modifiers (e.g., "row/column sum" shorthand, "priority tier", "instance-derived", "minimize directly"). |
+| **-5** | Generic placeholders only | Relies solely on abstract nouns ("factory", "product", "resource", "machine", "job") without concrete domain nouns or examples. |
+| **-5** | Formulas/code in scenario | Embeds explicit algebraic formulas or code recipes (e.g., `weights[i] * c`, `<=`) inside `section:scenario`. |
+| **-5** | Unexplained new jargon | Uses an advanced technical term for the first time in a problem or hint (e.g., "epigraph reformulation" in `#021`) without briefly explaining what it means. |
+| **-5** | Misleading false contrast | Uses phrasing that implies a false contrast or non-existent alternative (e.g., "nonlinear `max` operator" implying a linear `max` exists). |
+| **-5** | Inverted assignment phrasing | Reverses or obscures what is assigned to what (e.g., "make the upper bound the compatibility flag" instead of "use the compatibility flag as the upper bound"). |
 | **-5** | Terminology inconsistency | Uses inconsistent terms for the same entity across scenario, I/O table, and examples (e.g., mixing "soybeans" and "beans", or "product" and "flavor"). |
 | **-5** | Unit inconsistency | Mixes different unit notations across the scenario, I/O table, and editorial (e.g., mixing "liter" and "unit"). |
 | **-5** | Misplaced variable modifiers | Attaches variable properties (e.g., "non-negative continuous") to physical objects rather than the decision quantities (e.g., "blending amounts"). |
@@ -45,10 +50,12 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **+5** | Explicit example assumptions | When using concrete numbers to explain behavior or pitfalls, explicitly states which input example they come from (omitted when a simple qualitative reason suffices). |
 | **+5** | Generalizable intuition | Explains insights using generalizable ratios or structural properties rather than numbers tied to a single test case. |
 | **+5** | Accurate terminology | Defines technical terms (e.g., LP vs. MILP/MIP) accurately without omitting key conditions. |
+| **+5** | Explain modeling intent | Explains what mathematical expressions mean conceptually (e.g., noting that summing binary variables to `1` enforces "exactly one is chosen") rather than only stating the algebraic operation. |
 | **+5** | Pre-code lead-in | Provides a 1–2 sentence lead-in immediately before the code blocks in Key Implementation explaining the APIs or design intent. |
 | **+1** | Bold key concepts | Boldfaces the most important concepts or terms for that specific exercise (rather than uniformly bolding "maximize"/"minimize"). |
 | **+1** | Natural approach prose | Uses plain, natural prose rather than stiff formula-reading phrasing. |
 | **+1** | Unobtrusive parentheticals | Places secondary notes (e.g., "(no solver is used)") at the end or in parentheses so they do not interrupt the main sentence. |
+| **-5** | Non-idiomatic WaSHI loop | Uses imperative C-style `for (let i = 0; ...)` loops in WaSHI editorial snippets where `.map()` / `.flatMap()` applies. |
 | **-10** | Misleading generalizations | States sweeping mathematical claims without required preconditions (e.g., claiming optimal LP solutions always occur at a vertex without boundedness/non-degeneracy context). |
 | **-10** | Incorrect library behavior | Misstates WaSHI or PuLP behavior (e.g., claiming WaSHI requires `Math.round()` on `Integer`/`Binary` variables when WaSHI normalizes them automatically). |
 
