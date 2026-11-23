@@ -182,6 +182,18 @@ def _washi_current_metrics():
         "solverStatus": None,
     }
 
+def __washi_to_snake(name):
+    import re
+    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", name).lower()
+
+def __washi_call_solve(fn, inp):
+    import inspect
+    params = list(inspect.signature(fn).parameters.keys())
+    if len(params) == 1 and params[0] == "input_data" and "input_data" not in inp:
+        return fn(inp)
+    kwargs = {__washi_to_snake(k): v for k, v in inp.items()}
+    return fn(**kwargs)
+
 def __washi_run_batch(code_str, inputs_json):
     inputs = json.loads(inputs_json)
     stdout_buf = io.StringIO()
@@ -193,13 +205,13 @@ def __washi_run_batch(code_str, inputs_json):
             exec(compile(code_str, "solution.py", "exec"), ns)
             fn = ns.get("solve")
             if not callable(fn):
-                raise RuntimeError("Could not find Python function solve(input_data).")
+                raise RuntimeError("Could not find Python function solve(...).")
             outputs = []
             metrics = []
             for inp in inputs:
                 _washi_tracked_models.clear()
                 _washi_tracked_pulp_models.clear()
-                raw_out = fn(inp)
+                raw_out = __washi_call_solve(fn, inp)
                 outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(_washi_current_metrics())
         return json.dumps({
