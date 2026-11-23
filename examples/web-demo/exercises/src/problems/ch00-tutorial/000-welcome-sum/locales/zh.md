@@ -5,8 +5,8 @@
 
 在本题集的所有练习中，都需要按以下约定编写 solve 函数，判题器会根据其返回值进行验证（本题只需熟悉格式，无需调用优化求解器，直接计算并返回相加结果即可）：
 
-- TypeScript：实现接收 P000Input 类型输入并返回 P000Output 类型对象的 solve 函数。
-- Python：实现接收输入字典 input_data 并返回对应输出字典（dict）的 solve 函数。
+- TypeScript：实现接收 `P000Input` 类型输入并返回 `P000Output` 类型对象的 `solve` 函数。
+- Python：实现以 `snake_case` 参数接收各输入字段（`a`, `b`）并返回对应输出字典（`dict`）的 `solve` 函数。
 
 <!-- section:io -->
 ### 输入
