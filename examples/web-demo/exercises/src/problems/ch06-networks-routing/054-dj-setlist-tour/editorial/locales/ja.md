@@ -21,16 +21,19 @@ $$
 
 ## 主要な実装
 
+オープニング曲以外のインデックス配列 `nonStart` を用意し、`flatMap` と `filter` で異なる 2 曲のペアを列挙して MTZ 部分巡回路除去制約をまとめて登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`);
-    }
-  }
-}
+const nonStart = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  nonStart.flatMap((i) =>
+    nonStart
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`)
+  )
+);
 ```
 
 **PuLP (Python)**

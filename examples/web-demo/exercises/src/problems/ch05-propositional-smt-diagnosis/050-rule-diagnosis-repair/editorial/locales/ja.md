@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+まず全ルールで `checkRulesSubset` を実行して整合性を確認し、`"Sat"` なら修復なしで即座に返します。`"Unsat"` の場合のみ Stage 2 の極小コア抽出と Stage 3 の最小コスト修復へ進みます。
+
 **WaSHI (TypeScript)**
 
 ```ts

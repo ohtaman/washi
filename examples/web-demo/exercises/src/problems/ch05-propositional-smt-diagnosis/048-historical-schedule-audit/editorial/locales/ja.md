@@ -19,6 +19,8 @@ $$
 
 ## 実装の勘所
 
+各コンプライアンスルールをルール ID `r.id` 付きで `m.constraint` に登録したうえで、`m.verify({ values: input.candidateValues })` を呼び出します。返却された `report.violations` から違反ルール ID を重複排除してソートします。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -1,6 +1,6 @@
 ## アプローチ
 
-真偽値モード変数 `express[i]`（`m.bool`）、本数計数用の `0`-`1` 変数 `expFlag[i]`（`m.binary`）、および連続時刻・遅れ時間変数 `start[i]`, `end[i]`, `tardy[i]`（`m.continuous`）を併用します。`implies(...)` で各モードの時間枠と小数所要時間を切り替え、`or(...)` で保守休止回避とドック非重複を表して `await m.solve({ solver: "z3" })` で最小コストを求めます。
+真偽値モード変数 `express[i]`（`m.bool`）、本数計数用の `0`-`1` 変数 `expFlag[i]`（`m.binary`）、および連続時刻・遅れ時間変数 `start[i]`, `end[i]`, `tardy[i]`（`m.continuous`）を併用します。`implies(...)` で各モードの時間枠と小数の所要時間を切り替え、`or(...)` で保守休止回避とドック非重複を表して `await m.solve({ solver: "z3" })` で最小コストを求めます。
 
 ## 数理モデル
 
@@ -24,6 +24,8 @@ $$
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+`implies(...)` でモード別の時間枠と所要時間等式を切り替え、`or(...)` で保守休止時間帯の回避および便同士の非重複を直接記述します。Big-M を使わずに Z3 へ渡せるのがポイントです。
 
 **WaSHI (TypeScript)**
 

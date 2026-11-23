@@ -25,27 +25,33 @@ $$
 
 ## 実装の勘所
 
+スタッフごとの枠別排他・最大稼働上限・残業エピグラフ制約に加え、各時間枠の共有設備容量制約を構築します。WaSHI では `forEach` と `flatMap` で制約配列を生成し、PuLP ではループと `pulp.lpSum` で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < N; i++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`);
-  }
+input.staffCosts.forEach((_, i) => {
+  m.constraint(
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`
+    )
+  );
   const staffLoad = sum(x.flatMap((jobStaff) => jobStaff[i]));
   m.constraint([
     expr`${staffLoad} <= ${input.maxLimits[i]}`,
     expr`${overtime[i]} >= ${staffLoad} - ${input.regularLimits[i]}`,
   ]);
-}
-for (let t = 0; t < T; t++) {
-  const eqUsed = sum(
-    x.flatMap((jobStaff, j) =>
-      jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
-    )
-  );
-  m.constraint(expr`${eqUsed} <= ${input.equipCap}`);
-}
+});
+m.constraint(
+  Array.from({ length: T }, (_, t) => {
+    const eqUsed = sum(
+      x.flatMap((jobStaff, j) =>
+        jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
+      )
+    );
+    return expr`${eqUsed} <= ${input.equipCap}`;
+  })
+);
 ```
 
 **PuLP (Python)**

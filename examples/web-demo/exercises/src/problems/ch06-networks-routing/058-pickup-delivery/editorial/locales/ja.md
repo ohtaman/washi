@@ -26,21 +26,22 @@ $$
 
 ## 実装の勘所
 
+各輸送依頼 `r` ごとに全車両 `vehicles` を走査し、集荷点と配達点の出次数が一致する同一車両制約と、順序変数 `t` による集荷先行制約を登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (const r of input.requests) {
-  for (let k = 0; k < K; k++) {
-    const pOut = [];
-    const dOut = [];
-    for (let j = 0; j < n; j++) {
-      if (j !== r.pickup) pOut.push(x[r.pickup][j]![k]);
-      if (j !== r.delivery) dOut.push(x[r.delivery][j]![k]);
-    }
+const vehicles = Array.from({ length: K }, (_, k) => k);
+const nodes = Array.from({ length: n }, (_, j) => j);
+
+input.requests.forEach((r) => {
+  vehicles.forEach((k) => {
+    const pOut = nodes.filter((j) => j !== r.pickup).map((j) => x[r.pickup][j]![k]);
+    const dOut = nodes.filter((j) => j !== r.delivery).map((j) => x[r.delivery][j]![k]);
     m.constraint(expr`${sum(pOut)} == ${sum(dOut)}`);
-  }
+  });
   m.constraint(expr`${t[r.pickup]} + 1 <= ${t[r.delivery]}`);
-}
+});
 ```
 
 **PuLP (Python)**

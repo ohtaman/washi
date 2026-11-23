@@ -22,20 +22,20 @@ $$
 
 ## 実装の勘所
 
+異なる顧客ペア `(ci, cj)` を `flatMap` で列挙し、全デポにわたる移動変数和 `yij` を用いて共通の積載ポテンシャル `u` に対する MTZ 制約をまとめて登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let idxI = 0; idxI < customers.length; idxI++) {
-  for (let idxJ = 0; idxJ < customers.length; idxJ++) {
-    if (idxI === idxJ) continue;
-    const ci = customers[idxI];
-    const cj = customers[idxJ];
-    const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
-    m.constraint(
-      expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`
-    );
-  }
-}
+m.constraint(
+  customers.flatMap((ci, idxI) =>
+    customers.flatMap((cj, idxJ) => {
+      if (idxI === idxJ) return [];
+      const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
+      return [expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`];
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

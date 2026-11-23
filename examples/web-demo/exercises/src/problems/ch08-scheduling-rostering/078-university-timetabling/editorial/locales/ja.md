@@ -24,21 +24,28 @@ $$
 
 ## 実装の勘所
 
+各教室・時限の最大 1 講義制約と、同一教員・同一コホート群に対する時限ごとのクリーク制約を構築します。WaSHI では `flatMap` と `forEach` で各グループの変数を束ねて制約配列を作り、PuLP では内包表記で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let r = 0; r < R; r++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`);
-  }
-}
-for (const group of [...teacherGroups.values(), ...cohortGroups.values()]) {
-  if (group.length < 2) continue;
-  for (let t = 0; t < T; t++) {
-    const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
-    m.constraint(expr`${sum(vars)} <= 1`);
-  }
-}
+m.constraint(
+  input.roomCapacities.flatMap((_, r) =>
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`
+    )
+  )
+);
+[...teacherGroups.values(), ...cohortGroups.values()]
+  .filter((group) => group.length >= 2)
+  .forEach((group) => {
+    m.constraint(
+      Array.from({ length: T }, (_, t) => {
+        const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
+        return expr`${sum(vars)} <= 1`;
+      })
+    );
+  });
 ```
 
 **PuLP (Python)**

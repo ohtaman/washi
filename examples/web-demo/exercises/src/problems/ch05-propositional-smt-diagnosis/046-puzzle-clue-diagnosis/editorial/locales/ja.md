@@ -18,6 +18,8 @@ $$
 
 ## 実装のポイント
 
+最初の `unsatCore` を候補集合 `core` として取り出し、各ヒント ID を 1 つずつ除いた部分集合で `checkSubset` を再実行して、`"Unsat"` のままならそのヒントを削除して縮小します。
+
 **WaSHI (TypeScript)**
 
 ```ts

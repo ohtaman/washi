@@ -28,6 +28,8 @@ $$
 
 ## 実装の勘所
 
+`master.solveBenders` の `subproblem` 内で各加工機 `m` に割り当てられた工程集合を `checkMachineSchedule`（Pumpkin CP の `disjoint` 制約）で検証し、`Unsat` となった加工機に対しては極小競合集合を抽出してノーグッドカットを返します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -35,7 +37,7 @@ const bendersRes = await master.solveBenders({
   maxIterations: 200,
   subproblem: async ({ getMasterValue }) => {
     const cuts: BendersCut[] = [];
-    for (let m = 0; m < M; m++) {
+    for (const m of Array.from({ length: M }, (_, idx) => idx)) {
       const assigned = jobs.filter((j) => getMasterValue(x[j][m]) > 0.5);
       const check = await checkMachineSchedule(input, assigned);
       if (check.sat) continue;

@@ -51,10 +51,10 @@ WaSHI の古典的 Benders 分解を用いて 0-1 施設開設決定と連続輸
 }
 ```
 
-両方の倉庫を開設すると固定費 `100 + 120 = 220`、輸送費 `60 + 60 + 50 = 170` となり、最適総コスト **390** を達成します。
+両方の倉庫を開設すると、供給量は倉庫 0 が $30 + 20 = 50 \le 50$、倉庫 1 が $25 \le 60$ で各顧客の需要 `[30, 25, 20]` を満たし、固定費 $100 + 120 = 220$、輸送費 $(2 \times 30 + 3 \times 20) + 2 \times 25 = 170$ の合計 $220 + 170 =$ **390** となります。
 
 <!-- section:hint1 -->
 主問題 MIP には施設の開設を表す二値変数と非負の第 2 段階コスト推定変数 `theta` だけを置き、固定費と `theta` の和を最小化します。候補となる開設ベクトルごとに連続輸送 LP 子問題を評価し、総供給能力が総需要に満たない場合は実行可能性カット、実行可能な場合は `theta` の下界を与える最適性カットを返します。
 
 <!-- section:hint2 -->
-`await master.solveBenders({ theta, gapTolerance: 1e-5, subproblem })` を呼び出します。輸送 LP が実行不能なときは Phase-I 緩和 LP から双対価格 $\alpha_j$（需要 $\ge$）と $\beta_i \le 0$（容量 $\le$）を取り出して $\sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i \le 0$ の `{ kind: "feasibility", constraint }` を返し、実行可能なときは $\theta \ge \sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i$ の `{ kind: "optimality", constraint, subproblemObjective }` を返します。最後に最適 `open` で輸送 LP を再求解して `shipments` を復元してください。
+`await master.solveBenders({ theta, gapTolerance: 1e-5, subproblem })` を呼び出します。輸送 LP が実行不能なときは、人工スラック変数の和を最小化する実行可能性判定用の緩和 LP（Phase-I 緩和 LP）から双対価格 $\alpha_j$（需要 $\ge$）と $\beta_i \le 0$（容量 $\le$）を取り出して $\sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i \le 0$ の `{ kind: "feasibility", constraint }` を返し、実行可能なときは $\theta \ge \sum_j \alpha_j d_j + \sum_i \beta_i c_i y_i$ の `{ kind: "optimality", constraint, subproblemObjective }` を返します。最後に最適 `open` で輸送 LP を再求解して `shipments` を復元してください。

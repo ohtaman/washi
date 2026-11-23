@@ -21,6 +21,8 @@ $$
 
 ## 実装の勘所
 
+各作業の `{ start, duration, demand }` をまとめて `cumulative(..., input.capacity)` 制約として登録し、全作業の最大終了時刻を最小化します。
+
 **WaSHI (TypeScript)**
 
 ```ts

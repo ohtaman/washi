@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+各プロセスの非負変数 `quantities` で最低要求制約と目的関数を登録して `m.solve()` を呼び出し、各変数から `.reducedCost`（PuLP では `.dj`）を抽出します。
+
 **WaSHI (TypeScript)**
 
 ```ts

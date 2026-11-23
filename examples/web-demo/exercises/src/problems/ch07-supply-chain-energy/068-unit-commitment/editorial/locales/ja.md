@@ -25,6 +25,8 @@ $$
 
 ## 実装の勘所
 
+各発電機・各時刻の状態遷移等式と、直近 `minUp[g]`・`minDown[g]` 時間のスライス和を用いた起動・停止窓和不等式を構築します。WaSHI では `slice` と `sum()` で時間窓の和を取り、PuLP では `pulp.lpSum` で同様に記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts

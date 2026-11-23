@@ -13,7 +13,7 @@
 | `baseLoads` | `number[]` | 各期 $t$ の施設基礎電力負荷 $L_t$ |
 | `prices` | `number[]` | 各期 $t$ の買電単価 $\pi_t$ |
 | `demandCharge` | `number` | 最大買電電力 $\max_t g_t$ に対するデマンド単価 $\gamma$ |
-| `capacity` | `number` | 蓄電池の最大容量上限 $E_{\max}$ |
+| `capacity` | `number` | 蓄電池の最大容量 $E_{\max}$ |
 | `minSoc` | `number` | 蓄電残量（SOC）の下限 $E_{\min}$ |
 | `initSoc` | `number` | 第 0 期開始前の初期蓄電残量 $E_{\text{init}}$ |
 | `minFinalSoc` | `number` | 最終期末に確保すべき最低 SOC $E_{\text{end}}$ |
@@ -61,7 +61,7 @@
 }
 ```
 
-安価な時間帯に `soc = 78` まで充電し、高負荷の 3〜4 期に放電して買電電力を `[70, 80, 80, 80, 70.6, 80]`（`peakLoad = 80`）に抑えると、最終 SOC 30 を保ったまま総コスト $93.968 + 8 \times 80 =$ **733.968** となります。
+安価な時間帯に `soc = 78` まで充電し、高負荷の 3〜4 期に放電して買電電力を [70, 80, 80, 80, 70.6, 80]（`peakLoad = 80`）に抑えると、最終 SOC 30 を保ったまま総コスト $93.968 + 8 \times 80 =$ **733.968** となります。
 
 
 <!-- section:hint1 -->

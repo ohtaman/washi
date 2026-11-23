@@ -20,15 +20,19 @@ $$
 
 ## 実装の勘所
 
+`Array.from` で全頂点の単位フロー保存則を一括構築し、始点 `source` は +1、終点 `sink` は -1、中間頂点は 0 に等置します。さらに全枝の資源消費量の重み付き和を `maxResource` 以下に抑える制約を追加します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let v = 0; v < input.nodeCount; v++) {
-  const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
-  const outVars = x.filter((_, i) => input.edges[i].from === v);
-  const inVars = x.filter((_, i) => input.edges[i].to === v);
-  m.constraint(expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`);
-}
+m.constraint(
+  Array.from({ length: input.nodeCount }, (_, v) => {
+    const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
+    const outVars = x.filter((_, i) => input.edges[i].from === v);
+    const inVars = x.filter((_, i) => input.edges[i].to === v);
+    return expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`;
+  })
+);
 m.constraint(
   expr`${sum(x.map((v, i) => expr`${input.edges[i].resource} * ${v}`))} <= ${input.maxResource}`
 );

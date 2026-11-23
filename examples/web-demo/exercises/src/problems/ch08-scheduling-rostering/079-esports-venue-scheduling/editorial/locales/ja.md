@@ -24,6 +24,8 @@ $$
 
 ## 実装のポイント
 
+各試合の高々 1 回の割当制約・会場適合制約に加え、各会場・スロット枠の合計配信時間を通常枠長と延長時間の和で抑えます。WaSHI では `forEach` と `flatMap` で制約配列を構築し、PuLP ではループと `pulp.lpSum` で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -33,12 +35,16 @@ x.forEach((matchVenues, m) => {
     if (input.compatible[m][v] === 0) model.constraint(expr`${sum(venueSlots)} == 0`);
   });
 });
-for (let v = 0; v < V; v++) {
-  for (let s = 0; s < S; s++) {
-    const load = sum(x.map((matchVenues, m) => expr`${input.durations[m]} * ${matchVenues[v][s]}`));
-    model.constraint(expr`${load} <= ${input.regularLength} + ${overtime[v][s]}`);
-  }
-}
+model.constraint(
+  overtime.flatMap((venueSlots, v) =>
+    venueSlots.map((ot, s) => {
+      const load = sum(
+        x.map((matchVenues, mIdx) => expr`${input.durations[mIdx]} * ${matchVenues[v][s]}`)
+      );
+      return expr`${load} <= ${input.regularLength} + ${ot}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

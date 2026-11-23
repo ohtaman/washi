@@ -31,6 +31,8 @@ $$
 
 ## 実装の勘所
 
+第 1 段階の Implicit Hitting Set ループでは、`checkPolicyWithZ3` が返した UNSAT コアからソフトルールのみを抽出して `hittingSets` に追加し、`solveHittingSetMip` で最小重みの解除集合 `droppedSet` を更新しながら `"Sat"` に到達するまで反復します。
+
 **WaSHI (TypeScript)**
 
 ```ts

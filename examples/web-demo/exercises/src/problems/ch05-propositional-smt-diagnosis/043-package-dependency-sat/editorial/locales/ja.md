@@ -23,6 +23,8 @@ $$
 
 ## 実装の勘所
 
+必須ルートと依存ルールを `or(...)` や `implies(...)` で論理制約として登録し、計数用の 0-1 変数 `allUsed` の和を `minimize(sum(allUsed))` で最小化します。`m.solve({ solver: "z3" })` で最適解を求めます。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -23,23 +23,25 @@ $$
 
 ## 実装の勘所
 
+各ノードの出次数・入次数を 1 に保つ次数制約と、アーク選択変数に応じた完了時刻の Big-M 伝播制約を追加します。WaSHI では `forEach` と `filter` で自己ループを除いた変数集合をまとめて制約し、PuLP では内包表記で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i <= n; i++) {
-  const outVars = x[i].filter((v): v is NonNullable<typeof v> => v !== null);
-  const inVars = x.map((row) => row[i]).filter((v): v is NonNullable<typeof v> => v !== null);
+x.forEach((row, i) => {
+  const outVars = row.filter((v): v is NonNullable<typeof v> => v !== null);
+  const inVars = x.map((r) => r[i]).filter((v): v is NonNullable<typeof v> => v !== null);
   m.constraint([expr`${sum(outVars)} == 1`, expr`${sum(inVars)} == 1`]);
-}
-for (let i = 0; i < n; i++) {
-  for (let j = 0; j < n; j++) {
-    if (i === j) continue;
-    const step = input.setupMatrix[i][j] + input.processingTimes[j];
+});
+input.setupMatrix.forEach((row, i) => {
+  row.forEach((setup, j) => {
+    if (i === j) return;
+    const step = setup + input.processingTimes[j];
     m.constraint(
       expr`${completions[j]} >= ${completions[i]} + ${step} - ${M} * (1 - ${x[i][j]!})`
     );
-  }
-}
+  });
+});
 ```
 
 **PuLP (Python)**

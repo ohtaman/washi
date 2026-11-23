@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+各工場の連結制約は `quantities.map(...)` の中で `Math.min(input.capacities[i], input.demand)` を上界として一括生成し、同じモデル `m` に対して `await m.relax()` で LP 緩和下界を得たあと `await m.solve()` で整数解を求めます。
+
 **WaSHI (TypeScript)**
 
 ```ts
