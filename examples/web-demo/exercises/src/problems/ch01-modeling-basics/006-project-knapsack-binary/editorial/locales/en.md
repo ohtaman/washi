@@ -15,7 +15,7 @@ $$
 ## Key Points
 
 - **Why greedy fails on 0-1 knapsack**: Picking projects in decreasing value-to-cost order can leave unusable leftover budget (for example stopping at value `30` with `3` budget left over), whereas an exact binary solver packs the budget tightly to `36`.
-- **Clean binary extraction**: Normalize solved `0-1` variables with `Math.round(v.value!) || 0` (`round(pulp.value(v))` in Python) to prevent `0.999999999` or `-0`.
+- **Clean binary extraction**: WaSHI automatically normalizes `Binary` `v.value` entries to exact integers, so `v.value!` can be used directly. In PuLP (Python), solver tolerances can still return `0.999999999` or `-0.0`, so round outputs with `round(pulp.value(v))`.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

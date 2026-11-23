@@ -189,16 +189,12 @@ def _washi_current_metrics():
         "solverStatus": None,
     }
 
-def __washi_to_snake(name):
-    import re
-    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", name).lower()
-
 def __washi_call_solve(fn, inp):
     import inspect
     params = list(inspect.signature(fn).parameters.keys())
     if len(params) == 1 and params[0] == "input_data" and "input_data" not in inp:
         return fn(inp)
-    kwargs = {__washi_to_snake(k): v for k, v in inp.items()}
+    kwargs = {_washi_to_snake(k): v for k, v in inp.items()}
     return fn(**kwargs)
 
 def __washi_run_batch(code_str, inputs_json):
@@ -218,7 +214,7 @@ def __washi_run_batch(code_str, inputs_json):
             for inp in inputs:
                 _washi_tracked_models.clear()
                 _washi_tracked_pulp_models.clear()
-                raw_out = fn(**{_washi_to_snake(k): v for k, v in inp.items()})
+                raw_out = __washi_call_solve(fn, inp)
                 outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(_washi_current_metrics())
         return json.dumps({
