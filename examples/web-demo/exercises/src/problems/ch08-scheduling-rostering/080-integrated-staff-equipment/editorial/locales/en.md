@@ -25,27 +25,33 @@ $$
 
 ## Key Implementation
 
+In addition to each staff member's per-slot exclusivity, maximum workload limit, and overtime epigraph constraints, construct the shared equipment capacity constraint for each timeslot. In WaSHI, generate the constraint arrays with `forEach` and `flatMap`; in PuLP, express them with loops and `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < N; i++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`);
-  }
+input.staffCosts.forEach((_, i) => {
+  m.constraint(
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`
+    )
+  );
   const staffLoad = sum(x.flatMap((jobStaff) => jobStaff[i]));
   m.constraint([
     expr`${staffLoad} <= ${input.maxLimits[i]}`,
     expr`${overtime[i]} >= ${staffLoad} - ${input.regularLimits[i]}`,
   ]);
-}
-for (let t = 0; t < T; t++) {
-  const eqUsed = sum(
-    x.flatMap((jobStaff, j) =>
-      jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
-    )
-  );
-  m.constraint(expr`${eqUsed} <= ${input.equipCap}`);
-}
+});
+m.constraint(
+  Array.from({ length: T }, (_, t) => {
+    const eqUsed = sum(
+      x.flatMap((jobStaff, j) =>
+        jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
+      )
+    );
+    return expr`${eqUsed} <= ${input.equipCap}`;
+  })
+);
 ```
 
 **PuLP (Python)**

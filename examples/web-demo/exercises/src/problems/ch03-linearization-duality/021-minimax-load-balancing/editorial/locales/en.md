@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Register the constraints that each row of `assignments` sums to 1 and that each server's total load is at most the upper-bound variable `peak` in bulk via `m.constraint([...])`, then minimize `peak`.
+
 **WaSHI (TypeScript)**
 
 ```ts

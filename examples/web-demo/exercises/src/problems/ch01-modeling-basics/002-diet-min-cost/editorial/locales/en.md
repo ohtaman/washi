@@ -1,6 +1,6 @@
 ## Approach
 
-Declare non-negative continuous quantities `oats` and `beans`, write two `>=` nutrient requirement constraints, and **minimize** total cost `30 * oats + 50 * beans`.
+Declare non-negative continuous decision variables for the amounts of `oats` and `beans`, add two `>=` nutrient requirement constraints, and **minimize** total cost.
 
 ## Mathematical Model
 
@@ -15,11 +15,13 @@ $$
 
 ## Key Points
 
-- **Lower bounds (`>=`) push cost up**: Unlike **#001** where `<=` caps stopped profit from growing, here `minimize` wants `0` of everything, and the two `>=` constraints force the solver up to the cheapest corner meeting both requirements.
-- **Balanced mix beats single ingredients**: Meeting both `8` protein and `9` fiber with oats alone costs $9 \times 30 = 270$, whereas combining `(3, 2)` brings cost down to `190`.
+- **Upper bounds vs. lower bounds**: In **#001**, `<=` constraints kept `maximize` from growing profit without bound. Here, `minimize` tries to push cost down to 0, while the two `>=` constraints support it from below.
+- **Why a blend beats a single ingredient**: Oats are cheaper per unit of protein (15) while beans are cheaper per unit of fiber (about 16.7). Balancing both in a $3:2$ ratio therefore keeps total cost lower than relying on either ingredient alone.
 - Related definitions: [Guide & Glossary — Objectives & Constraints](?view=guide&lang=en#building-blocks).
 
 ## Key Implementation
+
+Set the objective to minimize (`minimize` / `pulp.LpMinimize`) and add each nutrient's lower-bound constraint with `>=`. Checking the objective sense (maximize vs. minimize) together with the constraint inequality direction (`<=` vs. `>=`) is key.
 
 **WaSHI (TypeScript)**
 

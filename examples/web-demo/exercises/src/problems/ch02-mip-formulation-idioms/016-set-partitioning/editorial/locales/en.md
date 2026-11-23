@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Equality vs. inequality makes a real cost difference**: In the worked example, choosing routes 0 (`[0, 1, 2]`, cost `5`) and 1 (`[2, 3, 4]`, cost `5`) would cost only `10` as a Set Cover, but covers task `2` twice; exact partitioning (`== 1`) rejects that overlap and chooses routes 1 and 2 for `11`.
+- **Equality vs. inequality makes a real cost difference**: In the worked example, choosing routes 0 (`[0, 1, 2]`, cost 5) and 1 (`[2, 3, 4]`, cost 5) would cost only 10 as a Set Cover, but covers task 2 twice; exact partitioning (`== 1`) rejects that overlap and chooses routes 1 and 2 for 11.
 - **Standard backbone for airline crew pairing and VRP**: Replacing `>= 1` with `== 1` turns covering into exact partitioning, the master-problem structure used in column generation and crew scheduling.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+For each task `i`, filter the selection variables `selected[j]` of routes whose `input.routes[j]` contains `i`, and add an equality constraint requiring their sum to equal 1.
 
 **WaSHI (TypeScript)**
 

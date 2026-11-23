@@ -1,7 +1,7 @@
 # #072. Single-Machine Scheduling with Sequence-Dependent Setups
 
 <!-- section:scenario -->
-A single machine processes a batch of jobs starting at time zero with no initial setup required before the first job. Whenever the machine switches from job $i$ to job $j$, it incurs a sequence-dependent changeover time before job $j$ can begin.
+A single automotive parts painting line processes a batch of part lots (jobs) starting at time zero with no initial setup required before the first job. Whenever the line switches from job $i$ to job $j$, it incurs a sequence-dependent changeover time before job $j$ can begin.
 
 Choose a permutation of all jobs and their completion times to minimize the total tardiness across all jobs.
 

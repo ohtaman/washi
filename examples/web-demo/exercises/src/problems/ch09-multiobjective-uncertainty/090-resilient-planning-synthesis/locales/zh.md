@@ -17,7 +17,7 @@
 | `robustMinCap` | `number` | 承受 $\Gamma$ 次衰减后仍需满足的第一阶段最小留存容量 |
 | `probs` | `number[]` | 各冲击情景 $s$ 的概率权重 $p_s$ |
 | `demands` | `number[]` | 各情景 $s$ 下的实际需求量 |
-| `offline` | `number[][]` | 各情景停机掩码矩阵（`1` 表示单元 $j$ 在情景 $s$ 停机） |
+| `offline` | `number[][]` | 各情景停机掩码矩阵（1 表示单元 $j$ 在情景 $s$ 停机） |
 | `disruptionCost` | `number` | 相对第一阶段承诺每变更一个单元状态的切换成本 |
 | `shortfallPenalty` | `number` | 情景 $s$ 中每单位未满足需求的弹性惩罚 |
 
@@ -25,8 +25,8 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `committed` | `number[]` | 第一阶段二进制（`0`/`1`）预承诺启用方案 |
-| `recovered` | `number[][]` | 各情景 $s$ 下的二进制（`0`/`1`）恢复调度矩阵（$S \times n$） |
+| `committed` | `number[]` | 第一阶段 0-1 预承诺启用方案 |
+| `recovered` | `number[][]` | 各情景 $s$ 下的 0-1 恢复调度矩阵（$S \times n$） |
 | `totalCost` | `number` | 最小化后的固定成本加期望恢复与缺口成本 |
 
 <!-- section:example -->

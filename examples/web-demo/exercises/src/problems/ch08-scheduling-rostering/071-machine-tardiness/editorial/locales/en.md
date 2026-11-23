@@ -23,6 +23,8 @@ $$
 
 ## Key Implementation
 
+Construct the per-job tardiness lower-bound constraints and the disjunctive Big-M non-overlap constraints for every pair of jobs. In WaSHI, register each pair's two constraints as an array using `slice` and `forEach`; in PuLP, write them with nested loops and `pulp.lpDot`.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -31,15 +33,16 @@ m.constraint(
     (T, j) => expr`${T} >= ${starts[j]} + ${input.processingTimes[j]} - ${input.dueDates[j]}`
   )
 );
-for (let i = 0; i < n; i++) {
-  for (let j = i + 1; j < n; j++) {
+starts.forEach((sI, i) => {
+  starts.slice(i + 1).forEach((sJ, offset) => {
+    const j = i + 1 + offset;
     const y = m.binary(`y_${i}_${j}`);
     m.constraint([
-      expr`${starts[i]} + ${input.processingTimes[i]} <= ${starts[j]} + ${M} * (1 - ${y})`,
-      expr`${starts[j]} + ${input.processingTimes[j]} <= ${starts[i]} + ${M} * ${y}`,
+      expr`${sI} + ${input.processingTimes[i]} <= ${sJ} + ${M} * (1 - ${y})`,
+      expr`${sJ} + ${input.processingTimes[j]} <= ${sI} + ${M} * ${y}`,
     ]);
-  }
-}
+  });
+});
 m.objective(minimize(expr`dot(${input.weights}, ${tardiness})`));
 ```
 

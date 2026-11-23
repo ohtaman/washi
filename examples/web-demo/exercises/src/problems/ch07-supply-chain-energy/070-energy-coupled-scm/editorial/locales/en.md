@@ -25,6 +25,8 @@ where $D_t$ (`demands[t]`) denotes fixed product demand and $d_t$ (`discharge[t]
 
 ## Key Implementation
 
+For each period, define the production/inventory constraints and the battery SOC constraints, then couple them through the grid power balance equation including setup standby power and unit process power. In WaSHI, express each constraint with `expr` literals; in PuLP, add the per-period equalities and inequalities similarly.
+
 **WaSHI (TypeScript)**
 
 ```ts

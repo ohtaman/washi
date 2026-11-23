@@ -1,7 +1,7 @@
 # #051. Minimum-Cost Flow & Total Unimodularity
 
 <!-- section:scenario -->
-A directed logistics network transports goods along capacitated arcs from supply nodes to demand nodes through intermediate transshipment hubs. Each node has an integer net supply (positive at sources, negative at sinks, and zero at transshipment hubs), and each directed arc carries a capacity limit and a per-unit shipping cost.
+A directed distribution network transports coffee beans (kg) from roasting plants (supply nodes) through relay warehouses (transshipment hubs) to café stores (demand nodes). Each node has an integer net supply (positive at roasteries, negative at cafés, and 0 at warehouses), and each directed route (arc) has a capacity limit (kg) and a shipping cost per kg.
 
 Model this problem as a pure continuous linear program to find non-negative arc flows that satisfy every node balance and capacity limit while **minimizing total shipping cost**. Because the network incidence matrix is totally unimodular with integer supplies and capacities, solving the continuous LP automatically yields integer flows.
 

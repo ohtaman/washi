@@ -15,11 +15,13 @@ $$
 
 ## Key Points
 
-- **Why the starter fails (`VIOLATION`)**: Without the butter constraint, the solver puts everything into loaves ($c = 0, \ell = 40$), consuming $80 > 70$ butter.
-- **First LP concepts**: This is a standard **LP (Linear Programming)** model because every expression is linear and both variables are continuous (`lb: 0`). Notice the optimum sits cleanly at the corner where both `flour` and `butter` limits bind tightly.
+- **Why the starter fails (`VIOLATION`)**: Because the starter code omits the butter stock constraint, the computed production exceeds the butter limit, resulting in `VIOLATION`.
+- **LP (Linear Programming)**: A model whose variables are continuous (`continuous`) and whose constraints and objective are all linear expressions is called an **LP**.
 - Related definitions: [Guide & Glossary — LP & Building Blocks](?view=guide&lang=en#building-blocks).
 
 ## Key Implementation
+
+Constraint expressions can be written intuitively using template literals `expr` (WaSHI) or `prob += ...` (PuLP). Passing a constraint name such as `"butter"` as the second argument makes it easier to trace constraints when diagnosing or verifying the model later.
 
 **WaSHI (TypeScript)**
 

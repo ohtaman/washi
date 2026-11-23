@@ -20,6 +20,8 @@ $$
 
 ## 实现要点
 
+对表示各作业机器编号的整数变量数组 `assignment` 施加 `distinct` 约束，最小化通过 `at(row, assignment[i])` 索引读取的成本总和，并交由 Pumpkin 求解。
+
 **WaSHI (TypeScript)**
 
 ```ts

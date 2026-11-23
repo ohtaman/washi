@@ -1,17 +1,17 @@
 # #021. Minimax Server Load Balancing
 
 <!-- section:scenario -->
-A distributed compute cluster receives splittable batch jobs, each with a known total workload. Each job can be partitioned continuously across the subset of servers marked as compatible, while incompatible servers must receive zero load from that job.
+A cluster operator is planning how to distribute splittable batch jobs—each with a given workload (in load units)—across servers in a distributed compute cluster. Each job can only be assigned to servers marked as compatible, and the assignment fraction for any incompatible server must be 0.
 
-Choose the fraction of each job routed to each server so every job is 100% processed and the **peak workload on the busiest server is minimized**.
+Using epigraph linearization (bounding the maximum load from above with a single upper-bound variable and minimizing that variable), find the assignment fractions that process 100% (fraction 1) of every job while **minimizing the load on the busiest server (peak load)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `weights` | `number[]` | Total workload of each job $i$ |
-| `compatible` | `number[][]` | `compatible[i][j]` is `1` if job $i$ may run on server $j$, else `0` |
+| `weights` | `number[]` | Total workload of each job $i$ (load units) |
+| `compatible` | `number[][]` | `1` if job $i$ can be assigned to server $j$, `0` otherwise |
 
 ### Output
 
@@ -47,7 +47,7 @@ Choose the fraction of each job routed to each server so every job is 100% proce
 }
 ```
 
-Job 0 goes entirely to Server 0, Job 2 goes entirely to Server 1, and splitting Job 1 as `0.25` / `0.75` yields Server 0 load $10 + 8 \times 0.25 = 12$ and Server 1 load $8 \times 0.75 + 6 = 12$, giving a peak load of **12**.
+Job 0 goes entirely to Server 0, Job 2 goes entirely to Server 1, and splitting Job 1 as 0.25 / 0.75 yields Server 0 load $10 + 8 \times 0.25 = 12$ and Server 1 load $8 \times 0.75 + 6 = 12$, giving a peak load of **12**.
 
 
 <!-- section:hint1 -->

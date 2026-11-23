@@ -27,24 +27,32 @@ where $M_{ij} = \max(0, b_i + s_i + d_{ij} - a_j)$ and $M_{i0} = \max(0, b_i + s
 
 ## Key Implementation
 
+Iterate over the attraction index array `attractions`, registering the park closing deadline on return arcs to the entrance together with tight Big-M time-linking and MTZ visit-order constraints for transitions between attractions.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
+const attractions = Array.from({ length: n - 1 }, (_, k) => k + 1);
+attractions.forEach((i) => {
   const bigMi0 = Math.max(0, latest[i] + visitDurations[i] + travelTimes[i][0] - latest[0]);
   m.constraint(
     expr`${t[i]} + ${visitDurations[i] + travelTimes[i][0]} <= ${latest[0]} + ${bigMi0} * (1 - ${x[i][0]!})`
   );
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      const bigMij = Math.max(0, latest[i] + visitDurations[i] + travelTimes[i][j] - earliest[j]);
-      m.constraint(
-        expr`${t[i]} + ${visitDurations[i] + travelTimes[i][j]} - ${t[j]} <= ${bigMij} * (1 - ${x[i][j]!})`
-      );
-      m.constraint(expr`${u[i]!} + 1 - ${u[j]!} <= ${n - 1} * (1 - ${x[i][j]!})`);
-    }
-  }
-}
+  m.constraint(
+    attractions
+      .filter((j) => i !== j)
+      .flatMap((j) => {
+        const bigMij = Math.max(
+          0,
+          latest[i] + visitDurations[i] + travelTimes[i][j] - earliest[j]
+        );
+        return [
+          expr`${t[i]} + ${visitDurations[i] + travelTimes[i][j]} - ${t[j]} <= ${bigMij} * (1 - ${x[i][j]!})`,
+          expr`${u[i]!} + 1 - ${u[j]!} <= ${n - 1} * (1 - ${x[i][j]!})`,
+        ];
+      })
+  );
+});
 ```
 
 **PuLP (Python)**

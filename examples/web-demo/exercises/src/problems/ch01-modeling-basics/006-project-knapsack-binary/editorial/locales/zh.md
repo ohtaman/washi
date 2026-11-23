@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每个候选项目声明 0-1 二进制变量（`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`），添加预算上限约束 `dot(costs, selected) <= budget`，并最大化总收益 `dot(values, selected)`。
+将每项防灾设备是否安装定义为 **0-1 二进制变量** $x_i \in \{0, 1\}$，在总费用不超过预算 $B$ 的约束下最大化预期总评分。在 WaSHI（以及 PuLP）中，可以使用 `m.binary(...)` / `LpBinary` 和 `dot` / `lpDot` 简洁地表达。
 
 ## 数学模型
 
@@ -14,11 +14,13 @@ $$
 
 ## 核心要点
 
-- **为什么贪心法在 0-1 背包上会失效**：按“收益/成本”性价比贪心选择常常会留下无法塞入其他项目的剩余预算（如停在收益 `30`），而整数规划求解器能在全局组合中精准找到总收益 `36` 的最优方案。
-- **二进制结果的读取**：WaSHI 会自动将 `Binary` 变量的 `v.value` 归一化为精确整数，可直接使用 `v.value!`；而在 PuLP (Python) 中，求解器浮点容差仍可能返回 `0.999999999` 或 `-0.0`，建议用 `round(pulp.value(v))` 取整。
+- **为什么贪心法无法得到最优解（0-1 背包）**：仅按性价比（评分/费用）从高到低挑选，可能会留下零头预算而无法达到全局最优（示例中总评分为 36）。使用 MIP 求解器则能从全部组合中找出最优集合。
+- **0-1 变量的读取**：在 PuLP (Python) 中，由于浮点容差可能会返回 `0.999999999` 或 `-0.0`，读取时请用 `round(pulp.value(v))` 取整。在 WaSHI 中，`Binary` 变量的 `v.value` 会在内部自动归一化为整数，因此可直接使用 `v.value!`。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
+
+用 `m.binary(...)`（PuLP 为 `cat=pulp.LpBinary`）表示各设备的选择状态，并通过 `dot` / `pulp.lpDot` 简洁地编写预算约束和目标函数之和。
 
 **WaSHI (TypeScript)**
 

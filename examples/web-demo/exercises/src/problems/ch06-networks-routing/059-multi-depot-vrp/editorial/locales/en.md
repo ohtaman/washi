@@ -22,20 +22,20 @@ $$
 
 ## Key Implementation
 
+Enumerate distinct customer pairs `(ci, cj)` with `flatMap`, and use the sum of arc variables across all depots `yij` to register the MTZ constraints over the shared load potentials `u`.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let idxI = 0; idxI < customers.length; idxI++) {
-  for (let idxJ = 0; idxJ < customers.length; idxJ++) {
-    if (idxI === idxJ) continue;
-    const ci = customers[idxI];
-    const cj = customers[idxJ];
-    const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
-    m.constraint(
-      expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`
-    );
-  }
-}
+m.constraint(
+  customers.flatMap((ci, idxI) =>
+    customers.flatMap((cj, idxJ) => {
+      if (idxI === idxJ) return [];
+      const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
+      return [expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`];
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

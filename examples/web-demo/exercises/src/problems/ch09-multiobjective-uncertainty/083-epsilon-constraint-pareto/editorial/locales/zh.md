@@ -20,6 +20,8 @@ $$
 
 ## 实现要点
 
+为 `input.epsilons` 中的每个排放阈值创建一个独立的 `Model`，使用 `dot(...)` 描述预算约束、排放约束与利润最大化，并依次调用 `await m.solve()` 求解。
+
 **WaSHI (TypeScript)**
 
 ```ts

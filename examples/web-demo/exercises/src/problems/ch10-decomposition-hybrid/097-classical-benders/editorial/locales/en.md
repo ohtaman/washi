@@ -28,6 +28,8 @@ $$
 
 ## Key Implementation
 
+Inside the `subproblem` callback of `master.solveBenders`, check whether open supply capacity is sufficient: if insufficient, return a `kind: "feasibility"` cut from the Phase-I elastic LP; if feasible, return a `kind: "optimality"` cut from the shipping LP duals along with `subproblemObjective`.
+
 **WaSHI (TypeScript)**
 
 ```ts

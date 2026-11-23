@@ -27,25 +27,29 @@ $$
 
 ## 实现要点
 
+对每组卡车对，将转运总货流拆解为泊位对变量 $w_{i,j,r,s}$，并同时施加两侧泊位指派与时间同步的大 M 约束。在 WaSHI 中使用 `map` 和 `flatMap` 批量生成泊位对约束数组，在 PuLP 中则通过双重循环逐一添加 $(r, s)$ 约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
 m.constraint(expr`${pairFlowSum} <= ${maxPairFlow} * ${z[i][j]}`);
 m.constraint(expr`${sum(w[i][j].flat())} - ${pairFlowSum} == 0`);
-for (let r = 0; r < R; r++) {
-  m.constraint(expr`${sum(w[i][j][r])} <= ${maxPairFlow} * ${x[i][r]}`);
-}
-for (let s = 0; s < S; s++) {
-  m.constraint(expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`);
-}
-for (let r = 0; r < R; r++) {
-  for (let s = 0; s < S; s++) {
-    const rhs = input.arrivalTimes[i] + input.transferTimes[r][s] - 3 * bigMT;
-    m.constraint(
-      expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`
-    );
-  }
-}
+m.constraint(
+  w[i][j].map((row, r) => expr`${sum(row)} <= ${maxPairFlow} * ${x[i][r]}`)
+);
+m.constraint(
+  input.outDoorCaps.map((_, s) =>
+    expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`
+  )
+);
+m.constraint(
+  input.transferTimes.flatMap((row, r) =>
+    row.map((tau, s) => {
+      const rhs = input.arrivalTimes[i] + tau - 3 * bigMT;
+      return expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

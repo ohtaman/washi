@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+First run `checkRulesSubset` across all rules to check consistency; if `"Sat"`, return immediately with no repair needed, and only proceed to Stage 2 MUS extraction and Stage 3 minimum-cost repair when `"Unsat"`.
+
 **WaSHI (TypeScript)**
 
 ```ts

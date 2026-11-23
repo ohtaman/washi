@@ -1,6 +1,6 @@
 ## Approach
 
-Combine Boolean mode switches `express[i]` (`m.bool`), `0`-`1` quota indicators `expFlag[i]` (`m.binary`), and continuous real timing variables `start[i]`, `end[i]`, `tardy[i]` (`m.continuous`). Use `implies(...)` to select each mode's time window and fractional duration, `or(...)` for blackout avoidance and pairwise dock non-overlap, and `await m.solve({ solver: "z3" })` to minimize express fees plus tardiness penalties.
+Combine Boolean mode switches `express[i]` (`m.bool`), 0-1 quota indicators `expFlag[i]` (`m.binary`), and continuous real timing variables `start[i]`, `end[i]`, `tardy[i]` (`m.continuous`). Use `implies(...)` to select each mode's time window and fractional duration, `or(...)` for blackout avoidance and pairwise dock non-overlap, and `await m.solve({ solver: "z3" })` to minimize express fees plus tardiness penalties.
 
 ## Mathematical Model
 
@@ -24,6 +24,8 @@ $$
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Use `implies(...)` to switch mode-specific time windows and duration equations, and `or(...)` to express blackout avoidance and pairwise non-overlap directly without Big-M.
 
 **WaSHI (TypeScript)**
 

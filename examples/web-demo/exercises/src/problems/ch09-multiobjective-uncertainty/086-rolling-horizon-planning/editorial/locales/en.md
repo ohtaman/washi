@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Myopic ($H = 1$) vs. Lookahead ($H > 1$) vs. Clairvoyant ($H = T$ with perfect foresight)**: A myopic policy ($H = 1$) fails to pre-build inventory ahead of demand spikes exceeding `prodCap`, incurring heavy shortfall penalties (`1830` vs. `860` in Case 0). Conversely, re-solving step by step with realized feedback allows MPC to absorb forecast mismatches without needing clairvoyant knowledge of `actualDemands`.
+- **Myopic ($H = 1$) vs. Lookahead ($H > 1$) vs. Clairvoyant ($H = T$ with perfect foresight)**: A myopic policy ($H = 1$) fails to pre-build inventory ahead of demand spikes exceeding `prodCap`, incurring heavy shortfall penalties (1830 vs. 860 in Case 0). Conversely, re-solving step by step with realized feedback allows MPC to absorb forecast mismatches without needing clairvoyant knowledge of `actualDemands`.
 - **State feedback prevents horizon infeasibility**: Including non-negative elastic shortfall variables $s_k \ge 0$ guarantees that every rolling LP remains feasible even when actual demand temporarily exceeds planned supply.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+For each period `t`, build a `Model` over the lookahead window of length `L`, register all inventory balance constraints at once with `Array.from({ length: L }, ...)`, and commit only the first-period production quantity.
 
 **WaSHI (TypeScript)**
 

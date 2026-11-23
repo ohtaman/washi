@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Register the Stage-1 robust capacity dual constraints via `input.dropAmounts.map(...)`, and generate the linearized Hamming-distance inequality pairs between each scenario's recovery schedule and the initial commitment using `w.flatMap(...)`.
+
 **WaSHI (TypeScript)**
 
 ```ts

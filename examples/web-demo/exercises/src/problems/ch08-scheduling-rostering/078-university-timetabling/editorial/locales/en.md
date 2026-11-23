@@ -24,21 +24,28 @@ $$
 
 ## Key Implementation
 
+Construct the at-most-one-course constraint per room and timeslot, and the per-timeslot clique constraints for each teacher and cohort group. In WaSHI, bundle each group's variables into constraint arrays with `flatMap` and `forEach`; in PuLP, express them with comprehensions.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let r = 0; r < R; r++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`);
-  }
-}
-for (const group of [...teacherGroups.values(), ...cohortGroups.values()]) {
-  if (group.length < 2) continue;
-  for (let t = 0; t < T; t++) {
-    const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
-    m.constraint(expr`${sum(vars)} <= 1`);
-  }
-}
+m.constraint(
+  input.roomCapacities.flatMap((_, r) =>
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`
+    )
+  )
+);
+[...teacherGroups.values(), ...cohortGroups.values()]
+  .filter((group) => group.length >= 2)
+  .forEach((group) => {
+    m.constraint(
+      Array.from({ length: T }, (_, t) => {
+        const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
+        return expr`${sum(vars)} <= 1`;
+      })
+    );
+  });
 ```
 
 **PuLP (Python)**

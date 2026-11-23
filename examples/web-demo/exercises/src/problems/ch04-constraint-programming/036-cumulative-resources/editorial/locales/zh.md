@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+将各作业的 `{ start, duration, demand }` 汇总并注册为一条 `cumulative(..., input.capacity)` 约束，随后最小化所有作业的最大完工时间。
+
 **WaSHI (TypeScript)**
 
 ```ts

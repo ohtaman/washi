@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+In addition to the maximum-facility cap, add a linking constraint for each zone `i` requiring `covered[i]` to be at most the sum of `open[j]` over reachable candidate sites, and maximize total covered demand.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -22,6 +22,8 @@ Here $x_{i, t - L_i} \equiv 0$ whenever $t < L_i$, and $I_{i,-1}$ equals `initia
 
 ## Key Implementation
 
+For each item and period, construct the setup-linking constraint and the inventory balance equation incorporating lead-time-shifted arrivals and BOM-exploded dependent demand. In WaSHI, extract non-zero parent terms from `bom[i]` and sum them with `sum()`; in PuLP, express dependent demand with a comprehension.
+
 **WaSHI (TypeScript)**
 
 ```ts

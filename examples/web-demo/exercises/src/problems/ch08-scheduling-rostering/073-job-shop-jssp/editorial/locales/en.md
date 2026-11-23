@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Declare integer start-time variables in a model configured with the Pumpkin solver, and register non-overlap constraints in bulk by passing the list of operations assigned to each machine to `disjoint()`. Finally, minimize the `max()` of all operation completion times as the objective.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -29,7 +31,7 @@ const m = new Model("JobShopCP", { solver: "pumpkin" });
 const starts = input.durations.map((jobDurs, j) =>
   jobDurs.map((d, o) => m.integer(`s_${j}_${o}`, { lb: 0, ub: horizon - d }))
 );
-for (let mach = 0; mach < numMachines; mach++) {
+Array.from({ length: numMachines }, (_, mach) => mach).forEach((mach) => {
   const ops = input.machines.flatMap((jobMachs, j) =>
     jobMachs
       .map((opMach, o) =>
@@ -38,6 +40,6 @@ for (let mach = 0; mach < numMachines; mach++) {
       .filter((item): item is NonNullable<typeof item> => item !== null)
   );
   if (ops.length >= 2) m.constraint(disjoint(ops), `machine_${mach}`);
-}
+});
 m.objective(minimize(max(completions)));
 ```

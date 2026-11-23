@@ -20,15 +20,19 @@ $$
 
 ## 实现要点
 
+使用 `Array.from` 一次性构建所有节点的单位流量守恒约束（起点 `source` 为 +1，终点 `sink` 为 -1，中间节点为 0），并添加将所有边资源消耗加权和限制在 `maxResource` 以下的约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let v = 0; v < input.nodeCount; v++) {
-  const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
-  const outVars = x.filter((_, i) => input.edges[i].from === v);
-  const inVars = x.filter((_, i) => input.edges[i].to === v);
-  m.constraint(expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`);
-}
+m.constraint(
+  Array.from({ length: input.nodeCount }, (_, v) => {
+    const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
+    const outVars = x.filter((_, i) => input.edges[i].from === v);
+    const inVars = x.filter((_, i) => input.edges[i].to === v);
+    return expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`;
+  })
+);
 m.constraint(
   expr`${sum(x.map((v, i) => expr`${input.edges[i].resource} * ${v}`))} <= ${input.maxResource}`
 );

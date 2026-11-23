@@ -1,7 +1,7 @@
 # #064. Multi-Level BOM & Lead-Time MRP
 
 <!-- section:scenario -->
-A factory coordinates Material Requirements Planning (MRP) for multiple items linked through a Bill of Materials (BOM) over a discrete planning horizon. Releasing an integer production batch of parent item $j$ in period $t$ immediately consumes child component $i$ according to the BOM explosion ratio, while the finished units of item $i$ enter inventory after its production lead time.
+A factory coordinates Material Requirements Planning (MRP) for multiple items linked through a Bill of Materials (BOM)—such as complete e-bikes, drive units, and battery cells—over a discrete planning horizon. Releasing an integer production batch of parent item $j$ in period $t$ immediately consumes child component $i$ according to the BOM explosion ratio, while the finished units of item $i$ enter inventory after its production lead time.
 
 Each item starts with a given initial inventory, incurs a fixed setup cost whenever an integer batch is released up to its per-period capacity, and pays unit production and holding costs. Schedule setups, integer order releases, and ending inventories to satisfy all external and BOM-dependent demands at **minimum total cost**.
 
@@ -23,7 +23,7 @@ Each item starts with a given initial inventory, incurs a fixed setup cost whene
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setups` | `number[][]` | Binary (`0` or `1`) setup decisions ($N \times T$) |
+| `setups` | `number[][]` | Binary (0 or 1) setup decisions ($N \times T$) |
 | `production` | `number[][]` | Non-negative integer order releases ($N \times T$) |
 | `inventory` | `number[][]` | Non-negative ending inventory levels ($N \times T$) |
 | `totalCost` | `number` | Minimized sum of setup, production, and holding costs |

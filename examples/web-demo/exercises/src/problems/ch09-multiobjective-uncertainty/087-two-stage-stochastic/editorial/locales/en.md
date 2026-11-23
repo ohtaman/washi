@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Value of the Stochastic Solution (VSS)**: Replacing uncertain demand with its mean $\bar{d}_j = \sum_s p_s d_{s,j}$ (the deterministic Expected-Value solution) ignores asymmetric shortage vs. salvage costs and warehouse allocation across products, incurring strictly higher expected cost (`196.5` vs. `184` in Case 0).
+- **Value of the Stochastic Solution (VSS)**: Replacing uncertain demand with its mean $\bar{d}_j = \sum_s p_s d_{s,j}$ (the deterministic Expected-Value solution) ignores asymmetric shortage vs. salvage costs and warehouse allocation across products, incurring strictly higher expected cost (196.5 vs. 184 in Case 0).
 - **Non-anticipativity & complementarity**: A single vector $x_j$ is shared across all scenarios (non-anticipativity), while $q_j > r_j$ guarantees that at optimality $u_{s,j}$ and $v_{s,j}$ are never both positive for the same $(s, j)$.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Share the first-stage `orders` across all scenarios, register all scenario balance equations at once with `input.demands.flatMap(...)`, and assemble the expected second-stage cost with `input.probs.map(...)`.
 
 **WaSHI (TypeScript)**
 

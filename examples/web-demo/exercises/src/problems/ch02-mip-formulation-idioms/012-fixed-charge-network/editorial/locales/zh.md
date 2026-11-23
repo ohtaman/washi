@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+对所有产地集货中心与超市的配对，将运输量 `shipments[i][j]` 限制在 `capacities[i][j] * open[i][j]` 以下，并在目标函数中最小化合同固定费用与可变运费之和。
+
 **WaSHI (TypeScript)**
 
 ```ts

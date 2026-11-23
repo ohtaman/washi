@@ -1,26 +1,26 @@
 # #091. Tight Big-M & Formulation Scaling
 
 <!-- section:scenario -->
-A manufacturer must select which plants to open and how much to produce at each open plant to satisfy total product demand at minimum fixed-plus-variable cost. Several plants have physical capacities far larger than total demand, so using an arbitrary huge Big-M constant (or even the raw plant capacity) severely weakens the continuous LP relaxation.
+A beverage manufacturer's production planner must decide which bottling plants to operate and how much to produce at each plant (in cases) to satisfy total demand (in cases) while minimizing fixed plus variable production costs. When some plants have physical capacities far exceeding total demand, using an arbitrary huge constant or raw plant capacity as Big-M severely weakens the continuous LP relaxation lower bound.
 
-Formulate the linking constraints using the tightest instance-derived Big-M bound for each plant, and return both the optimal integer solution and the LP relaxation objective of that tight formulation.
+Formulate the linking constraints between plant activation and production quantity using the tightest upper bound (tight Big-M) derivable from the input data for each plant, and return both the optimal integer solution and the LP relaxation objective value of that tight formulation.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `fixedCosts` | `number[]` | Fixed setup cost incurred when plant $i$ is opened |
-| `unitCosts` | `number[]` | Unit production cost at plant $i$ |
-| `capacities` | `number[]` | Physical maximum capacity of plant $i$ |
-| `demand` | `number` | Total production demand that must be satisfied |
+| `fixedCosts` | `number[]` | Fixed cost incurred when plant $i$ is operated |
+| `unitCosts` | `number[]` | Production cost per case at plant $i$ |
+| `capacities` | `number[]` | Physical maximum production capacity of plant $i$ (cases) |
+| `demand` | `number` | Total demand to satisfy (cases) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `number[]` | Binary (`0` or `1`) plant-activation decisions |
-| `quantities` | `number[]` | Continuous non-negative production output per plant |
+| `open` | `number[]` | Activation choice for each plant (0 or 1) |
+| `quantities` | `number[]` | Production quantity at each plant (non-negative real values, cases) |
 | `totalCost` | `number` | Optimal integer objective (fixed plus variable cost) |
 | `lpBound` | `number` | Continuous LP relaxation objective under tight Big-M |
 

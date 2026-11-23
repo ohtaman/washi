@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Extract the `{ start, duration }` task list assigned to each tool, register `disjoint(...)` constraints across all tools in bulk, and minimize the maximum completion time across all steps.
+
 **WaSHI (TypeScript)**
 
 ```ts

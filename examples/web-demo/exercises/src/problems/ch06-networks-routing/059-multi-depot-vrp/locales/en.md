@@ -11,7 +11,7 @@ Assign each customer to a single route that starts and ends at the same depot—
 | Field | Type | Description |
 | --- | --- | --- |
 | `dist` | `number[][]` | $(D+C) \times (D+C)$ distance matrix (`0..D-1` depots, `D..D+C-1` customers) |
-| `demands` | `number[]` | Demand at each node (`0` at depots, positive at customers) |
+| `demands` | `number[]` | Demand at each node (0 at depots, positive at customers) |
 | `vehicleCapacity` | `number` | Load capacity $Q$ per vehicle route |
 | `depotMaxVehicles` | `number[]` | Maximum number of vehicles available at each depot `d` |
 | `depotCapacities` | `number[]` | Maximum total customer demand served from each depot `d` |
@@ -55,7 +55,7 @@ Assign each customer to a single route that starts and ends at the same depot—
 }
 ```
 
-Depot `0` serves `{2, 3}` (demand `8 <= 8`, distance $4 + 6 + 3 = 13$) and depot `1` serves `{4, 5}` (demand `8 <= 10`, distance $3 + 6 + 4 = 13$), giving total distance $13 + 13 =$ **26**.
+Depot 0 serves `{2, 3}` (demand `8 <= 8`, distance $4 + 6 + 3 = 13$) and depot 1 serves `{4, 5}` (demand `8 <= 10`, distance $3 + 6 + 4 = 13$), giving total distance $13 + 13 =$ **26**.
 
 <!-- section:hint1 -->
 Model depot-indexed binary arc variables restricted to each depot `d` and the customer set `{D..n-1}` (omitting inter-depot arcs), plus one continuous cumulative-load variable per customer bounded by its demand and `vehicleCapacity`. Enforce that each customer is visited once across all depots, conserve flow per `(depot, customer)` pair, and cap each depot's dispatched vehicles and total served demand.

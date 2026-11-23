@@ -1,7 +1,7 @@
 # #100. Integrated S&OP Audit & Rescheduling (Capstone)
 
 <!-- section:scenario -->
-In Sales & Operations Planning (S&OP), production planners inherit hard engineering mandates together with weighted soft management policies that may mutually contradict or collectively fail to cover aggregate customer demand. Before computing a production schedule, an engineer must isolate the contradiction and minimally repair the policy set.
+In Sales & Operations Planning (S&OP) at a chemical and materials manufacturer, production planners are given mandatory equipment constraints on line operations alongside weighted soft policies from operations and sales teams. When policies mutually contradict or fail to leave enough capacity to meet demand, the contradiction must be resolved at minimum weight sacrifice before building the production schedule.
 
 Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming. First, identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable. Second, allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
 
@@ -59,7 +59,7 @@ Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mix
 }
 ```
 
-Dropping `soft_idle_2` (weight `10 < 18`) resolves the contradiction with `hard_min_backup`. Running `[1, 1, 1, 0]` incurs fixed cost `400`, production cost `760`, and one line flip penalty `40`, totaling **1200**.
+Dropping the lowest-weight `soft_idle_2` ($10 < 18$) resolves the contradiction with `hard_min_backup`. Line activations `[1, 1, 1, 0]` provide total capacity $40 + 50 + 45 = 135 \ge 90$, incurring fixed cost $120 + 150 + 130 = 400$, production cost $8 \times 50 + 9 \times 40 = 760$, and one line-flip penalty $40 \times 1 = 40$, for a total cost of $400 + 760 + 40 =$ **1,200**.
 
 <!-- section:hint1 -->
 Split the problem into two sequential stages. Stage 1 finds a minimum-weight subset of soft rules to drop so that the remaining rules and total capacity can satisfy demand. Stage 2 fixes the surviving rule set and solves a production-rescheduling MIP for binary line activations, continuous production quantities, and deviations from `baselineActive`.

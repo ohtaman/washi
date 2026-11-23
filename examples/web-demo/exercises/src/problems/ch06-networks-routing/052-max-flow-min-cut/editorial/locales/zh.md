@@ -20,6 +20,8 @@ $$
 
 ## 实现要点
 
+求解最大流 LP 后，沿有剩余容量的正向边与有正流量的反向边从源点执行广度优先搜索（BFS）求出可达集合 `visited`，最后提取满足 `visited[e.from] && !visited[e.to]` 的边作为最小割。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -28,8 +30,7 @@ visited[input.source] = true;
 const queue = [input.source];
 while (queue.length > 0) {
   const u = queue.shift()!;
-  for (let i = 0; i < input.edges.length; i++) {
-    const e = input.edges[i];
+  input.edges.forEach((e, i) => {
     if (e.from === u && !visited[e.to] && flowVals[i] < e.cap - 1e-6) {
       visited[e.to] = true;
       queue.push(e.to);
@@ -38,7 +39,7 @@ while (queue.length > 0) {
       visited[e.from] = true;
       queue.push(e.from);
     }
-  }
+  });
 }
 ```
 

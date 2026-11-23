@@ -23,23 +23,25 @@ $$
 
 ## Key Implementation
 
+Add the degree-1 out-degree and in-degree constraints for every node and the Big-M completion-time propagation constraints for every ordered job pair. In WaSHI, use `forEach` and `filter` to constrain the non-self-loop variables together; in PuLP, express them with comprehensions.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i <= n; i++) {
-  const outVars = x[i].filter((v): v is NonNullable<typeof v> => v !== null);
-  const inVars = x.map((row) => row[i]).filter((v): v is NonNullable<typeof v> => v !== null);
+x.forEach((row, i) => {
+  const outVars = row.filter((v): v is NonNullable<typeof v> => v !== null);
+  const inVars = x.map((r) => r[i]).filter((v): v is NonNullable<typeof v> => v !== null);
   m.constraint([expr`${sum(outVars)} == 1`, expr`${sum(inVars)} == 1`]);
-}
-for (let i = 0; i < n; i++) {
-  for (let j = 0; j < n; j++) {
-    if (i === j) continue;
-    const step = input.setupMatrix[i][j] + input.processingTimes[j];
+});
+input.setupMatrix.forEach((row, i) => {
+  row.forEach((setup, j) => {
+    if (i === j) return;
+    const step = setup + input.processingTimes[j];
     m.constraint(
       expr`${completions[j]} >= ${completions[i]} + ${step} - ${M} * (1 - ${x[i][j]!})`
     );
-  }
-}
+  });
+});
 ```
 
 **PuLP (Python)**

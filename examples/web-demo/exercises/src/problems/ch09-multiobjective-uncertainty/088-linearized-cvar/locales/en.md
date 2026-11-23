@@ -54,7 +54,7 @@ To control severe tail losses without non-linear optimization, use the Rockafell
 }
 ```
 
-For `weights = [0, 0.3, 0.7]`, scenario returns are `[0.019, 0.029, 0.015, -0.032]`, yielding expected loss `-0.00775` and worst-25% tail loss `0.032`, so $-0.00775 + 2.0 \times 0.032 =$ **0.05625**.
+For `weights = [0, 0.3, 0.7]`, scenario returns are `[0.019, 0.029, 0.015, -0.032]`, yielding expected loss -0.00775 and worst-25% tail loss 0.032, so $-0.00775 + 2.0 \times 0.032 =$ **0.05625**.
 
 
 <!-- section:hint1 -->

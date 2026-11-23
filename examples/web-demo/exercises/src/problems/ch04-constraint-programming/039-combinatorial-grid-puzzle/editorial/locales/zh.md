@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+注册每行与每列的 `distinct` 约束、固定提示的等式约束以及每个区域的求和等式与 `distinct` 约束，然后在不设置目标函数的情况下运行 Pumpkin 求解。
+
 **WaSHI (TypeScript)**
 
 ```ts

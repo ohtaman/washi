@@ -1,23 +1,23 @@
-# #007. Worker-Task 1-to-1 Assignment
+# #007. 1-to-1 Delivery Zone Assignment
 
 <!-- section:scenario -->
-There are equally many workers and tasks, and assigning each worker to any task incurs a specific assignment cost.
+A delivery depot has an equal number of couriers and delivery zones (such as North, East, and South), and assigning each courier to a zone incurs a known delivery cost (in thousand yen).
 
-Find a **1-to-1 assignment** where every worker receives **exactly one** task and every task is covered by **exactly one** worker, **minimizing total assignment cost**.
+Find a **1-to-1 assignment** where **every courier is assigned to exactly one zone** and **every zone is assigned to exactly one courier**, **minimizing total cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | Square $n \times n$ matrix where `costs[i][j]` is the cost of worker $i$ doing task $j$ |
+| `costs` | `number[][]` | Square $n \times n$ assignment cost matrix (`costs[i][j]` is the cost for courier $i$ to cover zone $j$) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignment` | `number[]` | Array of length $n$ where `assignment[i]` is the task assigned to worker $i$ |
-| `totalCost` | `number` | Minimized total assignment cost |
+| `assignment` | `number[]` | Array of length $n$ where `assignment[i]` is the zone index assigned to courier $i$ |
+| `totalCost` | `number` | Minimized total cost |
 
 <!-- section:example -->
 **Input**
@@ -41,4 +41,4 @@ Find a **1-to-1 assignment** where every worker receives **exactly one** task an
 }
 ```
 
-Assigning tasks `[1, 0, 2]` gives each worker a distinct task with total cost $2 + 6 + 1 =$ **9**.
+Assigning `[1, 0, 2]` gives each courier one distinct zone (each row and column has count 1) with total cost $2 + 6 + 1 =$ **9**.

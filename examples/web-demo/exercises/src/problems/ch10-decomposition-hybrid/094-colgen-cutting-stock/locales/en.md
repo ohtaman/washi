@@ -47,7 +47,7 @@ Use WaSHI column generation to dynamically discover profitable cutting patterns 
 }
 ```
 
-Each pattern fits within `100` (`88`, `97`, `100 <= 100`), producing `[10, 15, 23] >= [10, 14, 20]` items across `1 + 10 + 3 =` **14** stock rolls.
+Each pattern fits within 100 ($88, 97, 100 \le 100$), producing `[10, 15, 23] >= [10, 14, 20]` items across $1 + 10 + 3 =$ **14** stock rolls.
 
 <!-- section:hint1 -->
 Decompose into a Restricted Master Problem (choosing how many rolls to cut of each active pattern to cover item demands) and a bounded knapsack pricing subproblem (generating a new valid pattern within `rollWidth` that reduces the master objective). Seed the master with simple feasible single-item patterns so its initial LP is always feasible.

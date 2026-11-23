@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+通过 `m.constraint([...])` 批量注册 `allowedRules` 对应的 `allowed(...)` 与 `forbiddenRules` 对应的 `not(allowed(...))`，最小化 `at(costs, choices[c])` 的总和，并交由 Pumpkin 求解。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -10,7 +10,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `dist` | `number[][]` | $N \times N$ 距离矩阵（`0` 为配送中心，`1..N-1` 为取送货站点） |
+| `dist` | `number[][]` | $N \times N$ 距离矩阵（0 为配送中心，1..N-1 为取送货站点） |
 | `requests` | `Array<{ pickup, delivery, demand }>` | 订单列表（取货点 `pickup`、送货点 `delivery`、货量 `demand`） |
 | `capacity` | `number` | 单车最大载重容量 $Q$ |
 | `maxVehicles` | `number` | 最多可派出的车辆数 |

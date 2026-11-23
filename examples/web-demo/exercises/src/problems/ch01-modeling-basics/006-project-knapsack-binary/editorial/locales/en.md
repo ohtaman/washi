@@ -1,6 +1,6 @@
 ## Approach
 
-Declare a binary (`0-1`) decision variable for each project (`m.binary(...)` / `pulp.LpVariable(..., cat=pulp.LpBinary)`), add the single budget constraint `dot(costs, selected) <= budget`, and maximize `dot(values, selected)`.
+Declare a **0-1 binary decision variable** $x_i \in \{0, 1\}$ for whether each equipment item is installed, and maximize the total expected score subject to the total cost not exceeding the budget $B$. In WaSHI (and PuLP), this is written concisely with `m.binary(...)` / `LpBinary` and `dot` / `lpDot`.
 
 ## Mathematical Model
 
@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Why greedy fails on 0-1 knapsack**: Picking projects in decreasing value-to-cost order can leave unusable leftover budget (for example stopping at value `30` with `3` budget left over), whereas an exact binary solver packs the budget tightly to `36`.
-- **Clean binary extraction**: WaSHI automatically normalizes `Binary` `v.value` entries to exact integers, so `v.value!` can be used directly. In PuLP (Python), solver tolerances can still return `0.999999999` or `-0.0`, so round outputs with `round(pulp.value(v))`.
+- **Why greedy fails on 0-1 knapsack**: Picking items in decreasing score-to-cost order can leave unusable leftover budget and miss the global optimum (score 36 in the example). An exact MIP solver searches all combinations to find the optimal subset.
+- **Clean binary extraction**: In PuLP (Python), floating-point tolerances can still return `0.999999999` or `-0.0`, so round outputs with `round(pulp.value(v))`. In WaSHI, `Binary` `v.value` entries are automatically normalized to exact integers, so `v.value!` can be used directly.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Represent each item's selection with `m.binary(...)` (`cat=pulp.LpBinary` in PuLP), and express the budget constraint and objective sum concisely using `dot` / `pulp.lpDot`.
 
 **WaSHI (TypeScript)**
 

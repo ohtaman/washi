@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+注册总需求下限约束，并使用 `flatMap` 为每位供应商展开 4 条 Glover / McCormick 不等式后一并传入 `m.constraint([...])`。
+
 **WaSHI (TypeScript)**
 
 ```ts

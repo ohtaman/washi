@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+使用 `input.targets.map(...)` 将欠产松弛变量 `shortfalls` 与超产松弛变量 `excesses` 组合，一次性注册所有产品的目标平衡等式，并用 `dot` 与 `sum` 简洁表达机器产能上限、总产量下限和目标函数。
+
 **WaSHI (TypeScript)**
 
 ```ts

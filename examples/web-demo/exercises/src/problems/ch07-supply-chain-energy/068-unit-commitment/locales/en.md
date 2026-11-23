@@ -23,7 +23,7 @@ Consecutive-hour generation changes while online cannot exceed the unit's ramp l
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `commitment` | `number[][]` | Binary (`0` or `1`) on/off commitment matrix ($G \times T$) |
+| `commitment` | `number[][]` | Binary (0 or 1) on/off commitment matrix ($G \times T$) |
 | `generation` | `number[][]` | Continuous hourly generation $p_{g,t} \ge 0$ ($G \times T$) |
 | `totalCost` | `number` | Minimized total startup plus fuel cost |
 
@@ -61,7 +61,7 @@ Consecutive-hour generation changes while online cannot exceed the unit's ramp l
 }
 ```
 
-One startup per generator (`450 + 220 + 80 = 750`) plus fuel (`20*565 + 32*225 + 48*10 = 18980`) meets every demand, ramp bound, and min-up/down rule for total cost **19,730**.
+One startup per generator ($450 + 220 + 80 = 750$) plus fuel ($20 \times 565 + 32 \times 225 + 48 \times 10 = 18980$) meets every demand, ramp bound, and min-up/down rule for total cost **19,730**.
 
 
 <!-- section:hint1 -->

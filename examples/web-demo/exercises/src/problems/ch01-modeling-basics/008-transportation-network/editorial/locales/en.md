@@ -1,6 +1,6 @@
 ## Approach
 
-Declare an $S \times D$ matrix of non-negative continuous shipment variables (`shipments[i][j]`), enforce warehouse supply caps (`sum(row) <= supplies[i]`) and store demand floors (`sum(col) >= demands[j]`), and minimize total freight cost.
+Define the shipment quantity (kg) from roasting plant $i$ to café store $j$ as a non-negative continuous variable $x_{i,j} \ge 0$, enforce each plant's **supply cap (row sum $\le S_i$)** and each store's **demand floor (column sum $\ge D_j$)**, and minimize total shipping cost.
 
 ## Mathematical Model
 
@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Bipartite flow structure**: Each variable belongs to exactly one row (source warehouse) and one column (destination store). Because this node-arc incidence matrix is totally unimodular, integer `supplies` and `demands` automatically yield integer LP optimal flows without declaring integer variables.
-- **Mapping row and column aggregations**: Build all supply and demand inequalities declaratively with `.map()`, then flatten the cost sum with `.flatMap()`.
+- **Automatic integrality via total unimodularity (TU)**: Because the transportation constraint matrix has a special network structure (node-arc incidence matrix of a bipartite graph), solving it as a continuous LP automatically yields integer optimal vertices whenever supplies and demands are integers.
+- **2D aggregations with `.map()` and `.flatMap()`**: Build row and column constraints as arrays using `map`, and flatten the double sum in the objective using `flatMap`.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+For the 2D variable array `shipments`, build row-sum constraints (plant supply caps) and column-sum constraints (store demand floors) using `.map()`.
 
 **WaSHI (TypeScript)**
 

@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+注册全周期常规工时总上限约束以及各周期的缺口不等式 `shortage[t] >= demand - regular[t]`，然后最小化常规成本与加班惩罚之和。
+
 **WaSHI (TypeScript)**
 
 ```ts

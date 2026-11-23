@@ -1,23 +1,23 @@
 # #086. Rolling-Horizon Planning (MPC)
 
 <!-- section:scenario -->
-A plant operates over a finite horizon using Model Predictive Control. At the start of each period, the planner observes the current realized inventory and solves a finite lookahead linear program over the next window of forecasted demands, subject to per-period production capacity, inventory holding cost, and unmet-demand shortfall penalties.
+A beverage bottling plant uses Model Predictive Control (MPC) to manage multi-period production and inventory of bottled beverages (in cases). At the start of each period, the planner observes the current realized inventory (in cases) and solves a lookahead linear program over the upcoming forecast window, subject to per-period production capacity (cases), ending-inventory holding cost (JPY/case), and unmet-demand shortfall penalty (JPY/case).
 
-However, only the immediate production decision for the current period is committed. Actual demand then realizes for that period, updating ending inventory and any realized shortfall before the horizon slides forward one step. Return the committed decisions, realized inventory and shortfall trajectories, and total realized cost.
+However, only the current period's production quantity is committed and executed. Actual demand then realizes for that period, updating the actual ending inventory and shortfall before the window slides forward one period to the next step. Return the executed production quantities, realized inventories, realized shortfalls, and total accumulated realized cost.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `actualDemands` | `number[]` | Realized customer demand observed after committing each period |
-| `forecastDemands` | `number[]` | Demand forecasts used inside each lookahead window |
-| `prodCosts` | `number[]` | Unit production cost in each period $t$ |
-| `prodCap` | `number` | Maximum production capacity per period |
-| `holdCost` | `number` | Unit holding cost on ending inventory per period |
-| `shortfallPenalty` | `number` | Penalty cost per unit of unmet demand |
-| `initialInventory` | `number` | Starting inventory before period 0 |
-| `windowLen` | `number` | Lookahead window length $H$ at each decision step |
+| `actualDemands` | `number[]` | Realized demand observed in each period after committing production (cases) |
+| `forecastDemands` | `number[]` | Forecasted demand for each period referenced inside lookahead planning (cases) |
+| `prodCosts` | `number[]` | Unit production cost in each period $t$ (JPY/case) |
+| `prodCap` | `number` | Maximum production capacity per period (cases) |
+| `holdCost` | `number` | Holding cost per case of ending inventory (JPY) |
+| `shortfallPenalty` | `number` | Shortfall penalty per case of unmet demand (JPY) |
+| `initialInventory` | `number` | Initial inventory before period 0 (cases) |
+| `windowLen` | `number` | Lookahead window length $H$ at each step |
 
 ### Output
 

@@ -6,7 +6,7 @@ A bakery makes croissants and loaves (both continuous and non-negative) to maxim
 - Each croissant yields profit 40 and uses 2 units of flour and 1 unit of butter.
 - Each loaf yields profit 70 and uses 3 units of flour and 2 units of butter.
 
-Given flour limit flourCap and butter limit butterCap, add the missing butter constraint to maximize total profit.
+Given flour limit `flourCap` and butter limit `butterCap`, add the missing butter constraint to maximize total profit.
 
 <!-- section:io -->
 ### Input
@@ -44,4 +44,4 @@ Given flour limit flourCap and butter limit butterCap, add the missing butter co
 }
 ```
 
-Producing `30` croissants and `20` loaves uses $2(30) + 3(20) = 120$ flour and $30 + 2(20) = 70$ butter, achieving maximum profit `2600`.
+Producing 30 croissants and 20 loaves uses $2\times 30 + 3\times 20 = 120 \le 120$ flour and $1\times 30 + 2\times 20 = 70 \le 70$ butter, satisfying both constraints. The resulting total profit is $40\times 30 + 70\times 20 = 2600$.

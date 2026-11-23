@@ -27,25 +27,29 @@ Here $M_{i,j} = \sum_k \min(A_{i,k}, B_{j,k})$ and $M_T = \max_i a_i + \max_{r,s
 
 ## Key Implementation
 
+For each truck pair, disaggregate total transfer flow into door-pair variables $w_{i,j,r,s}$ and impose both door-assignment linking and time-synchronization Big-M constraints. In WaSHI, generate the door-pair constraint arrays in bulk with `map` and `flatMap`; in PuLP, add each $(r, s)$ constraint inside nested loops.
+
 **WaSHI (TypeScript)**
 
 ```ts
 m.constraint(expr`${pairFlowSum} <= ${maxPairFlow} * ${z[i][j]}`);
 m.constraint(expr`${sum(w[i][j].flat())} - ${pairFlowSum} == 0`);
-for (let r = 0; r < R; r++) {
-  m.constraint(expr`${sum(w[i][j][r])} <= ${maxPairFlow} * ${x[i][r]}`);
-}
-for (let s = 0; s < S; s++) {
-  m.constraint(expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`);
-}
-for (let r = 0; r < R; r++) {
-  for (let s = 0; s < S; s++) {
-    const rhs = input.arrivalTimes[i] + input.transferTimes[r][s] - 3 * bigMT;
-    m.constraint(
-      expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`
-    );
-  }
-}
+m.constraint(
+  w[i][j].map((row, r) => expr`${sum(row)} <= ${maxPairFlow} * ${x[i][r]}`)
+);
+m.constraint(
+  input.outDoorCaps.map((_, s) =>
+    expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`
+  )
+);
+m.constraint(
+  input.transferTimes.flatMap((row, r) =>
+    row.map((tau, s) => {
+      const rhs = input.arrivalTimes[i] + tau - 3 * bigMT;
+      return expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

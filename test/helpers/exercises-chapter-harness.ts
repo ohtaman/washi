@@ -276,7 +276,8 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
           const sections = parseProblemMarkdown(md);
           expect(sections.title.trim().length, `${prob.meta.id} (${locale}) title`).toBeGreaterThan(0);
           expect(sections.scenario.trim().length, `${prob.meta.id} (${locale}) scenario`).toBeGreaterThan(0);
-          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has backticks`).not.toContain("`");
+          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has fenced code`).not.toContain("```");
+          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has formula/recipe`).not.toMatch(/<=|>=|==|\bsum\(|\bdot\(/);
           expect(sections.ioSpec.trim().length, `${prob.meta.id} (${locale}) ioSpec`).toBeGreaterThan(0);
           expect(renderSafeMarkdown(sections.ioSpec), `${prob.meta.id} (${locale}) ioSpec table`).toContain("<table>");
           expect(sections.example.trim().length, `${prob.meta.id} (${locale}) example`).toBeGreaterThan(0);

@@ -1,7 +1,7 @@
 # #061. Single-Item Dynamic Lot Sizing
 
 <!-- section:scenario -->
-A factory must schedule production of a single product over multiple consecutive periods starting from zero initial inventory. Whenever production takes place in a period, the factory incurs a fixed setup cost and can produce continuously up to that period's capacity; otherwise, production in that period must be zero.
+A frozen food factory must schedule production and inventory of its flagship frozen Sanuki udon over multiple consecutive periods starting from zero initial inventory. Whenever production takes place in a period, the factory incurs a fixed setup cost and can produce continuously up to that period's capacity; otherwise, production in that period must be zero.
 
 Every unit produced incurs a period-specific unit production cost, and any surplus carried to the next period incurs a per-unit holding cost. Determine the binary setup schedule, production quantities, and end-of-period inventory levels to meet all period demands at **minimum total cost**.
 
@@ -20,7 +20,7 @@ Every unit produced incurs a period-specific unit production cost, and any surpl
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setups` | `number[]` | Binary (`0` or `1`) setup decisions per period |
+| `setups` | `number[]` | Binary (0 or 1) setup decisions per period |
 | `production` | `number[]` | Non-negative continuous production quantities |
 | `inventory` | `number[]` | Non-negative end-of-period inventory levels |
 | `totalCost` | `number` | Minimized sum of setup, production, and holding costs |
@@ -49,7 +49,7 @@ Every unit produced incurs a period-specific unit production cost, and any surpl
 }
 ```
 
-Setting up only in periods 0 and 2 yields ending inventories `[50, 0, 40, 0]` within capacities `80`, for total cost $(180 \times 2) + (70 \times 10 + 50 \times 10) + (50 \times 2 + 40 \times 2) =$ **1,740**.
+Setting up only in periods 0 and 2 yields ending inventories [50, 0, 40, 0] within capacities 80, for total cost $(180 \times 2) + (70 \times 10 + 50 \times 10) + (50 \times 2 + 40 \times 2) =$ **1,740**.
 
 
 <!-- section:hint1 -->

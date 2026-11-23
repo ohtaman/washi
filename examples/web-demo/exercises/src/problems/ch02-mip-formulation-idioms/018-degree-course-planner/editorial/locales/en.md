@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+In addition to the capacity constraint for each workload category `k`, add the implication inequalities for prerequisite pairs `[prereq, course]` and mutual-exclusion inequalities for time-conflict pairs `[a, b]` over the `take` variables.
+
 **WaSHI (TypeScript)**
 
 ```ts

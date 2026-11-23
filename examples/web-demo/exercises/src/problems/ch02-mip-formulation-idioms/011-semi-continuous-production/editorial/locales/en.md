@@ -1,6 +1,6 @@
 ## Approach
 
-Pair each continuous quantity `quantities[i]` with a binary indicator `active[i]`, enforce the two-sided linking inequalities `minBatches[i] * active[i] <= quantities[i] <= maxBatches[i] * active[i]`, and maximize total profit margin subject to the shared resource cap.
+Pair each style's continuous brewing quantity `quantities[i]` with a 0-1 brewing indicator `active[i]`, enforce the two-sided linking inequalities `minBatches[i] * active[i] <= quantities[i] <= maxBatches[i] * active[i]`, and maximize total gross margin subject to the shared malt stock limit.
 
 ## Mathematical Model
 
@@ -15,11 +15,13 @@ $$
 
 ## Key Points
 
-- **Why a simple `lb` fails for semi-continuous domains**: Setting `lb: L_i` directly on `q_i` forces every product to be active at all times (`q_i >= L_i`), even when shutting a product off (`q_i = 0`) is needed to save scarce resource capacity.
-- **Two-sided Big-M gating**: Writing $L_i y_i \le q_i \le U_i y_i$ makes $y_i = 0 \implies 0 \le q_i \le 0 \implies q_i = 0$, while $y_i = 1 \implies L_i \le q_i \le U_i$. Leaving out the lower inequality allows illegal fractional production strictly inside $(0, L_i)$.
+- **Why a simple `lb` fails**: Setting `lb: L_i` directly on `q_i` forces $q_i \ge L_i$ at all times, preventing the brewery from skipping a style ($q_i = 0$) to save malt for another style.
+- **Two-sided linking constraints (semi-continuous variables)**: Writing $L_i y_i \le q_i \le U_i y_i$ gives $0 \le q_i \le 0$ (skip) when $y_i = 0$, and $L_i \le q_i \le U_i$ (at least the minimum batch) when $y_i = 1$. Omitting the lower inequality allows invalid small batches in $(0, L_i)$.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Sandwich each style's continuous variable `quantities[i]` between the minimum batch size and maximum tank capacity multiplied by the binary variable `active[i]`, expressing the semi-continuous property with two linear inequalities.
 
 **WaSHI (TypeScript)**
 

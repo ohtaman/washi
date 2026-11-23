@@ -61,7 +61,7 @@ Installing a specific package version can require one of several candidate depen
 }
 ```
 
-Because `app@1.0` conflicts with `legacy@1.0`, `http@1.0` is ruled out, leaving `{ app@1.0, http@2.0, tls@1.2 }` with `3` installed packages.
+Because `app@1.0` conflicts with `legacy@1.0`, `http@1.0` is ruled out, leaving `{ app@1.0, http@2.0, tls@1.2 }` with 3 installed packages.
 
 
 <!-- section:hint1 -->

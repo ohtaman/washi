@@ -24,32 +24,33 @@ $$
 
 ## 实现要点
 
+针对每个有效 `(d, s)` 班次的员工指派列向量 `col`，施加总人数、资深负责人及各技能需求人数的点积约束，再为所有互斥对添加同班互斥约束。在 WaSHI 中使用 `forEach` 和 `flatMap` 构建约束数组，在 PuLP 中则通过循环与 `pulp.lpDot` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let d = 0; d < D; d++) {
-  for (let s = 0; s < S; s++) {
-    if (input.demands[d][s] <= 0) continue;
+input.demands.forEach((dayDemands, d) => {
+  dayDemands.forEach((req, s) => {
+    if (req <= 0) return;
     const col = x.map((staff) => staff[d][s]);
     m.constraint([
-      expr`${sum(col)} >= ${input.demands[d][s]}`,
+      expr`${sum(col)} >= ${req}`,
       expr`dot(${input.isSenior}, ${col}) >= 1`,
     ]);
-    for (let k = 0; k < K; k++) {
-      if (input.skillDemands[s][k] > 0) {
-        const coeffs = input.staffSkills.map((sk) => sk[k]);
-        m.constraint(expr`dot(${coeffs}, ${col}) >= ${input.skillDemands[s][k]}`);
-      }
-    }
-  }
-}
-for (const [a, b] of input.ngPairs) {
-  for (let d = 0; d < D; d++) {
-    for (let s = 0; s < S; s++) {
-      m.constraint(expr`${x[a][d][s]} + ${x[b][d][s]} <= 1`);
-    }
-  }
-}
+    input.skillDemands[s].forEach((skillReq, k) => {
+      if (skillReq <= 0) return;
+      const coeffs = input.staffSkills.map((sk) => sk[k]);
+      m.constraint(expr`dot(${coeffs}, ${col}) >= ${skillReq}`);
+    });
+  });
+});
+m.constraint(
+  input.ngPairs.flatMap(([a, b]) =>
+    input.demands.flatMap((dayDemands, d) =>
+      dayDemands.map((_, s) => expr`${x[a][d][s]} + ${x[b][d][s]} <= 1`)
+    )
+  )
+);
 ```
 
 **PuLP (Python)**

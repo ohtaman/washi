@@ -6,7 +6,7 @@ Mix two non-negative ingredients (oats and beans, continuous amounts) to minimiz
 - 1 unit of oats costs 30 and supplies 2 units of protein and 1 unit of fiber.
 - 1 unit of beans costs 50 and supplies 1 unit of protein and 3 units of fiber.
 
-Given minimum targets minProtein and minFiber, find the cheapest mix.
+Given minimum targets `minProtein` and `minFiber`, find the cheapest mix.
 
 <!-- section:io -->
 ### Input
@@ -44,4 +44,4 @@ Given minimum targets minProtein and minFiber, find the cheapest mix.
 }
 ```
 
-Using `3` units of oats and `2` units of beans yields `8` protein, `9` fiber, and minimum cost `190`.
+Using 3 units of oats and 2 units of beans yields $2\times 3 + 1\times 2 = 8 \ge 8$ protein and $1\times 3 + 3\times 2 = 9 \ge 9$ fiber, satisfying both constraints. The resulting total cost is $30\times 3 + 50\times 2 = 190$.

@@ -23,6 +23,8 @@ $$
 
 ## 实现要点
 
+组合使用 `at(..., modes[i])` 处理前段准备与先后约束、`disjoint(...)` 处理按机器的非重叠约束、`cumulative(..., input.powerCap)` 处理功率上限以及 `allowed(...)` 处理模式兼容表并注册约束。
+
 **WaSHI (TypeScript)**
 
 ```ts

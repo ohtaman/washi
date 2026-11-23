@@ -19,6 +19,8 @@ $$
 
 ## Key Implementation
 
+Add every policy rule to the model via `compileSmt`, then assert the negation of `safeInvariant` with `not(...)`. If `m.check({ solver: "z3" })` does not return `"Sat"`, no counterexample exists.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -1,6 +1,6 @@
 ## Approach
 
-Create a Boolean decision variable `pick[p][v]` (`m.bool`) and a `0`-`1` indicator `used[p][v]` (`m.binary`) for every package-version pair. Enforce at-most-one version per package, exact-one for required roots, implication clauses for `requires`, exclusion clauses for `conflicts`, and minimize total installed packages via `await m.solve({ solver: "z3" })`.
+Create a Boolean decision variable `pick[p][v]` (`m.bool`) and a 0-1 indicator `used[p][v]` (`m.binary`) for every package-version pair. Enforce at-most-one version per package, exact-one for required roots, implication clauses for `requires`, exclusion clauses for `conflicts`, and minimize total installed packages via `await m.solve({ solver: "z3" })`.
 
 ## Mathematical Model
 
@@ -22,6 +22,8 @@ $$
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
+
+Register the required roots and dependency rules as logical constraints using `or(...)` and `implies(...)`, minimize the sum of the 0-1 counting variables `allUsed` with `minimize(sum(allUsed))`, and find the optimal solution via `m.solve({ solver: "z3" })`.
 
 **WaSHI (TypeScript)**
 

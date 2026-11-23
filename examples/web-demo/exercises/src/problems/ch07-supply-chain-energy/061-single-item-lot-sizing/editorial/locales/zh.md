@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+将各需求期的需求满足约束、拆解上界约束和各期产能约束以数组形式传给 `m.constraint()`。在 WaSHI 中使用 `sum()` 和 `expr` 模板字面量构建每行约束式，在 PuLP 中则可用 `pulp.lpSum` 配合循环写出相同结构。
+
 **WaSHI (TypeScript)**
 
 ```ts

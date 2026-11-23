@@ -16,7 +16,7 @@ Sequence all tracks into a single closed cycle with no disconnected loops and **
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setlist` | `number[]` | Playback order of all $n$ tracks starting at `0` (`setlist[0] = 0`) |
+| `setlist` | `number[]` | Playback order of all $n$ tracks starting at 0 (`setlist[0] = 0`) |
 | `totalCost` | `number` | Minimized total closed-cycle transition-jarring cost |
 
 <!-- section:example -->

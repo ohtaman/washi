@@ -19,6 +19,8 @@ $$
 
 ## Key Implementation
 
+While maintaining the accumulated constraints `prior`, check each rule in order: test satisfiability of its condition to detect dead rules, and test satisfiability with the negated effect to detect redundant rules, then append it to `prior` in `implies` form for subsequent rules.
+
 **WaSHI (TypeScript)**
 
 ```ts

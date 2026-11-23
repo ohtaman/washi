@@ -1,7 +1,7 @@
 # #052. Maximum Flow & Minimum s-t Cut
 
 <!-- section:scenario -->
-A directed communication network connects a designated source node to a designated sink node through capacitated links. Every intermediate node must conserve flow with zero net gain or loss, and flow on each link cannot exceed its capacity.
+Consider a fiber-optic network between data centers where we want to send the maximum possible data flow (Gbps) from a source server (`source`) to a backup site (`sink`). The flow on each communication link (directed arc) cannot exceed its bandwidth capacity, and every relay router (intermediate node) must conserve flow with equal inflow and outflow.
 
 Compute the maximum flow that can be sent from source to sink using a linear program, and extract an accompanying minimum s-t cut edge subset whose capacities sum to that maximum flow and sever every directed source-to-sink path.
 
@@ -51,7 +51,7 @@ Compute the maximum flow that can be sent from source to sink using a linear pro
 }
 ```
 
-Net flow leaving node 0 is $8 + 5 =$ **13**, node 1 balances $8 = 4 + 4$, node 2 balances $5 + 4 = 9$, and removing `cutEdges = [1, 2, 3]` blocks every path from `0` to `3` with total cut capacity $5 + 4 + 4 =$ **13**.
+Net flow leaving node 0 is $8 + 5 =$ **13**, node 1 balances $8 = 4 + 4$, node 2 balances $5 + 4 = 9$, and removing `cutEdges = [1, 2, 3]` blocks every path from 0 to 3 with total cut capacity $5 + 4 + 4 =$ **13**.
 
 <!-- section:hint1 -->
 Model one non-negative continuous flow variable per directed arc bounded by its capacity. Enforce zero net flow conservation at every intermediate node (excluding `source` and `sink`), and maximize the net flow leaving `source`.

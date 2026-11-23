@@ -1,27 +1,27 @@
 # #020. Capacitated Facility Location (CFLP)
 
 <!-- section:scenario -->
-A logistics network must decide which candidate distribution centers to open and how to route goods from open facilities to customer zones. Opening a facility incurs a one-time fixed operating cost and unlocks its total shipping capacity; closed facilities cannot ship any units.
+A specialty coffee roaster must simultaneously decide which candidate roasteries to open and how many kilograms of roasted beans to ship each month from open roasteries to café stores. Opening a roastery incurs a fixed operating cost and allows shipping up to that roastery's monthly capacity (kg); closed roasteries cannot ship any beans.
 
-Each customer zone requires at least its specified demand, and every shipped unit incurs a lane-specific transportation cost. Choose which facilities to open and the continuous shipment flows to **minimize total fixed plus transportation cost**.
+While meeting every café store's monthly demand (kg), choose which roasteries to open and their continuous shipment quantities to **minimize total fixed operating cost plus shipping cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `fixedCosts` | `number[]` | Fixed opening cost of each candidate facility $i$ |
-| `capacities` | `number[]` | Maximum total outflow capacity of each open facility $i$ |
-| `demands` | `number[]` | Required demand at each customer zone $j$ |
-| `unitCosts` | `number[][]` | Shipping cost per unit from facility $i$ to customer $j$ |
+| `fixedCosts` | `number[]` | Fixed operating cost of each candidate roastery $i$ |
+| `capacities` | `number[]` | Monthly shipping capacity limit of candidate roastery $i$ (kg) |
+| `demands` | `number[]` | Required monthly demand at café store $j$ (kg) |
+| `unitCosts` | `number[][]` | Shipping cost per kg from roastery $i$ to café store $j$ |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `number[]` | Binary (`0` or `1`) opening choices per facility |
-| `shipments` | `number[][]` | Non-negative continuous shipments from facility $i$ to customer $j$ |
-| `totalCost` | `number` | Minimized total fixed and shipping cost |
+| `open` | `number[]` | Binary (`0` or `1`) opening choices per candidate roastery |
+| `shipments` | `number[][]` | Non-negative continuous shipments (kg) from roastery $i$ to café store $j$ |
+| `totalCost` | `number` | Minimized sum of fixed operating costs and shipping costs |
 
 <!-- section:example -->
 **Input**
@@ -53,10 +53,10 @@ Each customer zone requires at least its specified demand, and every shipped uni
 }
 ```
 
-Opening facilities 1 and 2 ships `50 <= 50` and `50 <= 55` units while meeting customer demands `[25, 30, 20, 25]`, yielding total cost $(260 + 290) + (20 \times 7 + 30 \times 3 + 5 \times 10 + 20 \times 4 + 25 \times 3) =$ **985**.
+Opening roasteries 1 and 2 satisfies capacity constraints (`50 <= 50` and `50 <= 55`) and café store demands `[25, 30, 20, 25]`, yielding total cost $(260 + 290) + (20 \times 7 + 30 \times 3 + 5 \times 10 + 20 \times 4 + 25 \times 3) =$ **985**.
 
 <!-- section:hint1 -->
-The model combines a binary opening variable per facility with a continuous shipment matrix from facilities to customers. You need one capacity-linking constraint per facility over its row of shipments, and one demand constraint per customer over its column of shipments.
+Combine a binary opening variable per roastery with a continuous shipment matrix from roasteries to café stores. You need one capacity-linking constraint per roastery over its row sum of shipments, and one demand-satisfaction constraint per café store over its column sum of shipments.
 
 <!-- section:hint2 -->
-Link each facility's total outflow (sum over customers $j$) to `capacities[i] * open[i]`, which simultaneously prevents closed facilities from shipping and caps open facilities at their capacity. Include both fixed opening costs (`fixedCosts`) and variable shipping costs (`unitCosts`) in the minimization objective.
+Capping each roastery $i$'s total outflow (sum over all café stores $j$) at `capacities[i] * open[i]` simultaneously forbids shipments from closed roasteries and enforces the capacity limit on open ones. Include both fixed operating costs (`fixedCosts`) and unit shipping costs (`unitCosts`) in the minimization objective.

@@ -1,28 +1,28 @@
 # #029. Disjunctive Operating Bands (Convex Hull)
 
 <!-- section:scenario -->
-A plant dispatches several production units to cover at least a given total demand. Each unit must operate in exactly one mutually exclusive operating band—for instance idle at zero output, a low-load eco band, or a high-load turbo band—with forbidden output gaps between adjacent bands.
+A plant operations manager is planning how to run multiple production units to supply at least a target demand (in t/h). Each unit must operate in exactly one mutually exclusive band—such as idle (0 output), a low-load eco band, or a high-load turbo band—with forbidden output gaps between adjacent bands.
 
-Each operating band has its own fixed startup cost and marginal unit cost per unit of output. Choose an operating band and continuous output level for every unit to meet demand at **minimum total fixed plus variable cost**.
+Each operating band has its own fixed startup cost (in 10k JPY) and unit variable cost (in 10k JPY/(t/h)). Using a convex-hull formulation—which tightly represents a disjunctive constraint (choosing one among multiple mutually exclusive operating regimes) as the smallest convex set containing the disjoint intervals—find the band selection and output levels that meet demand while **minimizing total fixed plus variable cost (in 10k JPY)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demand` | `number` | Required minimum total output across all units |
-| `bandLbs` | `number[][]` | Lower bound $L_{ik}$ of unit $i$ in band $k$ |
-| `bandUbs` | `number[][]` | Upper bound $U_{ik}$ of unit $i$ in band $k$ |
-| `fixedCosts` | `number[][]` | Fixed cost $F_{ik}$ incurred when unit $i$ selects band $k$ |
-| `unitCosts` | `number[][]` | Marginal variable cost $c_{ik}$ in band $k$ of unit $i$ |
+| `demand` | `number` | Required minimum total output across all units (t/h) |
+| `bandLbs` | `number[][]` | Output lower bound $L_{ik}$ of unit $i$ in band $k$ (t/h) |
+| `bandUbs` | `number[][]` | Output upper bound $U_{ik}$ of unit $i$ in band $k$ (t/h) |
+| `fixedCosts` | `number[][]` | Fixed cost $F_{ik}$ when unit $i$ selects band $k$ (10k JPY) |
+| `unitCosts` | `number[][]` | Unit variable cost $c_{ik}$ for unit $i$ in band $k$ (10k JPY/(t/h)) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `modes` | `number[]` | Selected operating band index $k \in \{0, \dots, K-1\}$ for each unit |
-| `outputs` | `number[]` | Continuous output level $x_i \in [L_{ik}, U_{ik}]$ for each unit |
-| `totalCost` | `number` | Minimized total cost |
+| `outputs` | `number[]` | Output $x_i \in [L_{ik}, U_{ik}]$ for each unit (t/h) |
+| `totalCost` | `number` | Minimized total cost (10k JPY) |
 
 <!-- section:example -->
 **Input**
@@ -59,7 +59,7 @@ Each operating band has its own fixed startup cost and marginal unit cost per un
 }
 ```
 
-Running Unit 0 in band 2 (`[30, 45]`) at output `42` and keeping Unit 1 idle in band 0 (`[0, 0]`) meets total demand $42 + 0 = 42 \ge 42$ at cost $260 + 12 \times 42 =$ **764**.
+Running Unit 0 in band 2 ([30, 45]) at output 42 t/h and keeping Unit 1 idle in band 0 ([0, 0]) at output 0 t/h meets total demand $42 + 0 \ge 42$ t/h at a total cost of $260 + 12 \times 42 =$ **764** (10k JPY).
 
 
 <!-- section:hint1 -->

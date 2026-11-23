@@ -1,7 +1,7 @@
 # #075. Staff Shift Coverage with Workload Bounds & Days Off
 
 <!-- section:scenario -->
-A clinic schedules $N$ staff members across $D$ days and $S$ daily shift types. Each staff member can work at most one shift per day, cannot work on their pre-approved required days off, and must work a total number of shifts within their personal minimum and maximum bounds.
+A large cafe schedules $N$ baristas (staff) across $D$ days and $S$ daily shift types (such as early and late shifts). Each staff member can work at most one shift per day, cannot work on their pre-approved required days off, and must work a total number of shifts within their personal minimum and maximum bounds.
 
 Every day and shift type has a minimum staffing demand and a staff-specific assignment cost. Assign shifts (or off) to minimize total staffing cost while meeting all coverage demands and personal constraints.
 
@@ -20,7 +20,7 @@ Every day and shift type has a minimum staffing demand and a staff-specific assi
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `schedule` | `number[][]` | $N \times D$ matrix with `-1` for Off or `0..S-1` for shift |
+| `schedule` | `number[][]` | $N \times D$ matrix (-1 for Off, or 0 to $S-1$ for shift) |
 | `totalCost` | `number` | Minimized total shift assignment cost |
 
 <!-- section:example -->
@@ -57,10 +57,10 @@ Every day and shift type has a minimum staffing demand and a staff-specific assi
 }
 ```
 
-Each staff member works 2 shifts within `[minShifts, maxShifts]` while respecting `daysOff` (staff 0 off on day 1, staff 2 off on day 2), covers `[1, 1]` shifts every day, and incurs cost $(12 + 8) + (14 + 14) + (11 + 11) =$ **70**.
+Each staff member works 2 shifts within `[minShifts, maxShifts]` while respecting `daysOff` (staff 0 off on day 1, staff 2 off on day 2), covers [1, 1] shifts every day, and incurs cost $(12 + 8) + (14 + 14) + (11 + 11) =$ **70**.
 
 <!-- section:hint1 -->
 Introduce a three-dimensional binary decision variable for assigning staff member $i$ to shift $s$ on day $d$. The model balances per-staff-day exclusivity and leave rules against daily shift demand coverage and total workload bounds per staff member.
 
 <!-- section:hint2 -->
-On a staff member's required `daysOff`, fix all shift variables for that staff-day to zero (or restrict the daily sum to zero) rather than omitting them from workload totals. Because costs are non-negative, covering demands with $\ge$ inequalities avoids overstaffing unless needed to meet `minShifts`, and you can decode `schedule[i][d]` as the assigned shift index or `-1` when all shifts on that day are zero.
+On a staff member's required `daysOff`, fix all shift variables for that staff-day to zero (or restrict the daily sum to zero) rather than omitting them from workload totals. Because costs are non-negative, covering demands with $\ge$ inequalities avoids overstaffing unless needed to meet `minShifts`, and you can decode `schedule[i][d]` as the assigned shift index or -1 when all shifts on that day are zero.

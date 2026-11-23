@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Add the denominator normalization constraint `cc_norm` equal to 1, multiply the right-hand sides of both resource constraints and variable upper bounds by the scalar variable `t`, and maximize the scaled objective.
+
 **WaSHI (TypeScript)**
 
 ```ts

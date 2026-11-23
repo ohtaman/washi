@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+For every pair of rectangles `i < j`, register a disjunctive constraint `or(...)` requiring separation along at least one of the four directions (left, right, below, or above), and minimize the maximum top coordinate across all rectangles.
+
 **WaSHI (TypeScript)**
 
 ```ts

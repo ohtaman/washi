@@ -21,16 +21,18 @@ $$
 
 ## 核心实现
 
+`exactOne` 辅助函数通过 `or(...)` 注册“至少一个”约束，并通过 `.forEach()` 注册成对的“至多一个”约束；最后若 `m.check({ solver: "z3" })` 未返回 `"Sat"`，则返回不可满足。
+
 **WaSHI (TypeScript)**
 
 ```ts
 function exactOne(m: Model, vars: BoolVar[], prefix: string): void {
   m.constraint(or(...vars), `${prefix}_at_least_one`);
-  for (let i = 0; i < vars.length; i++) {
-    for (let j = i + 1; j < vars.length; j++) {
-      m.constraint(not(and(vars[i], vars[j])), `${prefix}_at_most_one_${i}_${j}`);
-    }
-  }
+  vars.forEach((vi, i) => {
+    vars.slice(i + 1).forEach((vj, offset) => {
+      m.constraint(not(and(vi, vj)), `${prefix}_at_most_one_${i}_${i + 1 + offset}`);
+    });
+  });
 }
 
 const res = await m.check({ solver: "z3" });

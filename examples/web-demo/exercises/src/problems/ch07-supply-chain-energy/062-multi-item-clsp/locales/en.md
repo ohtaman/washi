@@ -1,9 +1,9 @@
 # #062. Multi-Item Capacitated Lot Sizing (CLSP)
 
 <!-- section:scenario -->
-A manufacturing plant produces multiple distinct items on a shared machine over a multi-period horizon, starting with zero initial inventory for every item. Producing any positive amount of an item in a period requires setting up the machine for that item, which incurs a fixed setup cost and consumes fixed setup hours.
+A pastry workshop uses a single shared oven to bake multiple baked goods (such as financiers and madeleines) over a multi-period horizon, starting with zero initial inventory for every item. Producing any positive amount of an item in a period requires setting up the oven for that item, which incurs a fixed setup cost and consumes fixed setup hours.
 
-In each period, the total machine time consumed by all items—both unit processing time and setup time—cannot exceed that period's available machine hours. Choose the setup schedule, continuous production quantities, and end-of-period inventories to satisfy all item demands at **minimum total setup and holding cost**.
+In each period, the total oven time consumed by all items—both unit processing time and setup time—cannot exceed that period's available oven hours. Choose the setup schedule, continuous production quantities, and end-of-period inventories to satisfy all item demands at **minimum total setup and holding cost**.
 
 <!-- section:io -->
 ### Input
@@ -21,7 +21,7 @@ In each period, the total machine time consumed by all items—both unit process
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setups` | `number[][]` | Binary (`0` or `1`) setup matrix ($I \times T$) |
+| `setups` | `number[][]` | Binary (0 or 1) setup matrix ($I \times T$) |
 | `production` | `number[][]` | Non-negative production quantities ($I \times T$) |
 | `inventory` | `number[][]` | Non-negative ending inventory levels ($I \times T$) |
 | `totalCost` | `number` | Minimized total setup and inventory holding cost |

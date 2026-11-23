@@ -1,28 +1,28 @@
 # #087. Two-Stage Stochastic Programming with Recourse
 
 <!-- section:scenario -->
-Before uncertain customer demands materialize, a distributor commits continuous first-stage order quantities across several products within a shared warehouse capacity limit. Each unit ordered upfront incurs its upfront unit order cost.
+A food and daily-goods wholesaler must decide first-stage order quantities (in cases) for multiple products within a shared warehouse capacity limit (in cases) before uncertain customer demand is revealed. Each unit ordered upfront incurs a product-specific initial procurement cost (JPY/case).
 
-Once one of several demand scenarios realizes according to known scenario probabilities, the distributor takes second-stage recourse for each product: unmet demand requires an expensive emergency shortage purchase, whereas unsold leftover inventory recovers a smaller unit salvage revenue. Choose non-negative first-stage orders within warehouse capacity to **minimize upfront order cost plus expected second-stage net recourse cost**.
+Later, when one of the demand scenarios realizes according to known probabilities, second-stage recourse actions take place: demand exceeding available stock incurs an expensive emergency replenishment penalty (JPY/case), while unsold leftover stock recovers a smaller salvage value (JPY/case). Find the first-stage order quantities that minimize the sum of upfront order costs and expected second-stage net costs.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `orderCosts` | `number[]` | First-stage unit order cost per product |
-| `shortageCosts` | `number[]` | Second-stage emergency penalty per unit short |
-| `salvageValues` | `number[]` | Second-stage salvage credit per unit leftover |
-| `warehouseCap` | `number` | Shared capacity limit on total first-stage orders |
-| `probs` | `number[]` | Probability weights $p_s$ for each scenario $s$ |
-| `demands` | `number[][]` | Scenario demand matrix ($S \times n$) |
+| `orderCosts` | `number[]` | First-stage unit purchase cost per product (JPY/case) |
+| `shortageCosts` | `number[]` | Second-stage penalty per case short (JPY) |
+| `salvageValues` | `number[]` | Salvage credit per leftover case (JPY) |
+| `warehouseCap` | `number` | Shared warehouse capacity limit on total first-stage orders (cases) |
+| `probs` | `number[]` | Occurrence probability $p_s$ of each scenario $s$ |
+| `demands` | `number[][]` | Scenario demand matrix ($S \times n$, cases) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `orders` | `number[]` | Non-negative first-stage order quantities |
-| `expectedCost` | `number` | Minimized expected total cost across all scenarios |
+| `orders` | `number[]` | First-stage order quantity vector (non-negative, cases) |
+| `expectedCost` | `number` | Minimized expected total cost across all scenarios (JPY) |
 
 <!-- section:example -->
 **Input**

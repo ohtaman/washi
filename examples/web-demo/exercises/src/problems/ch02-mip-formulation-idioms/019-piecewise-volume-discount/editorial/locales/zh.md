@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+将每家供应商的选定档位之和限制在 1 以下，同时用 `minQty` 和 `maxQty` 乘以选择变量 `tierSelected[s][k]` 从上下两侧夹住各档位的订货量 `tierQuantities[s][k]`。
+
 **WaSHI (TypeScript)**
 
 ```ts

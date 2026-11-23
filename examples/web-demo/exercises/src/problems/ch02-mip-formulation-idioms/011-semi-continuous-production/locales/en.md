@@ -1,28 +1,28 @@
-# #011. Semi-Continuous Batch Production
+# #011. Semi-Continuous Minimum-Lot Brewing
 
 <!-- section:scenario -->
-A chemical plant schedules continuous production quantities across several candidate products sharing a single raw material supply. Each product may either stay completely idle with zero output, or run within a strict operating window between its minimum batch size and maximum batch capacity.
+A craft beer brewery brews multiple candidate beer styles (such as IPA, pale ale, and stout) in continuous quantities (liters) while sharing a common malt stock (kg). For each style, the brewery must either skip brewing it (zero output) or brew it at a quantity between its minimum batch size and maximum tank capacity.
 
-Because every active product draws from the same shared resource limit and earns a known profit margin per unit, choose which products to run and how much of each to produce so as to **maximize total profit margin** within the resource cap.
+Each beer style has a known gross profit margin per liter and malt consumption per liter. Staying within the shared malt stock limit, decide which styles to brew and how many liters of each to produce so as to **maximize total gross margin**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `margins` | `number[]` | Profit margin per unit produced for each product |
-| `minBatches` | `number[]` | Minimum required batch quantity if product is active |
-| `maxBatches` | `number[]` | Maximum allowed batch capacity if product is active |
-| `resourceUsages` | `number[]` | Shared resource consumed per unit of each product |
-| `resourceCap` | `number` | Total available shared resource capacity |
+| `margins` | `number[]` | Gross profit margin per liter for each beer style |
+| `minBatches` | `number[]` | Minimum batch size when brewing each style (liters) |
+| `maxBatches` | `number[]` | Maximum tank capacity for each style (liters) |
+| `resourceUsages` | `number[]` | Malt consumed per liter of each style (kg) |
+| `resourceCap` | `number` | Total available shared malt stock (kg) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `active` | `number[]` | Binary (`0` or `1`) activation flags per product |
-| `quantities` | `number[]` | Continuous production quantities (`0` or in `[minBatches[i], maxBatches[i]]`) |
-| `totalMargin` | `number` | Maximized total profit margin |
+| `active` | `number[]` | Binary (`0` or `1`) choice of whether to brew each style |
+| `quantities` | `number[]` | Continuous brewing quantities (0 or in `[minBatches[i], maxBatches[i]]`) |
+| `totalMargin` | `number` | Maximized total gross margin |
 
 <!-- section:example -->
 **Input**
@@ -47,10 +47,10 @@ Because every active product draws from the same shared resource limit and earns
 }
 ```
 
-Activating products 0 and 1 with `quantities = [15, 15, 0]` satisfies `[8, 20]` and `[15, 30]` batch windows while keeping product 2 at zero, using $15 + 15 = 30 \le 30$ resource for total margin $30 \times 15 + 24 \times 15 =$ **810**.
+Brewing styles 0 and 1 with `quantities = [15, 15, 0]` satisfies the `[8, 20]` and `[15, 30]` brewing ranges (with style 2 at 0) and the malt limit $15 + 15 = 30 \le 30$, giving total gross margin $30 \times 15 + 24 \times 15 =$ **810**.
 
 <!-- section:hint1 -->
-Each product has a binary activation indicator and a continuous production quantity. The model couples each pair so that inactive products produce zero while active products stay within their operating window, alongside a single shared resource limit.
+Each style has a binary brewing variable and a continuous brewing quantity variable. Couple each pair so that unbrewed styles produce zero while brewed styles stay within their batch range, alongside the shared malt limit.
 
 <!-- section:hint2 -->
-Link each quantity to its binary flag from both sides: multiply `minBatches[i]` and `maxBatches[i]` by `active[i]` so that `active[i] = 0` forces the quantity to $0$ while `active[i] = 1` restricts it to `[minBatches[i], maxBatches[i]]`. Add the shared resource cap, maximize total margin, and round `active` outputs cleanly.
+Sandwich the quantity variable from both sides with the binary variable: multiplying `minBatches[i]` and `maxBatches[i]` by `active[i]` forces the quantity to 0 when inactive (0) and enables `[minBatches[i], maxBatches[i]]` only when active (1). Also add the shared malt cap and maximize total gross margin.

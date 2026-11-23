@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+在 `while` 循环中保持同一个 `Model` 实例，调用 `await m.solve()` 求解；若尚未形成单一回路，则对找到的每个子环 `comp` 通过 `m.constraint(...)` 逐次添加 DFJ 割平面。
+
 **WaSHI (TypeScript)**
 
 ```ts

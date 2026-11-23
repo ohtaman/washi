@@ -1,7 +1,7 @@
 # #045. Dead & Redundant Rule Detection
 
 <!-- section:scenario -->
-Large policy rulebases often accumulate unreachable rules whose triggers can never fire and redundant rules whose implications are already guaranteed by earlier rules.
+When maintaining or auditing rulebases for access control or business approvals, you need to identify dead rules whose trigger conditions can never be satisfied and redundant rules whose effects are already guaranteed by earlier rules.
 
 Evaluate the ordered list of trigger rules sequentially on top of the base rules and all preceding rules. Classify each rule as dead if its trigger condition is unsatisfiable alongside the accumulated policy, or otherwise as redundant if its implication already holds in every state allowed by the accumulated policy, and return both rule ID lists sorted lexicographically.
 

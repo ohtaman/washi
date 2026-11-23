@@ -1,28 +1,28 @@
 # #089. Budgeted Robust Optimization (Bertsimas-Sim)
 
 <!-- section:scenario -->
-A factory chooses continuous non-negative production quantities across several products, each capped by an individual upper bound and earning a unit profit. Under nominal conditions each unit consumes its nominal resource usage, but actual resource usage per unit can spike by up to a known deviation.
+A chemical plant must decide continuous non-negative production quantities (in tons) across multiple products—such as resin pellets, solvents, and additives—each capped by an individual production limit (in tons), to maximize total profit. Normally each ton of product consumes a nominal number of shared equipment hours (hours/ton), but due to raw-material variability, actual usage per ton can spike by up to a known maximum deviation.
 
-Rather than protecting against every product spiking simultaneously, management specifies a protection budget parameter Gamma limiting how much total scaled uncertainty can occur at once. Choose production quantities so total resource usage remains within the capacity limit against the worst-case realization allowed by Gamma, and **maximize total profit**.
+Set an upper limit (uncertainty budget) on how many deviations can occur simultaneously, and find production quantities that maximize total profit while ensuring total equipment hours never exceed the capacity cap under the worst-case deviations within that budget.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `profits` | `number[]` | Unit profit earned per unit of each product |
-| `nominalUsages` | `number[]` | Nominal resource consumption per unit |
-| `deviations` | `number[]` | Maximum possible extra resource spike per unit |
-| `maxUnits` | `number[]` | Upper bound on production quantity of each product |
-| `capacityCap` | `number` | Shared capacity limit that must hold in the worst case |
+| `profits` | `number[]` | Profit per ton of each product |
+| `nominalUsages` | `number[]` | Nominal equipment hours per ton of each product |
+| `deviations` | `number[]` | Maximum equipment-hour spike per ton of each product |
+| `maxUnits` | `number[]` | Upper bound on production quantity of each product (tons) |
+| `capacityCap` | `number` | Shared equipment-hour limit that must hold even in the worst case |
 | `gamma` | `number` | Uncertainty budget $\Gamma \in [0, n]$ (may be fractional) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `quantities` | `number[]` | Robustly feasible production quantities |
-| `totalProfit` | `number` | Maximized total profit under budgeted protection |
+| `quantities` | `number[]` | Production quantities satisfying the robust constraint (tons) |
+| `totalProfit` | `number` | Maximized total profit |
 
 <!-- section:example -->
 **Input**

@@ -21,16 +21,19 @@ $$
 
 ## Key Implementation
 
+Prepare an index array `nonStart` for all tracks except the opener, and use `flatMap` and `filter` to enumerate pairs of distinct tracks and register the MTZ subtour-elimination constraints together.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`);
-    }
-  }
-}
+const nonStart = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  nonStart.flatMap((i) =>
+    nonStart
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`)
+  )
+);
 ```
 
 **PuLP (Python)**

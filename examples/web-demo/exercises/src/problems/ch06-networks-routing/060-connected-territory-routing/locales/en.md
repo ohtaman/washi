@@ -56,7 +56,7 @@ Partition the n zones into K contiguous territories—each anchored at one chose
 }
 ```
 
-Territory `{0, 1, 2}` (demand `10 in [6, 11]`, connected via `0-1-2`) has hub `0` (cost 5) and tour `[0, 2, 1, 0]` (distance 12), while `{3, 4}` (demand `7 in [6, 11]`, connected via `3-4`) has hub `4` (cost 6) and tour `[4, 3, 4]` (distance 6), totaling $(5 + 6) + (12 + 6) =$ **29**.
+Territory `{0, 1, 2}` (demand `10 in [6, 11]`, connected via `0-1-2`) has hub 0 (cost 5) and tour `[0, 2, 1, 0]` (distance 12), while `{3, 4}` (demand `7 in [6, 11]`, connected via `3-4`) has hub 4 (cost 6) and tour `[4, 3, 4]` (distance 6), totaling $(5 + 6) + (12 + 6) =$ **29**.
 
 <!-- section:hint1 -->
 Model binary zone-to-territory assignment variables and binary hub-selection indicators (a zone can only host a hub for the territory it belongs to), enforcing that each zone belongs to one territory, each territory has one hub, and territory demand lies within `demandBounds`. Add two coupled network layers: single-commodity flow over `adjEdges` per territory for geographic contiguity, and directed tour arcs with visit-order potentials for intra-territory TSP tours.

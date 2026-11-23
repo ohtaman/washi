@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每个候选子集建立 0-1 选择变量 `selected[j]`，对每个要素 `i` 约束包含它的子集选中之和至少为 `1`，并最小化总成本。
+为每个候选子集建立 0-1 选择变量 `selected[j]`，对每个要素 `i` 约束包含它的子集选中之和至少为 1，并最小化总成本。
 
 ## 数学模型
 
@@ -19,6 +19,8 @@ $$
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [模型基本要素](?view=guide&lang=zh#building-blocks)
 
 ## 实现要点
+
+对每个要素 `i`，筛选出 `input.sets[j]` 中包含 `i` 的监控包选择变量 `selected[j]`，并生成其和不少于 1 的约束。
 
 **WaSHI (TypeScript)**
 

@@ -26,21 +26,22 @@ $$
 
 ## 实现要点
 
+对每笔运输请求 `r` 遍历所有车辆 `vehicles`，注册取货点与送货点出度相等的同车约束，以及基于访问顺序变量 `t` 的先取后送约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (const r of input.requests) {
-  for (let k = 0; k < K; k++) {
-    const pOut = [];
-    const dOut = [];
-    for (let j = 0; j < n; j++) {
-      if (j !== r.pickup) pOut.push(x[r.pickup][j]![k]);
-      if (j !== r.delivery) dOut.push(x[r.delivery][j]![k]);
-    }
+const vehicles = Array.from({ length: K }, (_, k) => k);
+const nodes = Array.from({ length: n }, (_, j) => j);
+
+input.requests.forEach((r) => {
+  vehicles.forEach((k) => {
+    const pOut = nodes.filter((j) => j !== r.pickup).map((j) => x[r.pickup][j]![k]);
+    const dOut = nodes.filter((j) => j !== r.delivery).map((j) => x[r.delivery][j]![k]);
     m.constraint(expr`${sum(pOut)} == ${sum(dOut)}`);
-  }
+  });
   m.constraint(expr`${t[r.pickup]} + 1 <= ${t[r.delivery]}`);
-}
+});
 ```
 
 **PuLP (Python)**

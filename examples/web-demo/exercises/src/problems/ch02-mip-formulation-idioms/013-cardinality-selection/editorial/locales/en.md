@@ -23,6 +23,8 @@ $$
 
 ## Key Implementation
 
+In addition to the budget constraint, iterate over each of the three group arrays and add `<= 1`, `== count`, and `>= 1` constraints on the sum of the corresponding binary variables `selected[i]`.
+
 **WaSHI (TypeScript)**
 
 ```ts

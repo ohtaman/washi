@@ -22,18 +22,19 @@ $$
 
 ## 实现要点
 
+对客户索引数组 `customers` 使用 `flatMap` 和 `filter` 枚举不同客户对，批量注册基于载重的 MTZ 约束，从而同时强制车载容量上限与子环消除。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(
-        expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`
-      );
-    }
-  }
-}
+const customers = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  customers.flatMap((i) =>
+    customers
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`)
+  )
+);
 ```
 
 **PuLP (Python)**

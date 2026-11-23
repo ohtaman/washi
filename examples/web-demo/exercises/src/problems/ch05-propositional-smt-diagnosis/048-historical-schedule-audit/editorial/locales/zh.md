@@ -19,6 +19,8 @@ $$
 
 ## 实现要点
 
+将每条合规规则以规则 ID `r.id` 作为名称注册到 `m.constraint`，调用 `m.verify({ values: input.candidateValues })`，并对返回的 `report.violations` 中的违规规则 ID 去重后排序。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+Assign a continuous variable `flows[e]` to each arc, and use `input.supplies.map` to register the flow conservation constraints matching each node's net outflow minus inflow to `supply`.
+
 **WaSHI (TypeScript)**
 
 ```ts

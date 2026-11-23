@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Register the aggregate cap on total regular hours and the per-period shortfall inequalities `shortage[t] >= demand - regular[t]`, then minimize the sum of regular costs and overtime penalties.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -14,11 +14,13 @@ $$
 
 ## 核心要点
 
-- **必须将 $\eta$ 设为自由变量（`lb: -Infinity` / `lowBound=None`）**：WaSHI 与 PuLP 的默认变量下界均为 `0`。当所有情景均盈利导致损失为负（如用例 1 中 $\eta^* = -0.0428$）时，若遗漏 `lb: -Infinity`，$\eta$ 被截断在 `0` 处会求出错误的风险值与次优解（`-0.0596` 对比 `-0.1742`）。
+- **必须将 $\eta$ 设为自由变量（`lb: -Infinity` / `lowBound=None`）**：WaSHI 与 PuLP 的默认变量下界均为 0。当所有情景均盈利导致损失为负（如用例 1 中 $\eta^* = -0.0428$）时，若遗漏 `lb: -Infinity`，$\eta$ 被截断在 0 处会求出错误的风险值与次优解（-0.0596 对比 -0.1742）。
 - **CVaR 的凸性优势**：直接约束分位数 VaR 需要离散 0-1 变量，而 CVaR 通过极小化上镜图化为完全连续的凸线性规划。
 - 概念参考：[指南与术语表 — 上下界](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
+
+将辅助阈值变量 `eta` 声明为 `{ lb: -Infinity, ub: Infinity }` 自由变量，使用 `input.returns.map(...)` 一次性注册各情景的铰链不等式，并组装 CVaR 的线性表达式。
 
 **WaSHI (TypeScript)**
 

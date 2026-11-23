@@ -1,7 +1,7 @@
 # #095. Shift Rostering via Column Generation
 
 <!-- section:scenario -->
-An operations manager schedules identical workers across a multi-day planning horizon. Each day requires at least a target number of staff on duty. Every assigned worker incurs a fixed base onboarding cost plus a daily wage for each day worked, must work between one day and a maximum total work-day cap, and cannot exceed a maximum consecutive work-day streak.
+Schedule shifts for identical-skill call center staff across a multi-day planning horizon to meet the minimum daily staffing requirements. Each hired worker's shift pattern incurs a fixed base cost plus a daily wage for each day worked, must work at least 1 day and at most a total work-day cap, and cannot exceed a maximum consecutive work-day limit.
 
 Use WaSHI column generation to price out legal multi-day shift patterns from a Restricted Master Problem and finalize an integer schedule that minimizes total staffing cost.
 
@@ -51,7 +51,7 @@ Use WaSHI column generation to price out legal multi-day shift patterns from a R
 }
 ```
 
-Each pattern works at most `4` days with at most `3` consecutive days, covers daily demands `[2, 3, 4, 3, 2]`, and costs `1 * 71 + 2 * 56 + 1 * 71 =` **254**.
+Each pattern works at most 4 days with at most 3 consecutive days, covers daily demands `[2, 3, 4, 3, 2]`, and costs $1 \times 71 + 2 \times 56 + 1 \times 71 =$ **254**.
 
 <!-- section:hint1 -->
 Decompose into a Restricted Master Problem (selecting headcounts for generated shift patterns to cover daily demands) and a binary MIP pricing subproblem (generating a single legal multi-day shift pattern). Seed the master with single-day starter columns for days with positive demand so the initial LP is always feasible.

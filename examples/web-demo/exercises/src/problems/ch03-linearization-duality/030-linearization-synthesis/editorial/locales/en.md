@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+In addition to the minimum value constraint, register in bulk using `flatMap` both the epigraph cap and L1 deviation split for each zone's load, as well as the three McCormick inequalities for each pair.
+
 **WaSHI (TypeScript)**
 
 ```ts

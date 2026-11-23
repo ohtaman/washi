@@ -17,11 +17,13 @@ $$
 ## Key Points
 
 - **Keep continuous flows free globally**: Fixing binary setups outside `[s, s+W)` while allowing all continuous `p_t` and `inv_t` variables to move ensures every subproblem remains feasible and enables lot merging across window boundaries.
-- **Overlapping step-1 sweeps**: Stepping by `1` overlaps consecutive windows by `windowSize - 1` periods, letting freed setup decisions propagate smoothly from earlier periods into later periods across a single sweep.
+- **Overlapping step-1 sweeps**: Stepping by 1 overlaps consecutive windows by `windowSize - 1` periods, letting freed setup decisions propagate smoothly from earlier periods into later periods across a single sweep.
 - **Exact fixed-integer bounds**: Fixing an outside variable via an integer domain `[v, v]` (rather than setting `.lb` / `.ub` on a `Binary` variable) ensures solvers treat fixed outside variables cleanly as constants.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Use an outer pass loop and an inner sliding-window sweep calling `solveWindow` sequentially, updating the incumbent `best` only when total cost improves by at least `1e-6`, and terminating once a full pass finds no improvement.
 
 **WaSHI (TypeScript)**
 

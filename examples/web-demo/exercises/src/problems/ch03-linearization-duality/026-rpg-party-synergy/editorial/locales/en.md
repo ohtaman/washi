@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+In addition to the budget and party-size constraints, expand the three McCormick inequalities for each pair's simultaneous-selection indicator with `flatMap` and register them in bulk.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -14,11 +14,13 @@ $$
 
 ## Key Points
 
-- **Keep $\eta$ free (`lb: -Infinity`, `lowBound=None`)**: Both WaSHI (`m.continuous`) and PuLP (`pulp.LpVariable`) default `lb` to `0`. Whenever even the tail portfolio return is positive (making loss negative, as in Case 1 where $\eta^* = -0.0428$), clamping $\eta \ge 0$ distorts CVaR and ruins optimality (`-0.0596` vs. `-0.1742`).
+- **Keep $\eta$ free (`lb: -Infinity`, `lowBound=None`)**: Both WaSHI (`m.continuous`) and PuLP (`pulp.LpVariable`) default `lb` to 0. Whenever even the tail portfolio return is positive (making loss negative, as in Case 1 where $\eta^* = -0.0428$), clamping $\eta \ge 0$ distorts CVaR and ruins optimality (-0.0596 vs. -0.1742).
 - **Convexity of CVaR vs. non-convexity of VaR**: Direct quantile VaR requires binary indicators and is non-convex, whereas $\text{CVaR}_\alpha$ optimizes an exact convex epigraph with zero integer variables.
 - Related definitions: [Guide & Glossary — Variable Bounds](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Declare the auxiliary threshold variable `eta` as an unbounded free variable with `{ lb: -Infinity, ub: Infinity }`, register all scenario hinge inequalities at once using `input.returns.map(...)`, and assemble the linear CVaR expression.
 
 **WaSHI (TypeScript)**
 

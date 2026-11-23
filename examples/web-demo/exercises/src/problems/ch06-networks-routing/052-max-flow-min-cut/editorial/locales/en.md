@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+After solving the max-flow LP, run BFS from `source` along forward edges with residual capacity and backward edges carrying positive flow to find the reachable set `visited`, then extract all edges satisfying `visited[e.from] && !visited[e.to]` as the minimum cut.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -28,8 +30,7 @@ visited[input.source] = true;
 const queue = [input.source];
 while (queue.length > 0) {
   const u = queue.shift()!;
-  for (let i = 0; i < input.edges.length; i++) {
-    const e = input.edges[i];
+  input.edges.forEach((e, i) => {
     if (e.from === u && !visited[e.to] && flowVals[i] < e.cap - 1e-6) {
       visited[e.to] = true;
       queue.push(e.to);
@@ -38,7 +39,7 @@ while (queue.length > 0) {
       visited[e.from] = true;
       queue.push(e.from);
     }
-  }
+  });
 }
 ```
 

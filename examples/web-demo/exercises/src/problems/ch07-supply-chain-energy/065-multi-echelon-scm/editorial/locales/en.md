@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+In addition to plant shipment capacity constraints, compute total inflow and total outflow for each DC and impose both its capacity gate and flow conservation (inflow equals outflow). In WaSHI, build row and column sum expressions with `sum()`; in PuLP, express them similarly with `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts

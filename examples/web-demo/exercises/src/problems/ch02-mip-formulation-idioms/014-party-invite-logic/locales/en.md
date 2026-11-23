@@ -1,4 +1,4 @@
-# #014. Party Invitation & Seating Logic Puzzle
+# #014. Party Invitation & Logic Puzzle
 
 <!-- section:scenario -->
 You are organizing a dinner party and deciding which candidate guests to invite and how much gift budget to allocate to each invited guest within a total party budget. Inviting a guest brings a base enjoyment score plus an extra enjoyment bonus per dollar spent on their gift, and requires their gift budget to fall between their minimum and maximum spending bounds; uninvited guests receive zero gift budget.
@@ -55,7 +55,7 @@ Social etiquette imposes three logical rules: implication pairs where inviting t
 }
 ```
 
-Inviting guests `{0, 1, 2, 3}` with `giftBudget = [8, 19, 18, 10, 0]` satisfies implication `1 -> 0`, avoids the `[2, 4]` conflict, includes `3 >= 1` guest from `{0, 2, 3}`, spends $8 + 19 + 18 + 10 = 55 \le 55$, and achieves enjoyment $(10 + 25 + 30 + 15) + (16 + 95 + 108 + 30) =$ **329**.
+Inviting guests `{0, 1, 2, 3}` with `giftBudget = [8, 19, 18, 10, 0]` satisfies implication `1 -> 0`, avoids the `[2, 4]` conflict, includes 3 guests (at least 1) from `{0, 2, 3}`, spends $8 + 19 + 18 + 10 = 55 \le 55$, and achieves enjoyment $(10 + 25 + 30 + 15) + (16 + 95 + 108 + 30) =$ **329**.
 
 <!-- section:hint1 -->
 Each guest combines a binary invitation decision with a continuous gift budget variable. The model couples each guest's gift range to their invitation flag, caps total gift spending by the party budget, and expresses the three social rules (implications, conflicts, and group quotas) as linear inequalities over the binary variables.

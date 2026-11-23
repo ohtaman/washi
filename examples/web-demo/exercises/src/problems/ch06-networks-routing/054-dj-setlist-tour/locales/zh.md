@@ -16,7 +16,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `setlist` | `number[]` | 从 `0` 开始的全部 $n$ 首曲目的播放顺序（`setlist[0] = 0`） |
+| `setlist` | `number[]` | 从 0 开始的全部 $n$ 首曲目的播放顺序（`setlist[0] = 0`） |
 | `totalCost` | `number` | 最小化的闭合循环总衔接代价 |
 
 <!-- section:example -->

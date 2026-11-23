@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Pass the demand-satisfaction, disaggregated upper-bound, and period capacity constraints to `m.constraint()` as arrays. In WaSHI, build each constraint row using `sum()` and `expr` template literals; in PuLP, express the same constraints with `pulp.lpSum` and loops.
+
 **WaSHI (TypeScript)**
 
 ```ts

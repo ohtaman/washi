@@ -1,5 +1,5 @@
 {
-  "title": "#011. Semi-Continuous Batch Production",
+  "title": "#011. Semi-Continuous Minimum-Lot Brewing",
   "subtitle": "Model either-zero-or-range production lots L[i] <= q[i] <= U[i] by coupling continuous quantities with binary activation switches.",
   "tags": [
     "MIP",

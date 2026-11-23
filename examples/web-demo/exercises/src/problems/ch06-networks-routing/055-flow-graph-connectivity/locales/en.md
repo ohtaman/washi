@@ -1,7 +1,7 @@
 # #055. Rooted Connected Subgraph via Single-Commodity Flow
 
 <!-- section:scenario -->
-An infrastructure planner is expanding a regional network starting from root hub 0, which must always remain active. Each site has an activation prize (positive or negative), and each undirected candidate link between two sites incurs a construction cost and can only be built if both endpoints are active.
+A city is expanding a disaster-prevention fiber-optic network starting from City Hall (vertex 0), which must always remain active, to connect local community centers and evacuation shelters. Each candidate facility (vertex) has a disaster-mitigation benefit prize (which may be negative), and each undirected candidate cable (edge) has a laying cost and can only be laid if both endpoint facilities are active.
 
 Choose a subset of sites and links forming a single connected component containing root hub 0—with zero disconnected islands—to **maximize net value** (total prizes of selected sites minus total construction cost of selected links).
 
@@ -17,8 +17,8 @@ Choose a subset of sites and links forming a single connected component containi
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selectedNodes` | `number[]` | Binary (`0` or `1`) node selection (`selectedNodes[0] = 1`) |
-| `selectedEdges` | `number[]` | Binary (`0` or `1`) link selection matching `edges` |
+| `selectedNodes` | `number[]` | Binary (0 or 1) node selection (`selectedNodes[0] = 1`) |
+| `selectedEdges` | `number[]` | Binary (0 or 1) link selection matching `edges` |
 | `netValue` | `number` | Maximized total node prizes minus link costs |
 
 <!-- section:example -->
@@ -47,7 +47,7 @@ Choose a subset of sites and links forming a single connected component containi
 }
 ```
 
-Activating nodes `{0, 2, 3, 4}` linked along `0-2-3-4` forms one connected tree from root `0`, earning $0 + 2 + 12 + 10 = 24$ in prizes minus $7 + 3 + 2 = 12$ in link costs for a net value of **12**.
+Activating nodes `{0, 2, 3, 4}` linked along `0-2-3-4` forms one connected tree from root 0, earning $0 + 2 + 12 + 10 = 24$ in prizes minus $7 + 3 + 2 = 12$ in link costs for a net value of **12**.
 
 <!-- section:hint1 -->
 Model binary node-activation and undirected edge-selection variables, with the root node fixed as active. To guarantee connectivity back to the root, orient each undirected edge into two directed flow variables carrying a single commodity from root 0 to every other activated node.

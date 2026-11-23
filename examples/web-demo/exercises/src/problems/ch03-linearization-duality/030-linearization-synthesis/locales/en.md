@@ -1,9 +1,9 @@
 # #030. Linearization Synthesis — Service Fleet & Load Balancing
 
 <!-- section:scenario -->
-A platform architecture team must select a subset of candidate microservices to deploy so their combined delivered capability reaches at least a minimum threshold. Each deployed service incurs a base cost and adds load to several regional clusters, while selected service pairs trigger either synergistic cost savings (negative interaction cost) or interference overhead (positive interaction cost).
+A platform infrastructure team is selecting a subset of candidate microservices to deploy so that their total delivered value meets at least a minimum requirement. Each service incurs a base cost and adds load to each zone, while deploying certain pairs of services simultaneously triggers either synergistic cost savings (negative coefficient) or interference overhead (positive coefficient).
 
-Total operational cost combines base service costs, pairwise interaction costs, a penalty proportional to the peak load across all clusters, and weighted L1 deviations from each cluster's target load. Choose which services to deploy, compute exact pairwise indicators, and track the peak cluster load to **minimize total operational cost**.
+Total operational cost is defined as the sum of four terms: base costs, pairwise interaction costs, a weighted cost on the peak load across all zones, and weighted L1 deviations from each zone's target load. Decide which services to deploy, the pairwise simultaneous-deployment indicators, and the peak load to **minimize total operational cost**.
 
 <!-- section:io -->
 ### Input
@@ -62,7 +62,7 @@ Total operational cost combines base service costs, pairwise interaction costs, 
 }
 ```
 
-Deploying services 0 and 3 (`[1, 0, 0, 1]`) delivers value $30 + 30 = 60 \ge 60$, activates no listed pairs, produces zone loads `[18, 18]` (peak `18`, deviations `2` and `2`), and totals $(40 + 45) + 6 \times 18 + 4(2 + 2) =$ **209**.
+Deploying services 0 and 3 ([1, 0, 0, 1]) delivers value $30 + 30 = 60 \ge 60$, activates no listed pairs (pair products [0, 0, 0]), produces zone loads [18, 18] (peak 18, deviations 2 and 2 from target 16), and totals $(40 + 45) + 6 \times 18 + 4(2 + 2) =$ **209**.
 
 
 <!-- section:hint1 -->

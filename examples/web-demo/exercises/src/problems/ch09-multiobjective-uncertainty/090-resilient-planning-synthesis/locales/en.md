@@ -17,16 +17,16 @@ Afterwards, one of several shock scenarios occurs according to known probabiliti
 | `robustMinCap` | `number` | Minimum required surviving Stage-1 capacity against $\Gamma$ drops |
 | `probs` | `number[]` | Scenario probabilities $p_s$ |
 | `demands` | `number[]` | Realized demand target in each scenario $s$ |
-| `offline` | `number[][]` | Binary outage matrix (`1` forces unit $j$ off in scenario $s$) |
-| `disruptionCost` | `number` | Switching penalty per changed unit status ($w_{s,j} \ne y_j$) |
+| `offline` | `number[][]` | Binary outage matrix (1 forces unit $j$ off in scenario $s$) |
+| `disruptionCost` | `number` | Switching cost per unit whose status changes from initial commitment |
 | `shortfallPenalty` | `number` | Elastic penalty per unit of unmet demand in scenario $s$ |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `committed` | `number[]` | Binary (`0`/`1`) Stage-1 pre-committed unit schedule |
-| `recovered` | `number[][]` | Binary (`0`/`1`) Stage-2 recovered schedule per scenario ($S \times n$) |
+| `committed` | `number[]` | 0-1 Stage-1 pre-committed unit schedule |
+| `recovered` | `number[][]` | 0-1 Stage-2 recovered schedule per scenario ($S \times n$) |
 | `totalCost` | `number` | Minimized fixed cost plus expected recovery and shortfall cost |
 
 <!-- section:example -->

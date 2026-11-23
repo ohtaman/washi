@@ -20,7 +20,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `selected` | `number[]` | 表示每条边是否被选中的 `0`/`1` 数组 |
+| `selected` | `number[]` | 表示每条边是否被选中的 0-1 数组 |
 | `totalCost` | `number` | 所选路径的最小化总费用 |
 
 <!-- section:example -->

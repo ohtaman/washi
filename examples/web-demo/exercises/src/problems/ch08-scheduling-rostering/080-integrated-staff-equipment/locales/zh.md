@@ -10,7 +10,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `certified` | `number[][]` | $N \times J$ 的 `0`/`1` 矩阵，表示员工 $i$ 是否具备工序 $j$ 的操作资质 |
+| `certified` | `number[][]` | $N \times J$ 的 0/1 矩阵，表示员工 $i$ 是否具备工序 $j$ 的操作资质 |
 | `equipNeeds` | `number[]` | 工序 $j$ 占用的共享设备数量 |
 | `equipCap` | `number` | 每个时间片可用的共享设备总上限 |
 | `slotPenalties` | `number[][]` | 将工序 $j$ 安排至时间片 $t$ 的偏好惩罚（$J \times T$） |
@@ -23,8 +23,8 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `assignedStaff` | `number[]` | 为每项工序 $j$ 分配的员工编号 `0..N-1` |
-| `assignedSlot` | `number[]` | 为每项工序 $j$ 分配的时间片编号 `0..T-1` |
+| `assignedStaff` | `number[]` | 为每项工序 $j$ 分配的员工编号 0 至 $N-1$ |
+| `assignedSlot` | `number[]` | 为每项工序 $j$ 分配的时间片编号 0 至 $T-1$ |
 | `overtime` | `number[]` | 每位员工 $i$ 的非负加班时段数 |
 | `totalCost` | `number` | 最小化的总成本（基础人力 + 加班成本 + 时段惩罚） |
 

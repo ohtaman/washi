@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+对每行的列变量 `cols` 与两个方向的对角线表达式施加 `distinct()`，最小化通过 `at(row, cols[r])` 索引的代价总和，并交由 Pumpkin 求解。
+
 **WaSHI (TypeScript)**
 
 ```ts

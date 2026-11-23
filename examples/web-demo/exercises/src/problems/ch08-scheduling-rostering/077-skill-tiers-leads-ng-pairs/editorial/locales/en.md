@@ -24,32 +24,33 @@ $$
 
 ## Key Implementation
 
+For each active `(d, s)` slot's staff assignment column `col`, impose dot-product constraints for total headcount, senior leads, and per-skill requirements, then add same-slot exclusion constraints for all incompatible pairs. In WaSHI, build the constraint arrays with `forEach` and `flatMap`; in PuLP, express them with loops and `pulp.lpDot`.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let d = 0; d < D; d++) {
-  for (let s = 0; s < S; s++) {
-    if (input.demands[d][s] <= 0) continue;
+input.demands.forEach((dayDemands, d) => {
+  dayDemands.forEach((req, s) => {
+    if (req <= 0) return;
     const col = x.map((staff) => staff[d][s]);
     m.constraint([
-      expr`${sum(col)} >= ${input.demands[d][s]}`,
+      expr`${sum(col)} >= ${req}`,
       expr`dot(${input.isSenior}, ${col}) >= 1`,
     ]);
-    for (let k = 0; k < K; k++) {
-      if (input.skillDemands[s][k] > 0) {
-        const coeffs = input.staffSkills.map((sk) => sk[k]);
-        m.constraint(expr`dot(${coeffs}, ${col}) >= ${input.skillDemands[s][k]}`);
-      }
-    }
-  }
-}
-for (const [a, b] of input.ngPairs) {
-  for (let d = 0; d < D; d++) {
-    for (let s = 0; s < S; s++) {
-      m.constraint(expr`${x[a][d][s]} + ${x[b][d][s]} <= 1`);
-    }
-  }
-}
+    input.skillDemands[s].forEach((skillReq, k) => {
+      if (skillReq <= 0) return;
+      const coeffs = input.staffSkills.map((sk) => sk[k]);
+      m.constraint(expr`dot(${coeffs}, ${col}) >= ${skillReq}`);
+    });
+  });
+});
+m.constraint(
+  input.ngPairs.flatMap(([a, b]) =>
+    input.demands.flatMap((dayDemands, d) =>
+      dayDemands.map((_, s) => expr`${x[a][d][s]} + ${x[b][d][s]} <= 1`)
+    )
+  )
+);
 ```
 
 **PuLP (Python)**

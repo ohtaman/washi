@@ -23,6 +23,8 @@ $$
 
 ## Key Implementation
 
+Combine `at(..., modes[i])` for setup and precedence offsets, `disjoint(...)` for per-machine non-overlap, `cumulative(..., input.powerCap)` for the factory power limit, and `allowed(...)` for mode compatibility.
+
 **WaSHI (TypeScript)**
 
 ```ts

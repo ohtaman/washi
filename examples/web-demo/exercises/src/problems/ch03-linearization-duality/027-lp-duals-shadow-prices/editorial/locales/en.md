@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Keep arrays of constraint handles for both the minimum demand constraints and the fuel/emissions cap constraints across `m.solve()`, then read `.dual` (or `.pi` in PuLP) from each constraint in order.
+
 **WaSHI (TypeScript)**
 
 ```ts

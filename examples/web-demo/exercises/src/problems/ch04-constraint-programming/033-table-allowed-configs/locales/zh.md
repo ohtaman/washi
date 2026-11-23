@@ -1,25 +1,25 @@
 # #033. 基于表约束（allowed）的兼容系统配置
 
 <!-- section:scenario -->
-一名工程师正在配置一套由多个离散组件组成的硬件系统。每个组件 c 都有若干候选规格，价格记录在 componentCosts[c] 中。
+系统设计人员正在设计由多个组件构成的硬件配置方案。每个组件都有若干候选规格选项，并各自设有组件成本（千日元）。
 
-正表规则 allowedRules 要求所列组件选出的规格组合必须属于允许元组表之一，而负表规则 forbiddenRules 则禁止选出禁用表中出现的组合。请为每个组件选定规格以在满足全部表规则的同时最小化总成本。
+此外，兼容规则要求指定组件组合的取值必须匹配允许元组表中的某一项，而禁止规则则不允许选择指定的冲突组合。请找出满足所有规则的最省成本组件配置。
 
 <!-- section:io -->
 ### 输入
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `componentCosts` | `number[][]` | 各组件 `c` 的候选规格成本数组 `componentCosts[c][opt]` |
-| `allowedRules` | `TableRule[]` | 正表约束 `{ vars, tuples }`，要求对应组件取值元组属于 `tuples` |
-| `forbiddenRules` | `TableRule[]` | 负表约束 `{ vars, tuples }`，禁止对应组件取值元组出现在 `tuples` 中 |
+| `componentCosts` | `number[][]` | 各组件 `c` 的选项 `opt` 对应的整数成本 `componentCosts[c][opt]`（千日元） |
+| `allowedRules` | `TableRule[]` | 正表约束，要求指定组件列 `vars` 的取值匹配 `tuples` 中的某一项 |
+| `forbiddenRules` | `TableRule[]` | 负表约束，禁止指定组件列 `vars` 的取值匹配 `tuples` 中的组合 |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `choices` | `number[]` | 每个组件选定的规格索引（`0` 到 `componentCosts[c].length - 1`） |
-| `totalCost` | `number` | 最小化后的系统总配置成本 |
+| `choices` | `number[]` | 每个组件选定的选项编号（`0` 到 `componentCosts[c].length - 1`） |
+| `totalCost` | `number` | 最小化后的总配置成本（千日元） |
 
 <!-- section:example -->
 **输入示例**
@@ -63,7 +63,7 @@
 }
 ```
 
-方案 `[0, 1, 1]` 满足组件 `(0, 1)` 为 `(0, 1)` 在正表中、组件 `(1, 2)` 为 `(1, 1)` 未命中禁用表，总成本为 $10 + 18 + 14 =$ **42**。
+选择 [0, 1, 1] 中 (0, 1) 包含于 `allowedRules[0]`，同时避开了组件 (1, 2) 的禁用对 (1, 0) 与 (0, 0)，总成本为 $10 + 18 + 14 =$ **42** 千日元。
 
 <!-- section:hint1 -->
 为每个组件定义一个整数决策变量，其取值范围为该组件的可选配置索引。将正兼容性表和负禁用表直接建模为对应组件变量元组上的表约束，并以所选配置价格之和作为最小化目标。

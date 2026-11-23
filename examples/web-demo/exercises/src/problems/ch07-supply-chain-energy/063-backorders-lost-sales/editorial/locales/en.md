@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Pass each period's physical inventory conservation equation and backorder conservation equation to `m.constraint()` as arrays, and fix the final-period backorder to 0 via its variable upper bound. In WaSHI, construct each period's balance equation with `map` and `expr`; in PuLP, add the equality constraints inside a loop.
+
 **WaSHI (TypeScript)**
 
 ```ts

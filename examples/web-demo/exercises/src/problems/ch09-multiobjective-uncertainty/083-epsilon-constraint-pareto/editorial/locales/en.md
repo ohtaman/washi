@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+Create an independent `Model` for each emission threshold in `input.epsilons`, express the budget cap, emission cap, and profit maximization with `dot(...)`, and call `await m.solve()` sequentially.
+
 **WaSHI (TypeScript)**
 
 ```ts

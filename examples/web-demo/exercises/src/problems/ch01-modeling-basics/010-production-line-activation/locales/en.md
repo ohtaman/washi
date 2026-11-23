@@ -1,28 +1,28 @@
 # #010. Production Line Setup & Mixed Production
 
 <!-- section:scenario -->
-A factory operates several candidate production lines. Opening a line incurs a one-time fixed setup cost and unlocks continuous production up to that line's maximum capacity; if a line remains closed, its output **must be zero**.
+A PET-bottle beverage bottling plant must simultaneously decide which candidate production lines to open and how many bottles (in thousands) to produce on each active line. Opening a line incurs a fixed setup cost and unlocks continuous production up to that line's maximum capacity; conversely, **nothing can be produced on a closed line**.
 
-Each unit produced on an active line earns a unit contribution margin and draws from a shared raw material supply. Choose which lines to open and how much to produce on each line to **maximize net profit** (total margin minus fixed setup costs) within the shared material limit.
+Each thousand bottles produced on a line earns a fixed gross profit margin while consuming a specific amount of shared resin pellets (kg). Staying within the resin pellet stock limit, choose which lines to open and how much to produce to **maximize net profit** (total gross margin minus total fixed setup costs).
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `margins` | `number[]` | Profit margin per unit produced on each line |
+| `margins` | `number[]` | Gross profit margin per thousand bottles on each line |
 | `fixedCosts` | `number[]` | Fixed setup cost incurred when opening each line |
-| `capacities` | `number[]` | Maximum production capacity of each open line |
-| `materialUsages` | `number[]` | Shared material consumed per unit on each line |
-| `materialCap` | `number` | Total available shared raw material supply |
+| `capacities` | `number[]` | Maximum production capacity of each line (thousand bottles) |
+| `materialUsages` | `number[]` | Resin pellets consumed per thousand bottles on each line (kg) |
+| `materialCap` | `number` | Available resin pellet stock across the plant (kg) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `open` | `number[]` | Binary (`0` or `1`) line-activation choices |
-| `quantities` | `number[]` | Continuous non-negative production output per line |
-| `netProfit` | `number` | Maximized net profit (margin minus fixed costs) |
+| `quantities` | `number[]` | Continuous production output per line (thousand bottles) |
+| `netProfit` | `number` | Maximized net profit (gross margin minus fixed costs) |
 
 <!-- section:example -->
 **Input**

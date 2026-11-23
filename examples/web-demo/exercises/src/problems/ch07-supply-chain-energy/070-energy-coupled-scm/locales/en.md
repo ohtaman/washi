@@ -29,7 +29,7 @@ Total factory electricity demand equals base load plus setup standby power plus 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setups` | `number[]` | Binary (`0` or `1`) production setup indicators |
+| `setups` | `number[]` | Binary (0 or 1) production setup indicators |
 | `production` | `number[]` | Non-negative production quantities |
 | `inventory` | `number[]` | Non-negative ending product inventories |
 | `charge` | `number[]` | Battery charging power per period |
@@ -75,7 +75,7 @@ Total factory electricity demand equals base load plus setup standby power plus 
 }
 ```
 
-Producing ahead in off-peak periods 0 and 2 (`production = [55, 0, 55, 0]`) while charging off-peak and discharging on-peak flattens net grid imports across all four periods to `83.597561`, yielding total cost $240 + 97.5 + 443.067073 + 668.780488 \approx$ **1,449.35**.
+Producing ahead in off-peak periods 0 and 2 (`production = [55, 0, 55, 0]`) while charging off-peak and discharging on-peak flattens net grid imports across all four periods to 83.597561, yielding total cost $240 + 97.5 + 443.067073 + 668.780488 \approx$ **1,449.35**.
 
 
 <!-- section:hint1 -->

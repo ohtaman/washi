@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+In addition to `distinct` and no-self-loop constraints on the successor variables `next` and rank variables `rank`, register the constraint that ranks increment by 1 along every non-depot edge using `implies` and `at(rank, nx)`.
+
 **WaSHI (TypeScript)**
 
 ```ts

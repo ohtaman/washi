@@ -52,10 +52,10 @@ Choose which heroes to recruit and report the exact pairwise activation indicato
 }
 ```
 
-Recruiting heroes 0 and 1 (`[1, 1, 0, 0]`) uses $2 \le 2$ slots, spends $25 + 25 = 50 \le 60$ gold, activates only pair `(0, 1)` (`pairProducts = [1, 0, 0, 0]`), and yields $40 + 35 + 25 =$ **100**.
+Recruiting heroes 0 and 1 ([1, 1, 0, 0]) uses $2 \le 2$ slots, spends $25 + 25 = 50 \le 60$ gold, activates only pair (0, 1) (`pairProducts` is [1, 0, 0, 0]), and yields $40 + 35 + 25 =$ **100**.
 
 <!-- section:hint1 -->
-Declare one binary decision variable per candidate hero and one continuous auxiliary variable in $[0, 1]$ per listed hero pair. Because the hero choices are binary, the McCormick inequalities force the pair variables to take exact integer values `0` or `1` without needing extra binary declarations.
+Declare one binary decision variable per candidate hero and one continuous auxiliary variable in $[0, 1]$ per listed hero pair. Because the hero choices are binary, the McCormick inequalities force the pair variables to take exact integer values 0 or 1 without needing extra binary declarations.
 
 <!-- section:hint2 -->
-Enforce the budget and party-size caps, then apply the exact McCormick envelope for $w_k = x_i x_j$: two upper bounds ($w_k \le x_i$ and $w_k \le x_j$) prevent $w_k$ from turning on unless both heroes are recruited, and one lower bound ($w_k \ge x_i + x_j - 1$) forces $w_k$ to `1` whenever both are recruited. Both directions are essential here because pair weights $s$ can be positive (synergy, where the solver would otherwise overstate $w_k$) or negative (rivalry, where the solver would otherwise understate $w_k$). Round `pairProducts` cleanly when returning integer outputs.
+Enforce the budget and party-size caps, then apply the exact McCormick envelope for $w_k = x_i x_j$: two upper bounds ($w_k \le x_i$ and $w_k \le x_j$) prevent $w_k$ from turning on unless both heroes are recruited, and one lower bound ($w_k \ge x_i + x_j - 1$) forces $w_k$ to 1 whenever both are recruited. Both directions are essential here because pair weights $s$ can be positive (synergy, where the solver would otherwise overstate $w_k$) or negative (rivalry, where the solver would otherwise understate $w_k$). Round `pairProducts` cleanly when returning integer outputs.

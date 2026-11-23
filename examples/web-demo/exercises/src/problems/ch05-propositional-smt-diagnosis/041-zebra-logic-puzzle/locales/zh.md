@@ -10,7 +10,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `n` | `number` | 位置数量（从左到右编号为 `0` 到 `n - 1`） |
+| `n` | `number` | 位置数量（从左到右编号为 0 到 `n - 1`） |
 | `categories` | `Record<string, string[]>` | 类别名称到其 `n` 个不同属性值列表的映射 |
 | `clues` | `ZebraClue[]` | 结构化线索（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
 
@@ -56,7 +56,7 @@
 }
 ```
 
-位置 `0` 为 red/cat/tea，位置 `1` 为 green/bird/water，位置 `2` 为 blue/dog/coffee，满足所有唯一分配与位置线索。
+位置 0 为 red/cat/tea，位置 1 为 green/bird/water，位置 2 为 blue/dog/coffee，满足所有唯一分配与位置线索。
 
 
 <!-- section:hint1 -->

@@ -1,7 +1,7 @@
 # #067. Supplier Allocation with Semi-Continuous & Share Caps
 
 <!-- section:scenario -->
-A multi-plant manufacturer sources raw materials from a pool of candidate suppliers. Engaging a supplier incurs a fixed contract cost and enforces a semi-continuous total order requirement: an inactive supplier ships zero units, whereas an active supplier must receive a combined order across all plants between its minimum and maximum order bounds.
+A coffee roaster operating multiple roasting plants plans green coffee bean procurement from a pool of candidate suppliers (bean importers). Engaging a supplier incurs a fixed contract cost and enforces a semi-continuous total order requirement: an inactive supplier ships zero units, whereas an active supplier must receive a combined order across all plants between its minimum and maximum order bounds.
 
 To prevent single-vendor concentration risk, no single supplier may fulfill more than a fixed maximum share of any plant's demand, and the total number of active suppliers must lie within specified lower and upper bounds. Select active suppliers and allocate plant orders to meet all demands at **minimum total fixed plus procurement cost**.
 
@@ -23,7 +23,7 @@ To prevent single-vendor concentration risk, no single supplier may fulfill more
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `active` | `number[]` | Binary (`0` or `1`) supplier selection vector |
+| `active` | `number[]` | Binary (0 or 1) supplier selection vector |
 | `allocations` | `number[][]` | Continuous order quantities $q_{s,p} \ge 0$ ($S \times P$) |
 | `totalCost` | `number` | Minimized fixed contract plus unit procurement cost |
 
@@ -63,7 +63,7 @@ To prevent single-vendor concentration risk, no single supplier may fulfill more
 }
 ```
 
-Activating suppliers 2 and 3 (2 active in `[2, 3]`) satisfies per-plant 60% caps (`[60, 48, 72]`) and supplier order intervals (`170 in [70, 170]`, `130 in [50, 130]`), yielding total cost $(320 + 280) + 4074 =$ **4,674**.
+Activating suppliers 2 and 3 (2 active in [2, 3]) satisfies per-plant 60% caps ([60, 48, 72]) and supplier order intervals (170 in [70, 170], 130 in [50, 130]), yielding total cost $(320 + 280) + 4074 =$ **4,674**.
 
 
 <!-- section:hint1 -->

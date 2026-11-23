@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Use `x.flatMap(...)` and `x.map(...)` to build linear expressions for the Hamming distance from `baseline` and each worker's assignment cost, then set the objective with `minimize(...)`.
+
 **WaSHI (TypeScript)**
 
 ```ts

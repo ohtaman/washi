@@ -1,9 +1,9 @@
 # #039. Cage-Sum Latin Grid Puzzle
 
 <!-- section:scenario -->
-Fill an N by N integer grid with digits from 1 to N so that every row and every column contains each digit from 1 to N exactly once.
+A puzzle designer is creating a Latin square on an $N \times N$ grid filled with integers from 1 to $N$, where each digit from 1 to $N$ appears exactly once in every row and every column.
 
-Fixed clues in givens pin specific cells to given digits, and every region in cages specifies a list of cells whose values must be pairwise distinct and sum to targetSum. Solve this pure feasibility puzzle with no objective function.
+Pre-specified cells must be fixed to their given digits, and within each region called a cage, all cell values must be pairwise distinct and sum to the specified target sum. Solve this pure feasibility puzzle with no objective function.
 
 <!-- section:io -->
 ### Input
@@ -51,7 +51,7 @@ Fixed clues in givens pin specific cells to given digits, and every region in ca
 }
 ```
 
-Every row and column permutes `{1, 2, 3, 4}`, all givens match (`(0,0)=1, (1,1)=4, (2,3)=3`), and every cage sums cleanly with distinct entries (for example `2 + 3 = 5` and `3 + 2 + 1 = 6`).
+Every row and column is a permutation of {1, 2, 3, 4}, and all fixed clues as well as every cage's sum and distinctness rules (e.g., $2 + 3 = 5$, $3 + 2 + 1 = 6$) are satisfied.
 
 <!-- section:hint1 -->
 Introduce an $N \times N$ matrix of integer decision variables with domain `[1, n]`. Enforce all-different constraints on every row, every column, and every cage, alongside equality constraints for fixed givens and cage sums. No objective is needed for this pure feasibility puzzle.
