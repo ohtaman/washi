@@ -20,7 +20,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **-1** | Backticks for numbers | Wraps plain numeric constants in inline backticks. |
 | **-1** | Unnatural or redundant wording | Contains awkward, redundant, stiff literal translations, or unnecessary modifiers (e.g., "row/column sum" shorthand, "priority tier", "instance-derived", "minimize directly"). |
 | **-1** | Empty AI buzzwords | Uses hollow filler modifiers that add no concrete information (e.g., "predetermined", "seamlessly", "robust", "efficiently"). |
-| **-1** | Formulaic framing or contrast | Includes generic motivational intros/outros (e.g., "In real-world practice...") or dramatic "not just X, but Y" contrast clichés. |
+| **-5** | Formulaic framing or contrast | Includes generic motivational intros/outros (e.g., "In real-world practice...") or dramatic "not just X, but Y" contrast clichés. |
 | **-5** | Generic placeholders only | Relies solely on abstract nouns ("factory", "product", "resource", "machine", "job") without concrete domain nouns or examples. |
 | **-5** | Formulas/code in scenario | Embeds explicit algebraic formulas or code recipes (e.g., `weights[i] * c`, `<=`) inside `section:scenario`. |
 | **-5** | Unexplained new jargon | Uses an advanced technical term for the first time in a problem or hint (e.g., "epigraph reformulation" in `#021`) without briefly explaining what it means. |
