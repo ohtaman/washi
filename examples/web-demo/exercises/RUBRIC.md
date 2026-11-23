@@ -65,6 +65,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 
 | Weight | Criterion | Evaluation Standard |
 | :---: | --- | --- |
+| **-5** | Python `snake_case` convention | Uses `camelCase` instead of `snake_case` for Python `solve()` parameters, returned dict keys, or Python snippets in editorials. |
 | **-10** | Signature mismatch | Problem statement, `starter`/`solution` code, and editorial snippets disagree on function arguments or return structure. |
 
 *(Note: When synchronizing across locales, add `-5` for **Locale sync omission** when semantic updates are missing in `en.md` or `zh.md`.)*
