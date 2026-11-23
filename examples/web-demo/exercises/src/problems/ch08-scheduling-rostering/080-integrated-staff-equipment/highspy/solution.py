@@ -11,7 +11,7 @@ def solve(
     max_limits,
     overtime_costs,
 ) -> dict:
-    """Return {"assignedStaff": list[int], "assignedSlot": list[int], "overtime": list[float], "totalCost": float}."""
+    """Return {"assigned_staff": list[int], "assigned_slot": list[int], "overtime": list[float], "total_cost": float}."""
     reg_limits = regular_limits
     ot_costs = overtime_costs
     num_staff = len(certified)
@@ -71,8 +71,8 @@ def solve(
                     assigned_slot[j] = t
 
     return {
-        "assignedStaff": assigned_staff,
-        "assignedSlot": assigned_slot,
+        "assigned_staff": assigned_staff,
+        "assigned_slot": assigned_slot,
         "overtime": [max(0.0, float(pulp.value(v))) for v in overtime],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

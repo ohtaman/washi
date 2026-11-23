@@ -51,7 +51,7 @@ def _solve_window(
         "setups": [round(pulp.value(v)) for v in y],
         "production": [max(0.0, float(pulp.value(v))) for v in p],
         "inventory": [max(0.0, float(pulp.value(v))) for v in inv],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }
 
 
@@ -64,7 +64,7 @@ def solve(
     initial_plan,
     window_size,
 ) -> dict:
-    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "totalCost": float}."""
+    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "total_cost": float}."""
     n_periods = len(demands)
     win = max(1, min(n_periods, int(window_size)))
     best = _solve_window(
@@ -86,7 +86,7 @@ def solve(
                 start,
                 start + win,
             )
-            if candidate is not None and candidate["totalCost"] < best["totalCost"] - 1e-6:
+            if candidate is not None and candidate["total_cost"] < best["total_cost"] - 1e-6:
                 best = candidate
                 improved = True
         if not improved:

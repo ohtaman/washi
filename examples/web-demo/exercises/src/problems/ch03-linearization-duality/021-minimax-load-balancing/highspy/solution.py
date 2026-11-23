@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(weights, compatible) -> dict:
-    """Return {"assignments": list[list[float]], "peakLoad": float}."""
+    """Return {"assignments": list[list[float]], "peak_load": float}."""
     n_jobs = len(weights)
     n_servers = len(compatible[0])
 
@@ -27,5 +27,5 @@ def solve(weights, compatible) -> dict:
 
     return {
         "assignments": [[float(pulp.value(v)) for v in row] for row in assignments],
-        "peakLoad": float(pulp.value(peak)),
+        "peak_load": float(pulp.value(peak)),
     }

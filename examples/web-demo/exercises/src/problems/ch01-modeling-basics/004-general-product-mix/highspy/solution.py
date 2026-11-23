@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(margins, usages, capacities) -> dict:
-    """Return {"quantities": list[float], "totalProfit": float}."""
+    """Return {"quantities": list[float], "total_profit": float}."""
     n_products = len(margins)
 
     prob = pulp.LpProblem("product_mix", pulp.LpMaximize)
@@ -17,5 +17,5 @@ def solve(margins, usages, capacities) -> dict:
 
     return {
         "quantities": [float(pulp.value(v)) for v in quantities],
-        "totalProfit": float(pulp.value(prob.objective)),
+        "total_profit": float(pulp.value(prob.objective)),
     }

@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(interest, requirements, caps, prerequisites, time_conflicts) -> dict:
-    """Return {"take": list[int], "totalInterest": float}."""
+    """Return {"take": list[int], "total_interest": float}."""
     n = len(interest)
 
     prob = pulp.LpProblem("degree_course_planner", pulp.LpMaximize)
@@ -20,5 +20,5 @@ def solve(interest, requirements, caps, prerequisites, time_conflicts) -> dict:
 
     return {
         "take": [round(pulp.value(v)) for v in take],
-        "totalInterest": float(pulp.value(prob.objective)),
+        "total_interest": float(pulp.value(prob.objective)),
     }

@@ -8,7 +8,7 @@ def solve(
     depot_max_vehicles,
     depot_capacities,
 ) -> dict:
-    """Return {"routes": list[list[int]], "totalDistance": float}."""
+    """Return {"routes": list[list[int]], "total_distance": float}."""
     q_cap = vehicle_capacity
     depot_max_v = depot_max_vehicles
     depot_caps = depot_capacities
@@ -82,5 +82,5 @@ def solve(
 
     return {
         "routes": routes,
-        "totalDistance": float(pulp.value(prob.objective)),
+        "total_distance": float(pulp.value(prob.objective)),
     }

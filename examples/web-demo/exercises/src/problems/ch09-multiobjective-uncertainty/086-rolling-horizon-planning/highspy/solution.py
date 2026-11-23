@@ -11,7 +11,7 @@ def solve(
     initial_inventory,
     window_len,
 ) -> dict:
-    """Return {"produced": list[float], "inventories": list[float], "shortfalls": list[float], "totalCost": float}."""
+    """Return {"produced": list[float], "inventories": list[float], "shortfalls": list[float], "total_cost": float}."""
     actual = actual_demands
     forecasts = forecast_demands
     shortfall_pen = shortfall_penalty
@@ -61,5 +61,5 @@ def solve(
         "produced": produced,
         "inventories": inventories,
         "shortfalls": shortfalls,
-        "totalCost": float(total_cost),
+        "total_cost": float(total_cost),
     }

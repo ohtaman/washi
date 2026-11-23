@@ -11,7 +11,7 @@ def solve(
     conflicts,
     group_rules,
 ) -> dict:
-    """Return {"invite": list[int], "giftBudget": list[float], "totalEnjoyment": float}."""
+    """Return {"invite": list[int], "gift_budget": list[float], "total_enjoyment": float}."""
     n = len(base_enjoyment)
 
     prob = pulp.LpProblem("party_invite_logic", pulp.LpMaximize)
@@ -34,6 +34,6 @@ def solve(
 
     return {
         "invite": [round(pulp.value(v)) for v in invite],
-        "giftBudget": [float(pulp.value(v)) for v in gift_budget],
-        "totalEnjoyment": float(pulp.value(prob.objective)),
+        "gift_budget": [float(pulp.value(v)) for v in gift_budget],
+        "total_enjoyment": float(pulp.value(prob.objective)),
     }

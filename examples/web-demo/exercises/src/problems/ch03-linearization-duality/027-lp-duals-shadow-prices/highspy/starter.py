@@ -9,7 +9,7 @@ def solve(
     resource_usages,
     max_resources,
 ) -> dict:
-    """Return {"quantities": list[float], "duals": list[float], "optimalCost": float}."""
+    """Return {"quantities": list[float], "duals": list[float], "optimal_cost": float}."""
     min_reqs = min_requirements
     usages = resource_usages
     max_res = max_resources

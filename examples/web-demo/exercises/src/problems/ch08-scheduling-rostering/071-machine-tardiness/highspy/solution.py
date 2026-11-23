@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(release_dates, processing_times, due_dates, weights) -> dict:
-    """Return {"starts": list[float], "totalWeightedTardiness": float}."""
+    """Return {"starts": list[float], "total_weighted_tardiness": float}."""
     r = release_dates
     p = processing_times
     d = due_dates
@@ -32,5 +32,5 @@ def solve(release_dates, processing_times, due_dates, weights) -> dict:
 
     return {
         "starts": [float(pulp.value(v)) for v in starts],
-        "totalWeightedTardiness": float(pulp.value(prob.objective)),
+        "total_weighted_tardiness": float(pulp.value(prob.objective)),
     }

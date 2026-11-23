@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -> dict:
-    """Return {"territories": list[dict], "totalCost": float}."""
+    """Return {"territories": list[dict], "total_cost": float}."""
     num_t = num_territories
     min_d, max_d = demand_bounds
     n = len(demands)
@@ -87,5 +87,5 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
 
     return {
         "territories": territories,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

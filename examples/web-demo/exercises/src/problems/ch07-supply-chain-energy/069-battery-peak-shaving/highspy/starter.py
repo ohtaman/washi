@@ -13,6 +13,6 @@ def solve(
     eta_charge,
     eta_discharge,
 ) -> dict:
-    """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
+    """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peak_load": float, "total_cost": float}."""
     # TODO: Build and solve the model, then return the output.
     raise NotImplementedError("Not implemented")

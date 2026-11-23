@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(demand, band_lbs, band_ubs, fixed_costs, unit_costs) -> dict:
-    """Return {"modes": list[int], "outputs": list[float], "totalCost": float}."""
+    """Return {"modes": list[int], "outputs": list[float], "total_cost": float}."""
     n_units = len(band_lbs)
     n_bands = len(band_lbs[0])
 
@@ -37,5 +37,5 @@ def solve(demand, band_lbs, band_ubs, fixed_costs, unit_costs) -> dict:
     return {
         "modes": [max(range(n_bands), key=lambda k: pulp.value(y[i][k])) for i in range(n_units)],
         "outputs": [sum(float(pulp.value(x[i][k])) for k in range(n_bands)) for i in range(n_units)],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

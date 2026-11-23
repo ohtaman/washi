@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(travel_times, earliest, latest, visit_durations, max_groups) -> dict:
-    """Return {"itineraries": list[list[int]], "totalCost": float}."""
+    """Return {"itineraries": list[list[int]], "total_cost": float}."""
     n = len(travel_times)
 
     prob = pulp.LpProblem("theme_park_itinerary", pulp.LpMinimize)
@@ -61,5 +61,5 @@ def solve(travel_times, earliest, latest, visit_durations, max_groups) -> dict:
 
     return {
         "itineraries": itineraries,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

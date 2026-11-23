@@ -53,7 +53,7 @@ def _solve_bpp(weights: list, bin_cap: int, covers: list, relax: bool):
 
 
 def solve(weights, bin_capacity) -> dict:
-    """Return {"assignments": list[int], "binsUsed": int, "lpBound": float}."""
+    """Return {"assignments": list[int], "bins_used": int, "lp_bound": float}."""
     bin_cap = bin_capacity
     n = len(weights)
     covers = _build_extended_covers(weights, bin_cap)
@@ -67,6 +67,6 @@ def solve(weights, bin_capacity) -> dict:
     ]
     return {
         "assignments": assignments,
-        "binsUsed": round(pulp.value(mip_prob.objective)),
-        "lpBound": float(pulp.value(lp_prob.objective)),
+        "bins_used": round(pulp.value(mip_prob.objective)),
+        "lp_bound": float(pulp.value(lp_prob.objective)),
     }

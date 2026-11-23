@@ -9,7 +9,7 @@ def solve(
     worker_costs,
     disruption_weight,
 ) -> dict:
-    """Return {"schedule": list[list[int]], "hammingDistance": int, "totalObjective": float}."""
+    """Return {"schedule": list[list[int]], "hamming_distance": int, "total_objective": float}."""
     m_workers = len(baseline)
     n_slots = len(demands)
 
@@ -49,6 +49,6 @@ def solve(
     )
     return {
         "schedule": schedule,
-        "hammingDistance": int(hamming_dist),
-        "totalObjective": float(pulp.value(prob.objective)),
+        "hamming_distance": int(hamming_dist),
+        "total_objective": float(pulp.value(prob.objective)),
     }

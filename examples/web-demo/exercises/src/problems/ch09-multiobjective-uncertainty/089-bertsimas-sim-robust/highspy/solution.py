@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(profits, nominal_usages, deviations, max_units, capacity_cap, gamma) -> dict:
-    """Return {"quantities": list[float], "totalProfit": float}."""
+    """Return {"quantities": list[float], "total_profit": float}."""
     nominal = nominal_usages
     cap = capacity_cap
     n = len(profits)
@@ -21,5 +21,5 @@ def solve(profits, nominal_usages, deviations, max_units, capacity_cap, gamma) -
 
     return {
         "quantities": [float(pulp.value(v)) for v in x],
-        "totalProfit": float(pulp.value(prob.objective)),
+        "total_profit": float(pulp.value(prob.objective)),
     }

@@ -9,7 +9,7 @@ def solve(
     contract_fees,
     total_demand,
 ) -> dict:
-    """Return {"b": list[int], "x": list[float], "z": list[float], "totalCost": float}."""
+    """Return {"b": list[int], "x": list[float], "z": list[float], "total_cost": float}."""
     min_ord = min_orders
     max_ord = max_orders
     fees = contract_fees
@@ -43,5 +43,5 @@ def solve(
         "b": [round(pulp.value(v)) for v in b],
         "x": [float(pulp.value(v)) for v in x],
         "z": [float(pulp.value(v)) for v in z],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

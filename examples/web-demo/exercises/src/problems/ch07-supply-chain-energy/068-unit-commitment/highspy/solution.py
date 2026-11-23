@@ -11,7 +11,7 @@ def solve(
     startup_costs,
     fuel_costs,
 ) -> dict:
-    """Return {"commitment": list[list[int]], "generation": list[list[float]], "totalCost": float}."""
+    """Return {"commitment": list[list[int]], "generation": list[list[float]], "total_cost": float}."""
     ramp = ramp_limit
     G = len(p_min)
     T = len(demands)
@@ -56,5 +56,5 @@ def solve(
     return {
         "commitment": [[round(pulp.value(val)) for val in row] for row in u],
         "generation": [[float(pulp.value(val)) for val in row] for row in p],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

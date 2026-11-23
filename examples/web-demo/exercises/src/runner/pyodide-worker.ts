@@ -71,6 +71,9 @@ def _washi_to_snake(name):
     s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
     return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
 
+def _washi_to_camel(name):
+    return re.sub(r"_([a-z0-9])", lambda m: m.group(1).upper(), name)
+
 def __washi_to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
         return obj
@@ -88,7 +91,7 @@ def __washi_to_jsonable(obj):
         if isinstance(obj, np.ndarray):
             return [__washi_to_jsonable(v) for v in obj.tolist()]
     if isinstance(obj, dict):
-        return {str(k): __washi_to_jsonable(v) for k, v in obj.items()}
+        return {_washi_to_camel(str(k)): __washi_to_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [__washi_to_jsonable(v) for v in obj]
     raise TypeError(f"Unsupported output type: {type(obj).__name__}")
@@ -215,7 +218,7 @@ def __washi_run_batch(code_str, inputs_json):
             for inp in inputs:
                 _washi_tracked_models.clear()
                 _washi_tracked_pulp_models.clear()
-                raw_out = fn(**{__washi_to_snake(k): v for k, v in inp.items()})
+                raw_out = fn(**{_washi_to_snake(k): v for k, v in inp.items()})
                 outputs.append(__washi_to_jsonable(raw_out))
                 metrics.append(_washi_current_metrics())
         return json.dumps({

@@ -11,6 +11,6 @@ def solve(
     max_limits,
     overtime_costs,
 ) -> dict:
-    """Return {"assignedStaff": list[int], "assignedSlot": list[int], "overtime": list[float], "totalCost": float}."""
+    """Return {"assigned_staff": list[int], "assigned_slot": list[int], "overtime": list[float], "total_cost": float}."""
     # TODO: Build and solve the integrated staff, slot, and equipment model, then return the output.
     raise NotImplementedError("Not implemented")

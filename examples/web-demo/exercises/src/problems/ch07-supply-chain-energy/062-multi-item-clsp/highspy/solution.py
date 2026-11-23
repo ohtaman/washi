@@ -9,7 +9,7 @@ def solve(
     setup_times,
     capacities,
 ) -> dict:
-    """Return {"setups": list[list[int]], "production": list[list[float]], "inventory": list[list[float]], "totalCost": float}."""
+    """Return {"setups": list[list[int]], "production": list[list[float]], "inventory": list[list[float]], "total_cost": float}."""
     n_items = len(demands)
     T = len(capacities)
 
@@ -55,5 +55,5 @@ def solve(
         "setups": [[round(pulp.value(v)) for v in row] for row in setups],
         "production": [[float(pulp.value(v)) for v in row] for row in production],
         "inventory": [[float(pulp.value(v)) for v in row] for row in inventory],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

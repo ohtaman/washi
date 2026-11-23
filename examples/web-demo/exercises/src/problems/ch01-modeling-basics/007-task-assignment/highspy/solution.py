@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(costs) -> dict:
-    """Return {"assignment": list[int], "totalCost": float}."""
+    """Return {"assignment": list[int], "total_cost": float}."""
     n = len(costs)
 
     prob = pulp.LpProblem("task_assignment", pulp.LpMinimize)
@@ -27,5 +27,5 @@ def solve(costs) -> dict:
 
     return {
         "assignment": assignment,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

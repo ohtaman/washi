@@ -11,7 +11,7 @@ def solve(
     conflicts,
     group_rules,
 ) -> dict:
-    """Return {"invite": list[int], "giftBudget": list[float], "totalEnjoyment": float}."""
+    """Return {"invite": list[int], "gift_budget": list[float], "total_enjoyment": float}."""
     n = len(base_enjoyment)
 
     prob = pulp.LpProblem("party_invite_logic", pulp.LpMaximize)

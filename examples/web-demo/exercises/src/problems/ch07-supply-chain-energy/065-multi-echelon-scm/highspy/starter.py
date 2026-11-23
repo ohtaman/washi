@@ -10,6 +10,6 @@ def solve(
     plant_dc_costs,
     dc_customer_costs,
 ) -> dict:
-    """Return {"openPlants": list[int], "openDcs": list[int], "plantToDc": list[list[float]], "dcToCustomer": list[list[float]], "totalCost": float}."""
+    """Return {"open_plants": list[int], "open_dcs": list[int], "plant_to_dc": list[list[float]], "dc_to_customer": list[list[float]], "total_cost": float}."""
     # TODO: Build and solve the model, then return the output.
     raise NotImplementedError("Not implemented")

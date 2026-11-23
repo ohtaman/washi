@@ -44,7 +44,7 @@ export function toSnakeCase(name: string): string {
 
 /** Extract parameter names from `def solve(...) -> dict:` (supports multi-line and type annotations). */
 export function extractPySolveParams(source: string): string[] | null {
-  const m = source.match(/^def\s+solve\s*\(([\s\S]*?)\)\s*->\s*dict\s*:/m);
+  const m = source.match(/^def\s+solve\s*\(([\s\S]*?)\)\s*->\s*dict(?:\[[^\]]+\])?\s*:/m);
   if (!m) return null;
   const raw = m[1].trim();
   if (!raw) return [];
@@ -78,6 +78,9 @@ def to_snake(name):
     s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
     return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
 
+def to_camel(name):
+    return re.sub(r"_([a-z0-9])", lambda m: m.group(1).upper(), name)
+
 def to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
         return obj
@@ -95,7 +98,7 @@ def to_jsonable(obj):
         if isinstance(obj, np.ndarray):
             return [to_jsonable(v) for v in obj.tolist()]
     if isinstance(obj, dict):
-        return {str(k): to_jsonable(v) for k, v in obj.items()}
+        return {to_camel(str(k)): to_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [to_jsonable(v) for v in obj]
     raise TypeError(f"Unsupported output type: {type(obj).__name__}")

@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(demands, shift_costs, max_consecutive_days) -> dict:
-    """Return {"schedule": list[list[int]], "totalCost": float}."""
+    """Return {"schedule": list[list[int]], "total_cost": float}."""
     max_consec = max_consecutive_days
     num_staff = len(shift_costs)
     num_days = len(demands)
@@ -57,5 +57,5 @@ def solve(demands, shift_costs, max_consecutive_days) -> dict:
 
     return {
         "schedule": schedule,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(power, costs, budget, max_party_size, pairs) -> dict:
-    """Return {"selected": list[int], "pairProducts": list[int], "totalValue": float}."""
+    """Return {"selected": list[int], "pair_products": list[int], "total_value": float}."""
     n = len(power)
     P = len(pairs)
 

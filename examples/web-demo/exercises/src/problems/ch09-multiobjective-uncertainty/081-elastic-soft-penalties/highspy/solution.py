@@ -10,7 +10,7 @@ def solve(
     machine_cap,
     min_total,
 ) -> dict:
-    """Return {"quantities": list[float], "shortfalls": list[float], "excesses": list[float], "totalCost": float}."""
+    """Return {"quantities": list[float], "shortfalls": list[float], "excesses": list[float], "total_cost": float}."""
     n = len(unit_costs)
 
     prob = pulp.LpProblem("elastic_soft_penalties", pulp.LpMinimize)
@@ -35,5 +35,5 @@ def solve(
         "quantities": [float(pulp.value(v)) for v in quantities],
         "shortfalls": [float(pulp.value(v)) for v in shortfalls],
         "excesses": [float(pulp.value(v)) for v in excesses],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

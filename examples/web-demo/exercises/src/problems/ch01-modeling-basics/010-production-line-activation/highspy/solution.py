@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(margins, fixed_costs, capacities, material_usages, material_cap) -> dict:
-    """Return {"open": list[int], "quantities": list[float], "netProfit": float}."""
+    """Return {"open": list[int], "quantities": list[float], "net_profit": float}."""
     mat_usages = material_usages
     mat_cap = material_cap
     n = len(margins)
@@ -22,5 +22,5 @@ def solve(margins, fixed_costs, capacities, material_usages, material_cap) -> di
     return {
         "open": [round(pulp.value(v)) for v in open_vars],
         "quantities": [float(pulp.value(v)) for v in quantities],
-        "netProfit": float(pulp.value(prob.objective)),
+        "net_profit": float(pulp.value(prob.objective)),
     }

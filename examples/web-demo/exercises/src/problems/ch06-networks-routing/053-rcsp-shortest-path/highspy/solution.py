@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(node_count, source, sink, max_resource, edges) -> dict:
-    """Return {"selected": list[int], "totalCost": float}."""
+    """Return {"selected": list[int], "total_cost": float}."""
     n = node_count
     s = source
     t = sink
@@ -23,5 +23,5 @@ def solve(node_count, source, sink, max_resource, edges) -> dict:
 
     return {
         "selected": [round(pulp.value(v)) for v in x],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

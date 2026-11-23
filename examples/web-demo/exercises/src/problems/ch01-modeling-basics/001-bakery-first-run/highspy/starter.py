@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(flour_cap, butter_cap) -> dict:
-    """Return {"croissants": float, "loaves": float, "totalProfit": float}."""
+    """Return {"croissants": float, "loaves": float, "total_profit": float}."""
     prob = pulp.LpProblem("Bakery", pulp.LpMaximize)
 
     c = pulp.LpVariable("croissants", lowBound=0)
@@ -17,5 +17,5 @@ def solve(flour_cap, butter_cap) -> dict:
     return {
         "croissants": float(pulp.value(c)),
         "loaves": float(pulp.value(l)),
-        "totalProfit": float(pulp.value(prob.objective)),
+        "total_profit": float(pulp.value(prob.objective)),
     }

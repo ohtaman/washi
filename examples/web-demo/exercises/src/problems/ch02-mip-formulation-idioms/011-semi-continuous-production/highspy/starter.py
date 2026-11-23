@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(margins, min_batches, max_batches, resource_usages, resource_cap) -> dict:
-    """Return {"active": list[int], "quantities": list[float], "totalMargin": float}."""
+    """Return {"active": list[int], "quantities": list[float], "total_margin": float}."""
     usages = resource_usages
     cap = resource_cap
     n = len(margins)

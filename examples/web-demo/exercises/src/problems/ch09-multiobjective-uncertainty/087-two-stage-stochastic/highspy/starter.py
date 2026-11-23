@@ -9,6 +9,6 @@ def solve(
     probs,
     demands,
 ) -> dict:
-    """Return {"orders": list[float], "expectedCost": float}."""
+    """Return {"orders": list[float], "expected_cost": float}."""
     # TODO: Build and solve the two-stage stochastic LP, then return the output.
     raise NotImplementedError("Not implemented")

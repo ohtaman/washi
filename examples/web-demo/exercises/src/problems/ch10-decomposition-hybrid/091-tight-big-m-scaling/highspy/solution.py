@@ -23,7 +23,7 @@ def _solve_variant(fixed_costs, unit_costs, capacities, demand, relax: bool):
 
 
 def solve(fixed_costs, unit_costs, capacities, demand) -> dict:
-    """Return {"open": list[int], "quantities": list[float], "totalCost": float, "lpBound": float}."""
+    """Return {"open": list[int], "quantities": list[float], "total_cost": float, "lp_bound": float}."""
     lp_prob, _, _ = _solve_variant(fixed_costs, unit_costs, capacities, demand, relax=True)
     mip_prob, open_vars, quantities = _solve_variant(
         fixed_costs, unit_costs, capacities, demand, relax=False
@@ -32,6 +32,6 @@ def solve(fixed_costs, unit_costs, capacities, demand) -> dict:
     return {
         "open": [round(pulp.value(v)) for v in open_vars],
         "quantities": [float(pulp.value(v)) for v in quantities],
-        "totalCost": float(pulp.value(mip_prob.objective)),
-        "lpBound": float(pulp.value(lp_prob.objective)),
+        "total_cost": float(pulp.value(mip_prob.objective)),
+        "lp_bound": float(pulp.value(lp_prob.objective)),
     }

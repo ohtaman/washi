@@ -11,7 +11,7 @@ def solve(
     min_suppliers,
     max_suppliers,
 ) -> dict:
-    """Return {"active": list[int], "allocations": list[list[float]], "totalCost": float}."""
+    """Return {"active": list[int], "allocations": list[list[float]], "total_cost": float}."""
     n_sup = len(fixed_costs)
     n_plants = len(demands)
 
@@ -47,5 +47,5 @@ def solve(
     return {
         "active": [round(pulp.value(v)) for v in active],
         "allocations": [[float(pulp.value(v)) for v in row] for row in allocations],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

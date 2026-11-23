@@ -9,7 +9,7 @@ def solve(
     resource_usages,
     max_resources,
 ) -> dict:
-    """Return {"quantities": list[float], "duals": list[float], "optimalCost": float}."""
+    """Return {"quantities": list[float], "duals": list[float], "optimal_cost": float}."""
     min_reqs = min_requirements
     usages = resource_usages
     max_res = max_resources
@@ -33,5 +33,5 @@ def solve(
     return {
         "quantities": [float(pulp.value(v)) for v in quantities],
         "duals": [0.0 if abs(c.pi) < 1e-9 else float(c.pi) for c in req_constrs + cap_constrs],
-        "optimalCost": float(pulp.value(prob.objective)),
+        "optimal_cost": float(pulp.value(prob.objective)),
     }

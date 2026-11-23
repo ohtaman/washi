@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict:
-    """Return {"routes": list[list[int]], "totalDistance": float}."""
+    """Return {"routes": list[list[int]], "total_distance": float}."""
     reqs = requests
     cap = capacity
     max_v = max_vehicles
@@ -100,5 +100,5 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
 
     return {
         "routes": routes,
-        "totalDistance": float(pulp.value(prob.objective)),
+        "total_distance": float(pulp.value(prob.objective)),
     }

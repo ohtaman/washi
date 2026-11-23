@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(interest, requirements, caps, prerequisites, time_conflicts) -> dict:
-    """Return {"take": list[int], "totalInterest": float}."""
+    """Return {"take": list[int], "total_interest": float}."""
     n = len(interest)
 
     prob = pulp.LpProblem("degree_course_planner", pulp.LpMaximize)

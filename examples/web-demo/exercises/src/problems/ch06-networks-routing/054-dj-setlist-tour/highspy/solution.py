@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(transitions) -> dict:
-    """Return {"setlist": list[int], "totalCost": float}."""
+    """Return {"setlist": list[int], "total_cost": float}."""
     n = len(transitions)
 
     prob = pulp.LpProblem("dj_setlist_tour", pulp.LpMinimize)
@@ -40,5 +40,5 @@ def solve(transitions) -> dict:
 
     return {
         "setlist": setlist,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

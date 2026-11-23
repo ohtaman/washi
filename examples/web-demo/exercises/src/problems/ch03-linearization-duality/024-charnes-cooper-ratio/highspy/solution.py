@@ -10,7 +10,7 @@ def solve(
     capacities,
     upper_bounds,
 ) -> dict:
-    """Return {"x": list[float], "maxRatio": float}."""
+    """Return {"x": list[float], "max_ratio": float}."""
     num_c = num_coeffs
     num_0 = num_const
     den_c = den_coeffs
@@ -36,5 +36,5 @@ def solve(
     t_val = float(pulp.value(t))
     return {
         "x": [float(pulp.value(v)) / t_val for v in y],
-        "maxRatio": float(pulp.value(prob.objective)),
+        "max_ratio": float(pulp.value(prob.objective)),
     }

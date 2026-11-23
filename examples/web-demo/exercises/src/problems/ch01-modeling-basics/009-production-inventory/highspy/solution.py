@@ -12,7 +12,7 @@ def solve(
     ot_cost,
     hold_cost,
 ) -> dict:
-    """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "totalCost": float}."""
+    """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "total_cost": float}."""
     init_inv = initial_inventory
     min_end_inv = min_final_inventory
     T = len(demands)
@@ -45,5 +45,5 @@ def solve(
         "regular": [float(pulp.value(v)) for v in regular],
         "overtime": [float(pulp.value(v)) for v in overtime],
         "inventory": [float(pulp.value(v)) for v in inventory],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

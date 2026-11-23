@@ -11,6 +11,6 @@ def solve(
     initial_inventory,
     window_len,
 ) -> dict:
-    """Return {"produced": list[float], "inventories": list[float], "shortfalls": list[float], "totalCost": float}."""
+    """Return {"produced": list[float], "inventories": list[float], "shortfalls": list[float], "total_cost": float}."""
     # TODO: Run the rolling-horizon MPC loop over all periods and return the output.
     raise NotImplementedError("Not implemented")

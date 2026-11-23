@@ -11,7 +11,7 @@ def solve(
     peak_weight,
     pairs,
 ) -> dict:
-    """Return {"selected": list[int], "pairProducts": list[int], "peakLoad": float, "totalCost": float}."""
+    """Return {"selected": list[int], "pair_products": list[int], "peak_load": float, "total_cost": float}."""
     n = len(base_costs)
     m_zones = len(loads)
     P = len(pairs)
@@ -47,7 +47,7 @@ def solve(
 
     return {
         "selected": [round(pulp.value(v)) for v in selected],
-        "pairProducts": [round(pulp.value(v)) for v in pair_products],
-        "peakLoad": float(pulp.value(peak_load)),
-        "totalCost": float(pulp.value(prob.objective)),
+        "pair_products": [round(pulp.value(v)) for v in pair_products],
+        "peak_load": float(pulp.value(peak_load)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

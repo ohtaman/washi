@@ -9,7 +9,7 @@ def solve(
     overtime_penalties,
     total_regular_cap,
 ) -> dict:
-    """Return {"regular": list[float], "shortage": list[float], "totalCost": float}."""
+    """Return {"regular": list[float], "shortage": list[float], "total_cost": float}."""
     min_reg = min_regular
     max_reg = max_regular
     reg_costs = regular_costs

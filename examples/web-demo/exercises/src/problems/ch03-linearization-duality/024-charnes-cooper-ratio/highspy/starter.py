@@ -10,7 +10,7 @@ def solve(
     capacities,
     upper_bounds,
 ) -> dict:
-    """Return {"x": list[float], "maxRatio": float}."""
+    """Return {"x": list[float], "max_ratio": float}."""
     num_c = num_coeffs
     num_0 = num_const
     den_c = den_coeffs

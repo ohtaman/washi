@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(costs, yields, min_requirements) -> dict:
-    """Return {"quantities": list[float], "reducedCosts": list[float], "optimalCost": float}."""
+    """Return {"quantities": list[float], "reduced_costs": list[float], "optimal_cost": float}."""
     min_reqs = min_requirements
     n = len(costs)
 

@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(supplies, demands, unit_costs) -> dict:
-    """Return {"shipments": list[list[float]], "totalCost": float}."""
+    """Return {"shipments": list[list[float]], "total_cost": float}."""
     n_s = len(supplies)
     n_d = len(demands)
 
@@ -25,5 +25,5 @@ def solve(supplies, demands, unit_costs) -> dict:
 
     return {
         "shipments": [[float(pulp.value(v)) for v in row] for row in shipments],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

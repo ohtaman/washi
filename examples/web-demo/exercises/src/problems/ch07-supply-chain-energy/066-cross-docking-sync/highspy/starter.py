@@ -12,6 +12,6 @@ def solve(
     transfer_times,
     delay_cost,
 ) -> dict:
-    """Return {"inDoor": list[int], "outDoor": list[int], "flows": list[list[list[float]]], "departures": list[float], "totalCost": float}."""
+    """Return {"in_door": list[int], "out_door": list[int], "flows": list[list[list[float]]], "departures": list[float], "total_cost": float}."""
     # TODO: Build and solve the model, then return the output.
     raise NotImplementedError("Not implemented")

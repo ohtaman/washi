@@ -9,7 +9,7 @@ def solve(
     min_ratios,
     max_ratios,
 ) -> dict:
-    """Return {"amounts": list[float], "totalCost": float}."""
+    """Return {"amounts": list[float], "total_cost": float}."""
     target = target_batch
     n_raw = len(costs)
     n_elem = len(min_ratios)
@@ -33,5 +33,5 @@ def solve(
 
     return {
         "amounts": [float(pulp.value(v)) for v in amounts],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

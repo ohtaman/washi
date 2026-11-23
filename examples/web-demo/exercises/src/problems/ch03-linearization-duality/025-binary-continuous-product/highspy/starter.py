@@ -9,7 +9,7 @@ def solve(
     contract_fees,
     total_demand,
 ) -> dict:
-    """Return {"b": list[int], "x": list[float], "z": list[float], "totalCost": float}."""
+    """Return {"b": list[int], "x": list[float], "z": list[float], "total_cost": float}."""
     min_ord = min_orders
     max_ord = max_orders
     fees = contract_fees

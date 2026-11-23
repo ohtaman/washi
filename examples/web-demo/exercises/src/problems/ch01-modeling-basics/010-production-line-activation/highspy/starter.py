@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(margins, fixed_costs, capacities, material_usages, material_cap) -> dict:
-    """Return {"open": list[int], "quantities": list[float], "netProfit": float}."""
+    """Return {"open": list[int], "quantities": list[float], "net_profit": float}."""
     mat_usages = material_usages
     mat_cap = material_cap
     n = len(margins)
@@ -16,5 +16,5 @@ def solve(margins, fixed_costs, capacities, material_usages, material_cap) -> di
     # 1. Enforce quantities[i] <= capacities[i] * open_vars[i] for each i
     # 2. Enforce shared material budget <= mat_cap
     # 3. Set objective `prob += ...` on net profit, call `prob.solve(pulp.HiGHS(msg=False))`,
-    #    and return {"open": ..., "quantities": ..., "netProfit": ...}
+    #    and return {"open": ..., "quantities": ..., "net_profit": ...}
     raise NotImplementedError("Not implemented")

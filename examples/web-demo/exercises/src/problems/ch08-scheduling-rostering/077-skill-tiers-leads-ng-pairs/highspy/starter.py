@@ -9,6 +9,6 @@ def solve(
     ng_pairs,
     shift_costs,
 ) -> dict:
-    """Return {"schedule": list[list[int]], "totalCost": float}."""
+    """Return {"schedule": list[list[int]], "total_cost": float}."""
     # TODO: Build and solve the skill-tiered rostering model, then return the output.
     raise NotImplementedError("Not implemented")

@@ -10,7 +10,7 @@ def solve(
     max_overtime,
     overtime_cost,
 ) -> dict:
-    """Return {"assignedVenue": list[int], "assignedSlot": list[int], "overtime": list[list[float]], "netScore": float}."""
+    """Return {"assigned_venue": list[int], "assigned_slot": list[int], "overtime": list[list[float]], "net_score": float}."""
     reg_len = regular_length
     max_ot = max_overtime
     ot_cost = overtime_cost
@@ -72,8 +72,8 @@ def solve(
     ]
 
     return {
-        "assignedVenue": assigned_venue,
-        "assignedSlot": assigned_slot,
+        "assigned_venue": assigned_venue,
+        "assigned_slot": assigned_slot,
         "overtime": ot_vals,
-        "netScore": float(pulp.value(prob.objective)),
+        "net_score": float(pulp.value(prob.objective)),
     }

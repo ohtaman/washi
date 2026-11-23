@@ -17,7 +17,7 @@ def solve(
     eta_charge,
     eta_discharge,
 ) -> dict:
-    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
+    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peak_load": float, "total_cost": float}."""
     bat_cap = battery_cap
     p_max = max_power
     eta_c = eta_charge
@@ -37,7 +37,7 @@ def solve(
         for t in range(T)
     ]
     grid_load = [pulp.LpVariable(f"grid_{t}", lowBound=0) for t in range(T)]
-    peak_load = pulp.LpVariable("peakLoad", lowBound=0)
+    peak_load = pulp.LpVariable("peak_load", lowBound=0)
 
     for t in range(T):
         prev_inv = 0 if t == 0 else inventory[t - 1]
@@ -73,6 +73,6 @@ def solve(
         "charge": [float(pulp.value(v)) for v in charge],
         "discharge": [float(pulp.value(v)) for v in discharge],
         "soc": [float(pulp.value(v)) for v in soc],
-        "peakLoad": float(pulp.value(peak_load)),
-        "totalCost": float(pulp.value(prob.objective)),
+        "peak_load": float(pulp.value(peak_load)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

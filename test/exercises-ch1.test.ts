@@ -75,7 +75,7 @@ def to_jsonable(obj):
         if isinstance(obj, np.ndarray):
             return [to_jsonable(v) for v in obj.tolist()]
     if isinstance(obj, dict):
-        return {str(k): to_jsonable(v) for k, v in obj.items()}
+        return {to_camel(str(k)): to_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [to_jsonable(v) for v in obj]
     raise TypeError(f"Unsupported output type: {type(obj).__name__}")
@@ -83,6 +83,10 @@ def to_jsonable(obj):
 def to_snake(name):
     import re
     return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", name).lower()
+
+def to_camel(name):
+    import re
+    return re.sub(r"_([a-z0-9])", lambda m: m.group(1).upper(), name)
 
 def call_solve(fn, inp):
     import inspect

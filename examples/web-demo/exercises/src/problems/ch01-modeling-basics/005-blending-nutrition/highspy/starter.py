@@ -9,7 +9,7 @@ def solve(
     min_ratios,
     max_ratios,
 ) -> dict:
-    """Return {"amounts": list[float], "totalCost": float}."""
+    """Return {"amounts": list[float], "total_cost": float}."""
     target = target_batch
 
     prob = pulp.LpProblem("blending", pulp.LpMinimize)
@@ -21,5 +21,5 @@ def solve(
 
     # TODO: Add total weight == target constraint, element min/max ratio constraints,
     # set total cost objective, call prob.solve(pulp.HiGHS(msg=False)),
-    # and return {"amounts": [...], "totalCost": ...}.
+    # and return {"amounts": [...], "total_cost": ...}.
     raise NotImplementedError("Not implemented")

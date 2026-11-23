@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(demand, suppliers) -> dict:
-    """Return {"tierSelected": list[list[int]], "tierQuantities": list[list[float]], "totalCost": float}."""
+    """Return {"tier_selected": list[list[int]], "tier_quantities": list[list[float]], "total_cost": float}."""
 
     prob = pulp.LpProblem("volume_discount", pulp.LpMinimize)
     tier_sel = [
@@ -29,7 +29,7 @@ def solve(demand, suppliers) -> dict:
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "tierSelected": [[round(pulp.value(v)) for v in row] for row in tier_sel],
-        "tierQuantities": [[float(pulp.value(v)) for v in row] for row in tier_qty],
-        "totalCost": float(pulp.value(prob.objective)),
+        "tier_selected": [[round(pulp.value(v)) for v in row] for row in tier_sel],
+        "tier_quantities": [[float(pulp.value(v)) for v in row] for row in tier_qty],
+        "total_cost": float(pulp.value(prob.objective)),
     }

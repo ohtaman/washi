@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(processing_times, setup_matrix, due_dates) -> dict:
-    """Return {"order": list[int], "completions": list[float], "totalTardiness": float}."""
+    """Return {"order": list[int], "completions": list[float], "total_tardiness": float}."""
     p = processing_times
     s = setup_matrix
     d = due_dates
@@ -50,5 +50,5 @@ def solve(processing_times, setup_matrix, due_dates) -> dict:
     return {
         "order": order,
         "completions": [float(pulp.value(v)) for v in completions],
-        "totalTardiness": float(pulp.value(prob.objective)),
+        "total_tardiness": float(pulp.value(prob.objective)),
     }

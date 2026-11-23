@@ -11,7 +11,7 @@ def solve(
     lost_sale_penalty,
     initial_inventory,
 ) -> dict:
-    """Return {"production": list[float], "sales": list[float], "inventory": list[float], "backlog": list[float], "lostSales": list[float], "netProfit": float}."""
+    """Return {"production": list[float], "sales": list[float], "inventory": list[float], "backlog": list[float], "lost_sales": list[float], "net_profit": float}."""
     lost_penalty = lost_sale_penalty
     init_inv = initial_inventory
     T = len(demands)
@@ -44,6 +44,6 @@ def solve(
         "sales": [float(pulp.value(v)) for v in sales],
         "inventory": [float(pulp.value(v)) for v in inventory],
         "backlog": [float(pulp.value(v)) for v in backlog],
-        "lostSales": [float(pulp.value(v)) for v in lost_sales],
-        "netProfit": float(pulp.value(prob.objective)),
+        "lost_sales": [float(pulp.value(v)) for v in lost_sales],
+        "net_profit": float(pulp.value(prob.objective)),
     }

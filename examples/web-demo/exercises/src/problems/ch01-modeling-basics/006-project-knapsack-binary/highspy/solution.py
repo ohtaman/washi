@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(budget, costs, values) -> dict:
-    """Return {"selected": list[int], "totalValue": float}."""
+    """Return {"selected": list[int], "total_value": float}."""
     n = len(costs)
 
     prob = pulp.LpProblem("project_knapsack", pulp.LpMaximize)
@@ -15,5 +15,5 @@ def solve(budget, costs, values) -> dict:
 
     return {
         "selected": [round(pulp.value(v)) for v in selected],
-        "totalValue": float(pulp.value(prob.objective)),
+        "total_value": float(pulp.value(prob.objective)),
     }

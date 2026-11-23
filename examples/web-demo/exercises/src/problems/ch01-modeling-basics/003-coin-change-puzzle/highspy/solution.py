@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(denominations, max_counts, target_amount) -> dict:
-    """Return {"counts": list[int], "totalCoins": int}."""
+    """Return {"counts": list[int], "total_coins": int}."""
     prob = pulp.LpProblem("coin_change", pulp.LpMinimize)
 
 
@@ -18,5 +18,5 @@ def solve(denominations, max_counts, target_amount) -> dict:
 
     return {
         "counts": [round(pulp.value(c)) for c in counts],
-        "totalCoins": round(pulp.value(prob.objective)),
+        "total_coins": round(pulp.value(prob.objective)),
     }

@@ -9,7 +9,7 @@ def solve(
     probs,
     demands,
 ) -> dict:
-    """Return {"orders": list[float], "expectedCost": float}."""
+    """Return {"orders": list[float], "expected_cost": float}."""
     n = len(order_costs)
     S = len(probs)
 
@@ -38,5 +38,5 @@ def solve(
 
     return {
         "orders": [float(pulp.value(v)) for v in orders],
-        "expectedCost": float(pulp.value(prob.objective)),
+        "expected_cost": float(pulp.value(prob.objective)),
     }

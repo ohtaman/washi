@@ -12,7 +12,7 @@ def solve(
     ot_cost,
     hold_cost,
 ) -> dict:
-    """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "totalCost": float}."""
+    """Return {"regular": list[float], "overtime": list[float], "inventory": list[float], "total_cost": float}."""
     init_inv = initial_inventory
     min_end_inv = min_final_inventory
     T = len(demands)
@@ -33,5 +33,5 @@ def solve(
     # TODO:
     # 1. For each period t in range(T), add the inventory balance constraint == demands[t]
     # 2. Set objective `prob += ...` on total regular + overtime + holding cost and call `prob.solve(pulp.HiGHS(msg=False))`
-    # 3. Return {"regular": [...], "overtime": [...], "inventory": [...], "totalCost": float(pulp.value(prob.objective))}
+    # 3. Return {"regular": [...], "overtime": [...], "inventory": [...], "total_cost": float(pulp.value(prob.objective))}
     raise NotImplementedError("Not implemented")

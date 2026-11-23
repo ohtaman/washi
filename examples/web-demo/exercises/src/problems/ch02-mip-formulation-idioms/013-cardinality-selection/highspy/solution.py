@@ -9,7 +9,7 @@ def solve(
     exact_groups,
     at_least_one_groups,
 ) -> dict:
-    """Return {"selected": list[int], "totalValue": float}."""
+    """Return {"selected": list[int], "total_value": float}."""
     n = len(costs)
 
     prob = pulp.LpProblem("cardinality_selection", pulp.LpMaximize)
@@ -28,5 +28,5 @@ def solve(
 
     return {
         "selected": [round(pulp.value(v)) for v in selected],
-        "totalValue": float(pulp.value(prob.objective)),
+        "total_value": float(pulp.value(prob.objective)),
     }

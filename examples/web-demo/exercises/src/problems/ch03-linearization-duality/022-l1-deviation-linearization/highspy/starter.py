@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(targets, weights, upper_bounds, costs, budget, total_output) -> dict:
-    """Return {"allocations": list[float], "totalDeviation": float}."""
+    """Return {"allocations": list[float], "total_deviation": float}."""
     n = len(targets)
 
     prob = pulp.LpProblem("l1_deviation", pulp.LpMinimize)

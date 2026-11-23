@@ -11,7 +11,7 @@ def solve(
     hold_costs,
     capacities,
 ) -> dict:
-    """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "totalCost": float}."""
+    """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "total_cost": float}."""
     ext_demands = external_demands
     init_inv = initial_inventory
     n_items = len(ext_demands)
@@ -58,5 +58,5 @@ def solve(
         "setups": [[round(pulp.value(v)) for v in row] for row in setups],
         "production": [[round(pulp.value(v)) for v in row] for row in production],
         "inventory": [[float(pulp.value(v)) for v in row] for row in inventory],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

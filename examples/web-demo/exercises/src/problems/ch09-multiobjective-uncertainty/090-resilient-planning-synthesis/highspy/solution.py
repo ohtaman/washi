@@ -13,7 +13,7 @@ def solve(
     disruption_cost,
     shortfall_penalty,
 ) -> dict:
-    """Return {"committed": list[int], "recovered": list[list[int]], "totalCost": float}."""
+    """Return {"committed": list[int], "recovered": list[list[int]], "total_cost": float}."""
     shortfall_pen = shortfall_penalty
     n = len(fixed_costs)
     S = len(probs)
@@ -48,5 +48,5 @@ def solve(
     return {
         "committed": [round(pulp.value(v)) for v in y],
         "recovered": [[round(pulp.value(v)) for v in row] for row in w],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

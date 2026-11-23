@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(margins, min_batches, max_batches, resource_usages, resource_cap) -> dict:
-    """Return {"active": list[int], "quantities": list[float], "totalMargin": float}."""
+    """Return {"active": list[int], "quantities": list[float], "total_margin": float}."""
     usages = resource_usages
     cap = resource_cap
     n = len(margins)
@@ -23,5 +23,5 @@ def solve(margins, min_batches, max_batches, resource_usages, resource_cap) -> d
     return {
         "active": [round(pulp.value(v)) for v in active],
         "quantities": [float(pulp.value(v)) for v in quantities],
-        "totalMargin": float(pulp.value(prob.objective)),
+        "total_margin": float(pulp.value(prob.objective)),
     }

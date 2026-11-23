@@ -11,6 +11,6 @@ def solve(
     min_suppliers,
     max_suppliers,
 ) -> dict:
-    """Return {"active": list[int], "allocations": list[list[float]], "totalCost": float}."""
+    """Return {"active": list[int], "allocations": list[list[float]], "total_cost": float}."""
     # TODO: Build and solve the model, then return the output.
     raise NotImplementedError("Not implemented")

@@ -9,7 +9,7 @@ def solve(
     overtime_penalties,
     total_regular_cap,
 ) -> dict:
-    """Return {"regular": list[float], "shortage": list[float], "totalCost": float}."""
+    """Return {"regular": list[float], "shortage": list[float], "total_cost": float}."""
     min_reg = min_regular
     max_reg = max_regular
     reg_costs = regular_costs
@@ -35,5 +35,5 @@ def solve(
     return {
         "regular": [float(pulp.value(v)) for v in regular],
         "shortage": [float(pulp.value(v)) for v in shortage],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

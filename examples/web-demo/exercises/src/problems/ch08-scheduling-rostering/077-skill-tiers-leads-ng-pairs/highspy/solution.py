@@ -9,7 +9,7 @@ def solve(
     ng_pairs,
     shift_costs,
 ) -> dict:
-    """Return {"schedule": list[list[int]], "totalCost": float}."""
+    """Return {"schedule": list[list[int]], "total_cost": float}."""
     num_staff = len(shift_costs)
     num_days = len(demands)
     num_shifts = len(demands[0])
@@ -68,5 +68,5 @@ def solve(
 
     return {
         "schedule": schedule,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

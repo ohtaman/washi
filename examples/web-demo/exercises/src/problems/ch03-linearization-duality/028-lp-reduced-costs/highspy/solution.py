@@ -2,7 +2,7 @@ import pulp
 
 
 def solve(costs, yields, min_requirements) -> dict:
-    """Return {"quantities": list[float], "reducedCosts": list[float], "optimalCost": float}."""
+    """Return {"quantities": list[float], "reduced_costs": list[float], "optimal_cost": float}."""
     min_reqs = min_requirements
     n = len(costs)
 
@@ -18,6 +18,6 @@ def solve(costs, yields, min_requirements) -> dict:
 
     return {
         "quantities": [float(pulp.value(v)) for v in quantities],
-        "reducedCosts": [0.0 if abs(v.dj) < 1e-9 else float(v.dj) for v in quantities],
-        "optimalCost": float(pulp.value(prob.objective)),
+        "reduced_costs": [0.0 if abs(v.dj) < 1e-9 else float(v.dj) for v in quantities],
+        "optimal_cost": float(pulp.value(prob.objective)),
     }
