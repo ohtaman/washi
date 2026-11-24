@@ -598,9 +598,6 @@ export function linearizeModelForMip(
   }
 
   function getBinVarForBoolElement(el: LogicElement, originalName: string): Var {
-    if (el instanceof BoolVarWrapper) {
-      return el.wrappedVar;
-    }
     if (el instanceof BoolVar) {
       const v = boolVarToBinary.get(el);
       if (!v) {
@@ -1163,7 +1160,7 @@ export function linearizeModelForMip(
               "or",
               row.map((val, j) => new Constraint(flatVars[j], "!=", val, `${originalName}_ntbl_${r}_${j}`))
             );
-            linearizeTopLevelElement(disj, `${originalName}_ntbl_${r}`);
+            linearizeTopLevelElement(disj, originalName, `${originalName}_ntbl_${r}`);
           }
         }
         return;
@@ -1280,9 +1277,174 @@ export function linearizeModelForMip(
     }
   }
 
-  function linearizeTopLevelElement(el: LogicElement, originalName: string): void {
+  function containsConstraint(el: LogicElement): boolean {
+    if (el instanceof Constraint) return true;
+    if (el instanceof BoolOp) {
+      return el.children.some((c) => containsConstraint(c));
+    }
+    return false;
+  }
+
+  function referencesVar(el: LogicElement, target: Var): boolean {
     if (el instanceof Constraint) {
-      lowerTopLevelLinearRow(el.lhs, el.sense, el.rhs, originalName, originalName);
+      if ((el.lhs.terms.get(target) ?? 0) !== 0) return true;
+      for (const nl of el.lhs.nonlinearTerms) {
+        if (nl.coeff === 0) continue;
+        const atom = nl.atom;
+        if (atom.kind === "abs" && (atom.arg.terms.get(target) ?? 0) !== 0) return true;
+        if ((atom.kind === "max" || atom.kind === "min") && atom.args.some((a) => (a.terms.get(target) ?? 0) !== 0)) {
+          return true;
+        }
+        if (atom.kind === "at" && ((atom.index.terms.get(target) ?? 0) !== 0 || atom.array.some((a) => (a.terms.get(target) ?? 0) !== 0))) {
+          return true;
+        }
+      }
+      return false;
+    }
+    if (el instanceof BoolOp) {
+      return el.children.some((c) => referencesVar(c, target));
+    }
+    return false;
+  }
+
+  function linearizeImplication(
+    anteBin: Var,
+    consequent: LogicElement,
+    originalName: string,
+    rowNamePrefix: string
+  ): void {
+    if (consequent instanceof Constraint) {
+      linearizeIndicator(anteBin, flattenConstraintExact(consequent, originalName), 1, rowNamePrefix, originalName);
+      return;
+    }
+
+    if (consequent instanceof BoolVar || consequent instanceof GlobalConstraint) {
+      const consBin = getBinVarForBoolElement(consequent, originalName);
+      emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, rowNamePrefix), originalName);
+      return;
+    }
+
+    if (consequent instanceof BoolOp) {
+      if (consequent.op === "and") {
+        for (let i = 0; i < consequent.children.length; i++) {
+          linearizeImplication(anteBin, consequent.children[i], originalName, `${rowNamePrefix}_and_${i}`);
+        }
+        return;
+      }
+
+      if (consequent.op === "not") {
+        const notChild = consequent.children[0];
+        if (notChild instanceof Constraint) {
+          linearizeNegatedConstraint(anteBin, flattenConstraintExact(notChild, originalName), 1, rowNamePrefix, originalName);
+          return;
+        }
+        if (notChild instanceof BoolOp) {
+          if (notChild.op === "not") {
+            linearizeImplication(anteBin, notChild.children[0], originalName, rowNamePrefix);
+            return;
+          }
+          if (notChild.op === "or") {
+            for (let i = 0; i < notChild.children.length; i++) {
+              linearizeImplication(anteBin, new BoolOp("not", [notChild.children[i]]), originalName, `${rowNamePrefix}_not_or_${i}`);
+            }
+            return;
+          }
+          if (notChild.op === "and") {
+            linearizeImplication(
+              anteBin,
+              new BoolOp("or", notChild.children.map((sub) => new BoolOp("not", [sub]))),
+              originalName,
+              rowNamePrefix
+            );
+            return;
+          }
+          if (notChild.op === "implies") {
+            linearizeImplication(anteBin, notChild.children[0], originalName, `${rowNamePrefix}_not_imp_0`);
+            linearizeImplication(anteBin, new BoolOp("not", [notChild.children[1]]), originalName, `${rowNamePrefix}_not_imp_1`);
+            return;
+          }
+        }
+        const notChildBin = getBinVarForBoolElement(notChild, originalName);
+        emitConstraint(new Constraint(linExpr([[anteBin, 1], [notChildBin, 1]], 0), "<=", 1, rowNamePrefix), originalName);
+        return;
+      }
+
+      if (consequent.op === "or") {
+        if (consequent.children.length === 0) {
+          emitConstraint(new Constraint(linExpr([[anteBin, 1]], 0), "<=", 0, rowNamePrefix), originalName);
+          return;
+        }
+        if (consequent.children.length === 1) {
+          linearizeImplication(anteBin, consequent.children[0], originalName, rowNamePrefix);
+          return;
+        }
+        if (!consequent.children.some((c) => containsConstraint(c))) {
+          const childBins = consequent.children.map((c) => getBinVarForBoolElement(c, originalName));
+          const terms: [Var, number][] = [[anteBin, -1], ...childBins.map((cb): [Var, number] => [cb, 1])];
+          emitConstraint(new Constraint(linExpr(terms, 0), ">=", 0, rowNamePrefix), originalName);
+          return;
+        }
+        const branchVars: Var[] = [];
+        for (let i = 0; i < consequent.children.length; i++) {
+          const child = consequent.children[i];
+          if (child instanceof BoolVar) {
+            branchVars.push(getBinVarForBoolElement(child, originalName));
+          } else {
+            const z = new Var({ name: getUniqueAuxName(`imp_or_${i}`), type: "Binary", lb: 0, ub: 1 });
+            variables.push(z);
+            branchVars.push(z);
+            linearizeImplication(z, child, originalName, `${rowNamePrefix}_or_${i}`);
+          }
+        }
+        const terms: [Var, number][] = [[anteBin, -1], ...branchVars.map((bv): [Var, number] => [bv, 1])];
+        emitConstraint(new Constraint(linExpr(terms, 0), ">=", 0, rowNamePrefix), originalName);
+        return;
+      }
+
+      if (consequent.op === "implies") {
+        const [subAnte, subCons] = consequent.children;
+        let subAnteBin: Var;
+        if (subAnte instanceof Constraint) {
+          const flatSubAnte = flattenConstraintExact(subAnte, originalName);
+          subAnteBin = new Var({ name: getUniqueAuxName("ante"), type: "Binary", lb: 0, ub: 1 });
+          variables.push(subAnteBin);
+          linearizeNegatedConstraint(subAnteBin, flatSubAnte, 0, `${rowNamePrefix}_ante_neg`, originalName);
+        } else {
+          subAnteBin = getBinVarForBoolElement(subAnte, originalName);
+        }
+        if (subCons instanceof BoolVar) {
+          const consBin = getBinVarForBoolElement(subCons, originalName);
+          emitConstraint(
+            new Constraint(linExpr([[consBin, 1], [anteBin, -1], [subAnteBin, -1]], 0), ">=", -1, rowNamePrefix),
+            originalName
+          );
+          return;
+        }
+        const jointBin = new Var({ name: getUniqueAuxName("imp_joint"), type: "Binary", lb: 0, ub: 1 });
+        variables.push(jointBin);
+        emitConstraint(
+          new Constraint(linExpr([[jointBin, 1], [anteBin, -1], [subAnteBin, -1]], 0), ">=", -1, `${rowNamePrefix}_joint`),
+          originalName
+        );
+        linearizeImplication(jointBin, subCons, originalName, rowNamePrefix);
+        return;
+      }
+
+      const consBin = getBinVarForBoolElement(consequent, originalName);
+      emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, rowNamePrefix), originalName);
+      return;
+    }
+
+    throw new Error(`Unsupported logical element in implication consequent "${originalName}": ${consequent}`);
+  }
+
+  function linearizeTopLevelElement(
+    el: LogicElement,
+    originalName: string,
+    rowNamePrefix: string = originalName
+  ): void {
+    if (el instanceof Constraint) {
+      lowerTopLevelLinearRow(el.lhs, el.sense, el.rhs, rowNamePrefix, originalName);
       return;
     }
 
@@ -1294,7 +1456,7 @@ export function linearizeModelForMip(
     // Case A: Pure BoolVar: el == true  <=>  binVar >= 1
     if (el instanceof BoolVar) {
       const binVar = getBinVarForBoolElement(el, originalName);
-      emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), ">=", 1, originalName), originalName);
+      emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), ">=", 1, rowNamePrefix), originalName);
       return;
     }
 
@@ -1305,7 +1467,7 @@ export function linearizeModelForMip(
         const child = el.children[0];
         if (child instanceof BoolVar) {
           const binVar = getBinVarForBoolElement(child, originalName);
-          emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), "<=", 0, originalName), originalName);
+          emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), "<=", 0, rowNamePrefix), originalName);
           return;
         }
         if (child instanceof GlobalConstraint) {
@@ -1318,89 +1480,77 @@ export function linearizeModelForMip(
         }
         if (child instanceof BoolOp) {
           if (child.op === "not") {
-            linearizeTopLevelElement(child.children[0], originalName);
+            linearizeTopLevelElement(child.children[0], originalName, rowNamePrefix);
             return;
           }
           if (child.op === "or") {
-            for (const sub of child.children) {
-              linearizeTopLevelElement(new BoolOp("not", [sub]), originalName);
+            for (let i = 0; i < child.children.length; i++) {
+              linearizeTopLevelElement(new BoolOp("not", [child.children[i]]), originalName, `${rowNamePrefix}_not_or_${i}`);
             }
             return;
           }
           if (child.op === "and") {
             linearizeTopLevelElement(
               new BoolOp("or", child.children.map((sub) => new BoolOp("not", [sub]))),
-              originalName
+              originalName,
+              rowNamePrefix
             );
             return;
           }
           if (child.op === "implies") {
-            linearizeTopLevelElement(child.children[0], originalName);
-            linearizeTopLevelElement(new BoolOp("not", [child.children[1]]), originalName);
+            linearizeTopLevelElement(child.children[0], originalName, `${rowNamePrefix}_not_imp_0`);
+            linearizeTopLevelElement(new BoolOp("not", [child.children[1]]), originalName, `${rowNamePrefix}_not_imp_1`);
             return;
           }
         }
         // not of xor / remaining compound: aux == 0
         const aux = getBinVarForBoolElement(child, originalName);
-        emitConstraint(new Constraint(linExpr([[aux, 1]], 0), "<=", 0, originalName), originalName);
+        emitConstraint(new Constraint(linExpr([[aux, 1]], 0), "<=", 0, rowNamePrefix), originalName);
         return;
       }
 
       // B.2 AND: and(c1, c2, ...)  <=>  each child must hold as a top-level constraint
       if (el.op === "and") {
         for (let i = 0; i < el.children.length; i++) {
-          linearizeTopLevelElement(el.children[i], `${originalName}_and_${i}`);
+          linearizeTopLevelElement(el.children[i], originalName, `${rowNamePrefix}_and_${i}`);
         }
         return;
       }
 
       // B.3 OR: or(c1, c2, ...)
       if (el.op === "or") {
-        // If all children are pure boolean / global handled via getBinVarForBoolElement, sum(childBins) >= 1
-        const allBoolean = el.children.every(
-          (c) =>
-            !(c instanceof Constraint) &&
-            !(c instanceof BoolOp && c.op === "not" && c.children[0] instanceof Constraint)
-        );
-        if (allBoolean) {
-          const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
-          if (childBins.length === 0) {
-            emitUnsatConstraint(originalName);
-            return;
-          }
-          const terms: [Var, number][] = childBins.map((cb) => [cb, 1]);
-          emitConstraint(new Constraint(linExpr(terms, 0), ">=", 1, originalName), originalName);
-          return;
-        }
-
-        // If children include comparison constraints (or negated comparison constraints):
-        // For each child c_i, introduce aux y_i, enforce y_i => c_i, and sum(y_i) >= 1
-        const auxVars: Var[] = [];
-        for (let i = 0; i < el.children.length; i++) {
-          const child = el.children[i];
-          const y = new Var({ name: getUniqueAuxName(`or_branch_${i}`), type: "Binary", lb: 0, ub: 1 });
-          variables.push(y);
-          auxVars.push(y);
-
-          if (child instanceof Constraint) {
-            linearizeIndicator(y, flattenConstraintExact(child, originalName), 1, `${originalName}_or_branch_${i}`, originalName);
-          } else if (child instanceof BoolOp && child.op === "not" && child.children[0] instanceof Constraint) {
-            linearizeNegatedConstraint(y, flattenConstraintExact(child.children[0], originalName), 1, `${originalName}_or_neg_${i}`, originalName);
-          } else {
-            // BoolVar, BoolOp, or GlobalConstraint: y <= child
-            const childBin = getBinVarForBoolElement(child, originalName);
-            emitConstraint(
-              new Constraint(linExpr([[y, 1], [childBin, -1]], 0), "<=", 0, `${originalName}_or_bool_${i}`),
-              originalName
-            );
-          }
-        }
-        if (auxVars.length === 0) {
+        if (el.children.length === 0) {
           emitUnsatConstraint(originalName);
           return;
         }
-        const sumTerms: [Var, number][] = auxVars.map((y) => [y, 1]);
-        emitConstraint(new Constraint(linExpr(sumTerms, 0), ">=", 1, originalName), originalName);
+        if (el.children.length === 1) {
+          linearizeTopLevelElement(el.children[0], originalName, rowNamePrefix);
+          return;
+        }
+        // If no child contains a Constraint, handle via getBinVarForBoolElement and sum(childBins) >= 1
+        if (!el.children.some((c) => containsConstraint(c))) {
+          const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
+          const terms: [Var, number][] = childBins.map((cb) => [cb, 1]);
+          emitConstraint(new Constraint(linExpr(terms, 0), ">=", 1, rowNamePrefix), originalName);
+          return;
+        }
+
+        // If children include comparison constraints (directly or nested in positive/negative positions):
+        // For each non-BoolVar child c_i, introduce aux y_i, enforce one-way y_i => c_i, and sum >= 1
+        const branchVars: Var[] = [];
+        for (let i = 0; i < el.children.length; i++) {
+          const child = el.children[i];
+          if (child instanceof BoolVar) {
+            branchVars.push(getBinVarForBoolElement(child, originalName));
+          } else {
+            const y = new Var({ name: getUniqueAuxName(`or_branch_${i}`), type: "Binary", lb: 0, ub: 1 });
+            variables.push(y);
+            branchVars.push(y);
+            linearizeImplication(y, child, originalName, `${rowNamePrefix}_or_${i}`);
+          }
+        }
+        const sumTerms: [Var, number][] = branchVars.map((y) => [y, 1]);
+        emitConstraint(new Constraint(linExpr(sumTerms, 0), ">=", 1, rowNamePrefix), originalName);
         return;
       }
 
@@ -1412,13 +1562,13 @@ export function linearizeModelForMip(
           return;
         }
         if (el.children.length === 1) {
-          linearizeTopLevelElement(el.children[0], originalName);
+          linearizeTopLevelElement(el.children[0], originalName, rowNamePrefix);
           return;
         }
         const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
         if (childBins.length === 2) {
           emitConstraint(
-            new Constraint(linExpr([[childBins[0], 1], [childBins[1], 1]], 0), "==", 1, originalName),
+            new Constraint(linExpr([[childBins[0], 1], [childBins[1], 1]], 0), "==", 1, rowNamePrefix),
             originalName
           );
           return;
@@ -1428,12 +1578,12 @@ export function linearizeModelForMip(
         for (let i = 1; i < childBins.length - 1; i++) {
           const nextAux = new Var({ name: getUniqueAuxName(`xor_fold_${i}`), type: "Binary", lb: 0, ub: 1 });
           variables.push(nextAux);
-          linearizeBinaryXorEquivalence(nextAux, currentBin, childBins[i], `${originalName}_xor_fold_${i}`);
+          linearizeBinaryXorEquivalence(nextAux, currentBin, childBins[i], `${rowNamePrefix}_xor_fold_${i}`);
           currentBin = nextAux;
         }
         const lastBin = childBins[childBins.length - 1];
         emitConstraint(
-          new Constraint(linExpr([[currentBin, 1], [lastBin, 1]], 0), "==", 1, originalName),
+          new Constraint(linExpr([[currentBin, 1], [lastBin, 1]], 0), "==", 1, rowNamePrefix),
           originalName
         );
         return;
@@ -1448,7 +1598,7 @@ export function linearizeModelForMip(
           if (consequent instanceof Constraint) {
             const flatCons = flattenConstraintExact(consequent, originalName);
             if ((flatCons.lhs.terms.get(directBin.binVar) ?? 0) === 0) {
-              linearizeIndicator(directBin.binVar, flatCons, directBin.activeVal, originalName, originalName);
+              linearizeIndicator(directBin.binVar, flatCons, directBin.activeVal, rowNamePrefix, originalName);
               return;
             }
           }
@@ -1456,8 +1606,8 @@ export function linearizeModelForMip(
             const consBin = getBinVarForBoolElement(consequent, originalName);
             const c =
               directBin.activeVal === 1
-                ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), ">=", 0, originalName)
-                : new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), ">=", 1, originalName);
+                ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), ">=", 0, rowNamePrefix)
+                : new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), ">=", 1, rowNamePrefix);
             emitConstraint(c, originalName);
             return;
           }
@@ -1467,18 +1617,22 @@ export function linearizeModelForMip(
               const consBin = getBinVarForBoolElement(notTarget, originalName);
               const c =
                 directBin.activeVal === 1
-                  ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), "<=", 1, originalName)
-                  : new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), "<=", 0, originalName);
+                  ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), "<=", 1, rowNamePrefix)
+                  : new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), "<=", 0, rowNamePrefix);
               emitConstraint(c, originalName);
               return;
             }
             if (notTarget instanceof Constraint) {
               const flatNotTarget = flattenConstraintExact(notTarget, originalName);
               if ((flatNotTarget.lhs.terms.get(directBin.binVar) ?? 0) === 0) {
-                linearizeNegatedConstraint(directBin.binVar, flatNotTarget, directBin.activeVal, originalName, originalName);
+                linearizeNegatedConstraint(directBin.binVar, flatNotTarget, directBin.activeVal, rowNamePrefix, originalName);
                 return;
               }
             }
+          }
+          if (directBin.activeVal === 1 && !referencesVar(consequent, directBin.binVar)) {
+            linearizeImplication(directBin.binVar, consequent, originalName, rowNamePrefix);
+            return;
           }
         }
 
@@ -1488,53 +1642,13 @@ export function linearizeModelForMip(
           const flatAnte = flattenConstraintExact(antecedent, originalName);
           anteBin = new Var({ name: getUniqueAuxName("ante"), type: "Binary", lb: 0, ub: 1 });
           variables.push(anteBin);
-          linearizeNegatedConstraint(anteBin, flatAnte, 0, `${originalName}_ante_neg`, originalName);
+          linearizeNegatedConstraint(anteBin, flatAnte, 0, `${rowNamePrefix}_ante_neg`, originalName);
         } else {
           anteBin = getBinVarForBoolElement(antecedent, originalName);
         }
 
-        // Consequent handling:
-        if (consequent instanceof Constraint) {
-          linearizeIndicator(anteBin, flattenConstraintExact(consequent, originalName), 1, originalName, originalName);
-          return;
-        }
-
-        if (consequent instanceof BoolVar) {
-          const consBin = getBinVarForBoolElement(consequent, originalName);
-          emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName), originalName);
-          return;
-        }
-
-        if (consequent instanceof GlobalConstraint) {
-          const consBin = getBinVarForBoolElement(consequent, originalName);
-          emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName), originalName);
-          return;
-        }
-
-        if (consequent instanceof BoolOp) {
-          if (consequent.op === "and") {
-            for (let i = 0; i < consequent.children.length; i++) {
-              linearizeTopLevelElement(
-                new BoolOp("implies", [new BoolVarWrapper(anteBin), consequent.children[i]]),
-                `${originalName}_and_${i}`
-              );
-            }
-            return;
-          }
-          if (consequent.op === "not") {
-            const notChild = consequent.children[0];
-            if (notChild instanceof Constraint) {
-              linearizeNegatedConstraint(anteBin, flattenConstraintExact(notChild, originalName), 1, originalName, originalName);
-              return;
-            }
-            const notChildBin = getBinVarForBoolElement(notChild, originalName);
-            emitConstraint(new Constraint(linExpr([[anteBin, 1], [notChildBin, 1]], 0), "<=", 1, originalName), originalName);
-            return;
-          }
-          const consBin = getBinVarForBoolElement(consequent, originalName);
-          emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName), originalName);
-          return;
-        }
+        linearizeImplication(anteBin, consequent, originalName, rowNamePrefix);
+        return;
       }
     }
 
@@ -1747,15 +1861,6 @@ export function linearizeModelForMip(
     constraintToOriginalName,
     ...(loweredObjective !== undefined ? { objective: loweredObjective } : {}),
   };
-}
-
-// Minimal wrapper to pass a Var as a BoolVar placeholder when decomposing nested implications
-class BoolVarWrapper extends BoolVar {
-  public readonly wrappedVar: Var;
-  constructor(v: Var) {
-    super(v.name);
-    this.wrappedVar = v;
-  }
 }
 
 type NegatedIntegerConstraint =
