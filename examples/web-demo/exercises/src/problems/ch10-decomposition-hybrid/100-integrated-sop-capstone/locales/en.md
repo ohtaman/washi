@@ -1,9 +1,11 @@
 # #100. Integrated S&OP Audit & Rescheduling (Capstone)
 
 <!-- section:scenario -->
-In Sales & Operations Planning (S&OP) at a chemical and materials manufacturer, production planners are given mandatory equipment constraints on line operations alongside weighted soft policies from operations and sales teams. When policies mutually contradict or fail to leave enough capacity to meet demand, the contradiction must be resolved at minimum weight sacrifice before building the production schedule.
+In Sales & Operations Planning (S&OP) at a chemical and materials manufacturer, production planners are given mandatory equipment constraints on line operations alongside weighted soft policies from operations and sales teams. When policies mutually contradict or fail to leave enough capacity to meet demand, the contradiction must be resolved by minimizing the total weight of dropped soft policies before building the production schedule.
 
-Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming. First, identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable. Second, allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
+Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming:
+- **Phase 1 (Conflict resolution)**: Identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable.
+- **Phase 2 (Production scheduling)**: Allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
 
 <!-- section:io -->
 ### Input
