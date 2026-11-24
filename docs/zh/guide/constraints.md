@@ -1,7 +1,7 @@
 # 约束条件 (`m.constraint` & `m.indicator`)
 
-约束条件用于限定数理优化或逻辑验证模型的可行解空间。
-在 WaSHI 中，线性算术约束和命题逻辑公式均通过 **`m.constraint()`** 注册：
+约束条件定义了合法解必须满足的规则。
+在 WaSHI 中，线性算术约束与逻辑规则都通过 **`m.constraint()`** 注册：
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -36,10 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`：小于等于（上界）约束
 - `>=`：大于等于（下界）约束
 - `==` 或 `=`：等式约束
-- `<`、`>`、`!=`：离散严格不等式与不等约束（仅限整数值表达式；参见 [离散比较运算符](#discrete-comparisons)）
+- `<`、`>`、`!=`：严格不等与不等约束（仅限整数表达式；参见 [离散比较运算符](#discrete-comparisons)）
 
 ### 数组批量注册
-向 `m.constraint([...])` 传入约束数组，可在单次调用中以事务方式批量注册多条约束：
+向 `m.constraint([...])` 传入约束数组，可一次性全部注册（若任意一项无效，则全部不注册）：
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -126,7 +126,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 如果引用的任何变量缺少所需的有限边界，`m.indicator()` 会抛出错误，提示补充有限边界或显式指定 `options.M`。
 
 > [!NOTE]
-> **Pumpkin 与 Z3 上的原生指示约束转换**：当省略 `options.M` 时，`m.indicator()` 仍返回经 Big-M 线性化的 `Constraint[]` 行（保证 `m.toLpString()` 以及 HiGHS / GLPK 的完全向后兼容），但会附带原始逻辑元数据，使 **Pumpkin**（`implied_by`）和 **Z3**（`ctx.Implies`）能够以原生逻辑蕴含形式求解，从而避免超大 Big-M 带来的数值病态或溢出。若直接修改返回的行对象，该元数据会被自动清除以保证后续修改真实生效。
+> **Pumpkin 与 Z3 上的原生指示约束**：省略 `options.M` 时，`HiGHS`、`GLPK` 和 `m.toLpString()` 仍按 Big-M 方式工作，而 **Pumpkin** 和 **Z3** 会原生求解，避免 Big-M 带来的数值误差。如果后续直接修改返回的约束对象，该原生标记会自动清除并使修改生效。
 
 ### 显式指定 `M`
 
@@ -182,7 +182,9 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **主要用途** | 包含二元算术变量的数理优化模型（`m.solve()`） | 逻辑规则系统与 SMT 可满足性判定（`m.check()`） |
 
 > [!NOTE]
-> **出现在取反位置的比较约束（`implies` 前提、`not`、`xor` 等）**：当线性比较约束引用的变量均为 `Integer` 或 `Binary` 且系数与右端项均为整数时（具备 Big-M 指示约束所需的有限边界，例如使用上文 `clearance` 与 `hasMfa` 编写 ``implies(expr`${clearance} >= 4`, hasMfa)``），**HiGHS** 与 **GLPK** 会通过精确的 $\pm 1$ 整数偏移（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$，$==$ 则转化为 $\le b - 1$ 或 $\ge b + 1$）将其严格线性化为 MIP 约束，**Pumpkin** 与 **Z3** 则原生求解。若包含 `Continuous` 变量或非整数系数/阈值的比较约束出现在取反位置，由于严格不等式取反对应开半空间，MIP 求解器（HiGHS / GLPK 上的 `solve()` / `check()`）会抛出错误——请使用 `{ solver: "z3" }`，或通过显式闭半空间容差 ``or(expr`... >= ... + eps`, ...)`` 及 `m.bool()` 进行建模。
+> **当比较约束出现在取反位置（`not`、`xor` 或 `implies` 条件侧）时**：
+> - **纯整数表达式**：例如 $\neg(x \le 5)$ 在 `HiGHS`/`GLPK` 上会自动转为 $x \ge 6$，在 `Pumpkin`/`Z3` 上则原生求解。
+> - **包含 `Continuous` 变量或小数时**：`HiGHS`/`GLPK` 无法表示连续域的严格 `<` / `>`，会直接报错。请改用 `{ solver: "z3" }` 或用 `m.bool()` 表达条件。
 
 ---
 
@@ -208,12 +210,12 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin 原生 not_e
 
 WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束。关于区间调度、对称性破缺与 **Pumpkin** 求解建模技巧，请参阅专门的 [约束规划 (CP) 建模指南](./constraint-programming.md)。
 
-| 全局约束 | 语义 | HiGHS / GLPK | Pumpkin | Z3 |
+| 约束 | 含义 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
-| `distinct(...args)` | 整数值表达式或 1D/2D 容器内全部元素的两两相异约束（`AllDifferent`） | 两两 `!=` MIP | `all_different` | `ctx.Distinct` |
-| `disjoint(tasks)` | 单机非重叠区间 `[start, start + duration)`（`NoOverlap` / `Disjunctive`，整数 `duration >= 0`；零时长任务仅允许置于边界） | 两两顺序二元变量 + Big-M | `disjunctive_strict`（Vilím 边缘推导） | 两两 `Or` 析取 |
-| `cumulative(tasks, capacity)` | 所有时刻资源占用总量 $\le$ `capacity`（整数 `duration >= 0`, `demand >= 0`） | 时间索引 MIP（跨度超 5,000 或脉冲变量超 25,000 时抛出保护错误并建议 `{ solver: "pumpkin" }`） | 原生 `cumulative`（时间表滤波） | 起始事件负载断言 |
-| `allowed(vars, tuples)` | 允许元组表约束（`Table` / `AllowedAssignments`，禁止元组请外包 `not(allowed(...))`） | 元组选择二元变量（二值变量取反为零二元割） | `table` / `negative_table` | 元组 `Or` / `And` |
+| `distinct(...args)` | 所有值两两不同（`!=`） | 两两 `!=` MIP | 原生 `all_different` | 原生 `Distinct` |
+| `disjoint(tasks)` | 任务 `[start, start + duration)` 互不重叠 | 两两顺序 + Big-M | 原生非重叠 | 两两 `Or` |
+| `cumulative(tasks, capacity)` | 任意时刻总需求 $\le$ `capacity` | 时间索引 MIP（超过 5,000 步 / 25,000 变量报错） | 原生 `cumulative` | 起始事件负载 |
+| `allowed(vars, tuples)` | 取值匹配 `tuples` 中的某一行（`not(allowed(...))` 为禁止） | 元组选择二元变量 | 原生表约束 | 元组 `Or` / `And` |
 
 ```typescript
 import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";

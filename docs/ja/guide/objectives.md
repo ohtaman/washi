@@ -37,7 +37,7 @@ WaSHI には2つの非同期実行メソッドがあります：
 | メソッド | 戻り値 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | すべての制約の下で目的関数を最適化します。変数の解、目的関数値、MIP ギャップ・双対境界、LP の双対変数/スラックを格納します。 |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | 目的関数なしで制約の充足可能性（SAT/UNSAT）を判定します。`{ status, values, conflicts?, unsatCore?, runTime? }`（`values: Record<string, number \| boolean>` に数値変数と論理変数の両方の解が格納されます）を返し、CP/SMT/SAT 検証および Pumpkin / Z3 による競合診断（`unsatCore`）に使われます。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 目的関数なしで制約を満たせるか判定します。`{ status, values, conflicts?, unsatCore?, runTime? }` を返し、CP/SMT の判定や `unsatCore` 診断に使います。 |
 
 ```typescript
 const status = await m.solve({
@@ -97,21 +97,21 @@ MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSigna
 1. **利用可能な実行可能解（暫定解）が見つかったか？**（`m.hasPrimalSolution` / `m.status`）
 2. **なぜソルバーが停止したか？**（`m.terminationStatus`）
 
-停止前に実行可能な整数解（Incumbent）が見つかっていた場合、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` から暫定解を取得可能）、`m.terminationStatus` には `"TimeLimit"` や `"Interrupted"` が記録されます。まだ実行可能解が1つも見つかっていない段階で停止した場合は、`m.hasPrimalSolution` は `false`、`m.terminationStatus` は `"TimeLimit"` / `"IterationLimit"` / `"Interrupted"` となり、`m.status` は `"TimeLimit"`、`"IterationLimit"`、または `"Unknown"`（暫定解なしで `AbortSignal` により中断された場合）となります。
+停止前に有効な解（**暫定解**）が見つかっていれば、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` にその解が入ります）、停止理由は `m.terminationStatus`（`"TimeLimit"` や `"Interrupted"`）に記録されます。解が1つも見つからずに止まった場合は、`m.hasPrimalSolution` は `false`、`m.status` は `"TimeLimit"`・`"IterationLimit"`・`"Unknown"` のいずれかになります。
 
 ### 全 `SolverStatus` 一覧
 
 | ステータス | `hasPrimalSolution` | 意味 |
 | :--- | :--- | :--- |
 | `"Optimal"` | `true` | 大域的最適解が証明されました（許容誤差内）。 |
-| `"Feasible"` | `true` | 実行可能解（暫定解）が見つかりましたが、最適性の証明前に停止しました（停止理由は `terminationStatus` を参照）。 |
+| `"Feasible"` | `true` | 有効な解は見つかりましたが、最適性の証明前に停止しました（理由は `terminationStatus` を参照）。 |
 | `"Sat"` | `true` | すべての制約を充足する解が見つかりました（`m.check()`）。 |
 | `"Infeasible"` | `false` | すべての制約を同時に満たす解が存在しないことが証明されました。 |
 | `"Unsat"` | `false` | 制約集合が充足不能（矛盾）であることが証明されました（`m.check()`）。 |
 | `"Unbounded"` | `false` | 制約を満たしたまま目的関数値を無限に改善できます（非有界）。 |
 | `"TimeLimit"` | `false` | 実行可能解が見つかる前に制限時間に達しました。 |
 | `"IterationLimit"` | `false` | 実行可能解が見つかる前に反復上限に達しました。 |
-| `"Unknown"` | `false` | 解が見つからないまま判定不能で終了しました（暫定解が見つかる前に `AbortSignal` で中断された場合も含み、その際は `terminationStatus === "Interrupted"` となります）。 |
+| `"Unknown"` | `false` | 解が見つからないまま停止しました（例: 解が見つかる前に `AbortSignal` で中断）。 |
 | `"Error"` | `false` | ソルバー内部でエラーが発生しました。 |
 | `"NotSolved"` | `false` | 求解前、またはモデル変更により解がリセットされた初期状態です。 |
 
@@ -169,7 +169,7 @@ console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在す
 1. **求解後のモデル変更によるリセット**: 変数や制約の追加、目的関数の変更、変数の上下限/型の変更（`v.lb`, `v.ub`, `v.type`）、制約式の変更（`c.lhs`, `c.sense`, `c.rhs`）を行うと、即座に `m.status` が `"NotSolved"` に戻り、`m.objectiveValue` や各変数の `value` / `dual` / `slack` は `null` にクリアされます。
 2. **求解中のモデル変更**: 非同期の `m.solve()` / `m.check()` の実行中にモデルが変更された場合、進行中の古い求解結果は破棄され、Promise は明示的なエラーで reject されます。
 3. **重複呼び出しの制御**: 同じモデルに対して新しい `m.solve()` / `m.check()` が開始されると、先に走っていた古い実行の結果が後から完了しても最新の状態を上書きしないよう保護されます。
-4. **トランザクション的な一括編集**: `m.constraint([...])` 等の一括操作で不正な要素が含まれていた場合、部分的な登録を残さずロールバックされます。
+4. **失敗時は丸ごとロールバック**: `m.constraint([...])` などの一括操作で不正な要素が含まれていた場合、部分的な登録を残さず元の状態に戻ります。
 
 > [!NOTE]
 > 登録済みの変数や制約の名前変更（登録後の `c.name` の再代入など）や、内部マップ・AST の直接書き換え（`c.lhs.terms`、`BoolOp.children` など）はサポートされておらず、次回 `solve()` / `check()` / エクスポートを呼び出した際の内部モデル整合性検証でエラーとして拒否されます。

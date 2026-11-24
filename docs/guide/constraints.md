@@ -1,7 +1,7 @@
 # Constraints (`m.constraint` & `m.indicator`)
 
-Constraints restrict the feasible solution space of your mathematical or logical model.
-In WaSHI, both linear arithmetic constraints and propositional logic formulas are registered using **`m.constraint()`**:
+Constraints define the rules that every valid solution must satisfy.
+In WaSHI, both linear arithmetic constraints and logical rules are registered with **`m.constraint()`**:
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -36,10 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`: Upper bound constraint
 - `>=`: Lower bound constraint
 - `==` or `=`: Exact equality constraint
-- `<`, `>`, `!=`: Discrete strict inequality / disequality constraints (integer-valued expressions only; see [Discrete Comparisons](#discrete-comparisons))
+- `<`, `>`, `!=`: Strict inequalities and not-equal constraints (integer expressions only; see [Discrete Comparisons](#discrete-comparisons))
 
 ### Batch Registration
-Pass an array of constraints to `m.constraint([...])` to register them transactionally in a single call:
+Pass an array of constraints to `m.constraint([...])` to register all of them at once (if any item is invalid, none are added):
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -126,7 +126,7 @@ When `options.M` is omitted, WaSHI automatically derives a minimal valid Big-M v
 If any referenced variable lacks the required finite bound, `m.indicator()` throws an error prompting for finite bounds or an explicit `options.M`.
 
 > [!NOTE]
-> **Native Indicator Lowering on Pumpkin & Z3**: When `options.M` is omitted, `m.indicator()` still returns Big-M-linearized `Constraint[]` rows (so `m.toLpString()`, HiGHS, and GLPK stay identical and backward compatible) while annotating those rows so **Pumpkin** lowers natively via `implied_by` and **Z3** lowers natively via `ctx.Implies` without Big-M numerical degradation. Mutating a returned row clears that metadata so subsequent edits take effect directly.
+> **Native Indicator Support on Pumpkin & Z3**: When `options.M` is omitted, `m.indicator()` still works with `HiGHS`, `GLPK`, and `m.toLpString()` via Big-M, while **Pumpkin** and **Z3** handle it natively without Big-M numerical loss. Mutating a returned constraint clears this native annotation so your edits take effect directly.
 
 ### Explicit `M` Override
 
@@ -182,7 +182,9 @@ All named constraints—both linear `Constraint`s and logical/CP `LogicalConstra
 | **Primary Use Case** | MIP optimization models with arithmetic binary variables (`m.solve()`) | Logical rule systems and SMT feasibility (`m.check()`) |
 
 > [!NOTE]
-> **Comparison Constraints in Negated Positions (`implies` Antecedents, `not`, `xor`)**: Linear comparison constraints whose referenced variables are all `Integer` or `Binary` with integer coefficients and integer right-hand sides (plus required finite bounds for Big-M indicators, such as ``implies(expr`${clearance} >= 4`, hasMfa)`` above) are linearized automatically on **HiGHS** and **GLPK** via exact $\pm 1$ integer shifts ($\neg(a^\top x \le b) \iff a^\top x \ge b + 1$, and $a^\top x \ne b \iff a^\top x \le b - 1 \lor a^\top x \ge b + 1$), and solved natively on **Pumpkin** and **Z3**. When a comparison constraint containing `Continuous` variables or non-integer coefficients/thresholds appears in a negated position, MIP `solve()` / `check()` throws an error because strict-inequality negation forms an open half-space—use `{ solver: "z3" }`, or write an explicit closed-tolerance disjunction such as ``or(expr`... >= ... + eps`, ...)`` or an `m.bool()` proposition.
+> **Negating Comparison Constraints (`not`, `xor`, or `implies` condition)**:
+> - **Integer expressions**: Negations like $\neg(x \le 5)$ are converted automatically to $x \ge 6$ on `HiGHS`/`GLPK`, and solved natively on `Pumpkin`/`Z3`.
+> - **`Continuous` or decimal expressions**: `HiGHS`/`GLPK` reject negated continuous comparisons (because strict `<` / `>` cannot be represented in closed linear inequalities). Use `{ solver: "z3" }` or model the condition with `m.bool()`.
 
 ---
 
@@ -208,12 +210,12 @@ Expressions involving `Continuous` variables or fractional numbers in `!=`, `<`,
 
 WaSHI provides backend-agnostic Constraint Programming predicates returning composable `BoolExpr` objects (combinable with `and`, `or`, `not`, `implies`, `xor`). For interval scheduling, symmetry breaking, and solver modeling patterns with **Pumpkin**, see the dedicated [Constraint Programming (CP) Modeling Guide](./constraint-programming.md).
 
-| Predicate | Semantics | HiGHS / GLPK | Pumpkin | Z3 |
+| Predicate | Meaning | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
-| `distinct(...args)` | Pairwise `a != b` across integer expressions / 1D–2D containers (`AllDifferent`) | Pairwise `!=` MIP | `all_different` | `ctx.Distinct` |
-| `disjoint(tasks)` | Non-overlapping intervals `[start, start + duration)` on unary resource (`NoOverlap` / `Disjunctive`; `duration >= 0` integer; duration-0 only at boundaries) | Pairwise binary precedence + Big-M | `disjunctive_strict` (Vilím edge-finding) | Pairwise `Or` disjunctions |
-| `cumulative(tasks, capacity)` | Resource usage $\le$ `capacity` across all time points (`duration >= 0`, `demand >= 0` integer) | Time-indexed MIP (throws horizon guard error above 5,000 span / 25,000 pulse vars recommending `{ solver: "pumpkin" }`) | Native `cumulative` time-table filtering | Start-event load assertions |
-| `allowed(vars, tuples)` | Tuple `(vars[0], ...) in tuples` (`Table` / `AllowedAssignments`; use `not(allowed(...))` for forbidden tuples) | Tuple selector binaries (`not` emits 0-binary cuts on 2-valued vars) | `table` / `negative_table` | Tuple `Or` / `And` |
+| `distinct(...args)` | All values are pairwise different (`!=`) | Pairwise `!=` MIP | Native `all_different` | Native `Distinct` |
+| `disjoint(tasks)` | Tasks `[start, start + duration)` do not overlap | Pairwise ordering + Big-M | Native non-overlap | Pairwise `Or` |
+| `cumulative(tasks, capacity)` | Total demand $\le$ `capacity` at every moment | Time-indexed MIP (errors above 5,000 steps / 25,000 vars) | Native `cumulative` | Event-point load |
+| `allowed(vars, tuples)` | Values match a row in `tuples` (`not(allowed(...))` forbids them) | Tuple selector binaries | Native table | Tuple `Or` / `And` |
 
 ```typescript
 import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";

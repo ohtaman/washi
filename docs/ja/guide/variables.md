@@ -55,10 +55,7 @@ m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 | **線形算術式（`expr`, `sum`, `dot`, 目的関数の係数）** | ✅ そのまま記述可能（`` expr`30 * ${b}` ``） | ❌ 数値との積や `sum()` には直接使えない |
 | **インジケータ制約（`m.indicator(b, ...)`）** | ✅ トリガー変数として使用可能 | ❌ 代わりに `` implies(flag, expr`...`) `` を使用 |
 | **命題論理演算（`and`, `or`, `not`, `implies`, `xor`）** | 比較式経由（`` expr`${b} == 1` ``） | ✅ メソッド・関数で直接記述可能（`.implies()`, `.and()`） |
-| **ソルバーでの扱い** | HiGHS/GLPK で 0-1 MIP 変数として直接求解；Pumpkin/Z3 では `{0, 1}` 有界整数 | Pumpkin/Z3 ではネイティブ真偽値命題；HiGHS/GLPK では 0-1 MIP に自動線形化 |
-
-> [!TIP]
-> 個数・人数の合計（$\sum x_i \ge 3$）、目的関数のコスト項（$c_i x_i$）、または `m.indicator()` のトリガーとして算術式に組み込む場合は **`m.binary()`** を使用してください。数値係数を持たず、`implies()`・`and()`・`or()` などの論理演算で条件関係を記述する場合は **`m.bool()`** を使用します。
+| **主な用途** | 個数の合計、目的関数のコスト、`m.indicator()` | 数値係数なしの論理条件（`implies`, `and`, `or`） |
 
 ---
 

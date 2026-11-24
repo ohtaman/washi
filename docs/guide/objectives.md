@@ -37,7 +37,7 @@ WaSHI provides two asynchronous execution entrypoints:
 | Method | Return Value | Purpose |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | Optimizes the objective (`Minimize` or `Maximize`) subject to all constraints. Populates primal values, objective value, MIP bounds/gaps, and LP duals/slacks. |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` where `values: Record<string, number \| boolean>` contains both numeric and Boolean variable assignments. Ideal for CP/SMT/SAT verification and Pumpkin / Z3 `unsatCore` extraction. |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks if constraints can be satisfied without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` for CP/SMT checks and `unsatCore` diagnosis. |
 
 ```typescript
 const status = await m.solve({
@@ -89,7 +89,7 @@ console.log("x by name:", m.values.get("x"));
 ```
 
 > [!TIP]
-> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.verify()`—see [Diagnosis, Verification & Debugging](./unsat-core.md#independent-solution-verification-m-verify).
+> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.verify()`—see [Verifying Solutions (`m.verify()`)](./unsat-core.md#verifying-solutions-m-verify).
 
 ### Understanding `m.status` vs. `m.terminationStatus`
 
@@ -97,21 +97,21 @@ When a MIP solver stops early due to a time limit, iteration limit, or `AbortSig
 1. **Is there a usable solution?** (`m.hasPrimalSolution` / `m.status`)
 2. **Why did the solver stop?** (`m.terminationStatus`)
 
-If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, `m.hasPrimalSolution` is `false`, `m.terminationStatus` records why the solver stopped (`"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`), and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"` (when aborted via `AbortSignal` without an incumbent).
+If a valid solution (called an **incumbent**) was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so `x.value` and `m.objectiveValue` hold that solution) and records why it stopped in `m.terminationStatus` (`"TimeLimit"` or `"Interrupted"`). If no solution was found before stopping, `m.hasPrimalSolution` is `false` and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"`.
 
 ### All `SolverStatus` Values
 
 | Status | `hasPrimalSolution` | Meaning |
 | :--- | :--- | :--- |
 | `"Optimal"` | `true` | Global optimal solution proven (within tolerances). |
-| `"Feasible"` | `true` | Valid primal solution (incumbent) found, but optimality was not proven before stopping (`terminationStatus` indicates why: `"TimeLimit"`, `"IterationLimit"`, `"Interrupted"`, etc.). |
+| `"Feasible"` | `true` | Valid solution found, but stopped before proving optimality (see `terminationStatus`). |
 | `"Sat"` | `true` | Constraints are satisfiable (`m.check()`). |
 | `"Infeasible"` | `false` | Proven mathematically infeasible; no solution satisfies all constraints. |
 | `"Unsat"` | `false` | Logical/arithmetic constraints are unsatisfiable (`m.check()`). |
 | `"Unbounded"` | `false` | Objective can improve indefinitely without violating constraints. |
 | `"TimeLimit"` | `false` | Time limit reached before finding any feasible primal solution. |
 | `"IterationLimit"` | `false` | Iteration limit reached before finding any feasible primal solution. |
-| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution (including when cancelled via `AbortSignal` before finding an incumbent, where `terminationStatus === "Interrupted"`). |
+| `"Unknown"` | `false` | Stopped without a solution (e.g., cancelled via `AbortSignal` before finding one). |
 | `"Error"` | `false` | Solver encountered an internal execution error. |
 | `"NotSolved"` | `false` | Initial state before solving, or after the model has been mutated. |
 
@@ -170,7 +170,7 @@ A `Model` instance keeps its solution state synchronized across mutations made t
 1. **Post-Solve Mutations Reset Solution State**: Adding variables or constraints, updating the objective (`m.objective(...)`, `m.sense = ...`), or modifying variable bounds/types (`v.lb`, `v.ub`, `v.type`) or constraint properties (`c.lhs`, `c.sense`, `c.rhs`) immediately resets `m.status` to `"NotSolved"`, clears `m.solution` and `m.objectiveValue`, and resets variable/constraint primal and dual values to `null`.
 2. **Mid-Flight Mutations Discard Stale Runs**: If the model is modified via these APIs while an asynchronous `m.solve()` or `m.check()` call is in progress, the stale solver result is discarded, the model remains in `"NotSolved"`, and the in-flight promise rejects with an explicit error.
 3. **Overlapping Executions**: Starting a new `m.solve()` or `m.check()` call supersedes any earlier in-flight call on the same model so out-of-order completions can never overwrite the latest run's state.
-4. **Transactional Batch Edits**: If an invalid edit is rejected (including batch array calls like `m.constraint([...])`), the model rolls back the failed edit without leaving partial entities registered or invalidating an existing valid solution.
+4. **All-or-Nothing Batch Edits**: If an invalid edit is rejected (including batch calls like `m.constraint([...])`), the model rolls back the failed edit without leaving partial items or clearing an existing valid solution.
 
 > [!NOTE]
 > Renaming already-registered variables or constraints (e.g., reassigning `c.name` after registration) or mutating internal backing maps and ASTs directly (such as `c.lhs.terms` or `BoolOp.children`) is unsupported and will be rejected by internal model integrity validation on the next solve/check/export call.

@@ -48,8 +48,9 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **Nested Expressions**: `expr` interpolates variables, numbers, `Array` / `Record` containers (inside `sum` or `dot`), and nested `LinExpr` / `QuadExpr` objects.
 
 > [!NOTE]
-> For relational comparisons (`<=`, `>=`, `==`), `expr` (e.g., ``expr`${x} + 2 * ${y} <= 40` ``) returns a first-class `Constraint`.
-> For arithmetic expressions without comparison operators, `expr` uniformly handles linear and quadratic expressions (up to degree 2): if quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Interpolated `Array` or `Record` containers must be reduced to a scalar via `sum(...)` or `dot(..., ...)`. Polynomial terms of degree $> 2$ (e.g., ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g., ``${x} * ${y} <= 10``) throw an error because LP/MIP/QP formulations require linear constraints and at most quadratic objectives.
+> - **Comparisons (`<=`, `>=`, `==`)** return a `Constraint` object.
+> - **Arithmetic expressions** return a `LinExpr` (linear) or `QuadExpr` (degree 2). Embedded arrays or records must be reduced with `sum(...)` or `dot(..., ...)`.
+> - **Unsupported nonlinearities**: Degree $> 2$ terms (e.g., `${x}^3`) and nonlinear constraints (e.g., `${x} * ${y} <= 10`) throw an error.
 
 ---
 

@@ -55,10 +55,7 @@ m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 | **线性算术运算（`expr`, `sum`, `dot`, 目标成本）** | ✅ 原生支持（`` expr`30 * ${b}` ``） | ❌ 不能直接与数值相乘或求和 |
 | **指示约束（`m.indicator(b, ...)`）** | ✅ 可作为触发变量 | ❌ 请改用 `` implies(flag, expr`...`) `` |
 | **命题逻辑（`and`, `or`, `not`, `implies`, `xor`）** | 需通过比较式（`` expr`${b} == 1` ``） | ✅ 原生一等方法（`.implies()`, `.and()`） |
-| **求解器底层处理** | HiGHS/GLPK 原生 0-1 MIP；Pumpkin/Z3 有界 `{0, 1}` 整数 | Pumpkin/Z3 原生布尔命题；HiGHS/GLPK 自动线性化为 0-1 MIP |
-
-> [!TIP]
-> 当决策需要参与算术表达式——如线性求和（$\sum x_i \ge 3$）、目标函数成本项（$c_i x_i$）或 `m.indicator()` 触发条件时，请使用 **`m.binary()`**；当无需数值系数、仅通过 `implies()`、`and()`、`or()` 表达逻辑条件关系时，请使用 **`m.bool()`**。
+| **适用场景** | 数量求和、目标函数成本项、`m.indicator()` | 不含数值系数的逻辑条件（`implies`, `and`, `or`） |
 
 ---
 

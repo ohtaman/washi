@@ -1,7 +1,7 @@
 # 制約条件 (`m.constraint` & `m.indicator`)
 
-制約条件は、数理最適化や論理検証モデルの実行可能領域を定義します。
-WaSHI では、線形算術制約と命題論理制約の両方を **`m.constraint()`** で登録します：
+制約条件は、解が満たすべきルールを定義します。
+WaSHI では、線形制約と論理ルールの両方を **`m.constraint()`** で登録します：
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -36,10 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`: 以下（上限）制約
 - `>=`: 以上（下限）制約
 - `==` または `=`: 等式制約
-- `<`, `>`, `!=`: 離散の狭義不等式・非等式制約（整数値の式のみ。[離散比較演算子](#discrete-comparisons) 参照）
+- `<`, `>`, `!=`: 厳密不等式・非等式制約（整数値の式のみ。[離散比較演算子](#discrete-comparisons) 参照）
 
 ### 配列による一括登録
-制約の配列を `m.constraint([...])` に渡すと、トランザクション的に一括登録できます：
+制約の配列を `m.constraint([...])` に渡すと、まとめて一括登録できます（1つでも不正な要素があれば何も登録されません）：
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -126,7 +126,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 必要な境界が無限大（`Infinity` / `-Infinity`）の場合は、`m.indicator()` がエラーをスローして有限な境界の設定または明示的な `options.M` の指定を促します。
 
 > [!NOTE]
-> **Pumpkin / Z3 でのネイティブ・インジケータ変換**: `options.M` を省略した場合でも、`m.indicator()` は従来どおり Big-M 線形化された `Constraint[]` 行を返します（そのため `m.toLpString()` や HiGHS / GLPK の出力は完全な後方互換性を保ちます）が、内部メタデータを付与することで **Pumpkin**（`implied_by`）および **Z3**（`ctx.Implies`）では大きな Big-M 定数による数値劣化やオーバーフローを伴わないネイティブ条件制約として変換されます。返却された `Constraint` 行を直接書き換えた場合はメタデータが自動で破棄され、変更後の制約式がそのまま適用されます。
+> **Pumpkin / Z3 でのネイティブ対応**: `options.M` を省略しても、`HiGHS`・`GLPK`・`m.toLpString()` 向けには従来どおり Big-M で動作し、**Pumpkin** と **Z3** では Big-M の数値誤差なしでネイティブに処理されます。返された制約を後から直接書き換えた場合は、変更後の式がそのまま使われます。
 
 ### 明示的な `M` の指定
 
@@ -182,7 +182,9 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **主な用途** | バイナリ変数を含む数理最適化（`m.solve()`） | 論理ルールの記述・充足可能性判定（`m.check()`） |
 
 > [!NOTE]
-> **否定側に現れる比較制約（`implies` の前提・`not`・`xor` など）**: 参照される変数がすべて `Integer` または `Binary` で整数係数・整数右辺を持つ線形比較制約（Big-M インジケータに必要な有限境界を備えるもの。上記の `clearance` と `hasMfa` を使った ``implies(expr`${clearance} >= 4`, hasMfa)`` など）は、**HiGHS** や **GLPK** でも $\pm 1$ シフト（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$、$==$ は $\le b - 1$ または $\ge b + 1$）によって厳密に MIP 線形化され、**Pumpkin** や **Z3** ではネイティブに処理されます。一方、`Continuous` 変数や非整数の係数・閾値を含む比較制約が否定側に現れた場合、厳密不等式の否定が開半空間となるため MIP ソルバー（HiGHS / GLPK での `solve()` / `check()`）ではエラーを送出します—`{ solver: "z3" }` を利用するか、許容幅 `eps` を用いた ``or(expr`... >= ... + eps`, ...)`` や `m.bool()` で明示的に記述してください。
+> **比較制約を否定側（`not`・`xor`・`implies` の条件側）に書く場合**:
+> - **整数式のみの場合**: $\neg(x \le 5)$ のような否定は、`HiGHS`/`GLPK` では自動的に $x \ge 6$ に変換され、`Pumpkin`/`Z3` ではネイティブに処理されます。
+> - **`Continuous` 変数や小数を含む場合**: `HiGHS`/`GLPK` では連続値の `<` / `>` を表せないためエラーになります。`{ solver: "z3" }` を使うか、`m.bool()` で条件を表してください。
 
 ---
 
@@ -208,12 +210,12 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin: not_equals,
 
 `and` / `or` / `not` / `implies` / `xor` と合成可能な `BoolExpr` を返すグローバル制約を提供しています。区間スケジューリング・対称性除去・**Pumpkin** 向け定式化の詳細は [制約プログラミング (CP) モデリングガイド](./constraint-programming.md) を参照してください。
 
-| グローバル制約 | 意味論 | HiGHS / GLPK | Pumpkin | Z3 |
+| 制約 | 意味 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
-| `distinct(...args)` | 整数値式・1D/2D コンテナ全要素の pairwise 相異（`AllDifferent`） | pairwise `!=` MIP | `all_different` | `ctx.Distinct` |
-| `disjoint(tasks)` | 単一機械上の非重複区間 `[start, start + duration)`（`NoOverlap` / `Disjunctive`、整数 `duration >= 0`、duration=0 は境界のみ許容） | pairwise 順序バイナリ + Big-M | `disjunctive_strict`（Vilím エッジ発見） | pairwise `Or` 選言 |
-| `cumulative(tasks, capacity)` | 全時刻で総リソース要求量 $\le$ `capacity`（整数 `duration >= 0`, `demand >= 0`） | 時間離散化 MIP（スパン 5,000 / パルス変数 25,000 超で `{ solver: "pumpkin" }` 推奨エラー） | ネイティブ `cumulative`（タイムテーブル伝播） | 開始時刻イベント負荷表明 |
-| `allowed(vars, tuples)` | タプル集合への所属制約（`Table` / `AllowedAssignments`、禁止タプルは `not(allowed(...))`） | タプル選択バイナリ（2値変数の否定は 0-バイナリ・カット） | `table` / `negative_table` | タプル選言・連言 |
+| `distinct(...args)` | すべての値が互いに異なる（`!=`） | 全ペアの `!=` MIP | ネイティブ `all_different` | ネイティブ `Distinct` |
+| `disjoint(tasks)` | 作業 `[start, start + duration)` が重ならない | 順序変数 + Big-M | ネイティブ重複禁止 | ペアごとの `Or` |
+| `cumulative(tasks, capacity)` | どの時点でも合計負荷が `capacity` 以下 | 時間離散化 MIP（5,000 ステップ / 25,000 変数超でエラー） | ネイティブ `cumulative` | 開始時点の負荷記述 |
+| `allowed(vars, tuples)` | 値が `tuples` のいずれかに一致（`not(allowed(...))` で禁止） | 選択バイナリ変数 | ネイティブテーブル | タプルごとの `Or` / `And` |
 
 ```typescript
 import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";

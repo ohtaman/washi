@@ -37,7 +37,7 @@ WaSHI 提供两个异步执行入口：
 | 方法 | 返回值 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | 在满足所有约束的前提下优化目标函数（`Minimize` 或 `Maximize`）。自动填充变量的原问题解、目标函数值、MIP 边界/间隙以及 LP 的对偶值（`dual`）与松弛量（`slack`）。 |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | 在无目标函数的情况下检查约束的可满足性（SAT/UNSAT）。返回 `{ status, values, conflicts?, unsatCore?, runTime? }`（其中 `values: Record<string, number \| boolean>` 包含数值变量与布尔变量的赋值），非常适用于 CP/SMT/SAT 逻辑验证以及使用 Pumpkin / Z3 提取不可行冲突核（`unsatCore`）。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 不带目标函数检查约束是否可满足。返回 `{ status, values, conflicts?, unsatCore?, runTime? }`，用于 CP/SMT 判定和 `unsatCore` 冲突诊断。 |
 
 ```typescript
 const status = await m.solve({
@@ -97,21 +97,21 @@ console.log("x by name:", m.values.get("x"));
 1. **是否存在可用的可行解？**（`m.hasPrimalSolution` / `m.status`）
 2. **求解器为什么停止？**（`m.terminationStatus`）
 
-如果在触发 `timeLimit` 或 `signal.abort()` 之前已经找到了满足整数约束的可行解（Incumbent），WaSHI 会将 `m.status` 设为 `"Feasible"`（表示 `x.value` 和 `m.objectiveValue` 中保存了合法的可行解），同时将 `m.terminationStatus` 设为 `"TimeLimit"`（或 `"Interrupted"`）。如果在停止前尚未找到任何可行解，则 `m.hasPrimalSolution` 为 `false`，`m.terminationStatus` 记录停止原因（`"TimeLimit"`、`"IterationLimit"` 或 `"Interrupted"`），而 `m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`（当通过 `AbortSignal` 取消且尚无可行解时）。
+如果在触发 `timeLimit` 或 `signal.abort()` 前已经找到有效解（即**当前最优可行解**），WaSHI 会将 `m.status` 设为 `"Feasible"`（此时 `x.value` 和 `m.objectiveValue` 中已有可用解），并在 `m.terminationStatus` 中记录停止原因（`"TimeLimit"` 或 `"Interrupted"`）。若未找到任何解即停止，则 `m.hasPrimalSolution` 为 `false`，`m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`。
 
 ### 所有 `SolverStatus` 状态值一览
 
 | 状态 | `hasPrimalSolution` | 含义 |
 | :--- | :--- | :--- |
 | `"Optimal"` | `true` | 已证明找到全局最优解（在容差范围内）。 |
-| `"Feasible"` | `true` | 已找到合法的原问题可行解（Incumbent），但在证明全局最优性之前停止（具体停止原因见 `terminationStatus`：`"TimeLimit"`、`"IterationLimit"`、`"Interrupted"` 等）。 |
+| `"Feasible"` | `true` | 已找到有效解，但在证明全局最优前停止（原因见 `terminationStatus`）。 |
 | `"Sat"` | `true` | 约束集合可满足（`m.check()`）。 |
 | `"Infeasible"` | `false` | 数学上已证明模型不可行；不存在同时满足所有约束的解。 |
 | `"Unsat"` | `false` | 逻辑或算术约束集合不可满足（`m.check()`）。 |
 | `"Unbounded"` | `false` | 在不违反任何约束的前提下，目标函数值可以无限优化（无界）。 |
 | `"TimeLimit"` | `false` | 在找到任何原问题可行解之前已达到时间上限。 |
 | `"IterationLimit"` | `false` | 在找到任何原问题可行解之前已达到迭代次数上限。 |
-| `"Unknown"` | `false` | 求解器未得出确定结论且未找到合法原问题解（包括在找到可行解前被 `AbortSignal` 取消的情况，此时 `terminationStatus === "Interrupted"`）。 |
+| `"Unknown"` | `false` | 未找到有效解即停止（例如在找到解前被 `AbortSignal` 取消）。 |
 | `"Error"` | `false` | 求解器遇到内部执行错误。 |
 | `"NotSolved"` | `false` | 求解前的初始状态，或模型被修改后已重置解状态。 |
 
@@ -170,7 +170,7 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 1. **求解后修改自动重置解状态**：添加变量或约束、更新目标函数（`m.objective(...)`、`m.sense = ...`），或修改变量的边界/类型（`v.lb`、`v.ub`、`v.type`）与约束属性（`c.lhs`、`c.sense`、`c.rhs`），都会立即将 `m.status` 重置为 `"NotSolved"`，清空 `m.solution` 与 `m.objectiveValue`，并将变量和约束的原问题解与对偶值重置为 `null`。
 2. **求解中途修改自动丢弃过期结果**：如果在异步 `m.solve()` 或 `m.check()` 执行期间通过上述 API 修改了模型，正在运行的过期求解结果将被丢弃，模型保持 `"NotSolved"` 状态，且该进行中的 Promise 会以明确的错误 reject。
 3. **并发调用保护**：在同一模型上发起新的 `m.solve()` 或 `m.check()` 调用会取代先前仍在运行中的调用，防止乱序完成的旧任务覆盖最新运行的状态。
-4. **事务性批量编辑**：如果无效的修改被拒绝（包括如 `m.constraint([...])` 等批量数组调用），模型会自动回滚失败的修改，不会残留半成品实体，也不会破坏已有的合法解。
+4. **全有或全无的批量编辑**：如果 `m.constraint([...])` 等批量修改中包含无效项，模型会整体回滚，不会残留部分约束，也不会破坏已有有效解。
 
 > [!NOTE]
 > 不支持重命名已注册的变量或约束（例如在注册后重新赋值 `c.name`），也不支持直接篡改内部底层映射或 AST（例如 `c.lhs.terms` 或 `BoolOp.children`）；此类操作会在下一次调用求解、检查或导出时被内部模型完整性校验拒绝。
