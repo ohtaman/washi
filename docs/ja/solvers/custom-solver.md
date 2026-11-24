@@ -2,7 +2,7 @@
 
 このガイドでは、**WaSHI**（`@ohtaman/washi`）向けに独自のソルバープラグインを実装・テスト・配布する方法を説明します。
 
-WaSHI は疎結合なソルバープラグインアーキテクチャを採用しています。コアの `@ohtaman/washi` にはゼロコンフィグの HiGHS WASM エンジンと `MockSolver` が含まれており、さらに `@ohtaman/washi/solvers/pumpkin` で CP/LCG WASM プラグインを同梱しています。これらに加え、独自の WebAssembly エンジン、ネイティブ C++ アドオン、Web Worker、あるいは社内クラウドの REST / RPC ソルバーバックエンドを統一された `Model` API 経由で統合できます。
+コアの `@ohtaman/washi` は HiGHS WebAssembly エンジンと `MockSolver` を同梱しています。`@ohtaman/washi/solvers/pumpkin` は制約プログラミング（CP）プラグインを提供します。WebAssembly・ネイティブ C++・Web Worker・クラウド REST/RPC など任意のバックエンドを登録し、共通の `Model` API から呼び出せます。
 
 ---
 
@@ -20,15 +20,16 @@ graph TD
 ```
 
 ### アーキテクチャの特徴
-1. **統一されたグローバルレジストリ**: ソルバーレジストリは `globalThis` 上の `Symbol.for("washi.solverRegistry")` で管理されます。異なる ESM チャンク、動的インポート、または `<script>` タグ間でも同一のソルバーマップを参照できます。
-2. **環境に依存しない一貫性**: Node.js とブラウザで同一のインターフェース、ソルバー名解決、能力判定（`SolverCapabilities`）、およびエラーメッセージを提供します。
-3. **疎結合バンドル**: コアパッケージはオプションプラグインやカスタムプラグインをインポートしないため、プラグインが明示的にインポートされたときのみ自身を登録します。
+
+- **統一グローバルレジストリ**: `Symbol.for("washi.solverRegistry")` で管理し、ESM チャンクや `<script>` 間で同一マップを共有します。
+- **環境に依存しない一貫性**: Node.js とブラウザで同一のソルバー名解決・能力チェック・エラーメッセージを提供します。
+- **疎結合バンドル**: コアパッケージは任意・カスタムプラグインをインポートせず、各プラグインは読み込まれたときにのみ自身を登録します。
 
 ---
 
 ## 2. API コントラクトと TypeScript 型定義
 
-すべてのカスタムソルバーは、`@ohtaman/washi` で定義されている `Solver` インターフェースを実装する必要があります：
+すべてのカスタムソルバーは、`@ohtaman/washi` からエクスポートされる `Solver` インターフェースを実装します。
 
 ```typescript
 import {
@@ -66,11 +67,11 @@ export interface Solver {
   /** 対応している問題クラスを宣言する能力フラグ */
   readonly capabilities?: SolverCapabilities;
 
+  /** このソルバーインスタンスに設定された既定オプション */
+  readonly options?: SolverOptions;
+
   /**
-   * LP, MIP, QP, SMT 最適化モデルの主求解メソッド。
-   *
-   * @param modelData メモリ上の型付きモデル構造 (variables, constraints, objective, sense, boolVars, logicalConstraints)
-   * @param options 実行時オプション (timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress 等)
+   * 数理最適化モデル（LP, MIP, QP, CP, SMT）の主求解メソッド。
    */
   solve(
     modelData: SolveModelData,
@@ -78,10 +79,7 @@ export interface Solver {
   ): Promise<SolverResult>;
 
   /**
-   * 目的関数なしの純粋な SAT / SMT または実行可能性判定用の任意メソッド。
-   *
-   * @param modelData 目的関数なしのメモリ上モデル構造 (variables, boolVars, constraints, logicalConstraints)
-   * @param options 実行時オプション
+   * 目的関数なしの充足可能性・実行可能性判定用メソッド（任意）。
    */
   check?(
     modelData: CheckModelData,
@@ -90,72 +88,70 @@ export interface Solver {
 }
 ```
 
-### `CheckModelData` & `SolveModelData`
+### `CheckModelData` と `SolveModelData`
 
-`Model.solve()` および `Model.check()` は、事前に LP 文字列を直列化することなく、構造化されたモデルデータを直接アダプターへ渡します：
+`Model.solve()` と `Model.check()` は、事前に線形計画（LP）文字列へ変換せず、構造化されたモデルスナップショットをアダプターへ直接渡します。
 
 ```typescript
 export interface CheckModelData {
-  /** モデル名 */
   name?: string;
-  /** モデルに登録された決定変数 */
   variables: Var[];
-  /** モデルに登録された命題論理変数 */
   boolVars?: BoolVar[];
-  /** モデルに登録された線形算術制約 */
   constraints: Constraint[];
-  /** モデルに登録された論理 / SMT 制約 */
   logicalConstraints?: LogicalConstraintItem[];
 }
 
 export interface SolveModelData extends CheckModelData {
-  /** 最適化方向 ("Minimize" | "Maximize") */
   sense: OptimizationSense;
-  /** 線形または2次の目的関数式 */
   objective: LinExpr | QuadExpr;
 }
 ```
 
 ### `SolverCapabilities`
 
-カスタムソルバーは対応機能を `capabilities` で宣言します。`Model` は `solve()` または `check()` をディスパッチする前に以下の条件を検証します：
-- 目的関数に2次項（`QuadExpr`）が含まれる場合：`supportsQP === false` でないか
-- モデルに論理制約（`m.constraint(...)` で登録され、`m.constraints` には `kind: "logical"` として格納され、ソルバーには `modelData.logicalConstraints` として渡される）が含まれ、ソルバーがネイティブ論理制約（`supportsLogicalConstraints !== true`）と SMT（`supportsSMT !== true`）のどちらにも対応しない場合：`linearizeModelForMip` を通じて 0-1 MIP 二元変数と線形制約へ自動線形化されます。
-- いずれかの変数に初期値ヒント（`initialValue`）が設定されている場合：`supportsWarmStart !== true` でないか
+対応機能は `capabilities` で宣言します。`Model` は `solve()` や `check()` を呼ぶ前に次の条件を検証します。
+
+- **二次目的関数（`QuadExpr`）**: `supportsQP === false` の場合はエラーを投げます。
+- **ウォームスタート（`initialValue`）**: `supportsWarmStart !== true` の場合はエラーを投げます。
+- **論理制約**: `supportsLogicalConstraints` または `supportsSMT` が `true` なら `modelData.logicalConstraints` をそのまま渡します。
+- **混合整数計画（MIP）への自動線形化**: いずれの論理フラグも `true` でない場合、`Model` が論理制約を等価なバイナリ変数と線形制約へ自動変換してから `solve()` を呼びます。
 
 ```typescript
 export interface SolverCapabilities {
   /** 混合整数計画法（整数・バイナリ変数）のサポート */
   supportsMIP?: boolean;
 
-  /** 2次目的関数（QP: x^T Q x + c^T x）のサポート */
+  /** 二次目的関数（QP）のサポート */
   supportsQP?: boolean;
 
-  /** 2次錐制約または2次制約（QCQP）のサポート */
+  /** 二次制約または二次錐制約（QCQP / SOCP）のサポート */
   supportsQCQP?: boolean;
 
-  /** SMT / 命題論理制約のサポート */
+  /** 充足可能性モジュロ理論（SMT）および論理制約のサポート */
   supportsSMT?: boolean;
 
-  /** SMT 連続理論を伴わない命題論理制約（BoolVar, and, or, not, implies, xor）のネイティブサポート */
+  /** SMT 連続理論を伴わない命題論理制約のネイティブサポート */
   supportsLogicalConstraints?: boolean;
 
   /** Unsat Core（矛盾する制約の部分集合）抽出のサポート */
   supportsUnsatCore?: boolean;
 
-  /** 主問題初期値ヒント / MIP ウォームスタート（Var.initialValue）のサポート */
+  /** 初期値ヒント / ウォームスタート（Var.initialValue）のサポート */
   supportsWarmStart?: boolean;
 }
 ```
 
-### `SolverOptions` & `SolveProgressEvent`
+### `SolverOptions` と `SolveProgressEvent`
 
-`solve` および `check` に渡される実行時オプションには、キャンセル用シグナルや進捗コールバックが含まれます（なお、`SolveOptions` のルーティング用 `solver` フィールドはアダプターに渡される前に取り除かれます）：
+`solve()` と `check()` に渡される実行時オプションは `SolverOptions` に従います。ルーティング用の `solver` フィールドはアダプターへ渡される前に `Model` 側で取り除かれます。
 
 ```typescript
 export interface SolverOptions {
-  /** 制限時間（秒） */
+  /** 最大実行時間（秒） */
   timeLimit?: number;
+
+  /** 前処理モード */
+  presolve?: "on" | "off" | "choose";
 
   /** 相対 MIP ギャップ許容値（例: 1% なら 0.01） */
   relativeGap?: number;
@@ -163,13 +159,22 @@ export interface SolverOptions {
   /** 絶対 MIP ギャップ許容値 */
   absoluteGap?: number;
 
+  /** 並列スレッド数 */
+  threads?: number;
+
   /** ソルバーのコンソールログ出力を有効化 */
   verbose?: boolean;
 
-  /** 協調的キャンセル用シグナル。中断時は terminationStatus: "Interrupted" を返す */
+  /** 整数・バイナリ変数を緩和した連続 LP 緩和問題を解く */
+  relax?: boolean;
+
+  /** ブラウザで非同期実行するための Web Worker を使用 */
+  useWorker?: boolean;
+
+  /** 実行中の求解を中断するための AbortSignal */
   signal?: AbortSignal;
 
-  /** 正規化された SolveProgressEvent スナップショットを受け取る進捗コールバック */
+  /** 正規化された SolveProgressEvent を受け取る進捗コールバック */
   onProgress?: (progress: SolveProgressEvent) => void;
 
   /** その他のソルバー固有オプション */
@@ -177,91 +182,62 @@ export interface SolverOptions {
 }
 ```
 
-### LP 文字列変換・シンボルマップのヘルパー関数
+### 構造化モデルデータの直接利用と LP ヘルパーの使い分け
 
-`PumpkinSolver`・`GLPKSolver`・`Z3Solver` のように構造化された JS/WASM データを直接処理するソルバーでは、`SolveModelData` / `CheckModelData` をそのまま利用します。
-一方、CPLEX / HiGHS 形式の LP テキストや制限された識別子構文を必要とするバックエンド向けに、WaSHI は必要に応じて利用できるヘルパー関数をエクスポートしています：
+バックエンドが受け付ける入力形式に応じて、モデルデータの扱い方を選びます。
 
-- `generateLpString(modelData): LpExportResult` — `modelData` を CPLEX LP 形式文字列（`lpString`）に変換し、衝突安全な識別子逆引きマップ（`nameToVar`, `nameToConstraint`）を返します。
-- `buildLpSymbolMaps(modelData): LpSymbolMaps` — LP 文字列を生成せずに、衝突安全なサニタイズ済み識別子マップ（`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`）を構築します。
-- `isLpExportResult(value): value is LpExportResult` — `LpExportResult` の実行時型ガード（旧来の3引数オーバーロード `solve(modelData, lpResult, options)` をサポートする場合に有用です）。
-- `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — 任意の表示名を LP 形式で有効な識別子にサニタイズします。
+- **モデルデータを直接使う**: 構造化オブジェクトを扱うバックエンド向け（`PumpkinSolver`・`GLPKSolver`・`Z3Solver` と同方式）。
+- **LP ヘルパーを使う**: バックエンドが CPLEX / HiGHS 形式の LP テキストや制限付き ASCII 識別子を必要とする場合。
+
+| ヘルパー関数 | 用途 |
+| :--- | :--- |
+| `generateLpString(modelData, { relax }?)` | `modelData` を CPLEX LP 文字列（`lpString`）と衝突安全な逆引きマップ（`nameToVar`・`nameToConstraint`）へ変換。`{ relax: true }` で連続緩和 LP を出力。 |
+| `buildLpSymbolMaps(modelData)` | LP 文字列を生成せず、サニタイズ済み識別子マップ（`nameToVar`・`varToName`・`nameToConstraint`・`constraintToName`）だけを構築。 |
+| `isLpExportResult(value)` | `LpExportResult` の実行時型ガード（旧来の 3 引数オーバーロード互換用）。 |
+| `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | 任意の変数名・制約名を LP 形式で有効な識別子へ変換。 |
 
 ```typescript
 export interface LpExportResult {
-  /** 標準的な CPLEX/HiGHS LP 形式文字列 */
   lpString: string;
-
-  /** サニタイズされた LP 変数識別子を WaSHI の Var オブジェクトへ逆引きするマップ */
   nameToVar: Map<string, Var>;
-
-  /** サニタイズされた LP 制約識別子を WaSHI の Constraint オブジェクトへ逆引きするマップ */
   nameToConstraint: Map<string, Constraint>;
 }
 ```
 
 ### `SolverResult` の正規化と識別子の復元
 
-`solve` メソッドは、モデルの元の変数名・制約名（`v.name`, `bv.name`, `c.name`）をキーとする正規化された結果を返す必要があります。LP バックエンド向けに `generateLpString(modelData)` や `buildLpSymbolMaps(modelData)` を使用するアダプターは、`nameToVar` および `nameToConstraint` を用いてサニタイズ済み LP 識別子をモデルの元の名前に復元してください：
+`solve()` が返す `values`・`boolValues`・`reducedCosts`・`duals`・`slacks` は、モデルの元の名前（`v.name`・`bv.name`・`c.name`）をキーにする必要があります。LP ヘルパーを使った場合は、`nameToVar` と `nameToConstraint` で元の名前へ復元してください。
 
 ```typescript
 export interface SolverResult {
-  /** 標準化されたステータス文字列 */
   status: SolverStatus;
-
-  /** 実行可能解の有無に依存しない正確な終了理由（省略時は status と同じ） */
   terminationStatus?: TerminationStatus;
-
-  /** 実行可能な主問題解 / 暫定解が存在するかどうか（省略時は status と values から自動推論） */
   hasPrimalSolution?: boolean;
-
-  /** 最適値または最良の目的関数値（実行可能解がない場合は null） */
   objectiveValue: number | null;
-
-  /** ソルバーが提供する最良の双対境界 / 目的関数境界値 */
   objectiveBound?: number;
-
-  /** ソルバーが提供する相対 MIP ギャップ */
   relativeGap?: number;
-
-  /** 絶対 MIP ギャップ |objectiveValue - objectiveBound|（両方が有限値のとき自動計算） */
   absoluteGap?: number;
-
-  /** 元の変数名をキーとする主問題解のマップ（非有限値は無視されます） */
   values: Record<string, number>;
-
-  /** BoolVar 名をキーとする命題論理変数の割当マップ（任意、SMT/SAT 用） */
   boolValues?: Record<string, boolean>;
-
-  /** 変数の被約費用（任意、LP のみ） */
   reducedCosts?: Record<string, number>;
-
-  /** 制約の双対変数 / 潜在価格（任意、LP のみ） */
   duals?: Record<string, number>;
-
-  /** 制約のスラック値 / 余剰量（任意） */
   slacks?: Record<string, number>;
-
-  /** 求解の実行時間（秒） */
   runTime?: number;
-
-  /** ソルバーの診断ログ / テキスト出力 */
   logs?: string[];
-
-  /** 検査用の生ソルバー応答オブジェクト */
   raw?: any;
 }
 ```
 
 #### 標準化された `SolverStatus` の値
-- `"Optimal"`: 大域的最適解が見つかりました（MIP では許容誤差内、LP では最適性証明済み）。
-- `"Feasible"`: 実行可能解が見つかりましたが、大域的最適性は未証明です（例：暫定解がある状態で制限時間に到達）。
-- `"Infeasible"`: モデルが数学的に実行不可能であることが証明されました。
-- `"Unbounded"`: モデルの目的関数が非有界です。
-- `"TimeLimit"`: 最適性の証明前に `timeLimit` により終了しました。
-- `"IterationLimit"`: 反復回数上限により終了しました。
-- `"Sat"` / `"Unsat"`: `check()` または SMT ソルバーが返す充足可能 / 充足不能ステータス。
-- `"Error"` / `"NotSolved"` / `"Unknown"`: エラー、未求解、または判別不能なステータス。**`Unknown` や `Error` を決して `Optimal` に変換しないでください。**
+
+- `"Optimal"`: 最適解を取得（MIP は許容誤差内、LP は最適性証明済み）。
+- `"Feasible"`: 実行可能な暫定解はあるが、最適性は未証明。
+- `"Infeasible"`: モデルが実行不可能と証明された。
+- `"Unbounded"`: 目的関数が非有界。
+- `"TimeLimit"`: 暫定解や最適性証明のないまま `timeLimit` に到達。
+- `"IterationLimit"`: 反復回数上限に到達。
+- `"Sat"` / `"Unsat"`: `check()` または SMT ソルバーの充足可能 / 充足不能ステータス。
+- `"Error"` / `"NotSolved"` / `"Unknown"`: 失敗・未求解・未認識ステータス。`"Unknown"` や `"Error"` を `"Optimal"` へ変換してはいけません。
 
 ---
 
@@ -269,7 +245,7 @@ export interface SolverResult {
 
 ### チュートリアル A: 社内クラウド REST ソルバーアダプター
 
-以下は、`generateLpString(modelData)` でオンデマンドに LP 形式文字列を生成し、HTTP マイクロサービスへ送信して求解する本番対応のカスタムソルバー実装例です：
+次は、`generateLpString` でオンデマンドに CPLEX LP 文字列を生成し、HTTP マイクロサービスへ送信して求解するカスタムソルバーの実装例です。
 
 ```typescript
 import {
@@ -308,7 +284,9 @@ export class CloudSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const startTime = performance.now();
-    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
+    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData, {
+      relax: options.relax,
+    });
 
     let payload: any;
     try {
@@ -405,18 +383,26 @@ registerCloudSolver();
 
 ### チュートリアル B: カスタムソルバーの登録と利用方法
 
-実装したカスタムソルバーは、以下の 3 つの方法で選択・利用できます：
+設定を全体で共有するかリクエスト単位で変えるかに応じて、次の 3 つの方法から選びます。
+
+| 方法 | 向いている用途 |
+| :--- | :--- |
+| **登録名文字列** | 既定設定のプラグインを再利用する場合（`solver: "cloud"`）。 |
+| **ソルバーインスタンス** | リクエストごとに認証情報・エンドポイント・オプションを変えたい場合。 |
+| **グローバルデフォルト（`setDefaultSolver`）** | 各 `new Model()` を書き換えずにアプリ全体で既定ソルバーを切り替えたい場合。 |
 
 #### 方法 1: 登録名文字列で指定する
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import "./cloud-solver.js"; // "cloud" を自動登録
 
 const model = new Model({ name: "SupplyChain", solver: "cloud" });
-// または model.solve("cloud")
+// または await model.solve({ solver: "cloud" })
 ```
 
 #### 方法 2: ソルバーインスタンスを直接渡す
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
@@ -431,6 +417,7 @@ const status = await model.solve();
 ```
 
 #### 方法 3: グローバルなデフォルトソルバーとして設定する
+
 ```typescript
 import { setDefaultSolver, Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
@@ -445,9 +432,10 @@ const model = new Model("DefaultedModel");
 
 ## 4. 配布: 独立したプラグインパッケージとして公開する
 
-カスタムソルバーを独立した npm パッケージ（例：`@my-org/washi-solver-cplex`）として公開する場合の構成です：
+カスタムソルバーを独立した npm パッケージ（例：`@my-org/washi-solver-cplex`）として公開するには、`package.json` で Node ESM とブラウザ用のエントリーポイントを宣言します。
 
 ### 1. `package.json` の `exports` 構成
+
 ```json
 {
   "name": "@my-org/washi-solver-cplex",
@@ -474,17 +462,19 @@ const model = new Model("DefaultedModel");
 }
 ```
 
-### 2. ブラウザ向け IIFE ビルド
-ブラウザ用の単体スクリプト（`.min.js`）をビルドする際は、バンドラー（Vite または Rollup）を以下のように設定します：
-- 出力フォーマット: `iife`
-- グローバル変数名: `WashiCplex`
-- `Symbol.for("washi.solverRegistry")` を介して、`<script src="washi.min.js"></script><script src="washi-cplex.min.js"></script>` を読み込むだけで自動的にレジストリが連携されます。
+### 2. ブラウザ向け単体ビルド（IIFE）
+
+ブラウザ用 `.min.js` バンドルを出力する際は、Vite や Rollup で即時実行関数式（`iife`）を設定します。
+
+- **出力フォーマット**: `iife`
+- **グローバル変数名**: `WashiCplex`
+- **レジストリ連携**: `Symbol.for("washi.solverRegistry")` により、`washi.min.js` の後に読み込むだけで自動登録されます。
 
 ---
 
 ## 5. カスタムソルバーのテスト
 
-バンドルを行わずに Vitest や Jest で直接カスタムソルバーをテストできます：
+ネットワーク通信をモックすれば、バンドルなしで Vitest や Jest から直接アダプターをテストできます。
 
 ```typescript
 import { describe, it, expect, vi } from "vitest";

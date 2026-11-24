@@ -2,7 +2,7 @@
 
 本指南介绍如何为 **WaSHI**（`@ohtaman/washi`）构建、测试和发布自定义求解器插件。
 
-WaSHI 采用可插拔、解耦的求解器架构。核心包 `@ohtaman/washi` 内置零配置的 HiGHS WASM 引擎与 Mock 求解器，并通过 `@ohtaman/washi/solvers/pumpkin` 内置打包提供 Pumpkin CP/LCG WASM 插件。在此基础上，任何第三方求解器——无论是通过 WebAssembly、原生 C++ 插件、Web Worker，还是外部云端 REST/RPC 后端实现——都可以注册并通过统一的 `Model` API 进行调用。
+核心包 `@ohtaman/washi` 内置了 HiGHS WebAssembly 引擎与 `MockSolver`。`@ohtaman/washi/solvers/pumpkin` 提供了内置的约束规划（CP）插件。你还可以注册任意其他后端——如 WebAssembly、原生 C++、Web Worker 或云端 REST/RPC 服务——并通过统一的 `Model` API 调用。
 
 ---
 
@@ -20,15 +20,16 @@ graph TD
 ```
 
 ### 核心架构特征
-1. **统一的全局注册表**：求解器注册表基于 `globalThis` 上的 `Symbol.for("washi.solverRegistry")` 构建。这确保了即使跨不同的 ESM 代码分块、动态导入或 `<script>` 标签，所有模块访问的都是同一个求解器映射表。
-2. **跨环境行为一致性**：Node.js 与浏览器环境共享完全一致的错误提示、求解器命名规则与能力检测逻辑。
-3. **解耦打包**：WaSHI 核心包不导入任何可选或自定义插件，插件仅在被显式导入时才会注册自身。
+
+- **统一全局注册表**：基于 `Symbol.for("washi.solverRegistry")` 管理，跨 ESM 分块与 `<script>` 共享同一映射表。
+- **跨运行时一致性**：Node.js 与浏览器共享相同的求解器名称解析、能力校验和报错信息。
+- **解耦打包**：WaSHI 核心包不导入任何可选或自定义插件，每个插件仅在被显式导入时注册自身。
 
 ---
 
 ## 2. API 契约与 TypeScript 接口
 
-所有自定义求解器都必须实现 `@ohtaman/washi` 中定义的 `Solver` 接口：
+所有自定义求解器都必须实现 `@ohtaman/washi` 导出的 `Solver` 接口：
 
 ```typescript
 import {
@@ -57,20 +58,20 @@ import {
 
 ```typescript
 export interface Solver {
-  /** 求解器的唯一可读名称（例如 "GLPK", "AcmeCloudSolver"） */
+  /** 求解器引擎的唯一可读名称（例如 "GLPK", "AcmeCloudSolver"） */
   readonly name: string;
 
-  /** 求解器版本号字符串（例如 "1.2.0"） */
+  /** 求解器版本字符串（例如 "1.2.0"） */
   readonly version?: string;
 
-  /** 声明该求解器支持哪些问题类型的能力标志 */
+  /** 声明该求解器支持的功能特性 */
   readonly capabilities?: SolverCapabilities;
 
+  /** 当前求解器实例上配置的默认选项 */
+  readonly options?: SolverOptions;
+
   /**
-   * 求解 LP、MIP、QP 和 SMT 优化模型的主方法。
-   *
-   * @param modelData 内存中的强类型模型结构（variables, constraints, objective, sense, boolVars, logicalConstraints）
-   * @param options 运行时执行选项（timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress 等）
+   * 求解数学规划模型（LP、MIP、QP、CP 或 SMT）。
    */
   solve(
     modelData: SolveModelData,
@@ -78,10 +79,7 @@ export interface Solver {
   ): Promise<SolverResult>;
 
   /**
-   * 可选的可满足性检查方法，用于纯 SAT / SMT 或无目标函数的可行性判定。
-   *
-   * @param modelData 无目标函数的内存模型结构（variables, boolVars, constraints, logicalConstraints）
-   * @param options 运行时执行选项
+   * 可选的无目标函数可满足性 / 可行性检查方法（SAT / SMT / CP）。
    */
   check?(
     modelData: CheckModelData,
@@ -92,70 +90,68 @@ export interface Solver {
 
 ### `CheckModelData` 与 `SolveModelData`
 
-`Model.solve()` 与 `Model.check()` 会将结构化的模型数据直接传递给你的适配器，而不会预先序列化 LP 字符串：
+`Model.solve()` 与 `Model.check()` 会直接把结构化模型快照传给适配器，不会提前序列化为线性规划（LP）字符串：
 
 ```typescript
 export interface CheckModelData {
-  /** 模型名称 */
   name?: string;
-  /** 模型中注册的决策变量 */
   variables: Var[];
-  /** 模型中注册的命题布尔变量 */
   boolVars?: BoolVar[];
-  /** 模型中注册的线性算术约束 */
   constraints: Constraint[];
-  /** 模型中注册的逻辑 / SMT 约束 */
   logicalConstraints?: LogicalConstraintItem[];
 }
 
 export interface SolveModelData extends CheckModelData {
-  /** 优化方向（"Minimize" | "Maximize"） */
   sense: OptimizationSense;
-  /** 线性或二次目标函数表达式 */
   objective: LinExpr | QuadExpr;
 }
 ```
 
 ### `SolverCapabilities`
 
-自定义求解器通过 `capabilities` 声明其支持的功能特性。在分发调用 `solve()` 或 `check()` 之前，`Model` 会自动校验以下能力标志：
-- 当目标函数包含二次项（`QuadExpr`）时检查 `supportsQP === false`；
-- 当模型包含逻辑约束（通过 `m.constraint(...)` 添加，在 `m.constraints` 中以 `kind: "logical"` 存储，并在 `modelData.logicalConstraints` 中传递给求解器）且求解器既不支持原生逻辑约束（`supportsLogicalConstraints !== true`）也不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
-- 当任意变量设置了初始值（`initialValue`）时检查 `supportsWarmStart !== true`。
+通过 `capabilities` 声明求解器支持的能力。在调用 `solve()` 或 `check()` 之前，`Model` 会检查以下标志：
+
+- **二次目标函数（`QuadExpr`）**：若 `supportsQP === false` 则直接报错拒绝。
+- **热启动（`initialValue`）**：若 `supportsWarmStart !== true` 则直接报错拒绝。
+- **逻辑约束**：`supportsLogicalConstraints` 或 `supportsSMT` 为 `true` 时，通过 `modelData.logicalConstraints` 原生传递。
+- **混合整数规划（MIP）自动线性化**：当两个逻辑标志均不为 `true` 时，`Model` 会在调用 `solve()` 前将逻辑约束自动转为等价的二元变量与线性约束。
 
 ```typescript
 export interface SolverCapabilities {
-  /** 支持混合整数规划（整数/二元变量） */
+  /** 支持混合整数规划（整数和二元变量） */
   supportsMIP?: boolean;
 
-  /** 支持二次目标函数（QP: x^T Q x + c^T x） */
+  /** 支持二次目标函数（QP） */
   supportsQP?: boolean;
 
-  /** 支持二阶锥或二次约束 */
+  /** 支持二次约束或二阶锥约束（QCQP / SOCP） */
   supportsQCQP?: boolean;
 
-  /** 支持可满足性模理论（SMT）/ 布尔逻辑约束 */
+  /** 支持可满足性模理论（SMT）与逻辑约束 */
   supportsSMT?: boolean;
 
-  /** 原生支持布尔/命题逻辑约束（BoolVar, and, or, not, implies, xor），无需 SMT 连续理论 */
+  /** 原生支持布尔/命题逻辑约束，无需 SMT 连续理论 */
   supportsLogicalConstraints?: boolean;
 
   /** 支持提取不可行核心（冲突约束子集） */
   supportsUnsatCore?: boolean;
 
-  /** 支持原始初始值 / MIP 热启动（Var.initialValue） */
+  /** 支持原始初始值 / 热启动提示（Var.initialValue） */
   supportsWarmStart?: boolean;
 }
 ```
 
 ### `SolverOptions` 与 `SolveProgressEvent`
 
-传递给 `solve` 和 `check` 的运行时选项包含取消信号与进度回调钩子（注意：`SolveOptions` 中用于路由的 `solver` 字段会在传递给适配器之前被剥离）：
+传递给 `solve()` 和 `check()` 的运行时选项遵循 `SolverOptions`。用于路由的 `solver` 字段会在传递给适配器之前由 `Model` 移除。
 
 ```typescript
 export interface SolverOptions {
-  /** 求解时间上限（秒） */
+  /** 最大求解时间（秒） */
   timeLimit?: number;
+
+  /** 预处理模式 */
+  presolve?: "on" | "off" | "choose";
 
   /** 相对 MIP 最优间隙容差（例如 0.01 表示 1%） */
   relativeGap?: number;
@@ -163,13 +159,22 @@ export interface SolverOptions {
   /** 绝对 MIP 最优间隙容差 */
   absoluteGap?: number;
 
+  /** 并行线程数 */
+  threads?: number;
+
   /** 启用求解器控制台日志输出 */
   verbose?: boolean;
 
-  /** 协作式取消信号；中止时应返回 terminationStatus: "Interrupted" */
+  /** 通过松弛整数与二元变量求解连续 LP 松弛问题 */
+  relax?: boolean;
+
+  /** 在浏览器中使用 Web Worker 进行非阻塞求解 */
+  useWorker?: boolean;
+
+  /** 用于取消正在进行求解的 AbortSignal */
   signal?: AbortSignal;
 
-  /** 进度回调函数，接收标准化的 SolveProgressEvent 快照 */
+  /** 接收标准化 SolveProgressEvent 指标的进度回调 */
   onProgress?: (progress: SolveProgressEvent) => void;
 
   /** 其他求解器专属选项 */
@@ -177,91 +182,62 @@ export interface SolverOptions {
 }
 ```
 
-### 可选的 LP 序列化与符号映射辅助函数
+### 直接读取模型数据 vs. 使用 LP 辅助函数
 
-直接消费结构化 JS/WASM 数据的求解器（如 `PumpkinSolver`、`GLPKSolver` 和 `Z3Solver`）可以直接使用 `SolveModelData` / `CheckModelData`。
-如果你的适配器对接的后端需要 CPLEX/HiGHS LP 格式文本或受限的标识符语法，WaSHI 导出了按需使用的辅助函数：
+根据后端接受的输入格式决定如何读取 `modelData`：
 
-- `generateLpString(modelData): LpExportResult` — 将 `modelData` 序列化为 CPLEX LP 格式字符串（`lpString`），并生成防冲突的符号查找映射表（`nameToVar`、`nameToConstraint`）。
-- `buildLpSymbolMaps(modelData): LpSymbolMaps` — 在不序列化 LP 字符串的情况下，构建防冲突的规范化符号映射表（`nameToVar`、`varToName`、`nameToConstraint`、`constraintToName`）。
-- `isLpExportResult(value): value is LpExportResult` — `LpExportResult` 的运行时类型守卫（用于兼容旧版三参数 `solve(modelData, lpResult, options)` 重载）。
-- `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — 将任意显示名称转换为合法的 LP 标识符。
+- **直接读取模型数据**：适合接收结构化对象的后端（如 `PumpkinSolver`、`GLPKSolver` 和 `Z3Solver`）。
+- **使用按需 LP 辅助函数**：适合需要 CPLEX/HiGHS LP 文本格式或受限 ASCII 标识符的后端。
+
+| 辅助函数 | 用途 |
+| :--- | :--- |
+| `generateLpString(modelData, { relax }?)` | 将 `modelData` 序列化为 CPLEX LP 字符串（`lpString`）及防冲突映射表（`nameToVar`、`nameToConstraint`）；传入 `{ relax: true }` 输出连续 LP 松弛模型。 |
+| `buildLpSymbolMaps(modelData)` | 在不序列化 LP 字符串的前提下构建防冲突符号映射表（`nameToVar`、`varToName`、`nameToConstraint`、`constraintToName`）。 |
+| `isLpExportResult(value)` | `LpExportResult` 的运行时类型守卫（用于兼容旧版三参数重载）。 |
+| `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | 将任意变量名或约束名转换为合法的 LP 标识符。 |
 
 ```typescript
 export interface LpExportResult {
-  /** 标准 CPLEX/HiGHS LP 格式字符串 */
   lpString: string;
-
-  /** 将规范化后的 LP 变量标识符还原为 WaSHI Var 对象的映射表 */
   nameToVar: Map<string, Var>;
-
-  /** 将规范化后的 LP 约束标识符还原为 WaSHI Constraint 对象的映射表 */
   nameToConstraint: Map<string, Constraint>;
 }
 ```
 
-### `SolverResult` 标准化与标识符解码
+### `SolverResult` 标准化与标识符还原
 
-`solve` 方法必须返回以模型原始变量名和约束名（`v.name`、`bv.name`、`c.name`）为键的标准化结果。使用 `generateLpString(modelData)` 或 `buildLpSymbolMaps(modelData)` 的适配器必须通过 `nameToVar` 和 `nameToConstraint` 将 LP 标识符还原为模型中的原始名称：
+`solve()` 返回的 `values`、`boolValues`、`reducedCosts`、`duals` 与 `slacks` 必须以模型原始名称（`v.name`、`bv.name`、`c.name`）为键。使用 LP 辅助函数时，需通过 `nameToVar` 和 `nameToConstraint` 将 LP 标识符还原回原始名称。
 
 ```typescript
 export interface SolverResult {
-  /** 标准化的求解状态字符串 */
   status: SolverStatus;
-
-  /** 独立于是否存在可行解的精确终止原因（默认与 status 相同） */
   terminationStatus?: TerminationStatus;
-
-  /** 是否存在可行原始解 / 整数暂定解（省略时根据 status 和 values 自动推断） */
   hasPrimalSolution?: boolean;
-
-  /** 最优或当前最佳目标函数值（无原始可行解时为 null） */
   objectiveValue: number | null;
-
-  /** 求解器提供的最佳对偶界 / 目标函数界 */
   objectiveBound?: number;
-
-  /** 求解器提供的相对 MIP 最优间隙 */
   relativeGap?: number;
-
-  /** 绝对 MIP 最优间隙 |objectiveValue - objectiveBound|（当两者均为有限值时自动计算） */
   absoluteGap?: number;
-
-  /** 以原始变量名为键的变量取值映射（非有限数值会被忽略） */
   values: Record<string, number>;
-
-  /** 以 BoolVar 名称为键的命题布尔变量赋值映射（可选，用于 SMT/SAT） */
   boolValues?: Record<string, boolean>;
-
-  /** 变量的缩减成本（可选，仅限 LP） */
   reducedCosts?: Record<string, number>;
-
-  /** 约束的对偶值 / 影子价格（可选，仅限 LP） */
   duals?: Record<string, number>;
-
-  /** 约束的松弛量（可选） */
   slacks?: Record<string, number>;
-
-  /** 求解执行耗时（秒） */
   runTime?: number;
-
-  /** 求解器诊断日志 / 文本输出 */
   logs?: string[];
-
-  /** 供调试检查的原始求解器响应对象 */
   raw?: any;
 }
 ```
 
 #### 标准化的 `SolverStatus` 取值
-- `"Optimal"`：找到全局最优解（MIP 在容差范围内最优，LP 已证明全局最优）。
-- `"Feasible"`：已找到可行解，但尚未证明全局最优（例如达到时间上限时存在暂定解）。
-- `"Infeasible"`：从数学上证明模型不可行。
+
+- `"Optimal"`：找到最优解（MIP 在容差范围内最优，或 LP 已证明全局最优）。
+- `"Feasible"`：已找到可行暂定解，但尚未证明全局最优。
+- `"Infeasible"`：已证明模型不可行。
 - `"Unbounded"`：模型目标函数无界。
-- `"TimeLimit"`：因达到 `timeLimit` 而终止，尚未证明最优性。
-- `"IterationLimit"`：因达到单纯形法或节点迭代上限而终止。
+- `"TimeLimit"`：达到 `timeLimit` 而终止，且无可行解或最优性证明。
+- `"IterationLimit"`：达到迭代次数上限而终止。
 - `"Sat"` / `"Unsat"`：`check()` 或 SMT 求解器返回的可满足 / 不可满足状态。
-- `"Error"` / `"NotSolved"` / `"Unknown"`：发生错误、尚未求解或状态无法识别。**切勿将 Unknown/Error 转换为 Optimal。**
+- `"Error"` / `"NotSolved"` / `"Unknown"`：求解失败、尚未求解或未识别状态。切勿将 `"Unknown"` 或 `"Error"` 映射为 `"Optimal"`。
 
 ---
 
@@ -269,7 +245,7 @@ export interface SolverResult {
 
 ### 教程 A：内部云端 REST 求解器适配器
 
-下面是一个完整的生产级自定义求解器示例，它通过 `generateLpString(modelData)` 按需生成 LP 字符串，并连接到接收 LP 格式的 HTTP 微服务：
+下面的示例实现了一个自定义求解器，它通过 `generateLpString` 按需生成 CPLEX LP 字符串并发送到 HTTP 微服务：
 
 ```typescript
 import {
@@ -308,7 +284,9 @@ export class CloudSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const startTime = performance.now();
-    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
+    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData, {
+      relax: options.relax,
+    });
 
     let payload: any;
     try {
@@ -405,18 +383,26 @@ registerCloudSolver();
 
 ### 教程 B：注册与使用自定义求解器
 
-实现完成后，可以通过以下三种方式选择并调用自定义求解器：
+根据配置是否全局共享，选择以下三种接入方式之一：
+
+| 方式 | 适用场景 |
+| :--- | :--- |
+| **已注册名称字符串** | 使用默认配置复用插件（`solver: "cloud"`）。 |
+| **直接传入求解器实例** | 每次请求需要不同的凭证、端点或预设选项。 |
+| **全局默认（`setDefaultSolver`）** | 在不修改每处 `new Model()` 的情况下全局替换默认求解器。 |
 
 #### 方式 1：通过已注册的名称字符串指定
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import "./cloud-solver.js"; // 自动注册 "cloud"
 
 const model = new Model({ name: "SupplyChain", solver: "cloud" });
-// 或调用 model.solve("cloud")
+// 或调用 await model.solve({ solver: "cloud" })
 ```
 
 #### 方式 2：直接传入求解器实例
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
@@ -431,6 +417,7 @@ const status = await model.solve();
 ```
 
 #### 方式 3：设置为全局默认求解器
+
 ```typescript
 import { setDefaultSolver, Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
@@ -445,9 +432,10 @@ const model = new Model("DefaultedModel");
 
 ## 4. 发布分发：打包为独立插件
 
-若要将你的求解器作为独立 npm 包发布（例如 `@my-org/washi-solver-cplex`）：
+若要将求解器作为独立 npm 包发布（例如 `@my-org/washi-solver-cplex`），请在 `package.json` 中声明 Node ESM 与浏览器入口：
 
 ### 1. `package.json` 导出结构 (`exports`)
+
 ```json
 {
   "name": "@my-org/washi-solver-cplex",
@@ -474,17 +462,19 @@ const model = new Model("DefaultedModel");
 }
 ```
 
-### 2. 浏览器 IIFE 构建
-在构建浏览器端独立脚本（`.min.js`）时，请将打包工具（Vite 或 Rollup）配置为：
-- 输出格式：`iife`
-- 全局变量名：`WashiCplex`
-- 依托 `Symbol.for("washi.solverRegistry")`，使 `<script src="washi.min.js"></script><script src="washi-cplex.min.js"></script>` 能够自动关联注册表。
+### 2. 浏览器单文件构建（IIFE）
+
+构建浏览器 `.min.js` 单文件包时，在 Vite 或 Rollup 中配置立即执行函数表达式（`iife`）格式：
+
+- **输出格式**：`iife`
+- **全局变量名**：`WashiCplex`
+- **注册表关联**：基于 `Symbol.for("washi.solverRegistry")`，在 `washi.min.js` 之后引入即可自动注册。
 
 ---
 
 ## 5. 测试自定义求解器
 
-无需打包即可直接使用 Vitest 或 Jest 测试你的求解器：
+通过模拟网络请求，无需打包即可直接在 Vitest 或 Jest 中测试适配器：
 
 ```typescript
 import { describe, it, expect, vi } from "vitest";

@@ -1,6 +1,15 @@
 # GLPK Solver Engine
 
-The **GNU Linear Programming Kit (GLPK)** is a long-standing, robust simplex and interior-point solver package intended for solving large-scale linear programming (LP) and mixed integer programming (MIP).
+The **GNU Linear Programming Kit (GLPK)** is an open-source simplex and branch-and-cut solver for Linear Programming (LP) and Mixed-Integer Programming (MIP).
+
+---
+
+## When to Choose GLPK vs. HiGHS
+
+| Scenario | Recommended Solver | Why |
+| :--- | :--- | :--- |
+| **General LP or MIP optimization** | **[HiGHS](./highs.md)** (default) | Bundled under MIT, faster on MIP, non-blocking Web Worker, warm starts, and full LP duals/slacks/reduced costs. |
+| **Academic benchmarks or cross-checking GLPK models** | **GLPK** (`@ohtaman/washi/solvers/glpk`) | Matches GNU GLPK 5.0 behavior when reproducing existing GLPK benchmarks or verifying results across solvers. |
 
 ---
 
@@ -16,15 +25,17 @@ npm install glpk.js
 
 ## Licensing Consideration (GPL-3.0)
 
-GLPK is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+GLPK is licensed under the **GNU General Public License v3.0 (GPL-3.0)**:
 
 - Because WaSHI is MIT-licensed, `glpk.js` is **never bundled statically** in the core package.
-- It is dynamically imported only if you explicitly register or invoke `@ohtaman/washi/solvers/glpk`.
-- Ensure your project's distribution requirements comply with the GPL-3.0 license when shipping products that bundle GLPK.
+- It is loaded dynamically only when you explicitly import `@ohtaman/washi/solvers/glpk`.
+- Verify that your distribution strategy complies with GPL-3.0 before shipping products that bundle GLPK.
 
 ---
 
 ## Basic Usage
+
+Import `@ohtaman/washi/solvers/glpk` once to register the `"glpk"` solver, then build and solve LP or MIP models using the standard `Model` API:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -36,31 +47,61 @@ const x = model.continuous("x", { lb: 0, ub: 10 });
 const y = model.continuous("y", { lb: 0, ub: 20 });
 
 model.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
-model.constraint(expr`${x} + ${y} <= 15`, "cap");
+const cap = model.constraint(expr`${x} + ${y} <= 15`, "cap");
 
 await model.solve();
 
-console.log("GLPK Status:", model.status);
-console.log("Objective:", model.objectiveValue);
+console.log("GLPK Status:", model.status);      // Optimal
+console.log("Objective:", model.objectiveValue); // 40
+console.log("Shadow price:", cap.dual);          // 2
 ```
+
+---
+
+## Solver Options & Execution Model
+
+WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error`. In Node.js, `glpk.js` executes synchronously on the main thread; in all environments, `signal` is checked only before solving begins and cannot interrupt an in-flight solve.
+
+### Supported Options
+
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | Maximum solve time in seconds (`tmlim`). |
+| `relativeGap` | `number` | Relative MIP optimality gap tolerance (`mipgap`). |
+| `presolve` | `"on" \| "off" \| "choose"` | Controls GLPK presolve (`"off"` disables it; `"on"` and `"choose"` enable it). |
+| `verbose` | `boolean` | Enables GLPK console logging (`false` by default). |
+| `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model. |
+| `signal` | `AbortSignal` | Checked before execution starts (cannot interrupt an in-flight synchronous solve). |
+| `onProgress` | `(ev) => void` | Invoked during MIP branch-and-cut callbacks, or once when the solve completes. |
+
+### Unsupported Options & Features (Throw at Runtime)
+
+- **`outputFlag`**: Throws an `Error`. Use `verbose: true` instead.
+- **Other unsupported options**: `absoluteGap`, `threads`, `useWorker: true`, and unknown option keys throw an `Error`.
+- **Unsupported model features**: Setting `initialValue` warm starts or a `QuadExpr` quadratic objective throws an `Error`.
 
 ---
 
 ## Result Semantics & Status Mapping
 
 ### Solver Statuses
-GLPK return codes are mapped strictly to WaSHI `SolverStatus`:
-- `GLP_OPT` (5) $\to$ `"Optimal"`
-- `GLP_FEAS` (2) $\to$ `"Feasible"` (feasible MIP incumbent found)
-- `GLP_INFEAS` (3) / `GLP_NOFEAS` (4) $\to$ `"Infeasible"`
-- `GLP_UNBND` (6) $\to$ `"Unbounded"`
-- `GLP_UNDEF` (1) and unrecognized/missing statuses $\to$ `"Unknown"` (never misclassified as `"Optimal"`)
+
+GLPK return codes map strictly to WaSHI `SolverStatus`:
+
+| GLPK Code | WaSHI Status | Meaning |
+| :--- | :--- | :--- |
+| `GLP_OPT` (5) | `"Optimal"` | Proven optimal solution found. |
+| `GLP_FEAS` (2) | `"Feasible"` | Feasible MIP incumbent found. |
+| `GLP_INFEAS` (3) / `GLP_NOFEAS` (4) | `"Infeasible"` | No feasible solution exists. |
+| `GLP_UNBND` (6) | `"Unbounded"` | Objective is unbounded. |
+| `GLP_UNDEF` (1) / other | `"Unknown"` | Undefined or unrecognized status (never mapped to `"Optimal"`). |
 
 ### Solution Availability
-- Variable values (`model.values`, `var.value`) and objective values (`model.objectiveValue`) are exposed **only** when a valid primal solution is available (`"Optimal"` or `"Feasible"`).
-- For unsuccessful or non-optimal solves (`Infeasible`, `Unbounded`, `Unknown`, `Error`), `model.objectiveValue` is `null` and variable values remain `null` without fabricating fake all-zero solutions.
+
+- Variable values (`model.values`, `var.value`) and `model.objectiveValue` are populated only for `"Optimal"` or `"Feasible"` outcomes.
+- On `Infeasible`, `Unbounded`, `Unknown`, or `Error` outcomes, `model.objectiveValue` and variable values remain `null`.
 
 ### Differences Between LP and MIP
-- **Linear Programming (LP)**: Solved using the simplex algorithm. Dual values (shadow prices via `constraint.dual`) and slacks are populated for optimal solutions.
-- **Mixed-Integer Programming (MIP)**: Solved using the branch-and-cut algorithm. Produces integer-feasible primal variable solutions; dual values are mathematically undefined for discrete optimization and omitted.
 
+- **Linear Programming (LP)**: Solved via simplex. Only constraint duals (`c.dual`) are populated on optimal solutions; `c.slack` and `v.reducedCost` remain `null`.
+- **Mixed-Integer Programming (MIP)**: Solved via branch-and-cut. Duals are omitted, and `glpk.js` does not expose MIP dual bounds or gaps (`objectiveBound`, `relativeGap`, and `absoluteGap` remain `undefined`).

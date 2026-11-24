@@ -1,25 +1,35 @@
 # Pumpkin Constraint Programming Solver
 
-**Pumpkin** is an open-source constraint programming (CP) solver written in Rust ([ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)). WaSHI bundles Pumpkin (`v0.5.0`) as WebAssembly in `@ohtaman/washi/solvers/pumpkin` with no extra packages required.
+**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`) as WebAssembly in `@ohtaman/washi/solvers/pumpkin` with zero extra packages.
 
-Because Pumpkin runs in a single thread, it works in browsers **without `COOP` / `COEP` HTTP headers**.
+Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` or `COOP`/`COEP` headers (see [Cross-Origin Isolation](../getting-started/cross-origin.md)).
+
+---
+
+## When to Choose Pumpkin
+
+| Problem Type | Recommended Solver | Why |
+| :--- | :--- | :--- |
+| **Scheduling, resource caps, & discrete global constraints** | **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) | Native propagation for `disjoint`, `cumulative`, `distinct`, and `allowed` with zero extra setup. |
+| **Browser `unsatCore` without `COOP`/`COEP`** | **Pumpkin** (`m.check({ solver: "pumpkin" })`) | Extracts conflicting named constraints on bounded integer and boolean models in any static site or iframe. |
+| **Linear, Mixed-Integer, & Quadratic Programming** | **[HiGHS](./highs.md)** (default) | Supports continuous variables, duals and slacks, convex quadratic objectives, and continuous relaxation. |
+| **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Handles real-valued inequalities inside logical operators and mixed continuous/integer `unsatCore`. |
 
 ---
 
 ## Key Features
 
-- **Bundled & zero dependencies**: `pumpkin.wasm` (~1.4 MB) ships inside `@ohtaman/washi` with an MIT-compatible license.
-- **Runs in a Web Worker**: Keeps browser UI responsive and works in standard static hosting and iframes without `SharedArrayBuffer`.
-- **Native CP constraints**: Supports `disjoint()`, `cumulative()`, `distinct()`, `allowed()` / `not(allowed())`, `at()`, `max()`, `min()`, `abs()`, discrete `!=`, and `m.indicator()`.
-- **Conflict diagnosis (`unsatCore`)**: `await model.check({ solver: "pumpkin" })` finds conflicting named constraints in bounded integer and boolean models.
-- **Warm starts (`initialValue`)**: Accepts starting value hints on `m.integer()` and `m.binary()` variables.
-
-> [!TIP]
-> Use **Pumpkin** for scheduling, resource limits, all-different assignments, and browser `unsatCore` without `COOP`/`COEP`. Use **HiGHS** for continuous LP/MIP/QP, and **Z3** when you need `Continuous` variables in logical rules.
+- **Bundled & zero dependencies**: `pumpkin.wasm` (~1.4 MB) ships inside `@ohtaman/washi` under an MIT-compatible license.
+- **Background Web Worker execution**: Runs off the main thread in browsers without `SharedArrayBuffer`, keeping UI rendering responsive.
+- **Native CP constraints**: Supports `disjoint()`, `cumulative()`, `distinct()`, `allowed()`, `at()`, `max()`, `min()`, `abs()`, discrete `!=`, and `m.indicator()`.
+- **Conflict diagnosis (`unsatCore`)**: `await model.check({ solver: "pumpkin" })` identifies conflicting named constraints in bounded integer and boolean models.
+- **Warm starts (`initialValue`)**: Accepts starting value hints on `model.integer()` and `model.binary()` variables.
 
 ---
 
-## Examples
+## Usage Examples
+
+Import `@ohtaman/washi/solvers/pumpkin` once to register the `"pumpkin"` solver. Use `model.solve()` to optimize an integer objective over bounded integer and boolean variables, or use `model.check()` to verify satisfiability and inspect conflicting constraints.
 
 ### 1. Scheduling & Global Constraints (`model.solve()`)
 
@@ -73,15 +83,24 @@ if (result.status === "Unsat") {
 
 ---
 
-## Solver Options (`timeLimit`, `signal`, `onProgress`)
+## Solver Options
 
-Pass execution options to `model.solve()` or `model.check()`. Pumpkin supports progress callbacks and cancellation via `AbortSignal`:
+Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`. Supported options are `timeLimit` (seconds), `useWorker`, `wasmUrl`, `signal`, and `onProgress`:
 
 ```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+const model = new Model("TimedSearch", { solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
+model.constraint(expr`${x} + ${y} >= 40`, "min_total");
+model.objective(minimize(expr`2 * ${x} + 3 * ${y}`));
+
 const controller = new AbortController();
 
 await model.solve({
-  timeLimit: 30.0, // Maximum solve time in seconds
+  timeLimit: 30.0,
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`Elapsed: ${ev.elapsedTime.toFixed(1)}s, Best: ${ev.objectiveValue}`);
@@ -100,28 +119,39 @@ if (model.hasPrimalSolution) {
 
 ## Requirements & Limitations {#domain-api-preconditions}
 
-Pumpkin only solves **bounded integer and boolean** models and throws an explicit error for unsupported inputs:
+Pumpkin solves **bounded integer and boolean** models only. Unsupported variables, values, or options fail fast by throwing a runtime `Error`:
 
-- **Bounded integers only**: Every `Integer` or `Binary` variable must have finite bounds within $[-(2^{30} - 1),\, 2^{30} - 1]$. `Continuous` variables and `-Infinity` / `Infinity` bounds are rejected.
-- **Integer coefficients and bounds**: Constraint coefficients, adjusted right-hand sides (`rhs - lhs.constant`), and scaled variable bounds must be exact integers within signed 32-bit safe range (`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`). Objective constants may be fractional.
-- **Unsupported features**: `QuadExpr` objectives/constraints, `relax: true`, and LP tolerances (`relativeGap`, `absoluteGap`, `presolve`) are not used because Pumpkin is an exact integer CP solver.
+- **Bounded integers only**: Every `Integer` and `Binary` variable must have finite integer bounds in $[-(2^{30} - 1),\, 2^{30} - 1]$; `Continuous` variables and infinite bounds throw an `Error`.
+- **Integer coefficients & scaled bounds**: Constraint coefficients, adjusted right-hand sides (`rhs - lhs.constant`), and scaled variable bounds must be exact integers in $[-(2^{30} - 1),\, 2^{30} - 1]$.
+- **Constraint magnitude sum**: In each constraint, the adjusted right-hand side magnitude plus the worst-case magnitude of every scaled variable term must not exceed $2^{31} - 2$.
+- **Stricter objective bound**: Objective coefficients must be integers whose worst-case scaled term magnitudes sum to at most $2^{30} - 1$; objective constants may be fractional.
+- **Unsupported model features**: `QuadExpr` objectives or constraints and `relax: true` throw a runtime `Error`.
+- **Unsupported options**: `relativeGap`, `absoluteGap`, `presolve`, `threads`, `verbose`, `outputFlag`, and unknown option keys throw a runtime `Error`.
 
 ---
 
 ## Browser Worker & WASM Hosting
 
-By default in browsers, Pumpkin loads the bundled `pumpkin.wasm` inside a dedicated Web Worker (falling back to the main thread on `file:` URLs or sandboxed iframes). To run on the main thread or serve `pumpkin.wasm` from a custom URL:
+By default in browsers, Pumpkin loads `pumpkin.wasm` inside a dedicated Web Worker. On `file:` URLs or sandboxed iframes without an origin, it falls back to the main thread automatically.
+
+To force main-thread execution or serve `pumpkin.wasm` from a custom URL:
 
 ```typescript
-import { Model } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 import { PumpkinSolver, setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 
-// Run on the main thread per call or per solver instance
-await model.solve({ useWorker: false });
-const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
-
-// Custom WASM URL (or pass { wasmUrl } to solve/check)
+// Set a custom WASM URL globally (or pass { wasmUrl } to solve() / check())
 setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
+
+const model = new Model({ solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 10 });
+model.objective(minimize(expr`${x}`));
+
+// Option 1: Force main-thread execution for a single call
+await model.solve({ useWorker: false });
+
+// Option 2: Configure defaults on a PumpkinSolver instance
+const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
 ```
 
 If `pumpkin.wasm` fails to load or returns an HTML fallback page, WaSHI throws an error with the attempted URL instead of silently falling back to a CDN.

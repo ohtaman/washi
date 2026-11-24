@@ -1,25 +1,35 @@
 # Pumpkin 约束规划求解器
 
-**Pumpkin** 是使用 Rust 开发的开源约束规划（CP）求解器（[ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)）。WaSHI 将 Pumpkin（`v0.5.0`）编译为 WebAssembly 并内置在 `@ohtaman/washi/solvers/pumpkin` 中，无需额外安装任何依赖。
+**Pumpkin** 是由 [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) 使用 Rust 开发的开源约束规划（CP）求解器。WaSHI 将 Pumpkin（`v0.5.0`）编译为 WebAssembly 并内置在 `@ohtaman/washi/solvers/pumpkin` 中，无需安装额外依赖。
 
-由于采用单线程运行，在浏览器中使用时**无需配置 `COOP` / `COEP` 响应头**。
+由于单线程运行，在浏览器中无需 `SharedArrayBuffer` 或 `COOP`/`COEP` 响应头（见[跨域隔离指南](../getting-started/cross-origin.md)）。
+
+---
+
+## 何时选择 Pumpkin
+
+| 问题类型 | 推荐求解器 | 原因 |
+| :--- | :--- | :--- |
+| **排程调度、资源上限与离散全局约束** | **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`） | 原生支持 `disjoint`、`cumulative`、`distinct` 与 `allowed`，零额外配置。 |
+| **无需 `COOP`/`COEP` 的浏览器 `unsatCore`** | **Pumpkin**（`m.check({ solver: "pumpkin" })`） | 可在任意静态托管或 iframe 中提取有界整数和布尔模型的冲突约束。 |
+| **线性规划、混合整数规划与二次规划** | **[HiGHS](./highs.md)**（默认） | 支持连续变量、对偶值与松弛量、凸二次目标函数及连续松弛。 |
+| **含 `Continuous` 变量的逻辑规则** | **[Z3](./z3.md)** | 支持逻辑运算符中的实数不等式，以及连续/整数混合模型的 `unsatCore`。 |
 
 ---
 
 ## 主要特性
 
 - **内置且零依赖**：`pumpkin.wasm`（约 1.4 MB）随 `@ohtaman/washi` 一同发布，采用 MIT 兼容许可。
-- **Web Worker 后台执行**：不依赖 `SharedArrayBuffer`，在常规静态托管或 iframe 中也能流畅运行而不阻塞页面。
-- **原生 CP 约束支持**：直接支持 `disjoint()`、`cumulative()`、`distinct()`、`allowed()` / `not(allowed())`、`at()`、`max()`、`min()`、`abs()`、离散 `!=` 以及 `m.indicator()`。
-- **冲突诊断（`unsatCore`）**：调用 `await model.check({ solver: "pumpkin" })` 可定位有界整数和布尔模型中的冲突命名约束。
-- **热启动（`initialValue`）**：支持为 `m.integer()` 和 `m.binary()` 变量提供初始搜索提示。
-
-> [!TIP]
-> 排班调度、资源上限、互不相同分配以及免 `COOP`/`COEP` 的 `unsatCore` 请用 **Pumpkin**；连续变量 LP / MIP / QP 优化请用 **HiGHS**；含连续变量的逻辑规则请用 **Z3**。
+- **Web Worker 后台执行**：不依赖 `SharedArrayBuffer`，在浏览器后台线程运行以保持页面流畅。
+- **原生 CP 约束**：支持 `disjoint()`、`cumulative()`、`distinct()`、`allowed()`、`at()`、`max()`、`min()`、`abs()`、离散 `!=` 与 `m.indicator()`。
+- **冲突诊断（`unsatCore`）**：`await model.check({ solver: "pumpkin" })` 可定位有界整数和布尔模型中的冲突命名约束。
+- **热启动（`initialValue`）**：支持为 `model.integer()` 和 `model.binary()` 变量提供初始搜索提示。
 
 ---
 
 ## 使用示例
+
+只需导入一次 `@ohtaman/washi/solvers/pumpkin` 即可注册 `"pumpkin"` 求解器。对有界整数和布尔模型求目标最优值时调用 `model.solve()`，验证可满足性或排查冲突约束时调用 `model.check()`。
 
 ### 1. 排程与全局约束 (`model.solve()`)
 
@@ -73,15 +83,24 @@ if (result.status === "Unsat") {
 
 ---
 
-## 求解选项 (`timeLimit`, `signal`, `onProgress`)
+## 求解选项
 
-可以将运行选项传入 `model.solve()` 或 `model.check()`。Pumpkin 支持进度回调与 `AbortSignal` 取消：
+可将运行选项传入 `model.solve()`、`model.check()` 或 `new PumpkinSolver(options)`。支持的选项包括 `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal` 和 `onProgress`：
 
 ```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+const model = new Model("TimedSearch", { solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
+model.constraint(expr`${x} + ${y} >= 40`, "min_total");
+model.objective(minimize(expr`2 * ${x} + 3 * ${y}`));
+
 const controller = new AbortController();
 
 await model.solve({
-  timeLimit: 30.0, // 最大求解时间（秒）
+  timeLimit: 30.0,
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`已耗时: ${ev.elapsedTime.toFixed(1)}s, 当前最优: ${ev.objectiveValue}`);
@@ -100,31 +119,42 @@ if (model.hasPrimalSolution) {
 
 ## 使用要求与限制 {#domain-api-preconditions}
 
-Pumpkin 仅支持**有界整数和布尔**模型，遇到不支持的输入会直接抛出明确错误：
+Pumpkin 仅支持**有界整数和布尔**模型。遇到不支持的变量、数值或选项时，会在运行时直接抛出 `Error`：
 
-- **仅限有界整数**：所有 `Integer` 或 `Binary` 变量的上下界必须在 $[-(2^{30} - 1),\, 2^{30} - 1]$ 范围内，不支持 `Continuous` 变量和 `-Infinity` / `Infinity`。
-- **整数系数与范围限制**：约束系数、调整后的右端项（`rhs - lhs.constant`）以及缩放后的上下界必须为有符号 32 位安全整数（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）。目标函数常数项允许为小数。
-- **不支持的功能**：不支持 `QuadExpr` 二次式和 `relax: true`；由于 Pumpkin 是精确整数 CP 求解器，不使用 `relativeGap`、`absoluteGap`、`presolve` 等 LP 容差参数。
+- **仅限有界整数**：`Integer` 和 `Binary` 变量的上下界须为 $[-(2^{30} - 1),\, 2^{30} - 1]$ 内的有限整数；`Continuous` 与无穷界会抛错。
+- **整数系数与缩放界**：约束系数、调整后的右端项（`rhs - lhs.constant`）以及系数乘以变量上下界的结果均须为 $[-(2^{30} - 1),\, 2^{30} - 1]$ 内的精确整数。
+- **单条约束的 32 位总幅值上限**：在每条约束中，调整后右端项的绝对值加上所有缩放变量项最坏情况幅值的总和不得超过 $2^{31} - 2$。
+- **更严格的目标函数上限**：目标函数系数须为整数，且各项最坏情况缩放幅值之和不得超过 $2^{30} - 1$；目标函数常数项允许为小数。
+- **不支持的模型特性**：`QuadExpr` 目标或约束以及 `relax: true` 会抛出运行时 `Error`。
+- **不支持的选项**：`relativeGap`、`absoluteGap`、`presolve`、`threads`、`verbose`、`outputFlag` 以及任何未知选项键都会抛出运行时 `Error`。
 
 ---
 
 ## 浏览器 Worker 与 WASM 部署
 
-在浏览器中，Pumpkin 默认在专用 Web Worker 中加载内置 `pumpkin.wasm`（在 `file:` 协议或受限 iframe 中会退回主线程执行）。如需在主线程运行或从自定义路径托管 `pumpkin.wasm`：
+在浏览器中，Pumpkin 默认在专用 Web Worker 中加载内置的 `pumpkin.wasm`。在 `file:` 协议或无源沙箱 iframe 中，会自动退回主线程执行。
+
+如需强制主线程运行或从自定义路径托管 `pumpkin.wasm`：
 
 ```typescript
-import { Model } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 import { PumpkinSolver, setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 
-// 按次或按求解器实例指定主线程运行
-await model.solve({ useWorker: false });
-const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
-
-// 自定义 WASM 地址（也可在 solve/check 中传入 { wasmUrl }）
+// 全局设置自定义 WASM 地址（也可在 solve() / check() 中传入 { wasmUrl }）
 setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
+
+const model = new Model({ solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 10 });
+model.objective(minimize(expr`${x}`));
+
+// 方式 1：单次调用强制在主线程运行
+await model.solve({ useWorker: false });
+
+// 方式 2：在 PumpkinSolver 实例上配置默认值
+const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
 ```
 
-如果 `pumpkin.wasm` 加载失败或返回了 HTML 回退页面，WaSHI 会直接抛出包含请求 URL 的错误，不会静默回退到外部 CDN。
+如果 `pumpkin.wasm` 加载失败或返回 HTML 回退页面，WaSHI 会直接抛出包含请求地址的错误，不会静默回退到外部 CDN。
 
 ---
 

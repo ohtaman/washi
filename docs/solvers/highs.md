@@ -1,25 +1,42 @@
 # HiGHS Solver Engine
 
-**HiGHS** is high-performance mathematical optimization software initiated at the University of Edinburgh ([highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
+**HiGHS** is an open-source mathematical optimization solver started at the University of Edinburgh ([highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It solves Linear Programming (LP), Mixed-Integer Programming (MIP), and convex Quadratic Programming (QP) problems.
 
-In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly compiled directly from official upstream source ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)) using its native C API (`highs_c_api.h`), providing zero-config execution across Node.js, Web Workers, and browsers without third-party wrapper dependencies.
+In `@ohtaman/washi`, HiGHS is the built-in default solver. It ships as a bundled WebAssembly binary with zero external dependencies and runs in Node.js, browsers, and Web Workers.
+
+---
+
+## When to Choose HiGHS
+
+| Problem Type | Recommended Solver | Why |
+| :--- | :--- | :--- |
+| **LP, MIP, or continuous convex QP** | **HiGHS** (default) | Bundled under MIT, fast numerical solving, LP duals and slacks, and MIP warm starts. |
+| **Bounded-integer Constraint Programming (CP)** | **[Pumpkin](./pumpkin.md)** | Native `disjoint`, `cumulative`, `distinct`, and `unsatCore` without Cross-Origin Isolation headers. |
+| **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Exact arithmetic inside logical operators and mixed continuous/integer `unsatCore`. |
+| **GNU GLPK compatibility or benchmarking** | **[GLPK](./glpk.md)** | Optional GPL-3.0 peer dependency for cross-checking legacy GLPK models. |
+
+> [!TIP]
+> Start with **HiGHS** for almost all numerical optimization models. Switch to **Pumpkin** or **Z3** when you need native CP propagation or Satisfiability Modulo Theories (SMT) conflict diagnosis.
 
 ---
 
 ## Key Features in WaSHI
 
-- **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi` with zero external runtime dependencies. No separate peer dependency or C++ compiler required.
-- **Permissive MIT License**: 100% commercially friendly.
-- **Background Web Worker Execution**: Automatically offloads solving to a dedicated Web Worker in browser environments to avoid freezing the UI thread.
-- **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
-- **Fast WASM Execution**: Runs the directly compiled 32-bit WebAssembly binary at near-native speed.
+- **Built-in & zero-config**: Bundled directly inside `@ohtaman/washi` under the MIT license with no extra packages to install.
+- **No `COOP`/`COEP` headers needed**: Runs single-threaded WebAssembly without `SharedArrayBuffer` or [Cross-Origin Isolation](../getting-started/cross-origin.md) headers.
+- **Background Web Worker execution**: Offloads solving to a dedicated Web Worker in browsers by default so UI rendering stays responsive.
+- **Warm-start hints (`initialValue`)**: Accepts starting variable values on `model.continuous()`, `model.integer()`, and `model.binary()` variables.
+- **LP relaxation (`relax: true`)**: Solves the continuous relaxation of a MIP model without rewriting variable declarations.
 
 ---
 
 ## Supported Problem Classes
 
+HiGHS uses a single `Model` interface across continuous, discrete, and quadratic problems. Choose the variable types and objective form that match your problem class.
+
 ### 1. Linear Programming (LP)
-Solves continuous problems via Primal and Dual Simplex algorithms or Interior Point (IPM) methods. After solving, you can inspect constraint shadow prices (`c.dual`), slacks (`c.slack`), and variable reduced costs (`v.reducedCost`):
+
+LP models use continuous variables, linear constraints, and a linear objective. HiGHS solves them with simplex or interior-point methods, populating `c.dual` shadow prices, `c.slack` slacks, and `v.reducedCost` reduced costs:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -27,58 +44,113 @@ import { Model, expr, maximize } from "@ohtaman/washi";
 const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
+
 model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
-model.constraint(expr`${x} + ${y} <= 100`, "cap");
+const cap = model.constraint(expr`${x} + ${y} <= 100`, "cap");
+
 await model.solve();
+console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 ```
 
-### 2. Mixed-Integer Linear Programming (MIP)
-Solves discrete problems using Branch-and-Bound and cutting plane techniques:
+### 2. Mixed-Integer Programming (MIP)
+
+MIP models combine continuous variables with `model.integer()` or `model.binary()` variables. HiGHS solves them via branch-and-cut and reports `objectiveBound`, `relativeGap`, and `absoluteGap`:
 
 ```typescript
-const count = model.integer("count", { lb: 0, ub: 50 });
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const mipModel = new Model({ solver: "highs" });
+const count = mipModel.integer("count", { lb: 0, ub: 50 });
+const open = mipModel.binary("open");
+
+mipModel.objective(maximize(expr`12 * ${count} - 100 * ${open}`));
+mipModel.constraint(expr`${count} <= 50 * ${open}`, "link");
+
+await mipModel.solve();
+console.log(mipModel.status, count.value, open.value);
 ```
 
 ### 3. Convex Quadratic Programming (QP)
-Solves continuous models with convex quadratic objective functions subject to linear constraints:
+
+QP models optimize a convex quadratic objective (or concave when maximizing) over continuous variables subject to linear constraints:
 
 ```typescript
-// Minimize risk/variance uniformly using expr:
-model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
+import { Model, expr, minimize } from "@ohtaman/washi";
 
-// Or programmatically with .mul():
-// const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
-// model.objective(minimize(quadObj));
+const qpModel = new Model({ solver: "highs" });
+const x = qpModel.continuous("x", { lb: 0 });
+const y = qpModel.continuous("y", { lb: 0 });
+
+qpModel.constraint(expr`${x} + ${y} >= 10`, "demand");
+qpModel.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
+
+await qpModel.solve();
+console.log(qpModel.status, qpModel.objectiveValue, x.value, y.value);
+// Optimal 25 5 5
 ```
 
 > [!NOTE]
-> **Continuous Convex QP Only**: HiGHS solves Convex QP models where **all** model variables are continuous (`m.continuous`), with a positive semi-definite quadratic matrix $\mathbf{Q}$ when minimizing (or negative semi-definite when maximizing). Mixed-Integer Quadratic Programming (**MIQP**—any model combining a quadratic objective with `Integer`, `Binary`, or `BoolVar` variables) and quadratic constraints (**QCP**) are not supported; to model products of binary decisions in MILP, see [Formulation Patterns & Tips](../guide/formulation-tips.md).
+> **Continuous convex QP only**: Every variable in a QP model must be continuous (`model.continuous()`). When minimizing, the quadratic matrix $\mathbf{Q}$ must be positive semi-definite; when maximizing, it must be negative semi-definite.
+>
+> Mixed-Integer Quadratic Programming and quadratic constraints are not supported. To linearize products of binary variables as a MIP, see [Formulation Patterns & Tips](../guide/formulation-tips.md).
 
 ---
 
 ## Solver Options
 
-Pass solver options into `model.solve()`:
+Pass execution options into `model.solve()` or the `HighsSolver` constructor. HiGHS validates option keys strictly and throws an `Error` on unsupported keys so misconfigurations fail early.
+
+### Supported Options
+
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | Maximum solve time in seconds. |
+| `relativeGap` | `number` | Stop when the relative MIP optimality gap falls within this tolerance. |
+| `absoluteGap` | `number` | Stop when the absolute MIP optimality gap falls within this tolerance. |
+| `presolve` | `"on" \| "off" \| "choose"` | Controls model presolve before optimization. |
+| `outputFlag` | `boolean` | Enables internal simplex and branch-and-cut logs (`false` by default). |
+| `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model. |
+| `useWorker` | `boolean` | Runs HiGHS in a browser Web Worker (`true` by default in browsers). |
+| `wasmUrl` | `string \| null` | Overrides the `highs.wasm` asset URL for this solve. |
+| `signal` | `AbortSignal` | Cooperatively cancels an in-flight solve. |
+| `onProgress` | `(ev) => void` | Receives live elapsed time, primal objective, dual bound, and gap updates. |
+
+HiGHS also accepts these passthrough limit keys: `mip_max_nodes`, `mip_max_improving_sols`, `mip_max_leaves`, `simplex_iteration_limit`, and `ipm_iteration_limit`.
+
+### Unsupported Options (Throw at Runtime)
+
+- `verbose`: Throws an `Error`. Use `outputFlag: true` instead.
+- `threads`: Throws an `Error` because HiGHS WebAssembly runs single-threaded.
+- Unknown option keys: Any unrecognized key throws an `Error`.
+
+### Example with Time Limit, Progress, and Cancellation
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const model = new Model({ solver: "highs" });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
+model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
+model.constraint(expr`${x} + ${y} <= 100`, "cap");
+
 const controller = new AbortController();
 
 await model.solve({
-  timeLimit: 60.0,       // Maximum solve time in seconds
-  relativeGap: 0.001,    // Terminate when within 0.1% of global optimality
-  absoluteGap: 1.0,      // Absolute MIP optimality gap tolerance
-  presolve: "on",        // Presolve control ("on" | "off" | "choose")
-  outputFlag: true,      // Output internal simplex / branch-and-bound logs (output_flag)
+  timeLimit: 60.0,
+  relativeGap: 0.001,
+  absoluteGap: 1.0,
+  presolve: "on",
+  outputFlag: true,
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`Elapsed: ${ev.elapsedTime.toFixed(1)}s, Best: ${ev.objectiveValue}`);
   },
 });
 
-// Always check hasPrimalSolution when timeLimit or AbortSignal is used:
 if (model.hasPrimalSolution) {
   console.log(
-    `Usable solution (${model.status}, termination: ${model.terminationStatus}):`,
+    `Solution (${model.status}, termination: ${model.terminationStatus}):`,
     `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
@@ -86,38 +158,48 @@ if (model.hasPrimalSolution) {
 
 ---
 
-## Worker & WASM Configuration in Browsers
+## Web Worker & WASM Configuration in Browsers
 
-By default in browsers, WaSHI spawns a dedicated Web Worker to execute HiGHS in the background so UI rendering stays responsive and `onProgress` / `AbortSignal` work seamlessly.
+In browsers, WaSHI runs HiGHS inside a dedicated Web Worker by default. This keeps UI rendering responsive and allows `onProgress` and `AbortSignal` to interrupt long solves cleanly.
 
-If you need to run synchronously on the main thread (or in environments where Web Workers are prohibited), pass `useWorker: false` to `model.solve()` or instantiate `HighsSolver`:
+To run on the main thread (for example, in environments that restrict Web Workers) or serve `highs.wasm` from a custom path, configure `useWorker`, `setHighsWasmUrl`, or `wasmUrl`:
 
 ```typescript
-import { Model, HighsSolver } from "@ohtaman/washi";
+import { Model, HighsSolver, expr, maximize, setHighsWasmUrl } from "@ohtaman/washi";
 
-// Option 1: Per solve call
-await model.solve({ useWorker: false });
+// Configure a custom WASM URL globally (pass null to restore the bundled asset)
+setHighsWasmUrl("/assets/wasm/highs.wasm");
 
-// Option 2: When instantiating the solver
+const model = new Model({ solver: "highs" });
+const x = model.continuous("x", { lb: 0, ub: 10 });
+model.objective(maximize(expr`${x}`));
+
+// Option 1: Disable the Web Worker or override wasmUrl per solve call
+await model.solve({ useWorker: false, wasmUrl: "/assets/wasm/highs.wasm" });
+
+// Option 2: Configure defaults on a HighsSolver instance
 const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
 
+If `highs.wasm` fails to load or returns an HTML error page, WaSHI throws an error with the attempted URL instead of silently falling back to an external CDN.
+
 ---
 
 ## Architecture & WebAssembly Runtime
 
-WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) with `-fwasm-exceptions` and single-threaded universal portability (`-DHIGHS_NO_DEFAULT_THREADS=ON`). By interfacing directly with HiGHS's native C API (`highs_c_api.h`), WaSHI achieves zero-copy solution extraction via typed array views on WebAssembly linear memory, rapid upstream release tracking, and a self-contained zero-dependency distribution.
+> [!NOTE]
+> This optional section covers internal WebAssembly packaging details for maintainers and advanced integrators.
 
-Bundled `highs.wasm` and `runtime.js` artifacts are tracked and verified via SHA-256 checksums in `highs.config.json`. Maintainers rebuilding HiGHS from source can follow the instructions in [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow).
+WaSHI compiles official HiGHS C++ sources directly to 32-bit WebAssembly (`highs.wasm`) with `-fwasm-exceptions` and `-DHIGHS_NO_DEFAULT_THREADS=ON`. The driver calls HiGHS's native C API (`highs_c_api.h`) directly, using typed-array views over linear memory for zero-copy solution extraction and `setSolution` for MIP warm starts.
+
+Bundled `highs.wasm` and `runtime.js` artifacts are verified against SHA-256 checksums in `highs.config.json`. Maintainers rebuilding HiGHS from source can follow [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow).
 
 ### Callbacks & Solver Interactivity
 
-- **Progress Monitoring & Cancellation (Supported)**:
-  Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
-- **Dynamic Cuts / Lazy Constraints (Not Exposed in WASM Driver)**:
-  WaSHI's HiGHS WebAssembly C API driver currently binds logging, progress, interrupt, and incumbent callbacks and does not expose in-tree lazy constraint or user cut callbacks across the WASM-to-JS boundary. For problems requiring dynamic subtour elimination or Benders decomposition, use [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-decomposition-solvebenders) (or a manual outer cutting-plane loop: solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve), which iteratively separates cuts and converges to the same exact optimal solution.
+- **Progress & cancellation**: Supported through HiGHS's logging and interrupt callbacks (`onProgress` and `AbortSignal`).
+- **Dynamic cuts & lazy constraints**: Not exposed inside the branch-and-bound tree across the WASM boundary. For subtour elimination or Benders decomposition, use [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-decomposition-solvebenders) or an outer cutting-plane loop.
 
 ---
 
@@ -126,6 +208,5 @@ Bundled `highs.wasm` and `runtime.js` artifacts are tracked and verified via SHA
 - **Official Website**: [https://highs.dev/](https://highs.dev/)
 - **Official Documentation**: [https://ergo-code.github.io/HiGHS/](https://ergo-code.github.io/HiGHS/)
 - **Source Repository**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS) (MIT License)
-- **Academic Citation**: If you cite HiGHS in academic or technical publications, please reference the foundational paper requested by the HiGHS authors:
+- **Academic Citation**: Please cite the foundational HiGHS paper when referencing HiGHS in publications:
   > Q. Huangfu and J. A. J. Hall, *"Parallelizing the dual revised simplex method"*, Mathematical Programming Computation, 10 (1), 119–142, 2018. DOI: [10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)
-
