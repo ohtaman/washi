@@ -4,19 +4,22 @@
 | :--- | :--- | :--- | :--- |
 | Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
-Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
+**Satisfiability Modulo Theories (SMT)** combines Boolean logic with arithmetic inequalities such as integer bounds and linear comparisons.
 
-This example demonstrates how to formally verify and deduce system states in an IoT home security system using WaSHI and the Z3 solver engine.
+This example verifies safety rules and deduces system states for a smart-home security system using WaSHI and Z3.
 
 ## The Scenario
 
-We model a security rule system with sensor readings and logic rules:
-1. When ambient light $\le 50$, it implies night time (`isNight`).
-2. When motion is detected at night and the alarm is armed, the siren must sound.
-3. If the alarm is armed, the front door must never be unlocked.
-4. When motion is detected at night, comfort lights should turn on.
+We model a security rule system driven by sensor readings and logical policies:
+1. When ambient light is $\le 50$, the system enters night mode (`isNight`).
+2. When motion is detected at night while the alarm is armed, the siren (`sirenActive`) must sound.
+3. While the alarm is armed, the front door (`frontDoorUnlocked`) must stay locked.
+4. When motion is detected at night, comfort lights (`lightsOn`) turn on.
 
 ## Implementation in WaSHI
+
+> [!NOTE]
+> **Z3 Prerequisites:** Importing `@ohtaman/washi/solvers/z3` requires the optional `z3-solver` peer dependency (`npm install z3-solver`). Running Z3 in a browser also requires Cross-Origin Isolation (`COOP` / `COEP`) headers — see [Cross-Origin Isolation](../getting-started/cross-origin.md).
 
 <CodeRunner preset="smt_security">
 
@@ -82,6 +85,14 @@ verifySecurityRules();
 
 ## Practical Notes
 
-- **Proof by Refutation (Counterexample Search)**: A single `Sat` check shows that *a* valid assignment exists. To formally prove that a safety property $P$ (such as `sirenActive`) **must** hold in *every* valid state, assert its negation `not(P)` and verify that `m.check()` returns `"Unsat"`. If it returns `"Sat"`, the solver's variable values give you a concrete counterexample (security loophole).
-- **One-Way Implication (`implies`) vs. Equivalence**: In classical logic, `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNight` when `luxLevel <= 50`. During daytime (`luxLevel > 50`), `isNight` is unconstrained ("open-world" assumption) and could be assigned either `true` or `false` unless you also add the converse rule `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``.
-- **Running Without `COOP` / `COEP` Headers (`solver: "pumpkin"`)**: Because all variables in this model are propositional `BoolVar`s and bounded integers (`luxLevel` in `[0, 1000]`), the exact same deduction and counterexample `unsatCore` proof works out of the box with bundled `@ohtaman/washi/solvers/pumpkin` (`m.check({ solver: "pumpkin" })`) without `COOP` / `COEP` headers or `z3-solver`.
+### Proof by Refutation (Counterexample Search)
+
+A single `"Sat"` result only shows that at least one valid assignment exists. To prove that a safety property `P` (such as `sirenActive`) always holds, add its negation `not(P)` and call `m.check()`. If the solver returns `"Unsat"`, no counterexample exists; if it returns `"Sat"`, the variable values show a concrete loophole.
+
+### One-Way Implication (`implies`) vs. Equivalence
+
+The rule `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNight` when `luxLevel <= 50` is true. When `luxLevel > 50`, `isNight` is unconstrained and may be assigned either `true` or `false`. To enforce an exact two-way equivalence, also add the converse rule `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``.
+
+### Alternative Solver for Discrete Models
+
+This model contains only `BoolVar` variables and bounded integers (`luxLevel` in `[0, 1000]`). As a result, the same deduction and counterexample proof also work with bundled `@ohtaman/washi/solvers/pumpkin` via `m.check({ solver: "pumpkin" })`.

@@ -4,11 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 0-1 整数計画 (Binary MIP) | HiGHS (標準) | `m.binary()`, `m.constraint()`, `expr` (`dot`), `maximize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=knapsack">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">ソースコード</a></li></ul> |
 
-各アイテムの「重さ」と「価値」が与えられたとき、バックパックの重量上限を超えない範囲で価値の合計が最大になるアイテムの組み合わせを選ぶ離散最適化問題です。
+各アイテムの重さと価値が与えられたとき、重量上限を超えない範囲で価値の合計を最大化する離散最適化問題です。
 
 ## 数理モデルの定式化
 
-各アイテム $i$ を選ぶかどうかを表す 0-1 決定変数を $x_i \in \{0, 1\}$ とします。
+各アイテム $i$ を選ぶときに $x_i = 1$、選ばないときに $x_i = 0$ となる 0-1 決定変数を定義します。
 
 $$\begin{aligned}
 \text{Maximize} \quad & \sum_{i} v_i x_i & (\text{価値の合計}) \\
@@ -58,3 +58,8 @@ runKnapsack();
 ```
 
 </CodeRunner>
+
+## 解の読み解きとポイント
+
+- **最適解の確認**: `Camera`（`2 kg`, `$40`）、`Drone`（`4 kg`, `$65`）、`FirstAid`（`1 kg`, `$15`）を選ぶと合計重量がちょうど `7 kg` になり、総価値は最大の `$120` になります。
+- **`m.binary(names)` と `dot()` で簡潔に書ける理由**: アイテム名の配列を `m.binary()` に渡すと名前付き 0-1 変数の辞書を一括作成できます。さらに `expr` 内の `dot()` を使うと、ループを書かずに同じキー同士の重み付き和を 1 行で記述できます。

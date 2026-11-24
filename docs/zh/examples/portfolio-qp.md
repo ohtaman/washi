@@ -4,7 +4,7 @@
 | :--- | :--- | :--- | :--- |
 | 凸二次规划 (Convex QP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">源代码</a></li></ul> |
 
-马科维茨（Markowitz）均值-方差投资组合优化问题是现代量化金融的基石：在满足最低预期收益率要求及资金全额配置的前提下，将资金分配到各类风险资产中，从而最小化投资组合的整体方差（风险）。
+马科维茨均值-方差模型是量化金融中的经典优化问题。在满足最低预期收益率与 100% 资金预算约束的前提下，将资金分配至各类风险资产，以最小化投资组合方差 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$。
 
 <PortfolioQpDemo />
 
@@ -86,5 +86,14 @@ solvePortfolio();
 
 ## 实战要点
 
-- **描绘有效前沿（`targetReturn` 与 `portfolioReturn.value`）**：当达成的预期收益率（`8.50%`）恰好等于 `targetReturn` 时，说明目标收益率约束紧绑定在马科维茨有效前沿上。在 `[0.05, 0.12]` 区间内扫描 `targetReturn` 即可完整描绘风险-收益有效前沿曲线。
-- **目标收益约束 vs. 风险厌恶系数标量化**：在禁止做空（$0 \le w_i \le 1$）条件下，若 `targetReturn` 超过最高单一资产收益率（`Tech` 的 $12\%$），硬约束 $\mathbf{r}^T \mathbf{w} \ge R_{\text{target}}$ 将变为 `"Infeasible"`。在量化实践中，也可以使用风险厌恶系数 $\lambda > 0$ 将目标函数写为 $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$，从而保证对任意风险偏好始终可行。
+### 描绘有效前沿
+
+求解后的 `portfolioReturn.value` 恰好等于 `targetReturn`（`8.50%`）。这说明目标收益率约束紧绑定在马科维茨有效前沿上。在 `[0.05, 0.12]` 区间内扫描 `targetReturn`，即可画出完整的风险-收益前沿曲线。
+
+### 目标收益约束与风险厌恶系数标量化
+
+在禁止做空（$0 \le w_i \le 1$）条件下，若 `targetReturn` 高于最高单一资产收益率（`Tech` 为 `12%`），硬约束会导致模型返回 `"Infeasible"`。
+
+若希望模型对任意风险偏好 $\lambda > 0$ 始终可行，可改用风险调整目标函数：
+
+$$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

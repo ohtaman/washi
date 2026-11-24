@@ -4,11 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 组合优化 / Dantzig-Wolfe | HiGHS (默认) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
-**有容量限制的车辆路径规划问题 (Capacitated Vehicle Routing Problem, CVRP)** 在满足车辆载重容量、单车最大途经网点数及路线时长限制的前提下，求服务所有客户所需的车辆数与配送路线。
+**有容量限制的车辆路径规划问题（CVRP）** 旨在用最少的车辆服务所有客户。每条路线都必须满足载重容量、单车最大途经点数以及路线时长限制。
 
-若在单一 MIP 模型中预先枚举所有客户组合与访问顺序，0-1 变量规模将以 $O(2^n)$ 增长。采用 **列生成法 (Dantzig-Wolfe 分解)** 可按需生成候选路线：
-1. **受限主问题 (Restricted Master Problem, RMP)**：求解集合划分（Set Partitioning）问题，从已生成的候选路线中选择使每个客户恰好被访问一次的组合。
-2. **定价子问题 (Pricing Subproblem)**：读取主问题 LP 松弛的对偶值（影子价格 `dual`），通过最省插点法（Cheapest Insertion）与 2-opt 局部搜索构造检验数为负（$\bar{c} = 1 - \sum \pi_i < 0$）的候选路线。
+若在单一 MIP 模型中预先枚举所有客户组合与访问顺序，0-1 变量规模将达到 $O(2^n)$。采用 **列生成法（Dantzig-Wolfe 分解）** 可以按需生成候选路线：
+1. **受限主问题（RMP）**：求解集合划分问题，从已生成的候选路线中选出使每个客户恰好被访问一次的组合。
+2. **定价子问题**：读取受限主问题 LP 松弛的对偶值（影子价格），通过最省插点法与 2-opt 局部搜索构造检验数 $\bar{c} = 1 - \sum \pi_i < 0$ 的路线。
 
 ## 输入数据与约束条件
 
@@ -17,7 +17,7 @@
 - **车辆载重容量**：每辆车最多 **10 单位**。
 - **最大途经网点数**：每条路线最多访问 **4 个客户**。
 - **最大路线时长**：单车行驶时间与卸货时间之和不超过 **200 分钟**。
-- **行驶与作业耗时**：节点间欧氏距离（1 单位 = 1 分钟），每个客户卸货耗时 **10 分钟**。
+- **行驶与作业耗时**：节点间欧氏距离（1 单位 = 1 分钟），另加每个客户 **10 分钟** 卸货耗时。
 
 ## WaSHI 实现
 
@@ -26,7 +26,7 @@
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
 
-// --- 解耦外置的路由启发式辅助函数（子问题） ---
+// --- 外置路由启发式辅助函数（定价子问题） ---
 
 // 2-opt 局部搜索算法（消除交叉路径，缩短行驶距离）
 function optimize2Opt(tour, dist) {
@@ -74,7 +74,7 @@ function calcRouteTime(tour, dist, serviceTimes) {
   return { travelTime, totalTime: travelTime + serviceTime };
 }
 
-// 定价子问题：根据对偶影子价格搜索检验数为负（1 - dualSum < 0）的最佳改善路线
+// 定价子问题：根据对偶值（影子价格）搜索检验数为负（1 - dualSum < 0）的改善路线
 function findImprovingRoute(candidates, config) {
   let bestRoute = null;
   let minReducedCost = -1e-4;
@@ -136,7 +136,7 @@ async function runCVRP() {
 
   const routeConfig = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
 
-  // 1. 构建限制主问题 (RMP)
+  // 1. 构建受限主问题 (RMP)
   const master = new Model("CVRP_FleetMaster");
 
   // 初始自明路线：每个客户配备一辆直达专车
@@ -149,23 +149,23 @@ async function runCVRP() {
   );
 
   console.log(`初始状态：50 条单点直达专车路线。`);
-  console.log("使用对偶影子价格引导启发式定价的列生成算法求解中...");
+  console.log("使用对偶值（影子价格）引导启发式定价的列生成算法求解中...");
 
   // 2. 列生成求解
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
     pricing: async () => {
-      // 1. 按照对偶影子价格（改善收益）从高到低排序客户
+      // 1. 按照对偶值（影子价格）从高到低排序客户
       const candidates = customers
         .map((c, i) => ({ id: c.id, demand: c.demand, dual: visitConstrs[i].dual ?? 0 }))
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
-      // 2. 子问题启发式搜索：寻找检验数为负的路线
+      // 2. 定价子问题启发式搜索：寻找检验数为负的路线
       const bestRoute = findImprovingRoute(candidates, routeConfig);
-      if (!bestRoute) return null; // 未找到可改善路线，LP 松弛达到最优
+      if (!bestRoute) return null; // 未找到可改善路线
 
-      // 3. 将新改善路线作为新列引入主问题
+      // 3. 将新改善路线作为新列引入受限主问题
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
       const coefficients = {};
       for (const id of bestRoute.slice(1, -1)) {
@@ -198,11 +198,20 @@ runCVRP();
 
 </CodeRunner>
 
-## 说明
+## 结果解读与要点
 
-- **主问题与定价子问题分离**：主问题负责求解 LP 松弛与最终的集合划分 MIP，`pricing` 回调使用最省插点法与 2-opt 局部搜索生成负检验数路线。
-- **读取对偶变量**：通过 `visitConstrs[i].dual` 直接读取主问题 LP 松弛的对偶价格，在构造路线时优先考虑边际收益较高的客户。
-- **路线元数据记录**：生成的每一列在 `meta` 中保存 `{ tour, travelTime, totalTime }`，求解完成后可从 `result.generatedColumns` 中读取访问顺序与耗时。
-- **集合划分 (`== 1`) 与集合覆盖 (`>= 1`)**：本例使用 `== 1`（集合划分）直接禁止同一客户被多辆车重复访问。在大规模列生成实践中，改用 `>= 1`（集合覆盖）可将对偶价格限制在 $\pi_i \ge 0$，从而提升 LP 收敛稳定性（当距离满足三角不等式时，最终解中重复访问的客户可通过后处理直接剔除而不增加路程）。
-- **启发式定价与精确 ESPPRC**：由于 `findImprovingRoute` 使用快速贪心插点与 2-opt 启发式而非精确的带资源约束初等最短路（ESPPRC）算法，返回 `null` 仅代表启发式搜索未发现更多负检验数路线，而非全局对偶下界证明。
-- **Price-and-Branch (`finalizeAsMIP: true`)**：在根节点列生成收敛后对现有列池求解一次 MIP 的方法称为限制主问题启发式（Restricted Master Heuristic / Price-and-Branch），无需实现完整的 Branch-and-Price 分支定界树即可快速获得高质量整数车队方案。
+### 受限主问题、定价子问题与路线元数据
+
+受限主问题负责求解 LP 松弛与最终集合划分 MIP。在 `pricing` 回调中，`visitConstrs[i].dual` 提供各客户的对偶值（影子价格），用于优先挑选边际收益更高的客户。每列在 `meta` 中保存 `{ tour, travelTime, totalTime }`，求解完成后可直接从 `result.generatedColumns` 查看访问顺序与耗时。
+
+### 集合划分（`== 1`）与集合覆盖（`>= 1`）
+
+本例采用 `== 1` 约束以禁止最终 MIP 重复访问同一客户。在大规模列生成实践中，改用 `>= 1` 可将对偶值限制在 $\pi_i \ge 0$，有助于稳定 LP 收敛。只要距离满足三角不等式，重复访问可在后处理中剔除而不增加总路程。
+
+### 启发式定价与精确 ESPPRC
+
+`findImprovingRoute` 采用最省插点法与 2-opt 启发式，而非精确的带资源约束初等最短路（ESPPRC）求解器。因此返回 `null` 仅说明启发式未找到更多负检验数路线，并不构成全局 LP 最优性证明。
+
+### Price-and-Branch（`finalizeAsMIP: true`）
+
+在根节点列生成结束后，对现有列池求解一次 MIP 的做法称为 **受限主问题启发式**（Price-and-Branch）。无需实现完整的 Branch-and-Price 分支定界树，即可快速获得高质量的整数车队方案。

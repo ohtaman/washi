@@ -4,11 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 0-1 Binary MIP | HiGHS (default) | `m.binary()`, `m.constraint()`, `expr` (`dot`), `maximize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=knapsack">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">Source Code</a></li></ul> |
 
-The 0-1 Knapsack problem is an essential combinatorial optimization problem: given a set of items, each with a weight and a value, determine which items to include in a collection so that the total weight does not exceed a given limit and the total value is maximized.
+The 0-1 Knapsack problem is a fundamental combinatorial optimization problem. Given items with weights and values, choose a subset that maximizes total value without exceeding the backpack's weight limit.
 
 ## Mathematical Formulation
 
-Let $x_i \in \{0, 1\}$ be binary decision variables indicating whether item $i$ is selected ($x_i = 1$) or not ($x_i = 0$):
+Let $x_i \in \{0, 1\}$ be a binary decision variable for each item $i$, where $x_i = 1$ selects the item and $x_i = 0$ leaves it out:
 
 $$\begin{aligned}
 \text{Maximize} \quad & \sum_{i} v_i x_i & (\text{Total Value}) \\
@@ -59,3 +59,8 @@ solveKnapsack();
 ```
 
 </CodeRunner>
+
+## Key Takeaways
+
+- **Optimal Result**: Packing `Camera` (`2 kg`, `$40`), `Drone` (`4 kg`, `$65`), and `FirstAid` (`1 kg`, `$15`) reaches the exact `7 kg` capacity with a maximum value of `$120`.
+- **Concise Modeling with `m.binary(names)` and `dot()`**: Passing item names to `m.binary()` creates a keyed dictionary of 0-1 variables in one call. Pairing that dictionary with `dot()` inside `expr` computes weighted sums directly without manual loops.

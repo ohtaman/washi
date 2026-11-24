@@ -4,33 +4,39 @@
 | :--- | :--- | :--- | :--- |
 | 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
 
-员工排班是企业 SaaS 与劳动力管理系统中混合整数规划（MIP）的经典落地场景。然而在实际业务中，**员工提交的休假申请经常会与每日最低到岗人数或资深员工值班要求发生冲突**，导致求解器返回无解（`Infeasible`）。
+在员工排班中，休假申请常会与最低到岗人数或资深值班规则冲突，导致混合整数规划（MIP）求解器返回 `"Infeasible"`。
 
-仅提示“无法生成排班表”会让现场排班主管无所适从。本示例展示了一套实用的生产级工作流：
-1. **首先执行 HiGHS MIP 优化：** 在给定的休假申请与排班规则下，尝试求解人工成本最低的排班方案。
-2. **若有最优解（Optimal）则直接采纳：** 如果存在可行排班表，直接输出排班结果与最小薪资成本，不产生任何额外的诊断开销。
-3. **仅在无解（Infeasible）时调用 Z3 `unsatCore` 进行冲突诊断：** 若 HiGHS 判定无解，则使用 Z3 对**完全相同的模型与约束**进行可满足性检查，提取引发矛盾的约束子集（`unsatCore`），精准定位是哪一天的到岗要求与哪几位员工的休假申请发生了冲突。
+本示例演示在同一模型上结合优化求解与冲突诊断的流程：
+1. **先用 HiGHS 优化：** 在所有休假申请与排班规则下求最低周薪方案。
+2. **返回 `"Optimal"` 时直接采纳：** 得到可行排班后直接输出结果，无需额外诊断。
+3. **返回 `"Infeasible"` 时用 Z3 诊断：** 对同一模型调用 `model.check({ solver: "z3" })`，提取冲突约束子集（`unsatCore`）。
 
 > [!IMPORTANT]
-> **休假申请被建模为硬约束（Hard Constraints）：**
-> 在本模型中，员工的休假申请被作为必须严格满足的硬约束（`shift[staff][day] == 0`）执行，而非带有惩罚项的软约束松弛。当休假申请与强制性到岗规则无法同时满足时，模型将严格判定为不可行（`Infeasible`）。
+> **休假申请采用硬约束：**
+> 本模型将每条休假申请建模为严格规则（`shift[staff][day] == 0`），而不是带惩罚项的软偏好。一旦与强制到岗规则冲突，模型便严格返回 `"Infeasible"`。
 
 <ShiftSchedulingDemo />
 
 ## 场景与排班规则
 
-我们需要为 **5 名员工**（`Alice`、`Bob`、`Charlie`、`Diana`、`Evan`）制定一周 **7 天**（`Mon`–`Sun`）的排班表：
+我们需要为 **5 名员工**（`Alice`、`Bob`、`Charlie`、`Diana`、`Evan`）制定 `Mon`–`Sun` 共 **7 天**的排班表：
 
-- **每日最低到岗人数：** `Mon–Thu`：3 人，`Fri`：4 人，`Sat`：3 人，`Sun`：2 人。
-- **资深主管值班：** 每天至少需要 1 名资深员工（`Alice` 或 `Bob`）在岗值班。
-- **每周最大出勤天数：** 每名员工每周最多工作 **5 天**。
-- **周末值班补贴：** 周末班次（`Sat`、`Sun`）在基础日薪之上额外增加 `+$30` 补贴。
+- **每日最低人数：** `Mon–Thu`：3 人，`Fri`：4 人，`Sat`：3 人，`Sun`：2 人。
+- **资深值班：** 每天至少安排 1 名资深员工（`Alice` 或 `Bob`）。
+- **每周出勤上限：** 每名员工每周最多工作 **5 天**。
+- **周末补贴：** `Sat` 和 `Sun` 的班次在基础日薪外加 `+$30`。
 
-为了展示完整的工作流，我们评估两个具有不同休假输入的独立命名场景：
-- **场景 A（均衡的休假申请 — 可行）：** Alice (周日)、Bob (周一)、Charlie (周六)、Diana (周三)。所有排班约束均可同时满足，HiGHS 输出最优排班表。
-- **场景 B（冲突的周六休假申请 — 无解与冲突诊断）：** Alice (周六)、Bob (周六)、Charlie (周六)、Diana (周三)。由于两名资深员工（Alice 和 Bob）同时申请周六休假，“每天至少 1 名资深员工在岗”的规则无法满足。HiGHS 返回 `Infeasible`，随即触发 Z3 冲突诊断。
+我们通过以下两个场景对比可行求解与冲突诊断：
+
+| 场景 | 硬约束休假申请 | 求解结果 |
+| :--- | :--- | :--- |
+| **场景 A（可行）** | `Alice (Sun)`、`Bob (Mon)`、`Charlie (Sat)`、`Diana (Wed)` | HiGHS 返回 `"Optimal"`（周薪总额 `$3,830`）。 |
+| **场景 B（冲突）** | `Alice (Sat)`、`Bob (Sat)`、`Charlie (Sat)`、`Diana (Wed)` | 两名资深员工同时周六休假，HiGHS 返回 `"Infeasible"`，随即由 Z3 提取 `unsatCore`。 |
 
 ## WaSHI 实现
+
+> [!NOTE]
+> **Z3 前置条件：** 引入 `@ohtaman/washi/solvers/z3` 需要先安装可选对等依赖 `z3-solver`（`npm install z3-solver`）。在浏览器中使用 Z3 还需要配置 `COOP` / `COEP` 响应头，详见 [跨源隔离](../getting-started/cross-origin.md)。
 
 <CodeRunner preset="shift_scheduling">
 
@@ -174,9 +180,9 @@ main();
 
 </CodeRunner>
 
-## 使用软约束（弹性偏好惩罚）自动修复排班冲突
+## 使用软约束自动修复排班冲突
 
-当 Z3 `unsatCore` 定位出 `senior_duty_Sat` 与 `day_off_Alice_Sat`、`day_off_Bob_Sat` 发生冲突后，可将休假申请从硬约束（`shift[staff][day] == 0`）转换为目标函数中的**软约束惩罚项**（例如每驳回 1 个休假申请施加 `+$500` 惩罚），从而自动生成调整幅度最小的替代排班方案：
+当 Z3 `unsatCore` 定位出 `senior_duty_Sat` 与 `day_off_Alice_Sat`、`day_off_Bob_Sat` 冲突后，可以自动生成替代方案。去掉硬休假约束，改为**软偏好**：只要在申请休假日排班，就在目标函数中加上 `$500` 惩罚项。
 
 ```typescript
 // 软约束模式：不强制 shift[req.staff][req.day] == 0，而是对在申请休假日排班施加 $500 惩罚
@@ -184,7 +190,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-在场景 B 中应用此软约束模型后，HiGHS 会自动保留其余 3 项休假申请（`Alice (Sat)`、`Charlie (Sat)`、`Diana (Wed)`），仅让日薪比 Alice（`$220`）低 `$10` 的资深员工 `Bob (Sat)`（`$210`）在周六值班，一步完成冲突修复。
+对场景 B 求解该软约束模型时，HiGHS 返回 `"Optimal"`，总目标值为 **`$4,330`**（薪资 `$3,830` 加 `$500` 惩罚）。方案保留了 4 项申请中的 3 项，仅调整 1 名资深员工的周六休假（HiGHS 输出为 `Alice (Sat)`）。由于 `Bob` 已排满 `maxShifts = 5` 天，其余 2 天资深班次必须由 `Alice` 承担。因此，调整 `Alice (Sat)` 或 `Bob (Sat)` 得到的最优总成本同为 `$4,330`。
 
 > [!TIP]
-> **无需 `COOP` / `COEP` 响应头的 `unsatCore` 诊断**：由于该排班模型中的决策变量全部为带整数系数的 0-1 二元变量（`m.binary(...)`），在引入 `import "@ohtaman/washi/solvers/pumpkin"` 后，也可以直接通过 `await model.check({ solver: "pumpkin" })` 在不配置 `COOP` / `COEP` 响应头、不安装外部依赖的普通浏览器环境中提取 `unsatCore`。
+> 该模型仅包含带整数系数的 0-1 变量（`m.binary()`）。您也可以引入内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `await model.check({ solver: "pumpkin" })`，无需安装 `z3-solver` 即可提取 `unsatCore`。

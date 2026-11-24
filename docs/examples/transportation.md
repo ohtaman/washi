@@ -4,13 +4,13 @@
 | :--- | :--- | :--- | :--- |
 | Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
 
-The transportation problem is one of the most fundamental network optimization models: determine how many units to ship from each supply origin (factory) to each destination (store) to minimize total shipping cost while respecting factory supply limits and meeting store demands.
+The **transportation problem** decides how many units to ship from each factory to each store. The goal is to minimize total shipping cost while respecting factory supply limits and meeting every store's demand.
 
-This example demonstrates how to construct a **2D matrix of decision variables** using `m.continuous(factories, stores)` and write aggregated constraints declaratively via `dot()` and `m.constraint(expr`...`)`.
+This example builds a 2D decision-variable matrix with `m.continuous(factories, stores)` and writes aggregated row and column rules using `dot()`, `sum()`, and ``m.constraint(expr`...`)``.
 
 ## Problem Inputs
 
-We have **3 factories** (`Tokyo`, `Nagoya`, `Osaka`) shipping to **4 regional stores** (`North`, `East`, `West`, `South`):
+Three factories (`Tokyo`, `Nagoya`, `Osaka`) ship to four regional stores: `North`, `East`, `West`, and `South`.
 
 | Factory \ Store | North ($/unit) | East ($/unit) | West ($/unit) | South ($/unit) | Supply Capacity |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -93,10 +93,10 @@ async function solveScenario(label: string, cap: typeof supplies) {
 }
 
 async function runTransportation() {
-  // Scenario A: Baseline capacities ($920)
+  // Scenario A: Baseline capacities (Optimal: $880)
   await solveScenario("Scenario A: Baseline", supplies);
 
-  // Scenario B: Tokyo capacity reduced (120 -> 80) due to maintenance ($1,000)
+  // Scenario B: Tokyo reduced (120 -> 80); Nagoya (100 -> 120) & Osaka (80 -> 100) expanded (Optimal: $940)
   await solveScenario("Scenario B: Tokyo Maintenance", {
     Tokyo: 80,
     Nagoya: 120,
@@ -111,7 +111,17 @@ runTransportation();
 
 ## Practical Notes
 
-- **Interpreting Supply & Demand Shadow Prices (`.dual`)**:
-  - **`demand_s.dual` ($\ge 0$)**: The marginal delivered cost of supplying 1 additional unit to store $s$.
-  - **`supply_f.dual` ($\le 0$)**: How much total network shipping cost would decrease if factory $f$'s capacity were expanded by 1 unit. In Scenario B, when Tokyo is constrained at 80 units, `supply_Tokyo.dual` becomes negative (`-$2/u`), indicating that each extra unit of capacity in Tokyo saves \$2 by avoiding rerouting through Nagoya.
-- **Total Supply vs. Total Demand ($\sum \text{Supply}_f \ge \sum \text{Demand}_s$)**: If store demands exceed aggregate factory capacity, the hard demand constraints become `"Infeasible"`. In production logistics systems, add an elastic "spot-carrier / backorder" variable $u_s \ge 0$ to each store's demand constraint ($\sum_f x_{f,s} + u_s \ge \text{Demand}_s$) with a high penalty cost so the solver allocates scarce inventory optimally rather than failing.
+### Supply & Demand Shadow Prices (`.dual`)
+
+In a minimization LP, each constraint's **shadow price** (`.dual`) measures how much total cost changes when its right-hand side increases by 1 unit:
+
+- **`demand_s.dual` ($\ge 0$):** Marginal delivered cost of supplying 1 extra unit to store $s$.
+- **`supply_f.dual` ($\le 0$):** Cost saved by expanding factory $f$'s capacity by 1 unit.
+
+Scenario A reaches an optimal cost of `$880`, and Scenario B reaches `$940`. In both scenarios, `Tokyo` is already at full capacity with `supply_Tokyo.dual = -$2/u`. Each extra unit of capacity in Tokyo saves `$2` by avoiding more expensive routes through Nagoya, while `Osaka` is also binding at `-$1/u`.
+
+### Handling Supply Shortages
+
+Hard demand constraints require aggregate supply to cover aggregate demand ($\sum \text{Supply}_f \ge \sum \text{Demand}_s$). If total demand exceeds total factory capacity, HiGHS returns `"Infeasible"`.
+
+To avoid hard failures during shortages, add a non-negative spot-carrier or backorder variable $u_s \ge 0$ to each store constraint ($\sum_f x_{f,s} + u_s \ge \text{Demand}_s$). Giving $u_s$ a high penalty cost lets the solver allocate scarce supply optimally across stores.

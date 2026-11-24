@@ -4,9 +4,9 @@
 | :--- | :--- | :--- | :--- |
 | 不可行性诊断 / 不可满足核 (Unsat Core) | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">源代码</a></li></ul> |
 
-当业务规则、预算限制和运营策略变得复杂时，约束之间往往会发生冲突。由于常规优化调用（`m.solve()`）仅返回 `"Infeasible"` 状态，WaSHI 提供了 `m.check()` 来直接定位引发矛盾的规则，无需人工逐条排查。
+当约束之间发生冲突时，常规优化调用（`m.solve()`）只会返回 `"Infeasible"`。改用 `m.check()` 则会返回 `"Unsat"`，并提取出无法同时满足的命名约束子集，即**不可满足核（Unsat Core）**。
 
-本示例展示如何利用 Z3 的不可满足核（Unsat Core）提取功能，从命名约束中精准隔离出引发矛盾的约束子集（不保证极小性）。
+本示例使用 Z3 在 `m.conflicts` 中定位引发冲突的规则，同时排除无关约束。请注意，返回的子集不保证极小性。
 
 ## 存在冲突的场景
 
@@ -17,11 +17,14 @@
 4. 董事会设定了 $50,000 的严格预算上限（`strict_board_budget_cap`）。
 5. 劳动法规定项目至少需要配备 1 名员工（`minimum_one_employee`）。
 
-请注意其中的矛盾：
+这些规则直接构成矛盾：
 
 $$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
 
 ## WaSHI 实现
+
+> [!NOTE]
+> **Z3 前置条件：** 引入 `@ohtaman/washi/solvers/z3` 需要先安装可选对等依赖 `z3-solver`（`npm install z3-solver`）。在浏览器中使用 Z3 还需要配置 `COOP` / `COEP` 响应头，详见 [跨源隔离](../getting-started/cross-origin.md)。
 
 <CodeRunner preset="conflict_diagnosis_unsat">
 
@@ -71,7 +74,14 @@ diagnoseConflicts();
 
 ## 实战要点
 
-- **Pumpkin、Z3 与 HiGHS 的选择**：
-  - **Pumpkin（`m.check({ solver: "pumpkin" })`）**：内置在 `@ohtaman/washi/solvers/pumpkin` 中，无需 `COOP` / `COEP` 响应头。如果将上例的 `budget` 改为 `m.integer(...)` 等有界整数与布尔模型，即可提取不受数值尺度影响的矛盾约束。
-  - **Z3（`m.check({ solver: "z3" })`）**：支持 `Continuous` 变量与小数，可排除无关的 `minimum_one_employee` 并完整返回构成矛盾的 4 条规则，不受量纲影响。
-  - **HiGHS（`m.check({ solver: "highs" })`）**：寻找使总放宽量最小的约束。相比放宽预算 `$14,000`，放宽加急要求只需 `1` 个单位，因此 HiGHS 会优先标记 `rush_required`。
+### Z3（`m.check({ solver: "z3" })`）
+
+Z3 支持 `budget` 这类 `Continuous` 变量与小数系数。它不受数值量纲影响，能排除无关的 `minimum_one_employee` 并返回构成冲突的 4 条规则。
+
+### Pumpkin（`m.check({ solver: "pumpkin" })`）
+
+Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的冲突核心。
+
+### HiGHS（`m.check({ solver: "highs" })`）
+
+HiGHS 会寻找使总放宽量最小的约束集合来恢复可行性。相比将预算上限放宽 `$14,000`，放宽加急要求只需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。

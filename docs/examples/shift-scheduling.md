@@ -4,33 +4,39 @@
 | :--- | :--- | :--- | :--- |
 | Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
 
-Staff shift scheduling is a classic real-world application of Mixed-Integer Programming in SaaS and workforce management tools. However, in real applications, **staff vacation requests frequently collide with minimum coverage or leadership rules**, causing the solver to return `Infeasible`.
+In staff shift scheduling, vacation requests often collide with minimum headcount or senior coverage rules, causing a Mixed-Integer Programming (MIP) solver to return `"Infeasible"`.
 
-This example demonstrates a practical production workflow:
-1. **Try HiGHS MIP Optimization First:** Solve the shift model under the given vacation requests and operational constraints.
-2. **Accept Solution if Optimal:** If a feasible roster is found, display the schedule and minimized payroll cost without unnecessary diagnostic overhead.
-3. **Diagnose with Z3 `unsatCore` Only When Infeasible:** If HiGHS reports `Infeasible`, diagnose the **exact same model and constraints** with Z3 to isolate the conflicting constraint subset (`unsatCore`), pinpointing which day's coverage rules and which staff requests collided.
+This example shows a two-step workflow on the same model:
+1. **Optimize with HiGHS first:** Minimize weekly payroll cost under all vacation requests and staffing rules.
+2. **Use the roster if `"Optimal"`:** Output the schedule and payroll cost with no extra diagnostic step.
+3. **Diagnose with Z3 if `"Infeasible"`:** Call `model.check({ solver: "z3" })` on the same model to extract the conflicting rule subset (`unsatCore`).
 
 > [!IMPORTANT]
-> **Vacation Requests are Hard Constraints:**
-> In this model, vacation requests are enforced as strict hard constraints (`shift[staff][day] == 0`), not soft constraints with penalty relaxation. When requests collide with mandatory staffing requirements, the model is strictly infeasible.
+> **Vacation Requests Are Hard Constraints:**
+> Each vacation request is modeled as a strict rule (`shift[staff][day] == 0`), not a penalized preference. When requests clash with mandatory coverage, the model is strictly `"Infeasible"`.
 
 <ShiftSchedulingDemo />
 
 ## Scenario & Rules
 
-We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) across **7 days** (`Mon`–`Sun`):
+We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) across **7 days** from `Mon` to `Sun`:
 
 - **Daily Headcount:** `Mon–Thu`: 3 staff, `Fri`: 4 staff, `Sat`: 3 staff, `Sun`: 2 staff.
-- **Senior Duty:** At least 1 senior staff member (`Alice` or `Bob`) must be on duty every day.
+- **Senior Duty:** At least 1 senior staff member (`Alice` or `Bob`) must work every day.
 - **Work Limit:** Each staff member works at most **5 days** per week.
-- **Weekend Premium:** Weekend shifts (`Sat`, `Sun`) incur an extra `+$30` shift premium on top of base daily wage.
+- **Weekend Premium:** `Sat` and `Sun` shifts add `+$30` to the base daily wage.
 
-We evaluate two distinct, named scenarios with different vacation inputs to illustrate the full workflow:
-- **Scenario A (Balanced Requests — Feasible):** Alice (Sun), Bob (Mon), Charlie (Sat), Diana (Wed). All constraints can be satisfied simultaneously. HiGHS outputs an optimal roster.
-- **Scenario B (Conflicting Requests — Infeasible & Diagnosis):** Alice (Sat), Bob (Sat), Charlie (Sat), Diana (Wed). Because both senior leaders (Alice and Bob) request Saturday off simultaneously, the rule requiring at least 1 senior on duty every day cannot be satisfied. HiGHS reports `Infeasible`, triggering Z3 conflict diagnosis.
+We run two scenarios to show both outcomes:
+
+| Scenario | Hard Day-Off Requests | Outcome |
+| :--- | :--- | :--- |
+| **Scenario A (Feasible)** | `Alice (Sun)`, `Bob (Mon)`, `Charlie (Sat)`, `Diana (Wed)` | HiGHS returns `"Optimal"` (`$3,830` weekly payroll). |
+| **Scenario B (Conflict)** | `Alice (Sat)`, `Bob (Sat)`, `Charlie (Sat)`, `Diana (Wed)` | Both seniors request Saturday off, so HiGHS returns `"Infeasible"` and Z3 extracts `unsatCore`. |
 
 ## Implementation in WaSHI
+
+> [!NOTE]
+> **Z3 Prerequisites:** Importing `@ohtaman/washi/solvers/z3` requires the optional `z3-solver` peer dependency (`npm install z3-solver`). Running Z3 in a browser also requires Cross-Origin Isolation (`COOP` / `COEP`) headers — see [Cross-Origin Isolation](../getting-started/cross-origin.md).
 
 <CodeRunner preset="shift_scheduling">
 
@@ -174,9 +180,9 @@ main();
 
 </CodeRunner>
 
-## Auto-Repairing Conflicts with Soft Constraints (Elastic Requests)
+## Auto-Repairing Conflicts with Soft Constraints
 
-Once Z3 `unsatCore` diagnoses that `senior_duty_Sat` conflicts with `day_off_Alice_Sat` and `day_off_Bob_Sat`, you can offer managers an automatic repair option by relaxing day-off requests from hard constraints (`shift[staff][day] == 0`) into **soft preferences** penalized in the objective (e.g., `+$500` per overridden day off):
+After Z3 isolates the conflict among `senior_duty_Sat`, `day_off_Alice_Sat`, and `day_off_Bob_Sat`, you can repair the schedule automatically. Replace the hard day-off rules with **soft preferences** that add a `$500` penalty whenever a requested day off is overridden:
 
 ```typescript
 // Soft constraint pattern: penalize working on a requested day off by $500
@@ -185,7 +191,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-With this soft formulation on Scenario B, HiGHS automatically finds a valid roster that honors 3 of the 4 requests (`Alice (Sat)`, `Charlie (Sat)`, and `Diana (Wed)`) and overrides only `Bob (Sat)`—choosing Bob over Alice because Bob's daily wage (`$210`) is `$10` lower than Alice's (`$220`).
+On Scenario B, HiGHS returns `"Optimal"` with a total objective of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` already reaches `maxShifts = 5`, `Alice` covers the remaining 2 senior days. Overriding `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
 
 > [!TIP]
-> **Diagnosing `unsatCore` Without `COOP` / `COEP` Headers**: Because every variable in this roster model is a 0-1 binary (`m.binary(...)`) with integer coefficients, you can also run `await model.check({ solver: "pumpkin" })` (after `import "@ohtaman/washi/solvers/pumpkin"`) to extract `unsatCore` in standard browser environments without `COOP` / `COEP` headers or external peer dependencies.
+> All variables in this model are binary (`m.binary()`) with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` using the bundled `@ohtaman/washi/solvers/pumpkin` engine without installing `z3-solver`.

@@ -4,7 +4,7 @@
 | :--- | :--- | :--- | :--- |
 | Convex Quadratic Programming (QP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">Source Code</a></li></ul> |
 
-The Markowitz mean-variance portfolio optimization problem is the foundation of modern quantitative finance: allocate capital across risky assets to minimize overall portfolio variance (risk) subject to achieving a minimum required expected return.
+The Markowitz mean-variance model is a classic problem in quantitative finance. It allocates capital across risky assets to minimize portfolio variance (risk) while meeting a minimum target return.
 
 <PortfolioQpDemo />
 
@@ -86,5 +86,14 @@ solvePortfolio();
 
 ## Practical Notes
 
-- **Tracing the Efficient Frontier (`targetReturn` & `portfolioReturn.value`)**: Because the achieved return (`8.50%`) matches `targetReturn` exactly, the return constraint is tightly binding on the Markowitz efficient frontier. Varying `targetReturn` across `[0.05, 0.12]` traces out the full risk-return frontier.
-- **Risk-Aversion Scalarization vs. Target Return Constraint**: If `targetReturn` is set above the highest single-asset return ($12\%$ for `Tech` under long-only weights), the hard constraint $\mathbf{r}^T \mathbf{w} \ge R_{\text{target}}$ becomes `"Infeasible"`. An alternative formulation that is always feasible for any risk appetite $\lambda > 0$ is to minimize the risk-adjusted objective $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$.
+### Tracing the Efficient Frontier
+
+The solved `portfolioReturn.value` matches `targetReturn` (`8.50%`) exactly. That means the return constraint is tightly binding on the Markowitz efficient frontier. Sweeping `targetReturn` across `[0.05, 0.12]` traces the full risk-return curve.
+
+### Target Return Constraint vs. Risk-Aversion Scalarization
+
+Under long-only weights ($0 \le w_i \le 1$), setting `targetReturn` above the highest single-asset return (`12%` for `Tech`) makes the hard return constraint `"Infeasible"`.
+
+To keep the model feasible for any risk appetite $\lambda > 0$, you can instead minimize the risk-adjusted objective:
+
+$$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

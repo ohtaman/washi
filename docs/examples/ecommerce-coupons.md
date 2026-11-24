@@ -4,17 +4,20 @@
 | :--- | :--- | :--- | :--- |
 | Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
-Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
+E-commerce checkouts often combine minimum spend thresholds, category discounts, mutually exclusive coupons, and per-order coupon caps. Running a MIP model in the browser or an edge worker selects the best coupon set and can also test whether adding a low-cost filler item lowers the final bill.
 
-This example demonstrates **`m.indicator(binVar, constraint, { activeValue, M? })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS. When `M` is omitted, WaSHI automatically derives safe, tight Big-M values from finite variable bounds.
+This example uses `m.indicator()` to model conditional rules such as "if a coupon is applied, minimum spend must hold." For MIP solvers like HiGHS, WaSHI applies **Big-M linearization**, relaxing the inequality by a constant `M` when the binary indicator is inactive.
+
+> [!IMPORTANT]
+> **Precondition for omitting `M`**: WaSHI derives a tight Big-M automatically only when every variable in the conditional constraint has **finite** `lb` and `ub` bounds. Binary variables are already bounded in `[0, 1]`. If any variable is unbounded, pass an explicit `M` or set finite bounds first.
 
 <EcommerceCouponDemo />
 
 ## Scenario & Promotion Rules
 
-A customer's shopping cart currently contains **$242** of merchandise (**$210** in Tech items and **$32** in Apparel):
-- **Optional Filler Add-on:** A **$10** Braided USB-C Cable (Tech) can be added to bring the cart total from `$242` to `$252`.
-- **Available Coupons** (maximum **2 coupons** total per checkout; at most **1 Exclusive** coupon):
+A customer's shopping cart currently contains `$242` of merchandise (`$210` in Tech items and `$32` in Apparel):
+- **Optional Filler Add-on**: Adding a `$10` Braided USB-C Cable (Tech) raises the cart subtotal from `$242` to `$252`.
+- **Available Coupons**: At most 2 coupons per checkout, and at most 1 exclusive coupon.
 
 | Coupon Code | Discount | Condition | Stacking Rule |
 | :--- | :---: | :--- | :--- |
@@ -22,9 +25,6 @@ A customer's shopping cart currently contains **$242** of merchandise (**$210** 
 | `TECH30` | **-$30** | Tech category spend $\ge \$200$ | **Exclusive** (cannot combine with `MEGA45_250`) |
 | `MEGA45_250` | **-$45** | Total cart spend $\ge \$250$ | **Exclusive** (cannot combine with `TECH30`) |
 | `MEMBER10` | **-$10** | Total cart spend $\ge \$150$ | **Stackable** |
-
-Without adding the `$10` cable, the cart (`$242`) cannot use `MEGA45_250` and pays `$242 - $30 (TECH30) - $15 (WELCOME15) = $197`.  
-By adding the `$10` cable (`$252` gross), the customer unlocks `MEGA45_250` (`-$45`) + `WELCOME15` (`-$15`) for a net total of **$192**—saving an extra **$5** while getting an extra item!
 
 ## Implementation in WaSHI
 
@@ -97,3 +97,9 @@ optimizeCheckoutCart();
 ```
 
 </CodeRunner>
+
+## Key Takeaways
+
+- **Without the add-on (`$197`)**: At `$242`, `MEGA45_250` is unavailable, so the best valid pair is `TECH30` (`-$30`) and `WELCOME15` (`-$15`), leaving `$197`.
+- **With the `$10` USB-C cable (`$192`)**: Raising gross spend to `$252` unlocks `MEGA45_250` (`-$45`) alongside `WELCOME15` (`-$15`), bringing the net bill to `$192`—saving `$5` while including the cable.
+- **Why `m.indicator()` fits**: Modeling `addUsbCable` and `useCoupon` in one MIP avoids enumerating cart combinations manually and lets the solver weigh add-on costs against unlocked discounts directly.

@@ -4,34 +4,39 @@
 | :--- | :--- | :--- | :--- |
 | 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
 
-シフトスケジューリングは業務 SaaS で最も需要の高い最適化タスクの1つですが、現場で必ず発生するのが**「スタッフの希望休が重なり、必要人数やリーダー要件を満たせず解なし（Infeasible）になる」**という問題です。
+スタッフのシフト作成では、希望休が必要人数やシニア配置ルールと衝突し、混合整数計画（MIP）ソルバーが `"Infeasible"` を返すことがあります。
 
-単なる「解が見つかりませんでした」というエラーでは現場の管理者は困ってしまいます。この例では、実務に即した以下の流れ（ワークフロー）を示します：
-
-1. **まずは HiGHS による最適化を実行:** 指定された希望休や業務ルールのもとで、最小人件費のシフト表作成を試みます。
-2. **解が得られれば（Optimal）確定:** 実行可能であればシフト表と最適人件費を出力し、不要な診断処理は行いません。
-3. **解なし（Infeasible）時のみ Z3 `unsatCore` で診断:** HiGHS が解なしと判定した場合に限り、**同一の入力・制約のまま** Z3 で充足可能性を検証し、矛盾を引き起こしている制約の部分集合（`unsatCore`）を抽出して「どの必要人数枠と誰の希望休が衝突したか」を特定します。
+この例では、同じモデル上で最適解の探索と原因診断を組み合わせる手順を示します。
+1. **まず HiGHS で最適化する:** 希望休と人員ルールを満たす最小人件費シフトを求めます。
+2. **`"Optimal"` なら確定する:** 実行可能なシフトが得られたら、そのまま結果を表示して終了します。
+3. **`"Infeasible"` のときだけ Z3 で診断する:** 同じモデルに `model.check({ solver: "z3" })` を実行し、矛盾する制約の部分集合（`unsatCore`）を抽出します。
 
 > [!IMPORTANT]
-> **希望休はハード制約としてモデル化されています:**
-> 本モデルにおいて、希望休は厳格に遵守すべきハード制約（`shift[staff][day] == 0`）として設定されています。ソフト制約としてのペナルティ緩和ではありません。そのため、希望休と現場要件が両立しない場合は厳密に `Infeasible`（実行不可能）となります。
+> **希望休はハード制約です:**
+> このモデルでは希望休を必須ルール（`shift[staff][day] == 0`）として設定しています。ペナルティ付きのソフト制約ではないため、人員要件と衝突すると `"Infeasible"` になります。
 
 <ShiftSchedulingDemo />
 
 ## シナリオとルール設定
 
-**5名のスタッフ**（`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`）の**7日間**（`Mon`〜`Sun`）のシフトを作成します：
+**5 名のスタッフ**（`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`）に対し、`Mon`〜`Sun` の **7 日間**のシフトを作成します。
 
-- **日別の最低必要人数:** `Mon`〜`Thu`: 3名、`Fri`: 4名、`Sat`: 3名、`Sun`: 2名
-- **シニアリーダー配置:** 毎日最低1名のシニアスタッフ（`Alice` または `Bob`）の配置が必須
-- **週あたり最大勤務日数:** 各スタッフ週5日以内
-- **週末手当:** 週末（`Sat`, `Sun`）の出勤には基本日給に加えて `+$30` の手当が加算
+- **日別の最低必要人数:** `Mon`〜`Thu`: 3 名、`Fri`: 4 名、`Sat`: 3 名、`Sun`: 2 名。
+- **シニア配置:** 毎日最低 1 名のシニア（`Alice` または `Bob`）が必要です。
+- **週あたり勤務上限:** 各スタッフ週 5 日以内です。
+- **週末手当:** `Sat`・`Sun` の勤務には基本日給に `+$30` を加算します。
 
-本例では、入力条件の違いを明確にするため、独立した**2つの名前付きシナリオ**を評価します：
-- **シナリオA（バランスの取れた希望休 — 実行可能）:** Alice (日), Bob (月), Charlie (土), Diana (水)。すべての条件を同時に満たすことができ、HiGHS が最適シフト表を出力します。
-- **シナリオB（土曜日の希望休重複 — 解なし＆原因診断）:** Alice (土), Bob (土), Charlie (土), Diana (水)。シニアリーダー2名（Alice, Bob）が両名とも土曜休みを申請しているため、「毎日シニア1名必須」の条件を満たせなくなります。HiGHS は `Infeasible` を返し、同一モデルのまま Z3 による原因診断が起動します。
+次の 2 つのシナリオで動作を比較します。
+
+| シナリオ | ハード希望休 | 結果 |
+| :--- | :--- | :--- |
+| **シナリオ A（実行可能）** | `Alice (Sun)`, `Bob (Mon)`, `Charlie (Sat)`, `Diana (Wed)` | HiGHS が `"Optimal"`（週間人件費 `$3,830`）を返します。 |
+| **シナリオ B（衝突あり）** | `Alice (Sat)`, `Bob (Sat)`, `Charlie (Sat)`, `Diana (Wed)` | シニア 2 名とも土曜休みのため HiGHS が `"Infeasible"` を返し、Z3 が `unsatCore` を抽出します。 |
 
 ## WaSHI による実装
+
+> [!NOTE]
+> **Z3 の前提条件:** `@ohtaman/washi/solvers/z3` を使うには、オプションのピア依存パッケージ `z3-solver`（`npm install z3-solver`）が必要です。ブラウザ上で Z3 を実行する場合は `COOP` / `COEP` ヘッダーも必要になります（詳しくは [Cross-Origin Isolation](../getting-started/cross-origin.md) を参照してください）。
 
 <CodeRunner preset="shift_scheduling">
 
@@ -175,9 +180,9 @@ main();
 
 </CodeRunner>
 
-## ソフト制約（ペナルティ緩和）による希望休衝突の自動修復
+## ソフト制約による希望休衝突の自動修復
 
-Z3 の `unsatCore` によって「土曜日のシニア必須ルール（`senior_duty_Sat`）と Alice・Bob の土曜希望休が衝突している」と特定できた後、希望休をハード制約（`shift[staff][day] == 0`）から**目的関数のペナルティ項（ソフト制約）**へ切り替えることで、最小限の希望休調整で済む代替シフト案を自動生成できます：
+Z3 の `unsatCore` で `senior_duty_Sat` と `day_off_Alice_Sat`・`day_off_Bob_Sat` の衝突が分かったら、代替案を自動生成できます。ハード制約を外し、希望休の日に出勤させた場合だけ目的関数へ `$500` のペナルティを加算する**ソフト制約**に切り替えます。
 
 ```typescript
 // ソフト制約パターン: 希望休をハード制約にする代わりに、希望休の日に出勤した場合 +$500 のペナルティを課す
@@ -185,7 +190,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-シナリオBに対してこのソフト制約モデルを解くと、4件の希望休のうち3件（`Alice (Sat)`, `Charlie (Sat)`, `Diana (Wed)`）を守りつつ、日給が Alice（`$220`）より `$10` 安い `Bob (Sat)`（`$210`）の1件だけに出勤を依頼する最適修復シフトが即座に得られます。
+シナリオ B でこのソフト制約モデルを解くと、HiGHS は総目的値 **`$4,330`**（人件費 `$3,830` + ペナルティ `$500`）で `"Optimal"` を返します。4 件中 3 件の希望休を守り、シニア 1 名の土曜希望休だけを調整します（HiGHS の出力では `Alice (Sat)`）。`Bob` はすでに上限（`maxShifts = 5`）の 5 日間勤務し、`Alice` が残り 2 日のシニア枠を担当します。そのため、`Alice (Sat)` と `Bob (Sat)` のどちらを調整しても最適コストは同じ `$4,330` です。
 
 > [!TIP]
-> **`COOP` / `COEP` ヘッダー不要での `unsatCore` 診断**: このシフト表モデルの変数はすべて整数係数の 0-1 バイナリ変数（`m.binary(...)`）であるため、`import "@ohtaman/washi/solvers/pumpkin"` を読み込んで `await model.check({ solver: "pumpkin" })` を実行すれば、`COOP` / `COEP` ヘッダーや追加依存パッケージなしの通常ブラウザ環境でも `unsatCore` を抽出できます。
+> このモデルの変数はすべて整数係数の 0-1 変数（`m.binary()`）です。同梱の `@ohtaman/washi/solvers/pumpkin` を読み込んで `await model.check({ solver: "pumpkin" })` を実行すれば、`z3-solver` なしでも `unsatCore` を抽出できます。

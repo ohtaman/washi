@@ -4,19 +4,22 @@
 | :--- | :--- | :--- | :--- |
 | 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
 
-可满足性模理论（SMT, Satisfiability Modulo Theories）将命题逻辑（布尔 SAT）与一阶理论（如线性整数算术、实数不等式）结合在一起。
+**可满足性模理论（SMT, Satisfiability Modulo Theories）**将布尔逻辑与整数范围、线性不等式等算术约束结合起来求解。
 
-本示例展示如何使用 WaSHI 与 Z3 求解器引擎，对智能家居 IoT 安防系统中的复合业务规则与系统状态进行形式化验证和逻辑推导。
+本示例演示如何使用 WaSHI 与 Z3 验证智能家居安防规则，并根据传感器读数推导系统状态。
 
 ## 业务场景
 
-我们对一个包含传感器读数和逻辑规则的安防规则系统进行建模：
-1. 当环境照度 $\le 50$ 时，判定当前为夜间模式（`isNight`）。
-2. 当在夜间检测到移动且警报处于布防状态时，必须触发警笛（`sirenActive`）。
-3. 如果警报处于布防状态，则前门绝不能处于未锁状态（`frontDoorUnlocked`）。
-4. 当在夜间检测到移动时，应当自动开启柔和照明灯（`lightsOn`）。
+我们对一个包含传感器读数和逻辑规则的安防系统进行建模：
+1. 环境照度 $\le 50$ 时，进入夜间模式（`isNight`）。
+2. 夜间检测到移动且警报处于布防状态时，必须触发警笛（`sirenActive`）。
+3. 警报处于布防状态时，前门不能处于未锁状态（`frontDoorUnlocked`）。
+4. 夜间检测到移动时，开启柔和照明灯（`lightsOn`）。
 
 ## WaSHI 实现
+
+> [!NOTE]
+> **Z3 前置条件：** 引入 `@ohtaman/washi/solvers/z3` 需要先安装可选对等依赖 `z3-solver`（`npm install z3-solver`）。在浏览器中使用 Z3 还需要配置 `COOP` / `COEP` 响应头，详见 [跨源隔离](../getting-started/cross-origin.md)。
 
 <CodeRunner preset="smt_security">
 
@@ -82,6 +85,14 @@ verifySecurityRules();
 
 ## 实战要点
 
-- **反证法形式化验证（反例搜索）**：单次 `check()` 返回 `"Sat"` 仅表明*存在*满足规则的状态。若要严格**证明**某项安全属性 $P$（如 `sirenActive`）在所有可能状态下*必然*成立，应断言其否定式 `not(P)` 并验证 `m.check()` 返回 `"Unsat"`。若返回 `"Sat"`，此时求解器给出的变量赋值即为一个具体的安全漏洞反例。
-- **单向蕴含（`implies`）与双向等价**：`` implies(expr`${luxLevel} <= 50`, isNight) `` 仅规定当 `luxLevel <= 50` 时 `isNight` 必为 `true`；当白天（`luxLevel > 50`）时，`isNight` 并不受此规则限制（开放世界假设）。若需表达充要条件，还需补充逆否规则 `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``。
-- **免 `COOP` / `COEP` 响应头运行（`solver: "pumpkin"`）**：由于此模型仅包含 `BoolVar` 与有界整数变量（`luxLevel` 范围为 `[0, 1000]`），使用内置的 `@ohtaman/washi/solvers/pumpkin`（`m.check({ solver: "pumpkin" })`）即可在无需配置 `COOP` / `COEP` 或安装 `z3-solver` 的情况下执行完全相同的推理与反例 `unsatCore` 证明。
+### 反证法形式化验证（反例搜索）
+
+单次 `m.check()` 返回 `"Sat"` 只说明至少存在一种合法状态。若要证明某项安全属性 `P`（如 `sirenActive`）必然成立，应加入其否定 `not(P)` 再调用 `m.check()`。返回 `"Unsat"` 表示不存在反例；返回 `"Sat"` 时，变量取值即给出具体的安全漏洞反例。
+
+### 单向蕴含（`implies`）与双向等价
+
+`` implies(expr`${luxLevel} <= 50`, isNight) `` 仅在 `luxLevel <= 50` 为真时限制 `isNight`。当 `luxLevel > 50` 时，`isNight` 不受该规则约束，取 `true` 或 `false` 均可。若要表达双向等价，需同时添加反向规则 `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``。
+
+### 离散模型的替代求解器
+
+此模型仅包含 `BoolVar` 和有界整数（`luxLevel` 范围为 `[0, 1000]`）。因此，使用内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `m.check({ solver: "pumpkin" })` 也能完成相同的推导与反例验证。

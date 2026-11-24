@@ -4,13 +4,13 @@
 | :--- | :--- | :--- | :--- |
 | 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=transportation">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">源代码</a></li></ul> |
 
-运输问题是最基础的网络优化模型之一：确定从每个供应源（工厂）向每个目的地（门店）发出的货物数量，在不超过各工厂产能上限并满足各门店需求量的前提下，使总运输成本最小化。
+**运输问题**决定从每座工厂发往每家门店的货运量。目标是在不超过工厂产能并满足各门店需求的前提下，使总运输成本最小。
 
-本案例演示如何使用 `m.continuous(factories, stores)` 一行代码构建**二维决策变量矩阵**，并借助 `dot()` 与 `m.constraint(expr`...`)` 声明式地编写聚合约束。
+本示例用 `m.continuous(factories, stores)` 构建二维决策变量矩阵，并通过 `dot()`、`sum()` 和 ``m.constraint(expr`...`)`` 编写行列聚合约束。
 
 ## 问题输入数据
 
-现有 **3 座工厂**（`Tokyo`, `Nagoya`, `Osaka`）向 **4 家区域门店**（`North`, `East`, `West`, `South`）发货：
+`Tokyo`、`Nagoya`、`Osaka` 共 3 座工厂向 `North`、`East`、`West`、`South` 共 4 家区域门店供货：
 
 | 工厂 \ 门店 | North ($/件) | East ($/件) | West ($/件) | South ($/件) | 工厂供应上限 |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -93,10 +93,10 @@ async function solveScenario(label: string, cap: typeof supplies) {
 }
 
 async function runTransportation() {
-  // 场景 A：基准工厂产能 ($920)
+  // 场景 A：基准工厂产能（最优成本：$880）
   await solveScenario("Scenario A: Baseline", supplies);
 
-  // 场景 B：Tokyo 工厂因维护产能受限 (120 -> 80)，总成本升至 $1,000
+  // 场景 B：Tokyo 产能降至 80，同时 Nagoya 扩至 120、Osaka 扩至 100（最优成本：$940）
   await solveScenario("Scenario B: Tokyo Maintenance", {
     Tokyo: 80,
     Nagoya: 120,
@@ -111,7 +111,17 @@ runTransportation();
 
 ## 实战要点
 
-- **供应与需求影子价格（`.dual`）的经济学含义**：
-  - **`demand_s.dual`（$\ge 0$）**：向门店 $s$ 多配送 1 单位货物的边际到岸成本。
-  - **`supply_f.dual`（$\le 0$）**：将工厂 $f$ 的产能扩大 1 单位所能降低的全网总运输成本。在场景 B 中，当 Tokyo 产能受限于 80 件时，`supply_Tokyo.dual` 变为 `-$2/u`，表明在 Tokyo 每增加 1 件产能即可避免从 Nagoya 绕道发货，从而节省 \$2。
-- **总供应量与总需求量平衡（$\sum \text{Supply}_f \ge \sum \text{Demand}_s$）**：若门店总需求超过所有工厂的总产能，硬需求约束将导致 `"Infeasible"`。在实际生产物流系统中，建议在各门店需求约束中加入非负的缺货/外部现货调拨松弛变量 $u_s \ge 0$（$\sum_f x_{f,s} + u_s \ge \text{Demand}_s$）并赋予高额惩罚成本，使求解器在产能不足时仍能给出最优的稀缺库存分配方案。
+### 供应与需求约束的影子价格（`.dual`）
+
+在最小化 LP 中，各约束的**影子价格**（`.dual`）衡量右端项增加 1 个单位时总成本的变化量：
+
+- **`demand_s.dual`（$\ge 0$）：** 向门店 $s$ 多配送 1 件货物的边际到岸成本。
+- **`supply_f.dual`（$\le 0$）：** 工厂 $f$ 产能扩大 1 件时可节省的总运输成本。
+
+场景 A 的最优成本为 `$880`，场景 B 为 `$940`。在这两个场景中，`Tokyo` 都已满负荷运行，其 `supply_Tokyo.dual` 为 `-$2/u`。`Tokyo` 每增加 1 件产能即可避免从 Nagoya 绕道发货并节省 `$2`，`Osaka` 同样处于产能上限，对偶值为 `-$1/u`。
+
+### 处理产能不足
+
+满足硬性需求约束的前提是总产能不少于总需求（$\sum \text{Supply}_f \ge \sum \text{Demand}_s$）。若门店总需求超过工厂总产能，HiGHS 将返回 `"Infeasible"`。
+
+为避免产能紧张时直接无解，可在各门店需求约束中加入非负的缺货或临时调拨变量 $u_s \ge 0$（$\sum_f x_{f,s} + u_s \ge \text{Demand}_s$）。只要给 $u_s$ 设置较高的惩罚成本，求解器就会在稀缺状态下给出最优分配方案。

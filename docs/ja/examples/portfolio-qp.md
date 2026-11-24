@@ -4,7 +4,7 @@
 | :--- | :--- | :--- | :--- |
 | 凸二次計画問題 (Convex QP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">ソースコード</a></li></ul> |
 
-マーコウィッツの平均・分散モデルに基づき、目標期待リターンと投資比率合計（100%）の制約を満たしながら、資産間の共分散行列から計算されるポートフォリオ全体の分散（リスク $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$）を最小化します。
+マーコウィッツの平均・分散モデルを用いた資産配分の最適化問題です。目標期待リターンと投資比率合計 100% を満たしながら、ポートフォリオ全体の分散 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$ を最小化します。
 
 <PortfolioQpDemo />
 
@@ -86,5 +86,14 @@ solvePortfolio();
 
 ## 実務上のポイント
 
-- **有効フロンティアの描出（`targetReturn` と `portfolioReturn.value`）**: 達成された期待リターン（`8.50%`）が `targetReturn` と一致していることは、目標リターン制約が有効（タイト）であり、解がマーコウィッツの有効フロンティア上に乗っていることを示します。`targetReturn` を `[0.05, 0.12]` の範囲でスイープすることで、リスクとリターンのトレードオフ曲線全体を描出できます。
-- **目標リターン制約 vs. リスク回避度パラメータ $\lambda$**: 空売りなし（$0 \le w_i \le 1$）の条件では、単一資産の最大期待リターン（`Tech` の $12\%$）を超える `targetReturn` を指定するとハード制約が満たせず `"Infeasible"` になります。実務で常に実行可能なモデルにする場合は、リスク回避度 $\lambda > 0$ を用いて目的関数を $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$ とする定式化も広く使われます。
+### 有効フロンティアの描出
+
+求解後の `portfolioReturn.value` は `targetReturn`（`8.50%`）と一致します。これは目標リターン制約がタイトに効いており、解がマーコウィッツの有効フロンティア上にあることを示します。`targetReturn` を `[0.05, 0.12]` で変化させると、リスクとリターンの曲線全体を描けます。
+
+### 目標リターン制約とリスク回避度 $\lambda$ の使い分け
+
+空売りなし（$0 \le w_i \le 1$）のモデルでは、単一資産の最大リターンである `Tech` の `12%` を超える `targetReturn` を指定すると `"Infeasible"` になります。
+
+任意のリスク許容度で常に実行可能なモデルにする場合は、リスク回避度 $\lambda > 0$ を用いて次の目的関数を最小化します。
+
+$$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

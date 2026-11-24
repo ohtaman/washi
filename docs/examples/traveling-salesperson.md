@@ -4,15 +4,15 @@
 | :--- | :--- | :--- | :--- |
 | Combinatorial OR / Benders | HiGHS (default) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">Source Code</a></li><li><a href="/guide/decomposition">Decomposition Guide</a></li></ul> |
 
-The **Traveling Salesperson Problem (TSP)** seeks the shortest closed tour that visits every city in a given set once and returns to the starting city.
+The **Traveling Salesperson Problem (TSP)** finds the shortest closed tour that visits every city once and returns to the starting city.
 
-In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles (**subtours**) requires subtour elimination constraints for every non-empty proper subset of cities $S \subset V$:
+In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles called **subtours** requires a subtour elimination constraint for every non-empty proper subset of cities $S \subset V$:
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
 Because there are $2^n - 2$ subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Benders Decomposition (Lazy Constraint Separation)**, constraints are added only when violated:
-1. **Master Problem**: Solves the degree-assignment relaxation (each city has 1 incoming and 1 outgoing edge).
-2. **Separation Subproblem**: Inspects the candidate solution graph. If disconnected cycles exist, it adds **Benders Feasibility Cuts** eliminating all detected subtours simultaneously (multi-cut separation) and resolves until a single connected tour is obtained.
+1. **Master Problem**: Solves the degree-assignment relaxation, where each city has 1 incoming edge and 1 outgoing edge.
+2. **Separation Subproblem**: Traces cycles in the master solution. When disconnected cycles appear, it returns **Benders Feasibility Cuts** for all detected subtours at once (multi-cut separation) until a single tour remains.
 
 ## Problem Inputs
 
@@ -148,10 +148,20 @@ runTSP();
 
 </CodeRunner>
 
-## Notes
+## Key Takeaways
 
-- **Lazy Subtour Elimination**: The master problem starts with only the $2n$ degree constraints, and subtour elimination cuts are added on demand when disconnected cycles appear in the master solution.
-- **Multi-Cut Separation**: Returning an array of cuts (`cycles.map(...)`) from `subproblem` eliminates all disconnected cycles discovered in the current candidate solution simultaneously, reducing the number of master MIP re-solves.
-- **Two Equivalent DFJ Cut Forms**: Because every city has out-degree $\sum_{j \ne i} x_{ij} = 1$, summing over $i \in S$ gives $\sum_{i \in S, j \in S} x_{ij} + \sum_{i \in S, j \notin S} x_{ij} = |S|$. Thus the cut-set inequality $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ used above and the internal-edge inequality $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ used in [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) are algebraically identical.
-- **Upfront 2-City Subtour Elimination**: In larger TSP instances, mutual 2-cycles ($i \leftrightarrow j$) are the most frequent initial subtours. Adding the $\binom{n}{2}$ pairwise constraints $x_{ij} + x_{ji} \le 1$ directly to the initial master problem often cuts the number of Benders iterations substantially.
-- **Termination Condition**: Returning `null` from `subproblem` indicates that no violated subtour constraints remain.
+### Lazy Subtour Elimination & Multi-Cut Separation
+
+The master problem starts with only $2n$ degree constraints, and `subproblem` adds cuts only when disconnected cycles appear. Returning an array of cuts (`cycles.map(...)`) eliminates every subtour in the current candidate at once, reducing master MIP re-solves. Returning `null` stops the loop once a single connected tour is found.
+
+### Two Equivalent DFJ Cut Forms
+
+Every city satisfies the out-degree equation $\sum_{j \ne i} x_{ij} = 1$. Summing this identity over all $i \in S$ gives:
+
+$$\sum_{i \in S, \, j \in S} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
+
+Therefore, the cut-set inequality $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ used above is algebraically identical to the internal-edge form $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ used in [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts).
+
+### Upfront 2-City Subtour Elimination
+
+In larger TSP instances, mutual 2-cycles ($i \leftrightarrow j$) are the most frequent early subtours. Adding the $\binom{n}{2}$ pairwise constraints $x_{ij} + x_{ji} \le 1$ to the initial master problem often cuts the number of Benders iterations substantially.

@@ -4,15 +4,15 @@
 | :--- | :--- | :--- | :--- |
 | 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
-**旅行商问题（TSP: Traveling Salesperson Problem）** 要求寻找一条恰好访问每座城市一次并回到起点的最短闭合回路（Tour）。
+**旅行商问题（TSP）** 寻找一条恰好访问每座城市一次并返回起点的最短闭合回路。
 
-在 **Dantzig-Fulkerson-Johnson (DFJ)** 形式化中，为了消除孤立小环（**子回路: Subtour**），需要对城市的每个非空真子集 $S \subset V$ 加入子回路消除约束：
+在 **Dantzig-Fulkerson-Johnson (DFJ)** 形式化中，为消除称为**子回路**的孤立小环，需对城市的每个非空真子集 $S \subset V$ 添加子回路消除约束：
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
-由于子集共有 $2^n - 2$ 个，当城市数量增加时，预先加入全部子回路约束并不现实。采用 **Benders分解（延迟割平面分离: Lazy Subtour Elimination）** 可按需添加被违反的约束：
-1. **主问题（Master Problem）**：求解度数分配松弛（每个城市入度为 1、出度为 1）。
-2. **分离子问题（Subproblem）**：检查主问题解构成的有向图；若存在多个连通环路，则一次性为所有检测到的子回路生成 **Benders 可行割（Feasibility Cuts）**（多割平面分离）并加入主问题，迭代直至形成单一回路。
+由于子集共有 $2^n - 2$ 个，城市数增加后无法预先列出全部约束。采用 **Benders 分解（延迟割平面分离）** 可按需补充被违反的约束：
+1. **主问题（Master Problem）**：求解度数分配松弛，要求每个城市入度与出度均为 1。
+2. **分离子问题（Subproblem）**：检查主问题解中的有向环路。若存在多个孤立子回路，则一次性返回所有对应的 **Benders 可行割**（多割分离），直到得到单一连通回路。
 
 ## 输入数据
 
@@ -149,10 +149,20 @@ runTSP();
 
 </CodeRunner>
 
-## 说明
+## 结果解读与要点
 
-- **延迟子回路消除**：主问题初始仅包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时才向主问题添加相应割平面。
-- **多割分离（Multi-Cut Separation）**：在 `subproblem` 中返回割平面数组（`cycles.map(...)`）可一次性消除当前候选解中的所有孤立子回路，显著减少主问题 MIP 的重求解轮数。
-- **两种等价的 DFJ 割平面形式**：由于每个城市的出度满足 $\sum_{j \ne i} x_{ij} = 1$，对 $i \in S$ 求和可得 $\sum_{i \in S, j \in S} x_{ij} + \sum_{i \in S, j \notin S} x_{ij} = |S|$。因此上方代码使用的割集不等式 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 与 [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) 使用的内部边不等式 $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ 在代数上完全等价。
-- **预先消除双城往返子回路**：在城市数量较多的 TSP 中，初始解最常出现两城直接往返（$i \leftrightarrow j$）。在主问题中预先加入 $\binom{n}{2}$ 条 $x_{ij} + x_{ji} \le 1$ 约束通常能大幅减少 Benders 迭代次数。
-- **终止条件**：当 `subproblem` 返回 `null` 时，表示不再存在被违反的子回路约束，迭代结束。
+### 延迟子回路消除与多割分离
+
+主问题初始只包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时通过 `subproblem` 注入割平面。返回割平面数组（`cycles.map(...)`）可在一轮内消除所有孤立子回路，减少主问题 MIP 的重求解次数。形成单一连通回路后返回 `null` 即可结束迭代。
+
+### 两种等价的 DFJ 割平面形式
+
+每个城市满足出度等式 $\sum_{j \ne i} x_{ij} = 1$。对 $i \in S$ 求和可得：
+
+$$\sum_{i \in S, \, j \in S} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
+
+因此，上方代码使用的割集不等式 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 与 [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) 中的内部边不等式 $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ 在代数上完全等价。
+
+### 预先消除双城往返子回路
+
+在城市数较多的实例中，初始迭代最容易出现两城往返小环（$i \leftrightarrow j$）。在主问题中预先加入 $\binom{n}{2}$ 条 $x_{ij} + x_{ji} \le 1$ 约束，通常能显著减少 Benders 迭代轮数。

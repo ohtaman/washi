@@ -4,11 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
 
-限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
+限られたリソース（木材・労働時間など）の制約を守りながら、各製品の最適な生産数を求めて総利益を最大化する古典的な最適化問題です。
 
 ## 数理モデルの定式化
 
-椅子（chairs）の生産数を $x$、机（tables）の生産数を $y$ とします。
+椅子の生産数を $x$、机の生産数を $y$ とします。
 
 $$\begin{aligned}
 \text{Maximize} \quad & 45x + 80y & (\text{総利益}) \\
@@ -49,3 +49,8 @@ runProductionOptimization();
 ```
 
 </CodeRunner>
+
+## 解の読み解きとポイント
+
+- **最適解の確認**: `chairs = 24`、`tables = 14` のとき総利益は最大の `$2,200` になります。木材は $5 \times 24 + 20 \times 14 = 400$、労働時間は $10 \times 24 + 15 \times 14 = 450$ となり、2 つの制約をちょうど使い切っています。
+- **`m.continuous()` ではなく `m.integer()` を使う理由**: 椅子や机は個数単位で生産するため端数を許せません。この数値例では連続緩和解も整数になりますが、`m.integer()` にしておけば上限値や利益単価が変わっても必ず整数解が得られます。
