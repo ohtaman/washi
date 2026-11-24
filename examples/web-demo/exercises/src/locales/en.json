@@ -15,7 +15,7 @@
       },
       {
         "label": "PuLP (Python) runtime alongside WaSHI",
-        "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser so Python practitioners can work through the same exercises and compare idioms side by side."
+        "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser for LP and MIP exercises so Python practitioners can work through them and compare idioms side by side. Exercises for CP, SMT, convex QP, and decomposition algorithms are WaSHI (TypeScript)-only."
       },
       {
         "label": "AI-generated exercises with ongoing review",

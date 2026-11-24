@@ -15,7 +15,7 @@
       },
       {
         "label": "PuLP（Python）環境を併設",
-        "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、Pyodide 上で PuLP + HiGHS も動かせるようにしています。"
+        "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、LP・MIP の演習では Pyodide 上で PuLP + HiGHS も動かせるようにしています（CP・SMT・凸 QP・分解法の演習は WaSHI (TypeScript) 専用です）。"
       },
       {
         "label": "生成 AI での作問と順次レビュー",
