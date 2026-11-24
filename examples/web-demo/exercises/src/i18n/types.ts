@@ -34,6 +34,10 @@ export interface ExercisesUiStrings {
   provenance: {
     generatedBy: string;
     reviewedBy: (handles: string[]) => string;
+    unreviewedBadge: string;
+    reviewedBadge: string;
+    legendUnreviewed: string;
+    legendReviewed: string;
   };
   workspace: {
     jumpToEditorBtn: string;

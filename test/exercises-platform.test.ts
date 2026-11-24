@@ -1242,6 +1242,89 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
     }
   });
 
+  it("distinguishes reviewed vs. unreviewed exercises across overview, sidebar TOC, and workspace header", async () => {
+    const baseProb = PROBLEMS.find((p) => p.meta.id === "001")!;
+    const reviewedProb = {
+      ...baseProb,
+      meta: {
+        ...baseProb.meta,
+        id: "002",
+        provenance: { ...baseProb.meta.provenance, reviewedBy: ["ohtaman"] },
+      },
+    };
+    const unreviewedProb = {
+      ...baseProb,
+      meta: {
+        ...baseProb.meta,
+        id: "001",
+        provenance: { ...baseProb.meta.provenance, reviewedBy: [] },
+      },
+    };
+    const sampleProblems = [unreviewedProb, reviewedProb];
+    const state = recordSolvedProblem(createEmptyProgress(), "001", "washi", 10, "2026-11-20T00:00:00Z");
+
+    for (const locale of ["en", "ja", "zh"] as const) {
+      const indexHtml = renderExerciseIndexHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: sampleProblems,
+        progress: state,
+      });
+
+      expect(indexHtml).toContain('class="provenance-legend"');
+      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.legendUnreviewed);
+      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.legendReviewed);
+
+      // Overview TOC rows
+      expect(indexHtml).toMatch(/class="toc-row[^"]*"[^>]*data-problem-id="001"[^>]*data-reviewed="false"/);
+      expect(indexHtml).toMatch(/class="toc-row[^"]*"[^>]*data-problem-id="002"[^>]*data-reviewed="true"/);
+      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.unreviewedBadge);
+      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.reviewedBadge);
+
+      // Sidebar TOC links
+      expect(indexHtml).toMatch(/class="book-sidebar-link[^"]*"[^>]*data-sidebar-id="001"[^>]*data-reviewed="false"/);
+      expect(indexHtml).toMatch(/class="book-sidebar-link[^"]*"[^>]*data-sidebar-id="002"[^>]*data-reviewed="true"/);
+
+      // Solved status badge coexists cleanly with unreviewed state
+      expect(indexHtml).toMatch(/data-problem-id="001"[\s\S]*?class="status-badge is-solved"/);
+
+      const md = await baseProb.loadMarkdown(locale);
+      const unreviewedWs = renderWorkspaceHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: sampleProblems,
+        problem: unreviewedProb,
+        problemMarkdown: md,
+        prevProblem: null,
+        nextProblem: reviewedProb,
+        progress: state,
+        activeRuntime: "washi",
+        washiCode: unreviewedProb.washiStarter,
+        highspyCode: unreviewedProb.highspyStarter,
+      });
+      expect(unreviewedWs).toMatch(/<p class="ws-provenance" data-reviewed="false">/);
+
+      const reviewedWs = renderWorkspaceHtml({
+        locale,
+        strings: UI_STRINGS[locale],
+        chapters: CHAPTERS,
+        problems: sampleProblems,
+        problem: reviewedProb,
+        problemMarkdown: md,
+        prevProblem: unreviewedProb,
+        nextProblem: null,
+        progress: state,
+        activeRuntime: "washi",
+        washiCode: reviewedProb.washiStarter,
+        highspyCode: reviewedProb.highspyStarter,
+      });
+      expect(reviewedWs).toMatch(/<p class="ws-provenance" data-reviewed="true">/);
+      expect(reviewedWs).toContain("@ohtaman");
+    }
+  });
+
   it("renders stacked workspace with plain kicker, quiet provenance, neutral workbench, overlay editor, and single solved indicator", async () => {
     const p010 = PROBLEMS.find((p) => p.meta.id === "010")!;
     let state = createEmptyProgress();
