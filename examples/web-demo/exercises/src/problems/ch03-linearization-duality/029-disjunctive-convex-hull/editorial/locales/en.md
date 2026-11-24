@@ -16,7 +16,7 @@ $$
 
 ## Key Points
 
-- **Why disaggregation beats a single $x_i$ with Big-M**: First, different operating bands carry different linear cost slopes $c_{ik}$, so the objective needs separate $x_{ik}$ variables per band. Second, even with uniform slopes, the disaggregated inequalities $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$ generate the **exact convex hull** of the union of disjoint intervals $\bigcup_k [L_{ik}, U_{ik}]$, avoiding weak Big-M LP relaxations.
+- **Why disaggregation beats a single $x_i$ with Big-M**: First, different operating bands carry different linear cost slopes $c_{ik}$, so the objective needs separate $x_{ik}$ variables per band. Second, even with uniform slopes, the disaggregated inequalities $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$ (with $\sum_k y_{ik} = 1$) generate the **exact convex hull** of the union of disjoint regimes in the lifted $(x, y)$ space, avoiding weak Big-M LP relaxations.
 - **Idle band uniformity**: Representing idle as band $k=0$ with $[L_{i0}, U_{i0}] = [0, 0]$ and $F_{i0} = c_{i0} = 0$ lets $\sum_k y_{ik} = 1$ treat idle and active modes cleanly in a single structure.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 

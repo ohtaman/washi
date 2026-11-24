@@ -59,7 +59,7 @@ async function verifyAdversarialChecks(problems: ProblemDefinition[]): Promise<v
   for (const cpId of ["073", "074"] as const) {
     const p = byId.get(cpId)!;
     expect(p.meta.solvers).toEqual(["pumpkin"]);
-    expect(p.meta.paradigms).toEqual(["CP", "MIP"]);
+    expect(p.meta.paradigms).toEqual(["CP"]);
     const slugDir = cpId === "073" ? "073-job-shop-jssp" : "074-rcpsp-project";
     expect(fs.existsSync(path.join(ch8Root, slugDir, "highspy"))).toBe(false);
 

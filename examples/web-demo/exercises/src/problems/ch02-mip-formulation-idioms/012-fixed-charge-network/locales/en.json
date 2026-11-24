@@ -21,8 +21,8 @@
     "m3": "open[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
     "m4": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
     "m5": "Lane ({p0}, {p1}) flow ({p2}) exceeds allowed capacity {p3} for open[{p0}][{p1}] = {p4}.",
-    "m6": "Warehouse {p0} total outflow ({p1}) exceeds supply ({p2}).",
-    "m7": "Store {p0} total inflow ({p1}) is below demand ({p2}).",
+    "m6": "Collection center {p0} total outflow ({p1}) exceeds supply ({p2}).",
+    "m7": "Supermarket {p0} total inflow ({p1}) is below demand ({p2}).",
     "m8": "Reported totalCost ({p0}) does not match computed fixed plus shipping cost ({p1}).",
     "m9": "Feasible network flow, but totalCost ({p0}) exceeds optimal ({p1}).",
     "m10": "Optimal fixed-charge network design found (totalCost = {p0})!"

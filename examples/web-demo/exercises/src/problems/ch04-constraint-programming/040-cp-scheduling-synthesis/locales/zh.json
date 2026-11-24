@@ -3,7 +3,6 @@
   "subtitle": "第四章综合题：融合机器互斥 disjoint、电力累计 cumulative、模式兼容表 allowed 与查表 at 最小化最大完工时间。",
   "tags": [
     "CP",
-    "MIP",
     "综合排程",
     "第四章综合"
   ],

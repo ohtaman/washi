@@ -16,7 +16,7 @@
   ],
   "solvers": [
     "highs",
-    "pumpkin",
+    "glpk",
     "z3"
   ],
   "provenance": {

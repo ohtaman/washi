@@ -3,7 +3,6 @@
   "subtitle": "Schedule up to K friend groups from the park entrance to visit every attraction within its [earliest, latest] opening window using Big-M arrival linking.",
   "tags": [
     "MIP",
-    "CP",
     "Time Windows",
     "Routing",
     "Applied"

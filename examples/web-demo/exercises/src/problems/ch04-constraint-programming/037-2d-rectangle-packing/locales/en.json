@@ -3,7 +3,6 @@
   "subtitle": "Pack non-overlapping axis-aligned rectangles into a fixed-width strip using 4-way or(...) disjunctions.",
   "tags": [
     "CP",
-    "MIP",
     "2D Packing",
     "Disjunctive Logic"
   ],

@@ -8,7 +8,6 @@
   "difficulty": 5,
   "estimatedMinutes": 60,
   "paradigms": [
-    "LP",
     "MIP",
     "SMT"
   ],

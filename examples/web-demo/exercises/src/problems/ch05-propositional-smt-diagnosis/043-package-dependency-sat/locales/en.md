@@ -68,4 +68,4 @@ Because `app@1.0` conflicts with `legacy@1.0`, `http@1.0` is ruled out, leaving 
 Introduce a Boolean selection decision for every `(package, version)` pair. Enforce at most one version per package, require at least one version for each root package, and express each dependency requirement and pairwise conflict over those selection decisions while minimizing the total number of installed versions.
 
 <!-- section:hint2 -->
-Because Z3 minimizes arithmetic `Var` expressions while logical combinators (`implies`, `or`, `not`, `and`) operate on `BoolVar`, pair each `m.bool(...)` variable with an `m.binary(...)` indicator linked in both directions via `implies`. Solve with `minimize(sum(allUsed))` and `await m.solve({ solver: "z3" })`, checking `res.status === "Optimal"`.
+Because Z3 minimizes arithmetic `Var` expressions while logical combinators (`implies`, `or`, `not`, `and`) operate on `BoolVar`, pair each `m.bool(...)` variable with an `m.binary(...)` indicator linked in both directions via `implies`. Solve with `minimize(sum(allUsed))` and `const status = await m.solve({ solver: "z3" })`, checking `status === "Optimal"`.

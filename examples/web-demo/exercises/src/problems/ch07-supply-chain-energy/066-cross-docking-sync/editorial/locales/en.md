@@ -1,6 +1,6 @@
 ## Approach
 
-Linearize the quadratic bilinear coupling between truck door binaries ($x_{i,r}, y_{j,s}$) and truck-to-truck freight flows ($f_{i,j,k}$) using disaggregated door-pair flow variables $w_{i,j,r,s} \ge 0$, alongside binary link indicators $z_{i,j}$ enforcing arrival-plus-transfer synchronization on outbound departures $t_j$.
+Linearize the trilinear coupling between truck door binaries ($x_{i,r}, y_{j,s}$) and truck-to-truck freight flows ($f_{i,j,k}$) using disaggregated door-pair flow variables $w_{i,j,r,s} \ge 0$, alongside binary link indicators $z_{i,j}$ enforcing arrival-plus-transfer synchronization on outbound departures $t_j$.
 
 ## Mathematical Model
 

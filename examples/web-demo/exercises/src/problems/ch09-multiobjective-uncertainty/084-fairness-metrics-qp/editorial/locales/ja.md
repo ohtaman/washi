@@ -17,8 +17,8 @@ $$
 - **公平性指標の比較（総和・マックスミン・レンジ・L2 分散）**:
   - **純コスト総和**（$\lambda = 0$）: 安価なチームに上限 $u_i$ まで偏り、不均衡が最大化します。
   - **マックスミン（$\max \min_i x_i$）やレンジ（$\max_i x_i - \min_i x_i$）**: LP で書けますが、両端のチームしか制約せず中間層の偏りが残りがちです。
-  - **L2 分散（$\lambda \sum_i (x_i - \bar{x})^2$）**: $\lambda > 0$ で強凸となり、全チームを同時に平均 $\bar{x}$ 付近へ滑らかに平準化した一意の最適解が得られます。
-- **WaSHI の `QuadExpr` と定数項処理**: $(x_i - \bar{x})^2 = x_i^2 - 2\bar{x}x_i + \bar{x}^2$ は正定値対角ヘッセ行列 $2\lambda I$ を持ち、``expr`sum((${x} - ${mean})^2)` `` で直接記述でき、HiGHS が定数オフセット $\lambda n \bar{x}^2$ も含めて正確に求解します。
+  - **L2 分散（$\lambda \sum_i (x_i - \bar{x})^2$）**: $\lambda > 0$ で狭義凸となり、全チームを同時に平均 $\bar{x}$ 付近へ滑らかに平準化した一意の最適解が得られます。
+- **WaSHI の `QuadExpr` と定数項処理**: $(x_i - \bar{x})^2 = x_i^2 - 2\bar{x}x_i + \bar{x}^2$ は半正定値対角ヘッセ行列 $2\lambda I \succeq 0$ を持ち、``expr`sum((${x} - ${mean})^2)` `` で直接記述でき、HiGHS が定数オフセット $\lambda n \bar{x}^2$ も含めて正確に求解します。
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所

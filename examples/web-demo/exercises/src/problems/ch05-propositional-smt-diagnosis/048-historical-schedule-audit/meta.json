@@ -13,9 +13,7 @@
   "runtimes": [
     "washi"
   ],
-  "solvers": [
-    "z3"
-  ],
+  "solvers": [],
   "provenance": {
     "generatedBy": "AI (Gemini)",
     "autoVerified": true,
