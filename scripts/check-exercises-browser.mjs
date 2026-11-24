@@ -127,7 +127,7 @@ async function run() {
 
     // 1. Verify VitePress top nav links in EN, JA, ZH
     for (const navCase of [
-      { docsPath: "/", linkText: "100 Exercises", expectedBrand: exEn.ui.brandTitle },
+      { docsPath: "/", linkText: "Optimization N", expectedBrand: exEn.ui.brandTitle },
       { docsPath: "/ja/", linkText: docsJa.nav[2].text, expectedBrand: exJa.ui.brandTitle },
       { docsPath: "/zh/", linkText: docsZh.nav[2].text, expectedBrand: exZh.ui.brandTitle },
     ]) {
@@ -193,7 +193,7 @@ async function run() {
     assert(!/\/\s*200/.test(indexLayout.text), "Unexpected /200 denominator on Exercise Index");
     assert(indexLayout.text.includes("Drafted by Gemini"), "Expected Drafted by Gemini footnote on Exercise Index");
     assert(
-      (await page.locator("#about-heading").innerText()).includes("About Optimization 100") &&
+      (await page.locator("#about-heading").innerText()).includes("About Optimization N") &&
         (await page.locator("#about-exercises").innerText()).includes("not a Python package") &&
         (await page.locator("#about-exercises").innerText()).includes("Reviewed by ..."),
       "Expected About section heading, runtime clarification, and AI/review note in #about-exercises"

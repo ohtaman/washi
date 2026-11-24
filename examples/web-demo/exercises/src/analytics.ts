@@ -59,7 +59,7 @@ export function toAnalyticsRuntime(runtime: RuntimeId): ExerciseAnalyticsRuntime
 }
 
 /**
- * Privacy-safe analytics helper for Optimization 100 Exercises.
+ * Privacy-safe analytics helper for Optimization N Exercises.
  * Emits only fixed identifiers/enums via GA4 gtag() or GTM dataLayer,
  * and cleanly no-ops when analytics scripts are not injected.
  */

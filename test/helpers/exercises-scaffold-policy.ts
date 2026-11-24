@@ -1,5 +1,5 @@
 /**
- * Scaffolding & hint-ladder policy for Optimization 100 exercises (Chapter 2+).
+ * Scaffolding & hint-ladder policy for Optimization N exercises (Chapter 2+).
  *
  * See `examples/web-demo/exercises/AGENTS.md` ("Scaffolding & Hint Ladder") for the
  * human-readable rules. These pure checkers return a list of violation messages so that

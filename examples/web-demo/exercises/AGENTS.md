@@ -1,4 +1,4 @@
-# Optimization 100 Exercises — Authoring & Style Guidelines (`AGENTS.md`)
+# Optimization N Exercises — Authoring & Style Guidelines (`AGENTS.md`)
 
 Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercises/` must follow for uniform clarity, low cognitive noise, and idiomatic WaSHI / PuLP (`HiGHS`) code.
 

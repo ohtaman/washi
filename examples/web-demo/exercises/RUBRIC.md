@@ -1,6 +1,6 @@
-# Optimization 100 Exercises — Review Rubric
+# Optimization N Exercises — Review Rubric
 
-Evaluation rubric for reviewing and authoring Optimization 100 exercises (`examples/web-demo/exercises/`).
+Evaluation rubric for reviewing and authoring Optimization N exercises (`examples/web-demo/exercises/`).
 Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, `-1`, `+1`, `+5`, `+10`).
 
 ---

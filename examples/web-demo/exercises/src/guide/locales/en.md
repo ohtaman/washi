@@ -1,6 +1,6 @@
 # Optimization Guide & Glossary
 
-A concise reference for reading problem statements, building optimization models, and interpreting judge verdicts across **Optimization 100**.
+A concise reference for reading problem statements, building optimization models, and interpreting judge verdicts across **Optimization N**.
 
 ## 1. How Judging Works (`solve()`) {#solve-contract}
 
@@ -51,7 +51,7 @@ A concise reference for reading problem statements, building optimization models
 
 ## 5. Related Documentation & Learning Resources {#resources}
 
-Official documentation and reference materials centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**):
+Official documentation and independent learning resources centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**). Note that the external references listed below are independent learning resources, and all exercises, test cases, and solutions in Optimization N are original to WaSHI:
 
 ### Choosing the Right Resource
 
