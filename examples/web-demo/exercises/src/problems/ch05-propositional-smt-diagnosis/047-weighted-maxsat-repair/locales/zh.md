@@ -14,6 +14,17 @@
 | `hardRules` | `PropFormula[]` | 必须全部成立的硬规则列表 |
 | `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | 带违背惩罚权重的软规则列表 |
 
+`PropFormula` 为递归联合类型：
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

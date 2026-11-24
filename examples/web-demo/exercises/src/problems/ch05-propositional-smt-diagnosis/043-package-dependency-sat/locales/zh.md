@@ -15,6 +15,8 @@
 | `requires` | `DependencyRule[]` | `{ pkg, ver, depPkg, depVersions }` 依赖规则列表 |
 | `conflicts` | `Array<[[string, string], [string, string]]>` | 相互冲突的 `[pkg, ver]` 版本对 |
 
+每条 `DependencyRule` 为 `{ pkg: string, ver: string, depPkg: string, depVersions: string[] }`，表示若安装 `pkg` 的版本 `ver`，则必须同时安装 `depPkg` 且其版本属于 `depVersions`。
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

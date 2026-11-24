@@ -14,6 +14,8 @@
 | `allowedRules` | `TableRule[]` | 指定部品列 `vars` の値が `tuples` 内のいずれかに一致する正のテーブル制約 |
 | `forbiddenRules` | `TableRule[]` | 指定部品列 `vars` の値が `tuples` 内の組合せを禁止する負のテーブル制約 |
 
+各 `TableRule` は `{ vars: number[], tuples: number[][] }` の形式で、`vars` は 0 始まりの部品インデックス配列、`tuples` の各要素は `vars` と同じ長さのオプション番号配列です。
+
 ### 出力
 
 | フィールド | 型 | 説明 |

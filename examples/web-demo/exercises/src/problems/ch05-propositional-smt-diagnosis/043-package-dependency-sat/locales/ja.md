@@ -15,6 +15,8 @@
 | `requires` | `DependencyRule[]` | `{ pkg, ver, depPkg, depVersions }` 形式の依存関係 |
 | `conflicts` | `Array<[[string, string], [string, string]]>` | 同時導入できない `[pkg, ver]` ペアの組 |
 
+各 `DependencyRule` は `{ pkg: string, ver: string, depPkg: string, depVersions: string[] }` の形式で、`pkg` のバージョン `ver` を導入する場合、`depPkg` を `depVersions` のいずれかのバージョンで導入する必要があることを表します。
+
 ### 出力
 
 | フィールド | 型 | 説明 |

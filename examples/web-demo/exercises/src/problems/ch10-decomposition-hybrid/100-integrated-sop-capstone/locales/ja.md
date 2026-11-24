@@ -19,6 +19,12 @@ Z3 SMT の矛盾解析と HiGHS の混合整数計画を用いた 2 段階ハイ
 | `hardRules` | `PolicyRule[]` | 必ず遵守すべきハード制約 |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | 解除コスト重み付きのソフト方針ルール |
 
+各 `PolicyRule` は `id: string` と以下のいずれかの `type` バリアントを持つタグ付きオブジェクトです（`line`・`lines`・`ifLine`・`thenLine` は 0 始まりのライン番号）:
+- `"must_run"`: `{ id, type: "must_run", line: number }` — `active[line] === 1` を要求
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — `active[line] === 0` を要求
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — `lines` のうち少なくとも 1 つで `active[idx] === 1` を要求
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — `active[ifLine] === 1` ならば `active[thenLine] === (thenActive ? 1 : 0)` を要求
+
 ### 出力
 
 | フィールド | 型 | 説明 |

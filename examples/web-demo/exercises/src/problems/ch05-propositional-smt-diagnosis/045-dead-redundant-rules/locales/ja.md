@@ -14,6 +14,17 @@
 | `baseRules` | `PropFormula[]` | 常に成り立つ基本制約ルール |
 | `rules` | `Array<{ id: string; condition: PropFormula; effect: PropFormula }>` | 順序付きの条件・帰結ルール一覧 |
 
+`PropFormula` は再帰的な直和型です:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

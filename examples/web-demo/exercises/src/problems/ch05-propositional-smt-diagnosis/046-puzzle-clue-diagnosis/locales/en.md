@@ -13,6 +13,16 @@ Find an irreducible minimal unsatisfiable subset of clue IDs—a subset that is 
 | `cells` | `string[]` | Named puzzle cells (each is either safe 0 or a mine 1) |
 | `clues` | `PuzzleClue[]` | Named clues (`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`) |
 
+Each `PuzzleClue` has `id: string` and one of the following `type` variants:
+- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }` (`sum(cells) === count`)
+- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }` (`sum(cells) >= count`)
+- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }` (`sum(cells) <= count`)
+- `"safe"`: `{ id, type: "safe", cell: string }` (`cell === 0`)
+- `"mine"`: `{ id, type: "mine", cell: string }` (`cell === 1`)
+- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }` (`ifMine <= thenMine`)
+- `"same"`: `{ id, type: "same", a: string, b: string }` (`a === b`)
+- `"different"`: `{ id, type: "different", a: string, b: string }` (`a + b === 1`)
+
 ### Output
 
 | Field | Type | Description |

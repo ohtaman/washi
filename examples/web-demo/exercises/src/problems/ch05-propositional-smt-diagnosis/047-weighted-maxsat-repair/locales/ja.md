@@ -14,6 +14,17 @@
 | `hardRules` | `PropFormula[]` | 必ずすべて満たすべきハードルール一覧 |
 | `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | 違反ペナルティ重み付きのソフトルール一覧 |
 
+`PropFormula` は再帰的な直和型です:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

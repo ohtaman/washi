@@ -13,6 +13,17 @@ Imagine a system administrator validating a configuration: given Boolean variabl
 | `vars` | `string[]` | Boolean variable names |
 | `rules` | `PropFormula[]` | Propositional rules |
 
+`PropFormula` is a recursive union:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### Output
 
 | Field | Type | Description |

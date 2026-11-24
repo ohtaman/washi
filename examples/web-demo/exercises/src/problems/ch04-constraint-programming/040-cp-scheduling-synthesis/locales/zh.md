@@ -15,6 +15,10 @@
 | `precedences` | `number[][]` | 需满足 `starts[u] + duration[u] + postTimes[u][modes[u]] <= starts[v]` 的先后作业对 `[u, v]` |
 | `modeRules` | `ModeRule[]` | 作业对 `{ jobs: [u, v], allowedPairs }` 的允许模式二元组表 |
 
+类型定义：
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（时间单位为分钟，`power` 为 kW，`machine` 从 0 开始；`setupTimes[m]` 与 `postTimes[m]` 分别为模式 `m` 下的前段准备与后处理冷却时间）
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: [number, number][] }`（`jobs` 为从 0 开始的作业索引对 `[u, v]`，`allowedPairs` 为允许的 `[modes[u], modes[v]]` 组合列表）
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

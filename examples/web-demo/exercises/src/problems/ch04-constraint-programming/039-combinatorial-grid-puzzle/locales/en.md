@@ -14,6 +14,8 @@ Pre-specified cells must be fixed to their given digits, and within each region 
 | `givens` | `number[][]` | Pre-filled cell clues `[row, col, value]` (`0`-based row/col) |
 | `cages` | `CageClue[]` | Cage clues `{ cells, targetSum }` with distinct cell values summing to `targetSum` |
 
+Each `CageClue` object has `{ cells: [number, number][], targetSum: number }`, where `cells` lists 0-based `[row, col]` coordinates in the cage.
+
 ### Output
 
 | Field | Type | Description |

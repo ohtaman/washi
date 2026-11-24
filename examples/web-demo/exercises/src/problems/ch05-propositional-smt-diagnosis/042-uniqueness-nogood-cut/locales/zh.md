@@ -13,6 +13,17 @@
 | `vars` | `string[]` | 布尔变量名列表 |
 | `rules` | `PropFormula[]` | 命题逻辑规则列表 |
 
+`PropFormula` 为递归联合类型：
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

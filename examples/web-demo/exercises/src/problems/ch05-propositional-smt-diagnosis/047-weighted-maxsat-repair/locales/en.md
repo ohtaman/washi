@@ -14,6 +14,17 @@ Given Boolean configuration variables, mandatory hard rules, and soft rules with
 | `hardRules` | `PropFormula[]` | Mandatory propositional rules that must all hold |
 | `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | Optional preference rules with violation penalty weights |
 
+`PropFormula` is a recursive union:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### Output
 
 | Field | Type | Description |

@@ -14,6 +14,14 @@
 | `categories` | `Record<string, string[]>` | 类别名称到其 `n` 个不同属性值列表的映射 |
 | `clues` | `ZebraClue[]` | 结构化线索（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
 
+其中 `CategoryValue` 为 `[category: string, value: string]`，每条 `ZebraClue` 为以下变体之一：
+- `{ type: "at", position: number, category: string, value: string }`（`position` 从 0 开始）
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` 表示 `pos(right) === pos(left) + 1`，否则表示 `pos(left) < pos(right)`）
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }`（`|pos(a) - pos(b)| === 1`）
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

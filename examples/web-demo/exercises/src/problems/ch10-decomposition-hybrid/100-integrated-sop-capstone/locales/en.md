@@ -19,6 +19,12 @@ Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mix
 | `hardRules` | `PolicyRule[]` | Mandatory non-negotiable operational constraints |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | Negotiable management rules with relaxation weights |
 
+Each `PolicyRule` is a tagged object with `id: string` and one of the following `type` variants (where `line`, `lines`, `ifLine`, `thenLine` are 0-based line indices):
+- `"must_run"`: `{ id, type: "must_run", line: number }` — requires `active[line] === 1`
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — requires `active[line] === 0`
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — requires at least one `idx` in `lines` to satisfy `active[idx] === 1`
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — requires `active[ifLine] === 1 => active[thenLine] === (thenActive ? 1 : 0)`
+
 ### Output
 
 | Field | Type | Description |

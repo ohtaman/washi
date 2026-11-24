@@ -14,6 +14,14 @@ Given the number of positions, the category value lists, and the clue list, deci
 | `categories` | `Record<string, string[]>` | Map from each category name to its `n` distinct attribute values |
 | `clues` | `ZebraClue[]` | Structured clues (`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`) |
 
+Where `CategoryValue` is `[category: string, value: string]`, each `ZebraClue` is one of:
+- `{ type: "at", position: number, category: string, value: string }` (`position` is 0-based)
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }` (`immediate: true` means `pos(right) === pos(left) + 1`, otherwise `pos(left) < pos(right)`)
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }` (`|pos(a) - pos(b)| === 1`)
+
 ### Output
 
 | Field | Type | Description |

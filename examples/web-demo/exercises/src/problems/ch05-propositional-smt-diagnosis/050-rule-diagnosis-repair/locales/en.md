@@ -15,6 +15,19 @@ First check whether all hard and soft rules are jointly consistent. If consisten
 | `hardRules` | `Array<{ id: string; expr: SmtFormula }>` | Mandatory hard rules that cannot be relaxed |
 | `softRules` | `Array<{ id: string; weight: number; expr: SmtFormula }>` | Weighted soft rules that can be relaxed at cost `weight` |
 
+`SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### Output
 
 | Field | Type | Description |

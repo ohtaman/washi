@@ -14,6 +14,8 @@ Every shipment must avoid a scheduled dock maintenance blackout interval, no two
 | `blackout` | `[number, number]` | Unavailable dock maintenance window `[bStart, bEnd]` |
 | `maxExpress` | `number` | Maximum integer number of Express shipments allowed |
 
+Each `ShipmentSpec` object has `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }`.
+
 ### Output
 
 | Field | Type | Description |

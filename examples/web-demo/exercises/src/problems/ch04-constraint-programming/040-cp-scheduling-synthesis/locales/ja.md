@@ -15,6 +15,10 @@
 | `precedences` | `number[][]` | `starts[u] + duration[u] + postTimes[u][modes[u]] <= starts[v]` を要求する先行ペア `[u, v]` |
 | `modeRules` | `ModeRule[]` | ジョブ組 `{ jobs: [u, v], allowedPairs }` の許可モード対テーブル |
 
+型定義:
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（時間は分、`power` は kW、`machine` は 0 始まり、`setupTimes[m]`・`postTimes[m]` はモード `m` における前段取り・後処理時間）
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: [number, number][] }`（`jobs` は 0 始まりのジョブ番号対 `[u, v]`、`allowedPairs` は許容される `[modes[u], modes[v]]` の組の配列）
+
 ### 出力
 
 | フィールド | 型 | 説明 |
