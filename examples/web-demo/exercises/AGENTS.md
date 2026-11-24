@@ -53,6 +53,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 ## 3. Code & TypeScript / Python Idioms
 
+- **Reference Solution Comments (`washi/solution.ts`, `highspy/solution.py`)**: Unlike starters (which forbid modeling recipes), reference solutions should include concise English comments explaining what decision variables represent, what each constraint/objective block models, and why non-obvious formulations, linearizations, or multi-phase steps are needed.
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
   - Python (`highspy/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
