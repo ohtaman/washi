@@ -185,9 +185,9 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 `await m.solve()` または `await m.check()` の実行後、各変数の解は `variable.value` または `m.values` から取得できます。
 `variable.value` の型は `Var` が `number | null`、`BoolVar` が `boolean | null` です。
 
-HiGHS や GLPK で連続線形計画（LP）モデルを解いた場合、`variable.reducedCost` から感度分析の結果を `number | null` で取得できます。
+HiGHS で連続線形計画（LP）モデルを解いた場合、`variable.reducedCost` から感度分析の結果を `number | null` で取得できます。
 **被約費用（Reduced Cost）**は、上下限に張り付いている非基底変数の目的関数係数がどれだけ改善すれば、その変数が最適解に採用されるかを示す指標です。
-未求解時や、LP 双対が定義されない MIP・CP・SMT モデルでは `null` になります。
+未求解時、GLPK（制約の `dual` のみ対応）、または MIP・CP・SMT モデルでは `null` になります。
 
 ```typescript
 await m.solve();

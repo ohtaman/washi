@@ -87,10 +87,12 @@ Classic `<script>` tags load Immediately Invoked Function Expression (`IIFE`) bu
 
 | Solver | Problem Classes | Accepted Options | Throws On |
 | --- | --- | --- | --- |
-| **HiGHS** *(default)* | Linear (`LP`), Mixed-Integer (`MIP`), convex Quadratic (`QP`) | `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `outputFlag`, `relax`, `useWorker`, `wasmUrl`, `signal`, `onProgress`, `initialValue` | `threads`, `verbose` (use `outputFlag`), unknown keys, MIQP (quadratic objective with integer/binary/boolean variables) |
-| **Pumpkin** | Constraint Programming (`CP`), bounded discrete `unsatCore` | `timeLimit`, `useWorker`, `wasmUrl`, `signal`, `onProgress`, `initialValue` | `relax: true`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `Continuous` variables, unbounded or out-of-range (`[-(2^30 - 1), 2^30 - 1]`) bounds, fractional coefficients/RHS, `QuadExpr` |
-| **Z3** | Satisfiability Modulo Theories (`SMT`), continuous/discrete `unsatCore` | `signal`, `onProgress`, `z3JsUrl`, `z3WasmUrl` | `relax: true`, `useWorker: true`, `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `QuadExpr`, `initialValue` |
-| **GLPK** | `LP`, `MIP` | `timeLimit`, `presolve`, `relativeGap`, `verbose`, `relax`, `signal`, `onProgress` | `useWorker: true`, `absoluteGap`, `threads`, `outputFlag` (use `verbose`), unknown keys, `QuadExpr`, `initialValue` |
+| **HiGHS** *(default)* | Linear (`LP`), Mixed-Integer (`MIP`), convex Quadratic (`QP`) | `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `outputFlag`, `relax`, `useWorker`, `wasmUrl`, `signal`, `onProgress` | `threads`, `verbose` (use `outputFlag`), unknown keys, MIQP (quadratic objective with integer/binary/boolean variables) |
+| **Pumpkin** | Constraint Programming (`CP`), bounded discrete `unsatCore` | `timeLimit`, `useWorker`, `wasmUrl`, `signal`, `onProgress` | `relax: true`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `Continuous` variables, unbounded or out-of-range (`[-(2^30 - 1), 2^30 - 1]`) bounds, fractional coefficients/RHS, `QuadExpr` |
+| **Z3** | Satisfiability Modulo Theories (`SMT`), continuous/discrete `unsatCore` | `signal`, `onProgress`, `z3JsUrl`, `z3WasmUrl` | `relax: true`, `useWorker: true`, `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `QuadExpr`, variable `initialValue` |
+| **GLPK** | `LP`, `MIP` | `timeLimit`, `presolve`, `relativeGap`, `verbose`, `relax`, `signal`, `onProgress` | `useWorker: true`, `absoluteGap`, `threads`, `outputFlag` (use `verbose`), unknown keys, `QuadExpr`, variable `initialValue` |
+
+Warm-start hints are configured on variables (`m.integer(..., { initialValue })` or `v.initialValue`), not via `solve()`/`check()` options; HiGHS and Pumpkin support variable-level warm starts, whereas Z3 and GLPK throw if any variable sets `initialValue`.
 
 ---
 

@@ -89,9 +89,9 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## Dual Values, Shadow Prices & Lookups
 
-For continuous Linear Programming (LP) models solved by HiGHS or GLPK, each linear constraint exposes two sensitivity properties after `m.solve()`:
+For continuous Linear Programming (LP) models solved by HiGHS, each linear constraint exposes two sensitivity properties after `m.solve()` (GLPK populates `dual` only and leaves `slack` as `null`):
 
-- **`dual` (shadow price)**: How much the optimal objective improves per unit relaxation of the constraint's right-hand side.
+- **`dual` (shadow price)**: The signed change in the optimal objective value per unit increase in the constraint's right-hand side.
 - **`slack`**: The unused margin between the constraint's left-hand side and right-hand side at the optimal solution (`0` when the constraint is tight).
 
 Both properties return `number | null` and are `null` before solving or on MIP, CP, and logical constraints.

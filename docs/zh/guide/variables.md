@@ -185,9 +185,9 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value` 直接读取解，也可按名称从 `m.values` 查询。
 `variable.value` 对 `Var` 返回 `number | null`，对 `BoolVar` 返回 `boolean | null`。
 
-使用 HiGHS 或 GLPK 求解连续线性规划（LP）模型后，`variable.reducedCost` 会以 `number | null` 返回灵敏度分析结果。
+使用 HiGHS 求解连续线性规划（LP）模型后，`variable.reducedCost` 会以 `number | null` 返回灵敏度分析结果。
 **缩减成本（Reduced Cost）**表示处于上下界处的非基变量的目标系数需要改善多少，才值得在最优解中取非零值。
-在求解前，或对于不存在 LP 对偶信息的 MIP、CP 与 SMT 模型，`reducedCost` 为 `null`。
+在求解前、使用 GLPK（仅返回约束的 `dual`）或对于 MIP、CP 与 SMT 模型，`reducedCost` 为 `null`。
 
 ```typescript
 await m.solve();

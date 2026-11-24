@@ -184,9 +184,9 @@ Partial starts are allowed; providing a complete feasible assignment gives MIP s
 After calling `await m.solve()` or `await m.check()`, read assigned values directly from `variable.value` or look them up by name in `m.values`.
 `variable.value` returns `number | null` for `Var` and `boolean | null` for `BoolVar`.
 
-For continuous Linear Programming (LP) models solved by HiGHS or GLPK, `variable.reducedCost` exposes LP sensitivity analysis as `number | null`.
+For continuous Linear Programming (LP) models solved by HiGHS, `variable.reducedCost` exposes LP sensitivity analysis as `number | null`.
 The **reduced cost** indicates how much a non-basic variable's objective coefficient must improve before taking a non-zero value becomes worthwhile.
-Before solving, or on MIP, CP, and SMT models where LP duals are undefined, `reducedCost` is `null`.
+Before solving, on GLPK (which populates constraint `dual` only), or on MIP, CP, and SMT models, `reducedCost` is `null`.
 
 ```typescript
 await m.solve();
