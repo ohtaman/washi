@@ -75,6 +75,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 
 | Weight | Criterion | Evaluation Standard |
 | :---: | --- | --- |
+| **+5** | Annotated reference solution | `solution.ts` and `solution.py` include concise English comments explaining decision variables, each constraint/objective block, and non-obvious modeling or decomposition steps ("why", not trivial syntax). |
 | **-5** | Python `snake_case` convention | Uses `camelCase` instead of `snake_case` for Python `solve()` parameters, returned dict keys, or Python snippets in editorials. |
 | **-10** | Signature mismatch | Problem statement, `starter`/`solution` code, and editorial snippets disagree on function arguments or return structure. |
 
