@@ -46,12 +46,12 @@
   {
     "nameKey": 4,
     "input": {
-      "demands": [3, 4, 5, 4, 3, 2, 2],
+      "demands": [3, 4, 4, 5, 4, 3, 2],
       "shiftCosts": [12, 13, 12, 11, 14, 15, 16],
       "baseCost": 36,
-      "maxConsecutive": 3,
-      "maxWorkDays": 4
+      "maxConsecutive": 4,
+      "maxWorkDays": 5
     },
-    "expectedOptimal": 512
+    "expectedOptimal": 504
   }
 ]
