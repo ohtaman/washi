@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Keep the same `Model` instance across the `while` loop, calling `await m.solve()` and incrementally adding DFJ cuts via `m.constraint(...)` for each disconnected subtour `comp` until only a single cycle remains.
+
 **WaSHI (TypeScript)**
 
 ```ts

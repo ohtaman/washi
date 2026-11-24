@@ -24,6 +24,8 @@ $$
 
 ## Key Implementation
 
+In addition to each staff member's required days off, one-shift-per-day limit, and shift-count bounds, construct the daily per-shift demand coverage constraints. In WaSHI, build the constraint array with `forEach` and `flatMap`; in PuLP, express them using loops and `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,11 +40,11 @@ x.forEach((staffDays, i) => {
     expr`${totalWorked} <= ${input.maxShifts[i]}`,
   ]);
 });
-for (let d = 0; d < D; d++) {
-  for (let s = 0; s < S; s++) {
-    m.constraint(expr`${sum(x.map((staff) => staff[d][s]))} >= ${input.demands[d][s]}`);
-  }
-}
+m.constraint(
+  input.demands.flatMap((dayDemands, d) =>
+    dayDemands.map((req, s) => expr`${sum(x.map((staff) => staff[d][s]))} >= ${req}`)
+  )
+);
 ```
 
 **PuLP (Python)**

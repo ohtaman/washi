@@ -1,12 +1,9 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"open": list[int], "covered": list[int], "totalCoveredDemand": float}."""
-    demands = input_data["demands"]
-    distances = input_data["distances"]
-    radius = input_data["coverageRadius"]
-    max_facilities = input_data["maxFacilities"]
+def solve(demands, distances, coverage_radius, max_facilities) -> dict:
+    """Return {"open": list[int], "covered": list[int], "total_covered_demand": float}."""
+    radius = coverage_radius
     n = len(demands)
     m_sites = len(distances[0]) if n > 0 else 0
 
@@ -26,5 +23,5 @@ def solve(input_data: dict) -> dict:
     return {
         "open": [round(pulp.value(v)) for v in open_vars],
         "covered": [round(pulp.value(v)) for v in covered],
-        "totalCoveredDemand": float(pulp.value(prob.objective)),
+        "total_covered_demand": float(pulp.value(prob.objective)),
     }

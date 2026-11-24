@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+各作業の機械番号を表す整数変数配列 `assignment` に `distinct` 制約を課し、`at(row, assignment[i])` で参照したコストの総和を最小化して Pumpkin で解きます。
+
 **WaSHI (TypeScript)**
 
 ```ts

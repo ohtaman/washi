@@ -19,6 +19,8 @@ $$
 
 ## 实现要点
 
+通过 `compileSmt` 将所有策略规则加入模型后，用 `not(...)` 添加 `safeInvariant` 的否定约束。若 `m.check({ solver: "z3" })` 未返回 `"Sat"`，则不存在反例。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -21,16 +21,18 @@ $$
 
 ## 実装のポイント
 
+`exactOne` ヘルパーで `or(...)` による「少なくとも1つ」と `.forEach()` によるペアごとの「高々1つ」を登録し、最後に `m.check({ solver: "z3" })` が `"Sat"` でなければ充足不能を返します。
+
 **WaSHI (TypeScript)**
 
 ```ts
 function exactOne(m: Model, vars: BoolVar[], prefix: string): void {
   m.constraint(or(...vars), `${prefix}_at_least_one`);
-  for (let i = 0; i < vars.length; i++) {
-    for (let j = i + 1; j < vars.length; j++) {
-      m.constraint(not(and(vars[i], vars[j])), `${prefix}_at_most_one_${i}_${j}`);
-    }
-  }
+  vars.forEach((vi, i) => {
+    vars.slice(i + 1).forEach((vj, offset) => {
+      m.constraint(not(and(vi, vj)), `${prefix}_at_most_one_${i}_${i + 1 + offset}`);
+    });
+  });
 }
 
 const res = await m.check({ solver: "z3" });

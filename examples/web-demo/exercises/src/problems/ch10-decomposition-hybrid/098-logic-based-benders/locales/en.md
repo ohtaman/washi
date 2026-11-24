@@ -1,28 +1,28 @@
 # #098. Logic-Based Benders (MIP + Pumpkin CP)
 
 <!-- section:scenario -->
-Each job in a manufacturing shop must be assigned to exactly one unrelated parallel machine, incurring a machine-dependent processing cost. Once assigned, each machine must schedule all of its assigned jobs non-overlappingly within a common planning horizon while respecting every job release time, processing duration, and deadline.
+In an automotive parts machining plant, each machining operation (job)—such as turning, milling, or grinding—must be assigned to one of several dedicated machines to minimize total machine assignment cost. The jobs assigned to each machine must be processed sequentially without overlapping in time (in minutes), and every job must start on or after its release time, finish by its deadline, and complete within a common planning horizon.
 
-Solve this hybrid assignment-and-scheduling problem using Logic-Based Benders Decomposition across WaSHI solvers, pairing a HiGHS assignment master with Pumpkin constraint programming subproblems to return the optimal machine assignments, valid start times, and minimum total cost.
+Solve this problem using Logic-Based Benders Decomposition (LBBD) across WaSHI's multiple solvers, combining a HiGHS assignment master problem with Pumpkin CP scheduling subproblems to return the optimal machine assignments, feasible start times, and minimum total cost.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | Assignment cost `costs[j][m]` for placing job $j$ on machine $m$ |
-| `durations` | `number[]` | Integer processing duration of job $j$ |
-| `releaseTimes` | `number[]` | Earliest integer start time allowed for job $j$ |
-| `deadlines` | `number[]` | Latest integer completion time allowed for job $j$ |
-| `horizon` | `number` | Global schedule completion limit across all machines |
+| `costs` | `number[][]` | Cost `costs[j][m]` of assigning job $j$ to machine $m$ |
+| `durations` | `number[]` | Processing duration of job $j$ (minutes, integer) |
+| `releaseTimes` | `number[]` | Earliest start time of job $j$ (minutes) |
+| `deadlines` | `number[]` | Completion deadline of job $j$ (minutes) |
+| `horizon` | `number` | Common planning horizon limit across all machines (minutes) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignments` | `number[]` | Assigned machine index $m \in \{0, \dots, M-1\}$ for each job $j$ |
-| `starts` | `number[]` | Integer start time $s_j$ yielding a valid non-overlapping schedule |
-| `totalCost` | `number` | Minimum total assignment cost $\sum_j \text{costs}[j][\text{assignments}[j]]$ |
+| `assignments` | `number[]` | Machine index $m \in \{0, \dots, M-1\}$ assigned to each job $j$ |
+| `starts` | `number[]` | Integer start time $s_j$ of each job satisfying time-window and non-overlap constraints |
+| `totalCost` | `number` | Total assignment cost $\sum_j \text{costs}[j][\text{assignments}[j]]$ |
 
 <!-- section:example -->
 **Input**
@@ -52,7 +52,7 @@ Solve this hybrid assignment-and-scheduling problem using Logic-Based Benders De
 }
 ```
 
-Jobs `0` and `1` both prefer machine `0` cheaply (`10 + 12`), yet placing both on machine `0` violates their tight time windows `[0, 6]` and `[1, 7]`. Shifting job `0` to machine `1` gives intervals `[2, 6]` on machine `0` and `[0, 4], [4, 7], [7, 10]` on machine `1` for cost **66**.
+Jobs 0 and 1 are cheaper on machine 0, yet placing both on machine 0 cannot satisfy time windows `[0, 6]` and `[1, 7]` simultaneously. Assigning job 0 to machine 1 keeps all intervals non-overlapping (`[2, 6]` on machine 0; `[0, 4]`, `[4, 7]`, `[7, 10]` on machine 1), giving total cost $25 + 12 + 15 + 14 =$ **66**.
 
 <!-- section:hint1 -->
 Formulate the master MIP with binary job-to-machine assignment variables only, ensuring every job is assigned to one machine at minimum total assignment cost. Delegate all time-window and non-overlap scheduling checks to independent per-machine CP subproblems via `master.solveBenders(...)`.

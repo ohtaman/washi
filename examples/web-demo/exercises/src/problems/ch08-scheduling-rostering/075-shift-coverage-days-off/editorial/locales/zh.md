@@ -24,6 +24,8 @@ $$
 
 ## 实现要点
 
+除了每位员工的指定休假日、每日至多一班以及工作班次上下限外，还需构建每日各班次的人力覆盖约束。在 WaSHI 中使用 `forEach` 和 `flatMap` 组装约束数组，在 PuLP 中则通过循环与 `pulp.lpSum` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,11 +40,11 @@ x.forEach((staffDays, i) => {
     expr`${totalWorked} <= ${input.maxShifts[i]}`,
   ]);
 });
-for (let d = 0; d < D; d++) {
-  for (let s = 0; s < S; s++) {
-    m.constraint(expr`${sum(x.map((staff) => staff[d][s]))} >= ${input.demands[d][s]}`);
-  }
-}
+m.constraint(
+  input.demands.flatMap((dayDemands, d) =>
+    dayDemands.map((req, s) => expr`${sum(x.map((staff) => staff[d][s]))} >= ${req}`)
+  )
+);
 ```
 
 **PuLP (Python)**

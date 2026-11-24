@@ -1,7 +1,7 @@
 # #063. Backorders & Lost Sales Inventory Planning
 
 <!-- section:scenario -->
-A manufacturer plans continuous production, shipments, inventory, temporary backorders, and permanent lost sales across multiple periods starting from a known initial inventory and zero initial backlog.
+A precision electronics manufacturer (producing wireless earbuds) plans continuous production, shipments, inventory, temporary backorders, and permanent lost sales across multiple periods starting from a known initial inventory and zero initial backlog.
 
 In each period, physical inventory equals prior inventory plus current production minus actual shipments, while unfulfilled accepted orders accumulate in backlog (which must clear to zero by the end of the final period) and any rejected current demand becomes a lost sale bounded by that period's demand. Each shipped unit earns a fixed unit price, while production, ending inventory, ending backlog, and lost sales each incur per-unit costs. Choose all continuous quantities to **maximize net profit**.
 

@@ -1,6 +1,6 @@
 ## アプローチ
 
-各原料の投入量を在庫上限つき連続変数（`0 <= x_i <= availabilities[i]`）として宣言し、総重量の等式 `sum(amounts) == targetBatch` と元素ごとの絶対量上下限を加え、総材料費を最小化します。
+各地金の投入量を在庫上限つき連続変数（`0 <= x_i <= availabilities[i]`）として定義し、総重量 `sum(amounts) == targetBatch` と**成分ごとの絶対量上下限**を加え、総材料費を最小化します。
 
 ## 数理モデル
 
@@ -15,11 +15,13 @@ $$
 
 ## ポイント
 
-- **分母払いで割合制約を線形化する**: $\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$ をそのまま書くと割り算になってしまいますが、等式制約によって総重量 $\sum_i x_i = B$（`targetBatch`）が定数になるため、両辺に $B$ を掛けるだけで純粋な線形計画（LP）に落ちます。（分母も変数になるケースは第 2 章で扱います。）
-- **列ベクトルの取り出し**: `compositions[i][k]` は行が原料・列が元素なので、`input.compositions.map((row) => row[k])` で元素 $k$ の列ベクトルを取り出して `dot(...)` に渡します。
+- **両辺に総重量を掛けて割合制約を線形化する**: $\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$ をそのまま書くと割り算になってしまいますが、等式制約によって総重量 $\sum_i x_i = B$（`targetBatch`）が定数になるため、両辺に $B$ を掛けるだけで純粋な線形計画（LP）に落ちます。（分母も変数になるケースは第 2 章で扱います。）
+- **列ベクトルの取り出し**: `compositions[i][k]` は行が地金・列が成分なので、`input.compositions.map((row) => row[k])` で成分 $k$ の列ベクトルを取り出して `dot(...)` に渡します。
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+`compositions[i][k]` は行が地金・列が成分のため、列ベクトルを取り出して内積をとり、下限と上限の 2 本の制約をまとめて構築します。
 
 **WaSHI (TypeScript)**
 

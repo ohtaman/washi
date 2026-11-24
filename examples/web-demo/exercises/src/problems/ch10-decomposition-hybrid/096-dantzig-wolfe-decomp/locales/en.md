@@ -1,28 +1,28 @@
 # #096. Dantzig-Wolfe Decomposition
 
 <!-- section:scenario -->
-A corporation operates multiple independent production divisions, each facing its own local machine capacity and per-product market caps while competing for a single corporate-wide shared bottleneck resource. This creates a classic block-angular linear program where coupling constraints tie together otherwise independent divisional blocks.
+At a precision-parts manufacturer with multiple machining plants, each plant operates under its own local electric power capacity (in kWh) and per-product production upper bounds (in units) for items such as bearings, gears, and shafts, while all plants share a company-wide scarce raw material (specialty steel, in kg). This structure—coupling constraints tying together independent per-plant blocks—is a classic block-angular linear program.
 
-Solve this block-angular linear program using Dantzig-Wolfe decomposition via WaSHI column generation, coordinating the shared resource across divisional subproblems to return the optimal continuous production allocations and total corporate profit.
+Solve this block-angular linear program using Dantzig-Wolfe decomposition via WaSHI column generation, coordinating the shared raw material to return the optimal production allocations (non-negative real values, units) and total company profit.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `profits` | `number[][]` | Unit profit `profits[k][j]` for product $j$ in division $k$ |
-| `localUsages` | `number[][]` | Division $k$ local resource consumption per unit of product $j$ |
-| `localCaps` | `number[]` | Local capacity limit for division $k$ |
-| `sharedUsages` | `number[][]` | Corporate shared resource consumption per unit of product $j$ in division $k$ |
-| `sharedCap` | `number` | Global corporate shared resource limit |
-| `productCaps` | `number[][]` | Upper production bound for product $j$ in division $k$ |
+| `profits` | `number[][]` | Unit profit `profits[k][j]` for product $j$ at plant $k$ |
+| `localUsages` | `number[][]` | Local power consumption per unit of product $j$ at plant $k$ (kWh) |
+| `localCaps` | `number[]` | Local power capacity limit for plant $k$ (kWh) |
+| `sharedUsages` | `number[][]` | Company-wide shared steel consumption per unit of product $j$ at plant $k$ (kg) |
+| `sharedCap` | `number` | Company-wide specialty steel limit (kg) |
+| `productCaps` | `number[][]` | Production upper bound for product $j$ at plant $k$ (units) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `allocations` | `number[][]` | Continuous production plan `allocations[k][j]` matching input dimensions |
-| `totalProfit` | `number` | Total corporate profit $\sum_k \sum_j \text{profits}[k][j] \cdot \text{allocations}[k][j]$ |
+| `allocations` | `number[][]` | Production quantities per plant and product (non-negative real values, `allocations[k][j]`, units) |
+| `totalProfit` | `number` | Total company profit $\sum_k \sum_j \text{profits}[k][j] \cdot \text{allocations}[k][j]$ |
 
 <!-- section:example -->
 **Input**
@@ -62,7 +62,7 @@ Solve this block-angular linear program using Dantzig-Wolfe decomposition via Wa
 }
 ```
 
-Division 0 uses `19 <= 24` local capacity, Division 1 uses `18 <= 30`, total shared consumption is `11 + 9 = 20 <= 20`, and total profit reaches **225**.
+Plant 0 uses $2(8) + 3(0) + 1(3) = 19 \le 24$ local power, Plant 1 uses $3(0) + 2(9) + 4(0) = 18 \le 30$, shared steel usage is $(8 + 3) + 9 = 20 \le 20$, and total profit is $(12 \times 8 + 10 \times 3) + 11 \times 9 = 126 + 99 =$ **225**.
 
 <!-- section:hint1 -->
 Keep the global shared-resource constraint and one convexity constraint per division in the master LP, seeded with an initial zero-production extreme point for each division. Each division's local capacity and product bounds form an independent LP pricing subproblem that proposes profitable extreme points.

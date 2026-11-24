@@ -28,6 +28,8 @@ $$
 
 ## 实现要点
 
+在 `master.solveBenders` 的 `subproblem` 回调中通过 `checkMachineSchedule`（Pumpkin CP 的 `disjoint` 约束）校验分配给各加工机 `m` 的工序集合；对返回 `Unsat` 的加工机提取极小冲突集合并返回禁止割。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -35,7 +37,7 @@ const bendersRes = await master.solveBenders({
   maxIterations: 200,
   subproblem: async ({ getMasterValue }) => {
     const cuts: BendersCut[] = [];
-    for (let m = 0; m < M; m++) {
+    for (const m of Array.from({ length: M }, (_, idx) => idx)) {
       const assigned = jobs.filter((j) => getMasterValue(x[j][m]) > 0.5);
       const check = await checkMachineSchedule(input, assigned);
       if (check.sat) continue;

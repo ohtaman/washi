@@ -1,7 +1,7 @@
 # #093. Iterative Subtour Elimination Cuts (DFJ TSP)
 
 <!-- section:scenario -->
-Given a symmetric distance matrix over n cities, find a shortest closed Hamiltonian tour visiting every city exactly once using an iterative Dantzig-Fulkerson-Johnson (DFJ) subtour elimination loop. Rather than enumerating exponentially many subtour constraints upfront, the solver starts from a 2-matching relaxation and iteratively separates any disconnected subtours until a single connected tour remains.
+Given a symmetric distance matrix over $n$ delivery hubs (cities), find a shortest closed Hamiltonian tour visiting every city exactly once using an iterative Dantzig-Fulkerson-Johnson (DFJ) subtour elimination loop. Starting from a 2-matching relaxation that only requires each city to have degree 2, iteratively separate any disconnected subtours until a single connected tour remains.
 
 Return the optimal tour, its total distance, and the number of MIP solves executed.
 
@@ -46,7 +46,7 @@ Return the optimal tour, its total distance, and the number of MIP solves execut
 }
 ```
 
-Visiting `[0, 1, 3, 5, 4, 2]` and returning to `0` covers all 6 cities once with total distance $3 + 24 + 3 + 5 + 24 + 4 =$ **63** after **2** DFJ cut iterations.
+Visiting `[0, 1, 3, 5, 4, 2]` and returning to 0 covers all 6 cities once with total distance $3 + 24 + 3 + 5 + 24 + 4 =$ **63** after **2** DFJ cut iterations.
 
 <!-- section:hint1 -->
 Model one binary edge-selection decision per unordered pair of distinct cities, minimizing total tour distance. Structure the solver as an iterative cutting-plane loop that starts from a relaxed degree-constrained model and progressively cuts off disconnected cycles until a single connected tour remains.

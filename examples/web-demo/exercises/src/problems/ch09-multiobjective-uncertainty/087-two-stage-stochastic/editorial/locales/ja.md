@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+第 1 段階の発注量 `orders` を全シナリオで共有しつつ、`input.demands.flatMap(...)` で各シナリオの収支等式を一括登録し、`input.probs.map(...)` で期待第 2 段階コストを組み立てます。
+
 **WaSHI (TypeScript)**
 
 ```ts

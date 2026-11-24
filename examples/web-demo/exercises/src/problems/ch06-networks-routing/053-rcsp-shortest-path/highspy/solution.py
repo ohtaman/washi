@@ -1,13 +1,12 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"selected": list[int], "totalCost": float}."""
-    n = input_data["nodeCount"]
-    s = input_data["source"]
-    t = input_data["sink"]
-    max_r = input_data["maxResource"]
-    edges = input_data["edges"]
+def solve(node_count, source, sink, max_resource, edges) -> dict:
+    """Return {"selected": list[int], "total_cost": float}."""
+    n = node_count
+    s = source
+    t = sink
+    max_r = max_resource
 
     prob = pulp.LpProblem("rcsp_shortest_path", pulp.LpMinimize)
     x = [pulp.LpVariable(f"x_{i}", cat=pulp.LpBinary) for i in range(len(edges))]
@@ -24,5 +23,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "selected": [round(pulp.value(v)) for v in x],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

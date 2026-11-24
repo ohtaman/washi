@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+在指定 Pumpkin 求解器的模型中声明整数开工时间变量，将分配到同一台机器的工序列表传入 `disjoint()` 批量注册互不重叠约束。最后以全部工序完工时间的 `max()` 作为目标函数进行最小化。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -29,7 +31,7 @@ const m = new Model("JobShopCP", { solver: "pumpkin" });
 const starts = input.durations.map((jobDurs, j) =>
   jobDurs.map((d, o) => m.integer(`s_${j}_${o}`, { lb: 0, ub: horizon - d }))
 );
-for (let mach = 0; mach < numMachines; mach++) {
+Array.from({ length: numMachines }, (_, mach) => mach).forEach((mach) => {
   const ops = input.machines.flatMap((jobMachs, j) =>
     jobMachs
       .map((opMach, o) =>
@@ -38,6 +40,6 @@ for (let mach = 0; mach < numMachines; mach++) {
       .filter((item): item is NonNullable<typeof item> => item !== null)
   );
   if (ops.length >= 2) m.constraint(disjoint(ops), `machine_${mach}`);
-}
+});
 m.objective(minimize(max(completions)));
 ```

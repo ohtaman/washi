@@ -20,7 +20,7 @@ Select a simple directed path from source to sink whose total resource consumpti
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary (`0` or `1`) vector indicating chosen arcs in `edges` |
+| `selected` | `number[]` | Binary (0 or 1) vector indicating chosen arcs in `edges` |
 | `totalCost` | `number` | Minimized total traversal cost along the chosen path |
 
 <!-- section:example -->

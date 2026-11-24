@@ -24,6 +24,8 @@ $$
 
 ## Key Implementation
 
+After solving the Stage 1 assignment model `m1` to fix the room assignment $\sigma$, construct a fresh Stage 2 model `m2` with `rents` bounded below by 0 and `minSurplus` declared as an unrestricted free variable.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -1,6 +1,6 @@
 ## Approach
 
-Enforce all `hardRules` directly on Boolean variables `m.bool(input.vars)`. For each soft rule $k$ with weight $w_k$, introduce a `0`-`1` relaxation indicator $v_k$ (`m.binary`), assert $S_k \lor (v_k = 1)$, and minimize $\sum_k w_k v_k$ using `await m.solve({ solver: "z3" })`.
+Enforce all `hardRules` directly on Boolean variables `m.bool(input.vars)`. For each soft rule $k$ with weight $w_k$, introduce a 0-1 relaxation indicator $v_k$ (`m.binary`), assert $S_k \lor (v_k = 1)$, and minimize $\sum_k w_k v_k$ using `await m.solve({ solver: "z3" })`.
 
 ## Mathematical Model
 
@@ -16,10 +16,12 @@ $$
 ## Key Points
 
 - **Relaxation disjunction $S_k \lor (v_k = 1)$**: When $v_k = 0$, the soft rule $S_k$ must hold; when $v_k = 1$, $S_k$ is bypassed and the objective pays weight $w_k$.
-- **Tight indicator equivalence**: Adding the converse implication $S_k \implies (v_k = 0)$ guarantees `violated[k]` equals `1` if and only if $S_k$ is violated, even if any rule has weight `0`.
+- **Tight indicator equivalence**: Adding the converse implication $S_k \implies (v_k = 0)$ guarantees `violated[k]` equals 1 if and only if $S_k$ is violated, even if any rule has weight 0.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Building Blocks](?view=guide&lang=en#building-blocks).
 
 ## Key Implementation
+
+Assign a relaxation flag `violated[k]` to each soft rule, using `or(cond, ...)` to allow violation and `implies(cond, ...)` to force the flag to 0 when satisfied. Finally, minimize `dot(weights, violated)` with `minimize`.
 
 **WaSHI (TypeScript)**
 

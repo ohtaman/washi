@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+各行の列変数 `cols` と両方向の対角線式に対して `distinct()` を課し、`at(row, cols[r])` で参照したコストの総和を最小化して Pumpkin で解きます。
+
 **WaSHI (TypeScript)**
 
 ```ts

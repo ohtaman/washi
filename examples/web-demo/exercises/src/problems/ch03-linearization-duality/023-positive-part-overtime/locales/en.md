@@ -1,29 +1,29 @@
 # #023. Positive-Part Overtime Staffing
 
 <!-- section:scenario -->
-A service center plans regular capacity across multiple periods to cover forecasted demand. Each period enforces a minimum guaranteed regular level and a maximum capacity limit, while total regular output across the whole horizon cannot exceed an aggregate regular hours budget.
+A service center operations manager is planning regular working hours (in person-hours) across multiple periods to cover forecasted demand (in person-hours). Each period enforces a contractual minimum working hours floor and an equipment capacity limit, while total regular hours across the entire horizon cannot exceed an aggregate cap.
 
-Whenever regular output falls short of period demand, the unmet portion incurs an overtime or subcontracting penalty per unit; excess regular output above demand receives no credit or refund. Choose the regular staffing levels to **minimize total regular plus overtime cost**.
+Whenever regular hours fall short of a period's demand, the shortfall incurs an overtime/subcontracting penalty (in JPY) per person-hour; conversely, exceeding demand receives no refund or positive credit. Using positive-part linearization—representing the maximum of 0 and the difference via linear inequalities—find the schedule that satisfies all constraints while **minimizing the sum of regular operating cost and overtime penalties (in JPY)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demands` | `number[]` | Required workload $d_t$ in period $t$ |
-| `minRegular` | `number[]` | Minimum guaranteed regular level $L_t$ |
-| `maxRegular` | `number[]` | Maximum regular capacity $U_t$ |
-| `regularCosts` | `number[]` | Unit regular cost $r_t$ in period $t$ |
-| `overtimePenalties` | `number[]` | Overtime cost $p_t$ per unit of unmet demand $\max(0, d_t - x_t)$ |
-| `totalRegularCap` | `number` | Aggregate cap on $\sum_t x_t$ |
+| `demands` | `number[]` | Demand $d_t$ in period $t$ (person-hours) |
+| `minRegular` | `number[]` | Minimum guaranteed regular hours $L_t$ in period $t$ (person-hours) |
+| `maxRegular` | `number[]` | Maximum regular capacity $U_t$ in period $t$ (person-hours) |
+| `regularCosts` | `number[]` | Unit regular cost $r_t$ in period $t$ (JPY/person-hour) |
+| `overtimePenalties` | `number[]` | Overtime penalty $p_t$ per unit of shortfall $\max(0, d_t - x_t)$ (JPY/person-hour) |
+| `totalRegularCap` | `number` | Aggregate cap on total regular hours $\sum_t x_t$ (person-hours) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `regular` | `number[]` | Regular capacity $x_t$ scheduled in each period |
-| `shortage` | `number[]` | Unmet demand $\max(0, d_t - x_t)$ covered by overtime |
-| `totalCost` | `number` | Minimized total cost |
+| `regular` | `number[]` | Regular working hours $x_t$ in each period (person-hours) |
+| `shortage` | `number[]` | Overtime shortfall hours $\max(0, d_t - x_t)$ in each period (person-hours) |
+| `totalCost` | `number` | Minimized total cost (JPY) |
 
 <!-- section:example -->
 **Input**
@@ -49,7 +49,7 @@ Whenever regular output falls short of period demand, the unmet portion incurs a
 }
 ```
 
-Scheduling `regular = [40, 10, 50]` sums to $100 \le 100$ within per-period bounds, leaves shortages `[0, 50, 0]`, and yields total cost $(20 \times 40 + 25 \times 10 + 18 \times 50) + (45 \times 50) =$ **4,200**.
+Regular hours [40, 10, 50] sum to $100 \le 100$ person-hours within per-period bounds, leaving shortages [0, 50, 0] and yielding a total cost of $(20 \times 40 + 25 \times 10 + 18 \times 50) + (45 \times 50) =$ **4,200** JPY.
 
 
 <!-- section:hint1 -->

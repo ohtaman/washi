@@ -23,8 +23,8 @@ Each staff member has a regular slot quota, a hard maximum slot limit, a base pe
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignedStaff` | `number[]` | Assigned staff index `0..N-1` for each job $j$ |
-| `assignedSlot` | `number[]` | Assigned timeslot index `0..T-1` for each job $j$ |
+| `assignedStaff` | `number[]` | Assigned staff index 0 to $N-1$ for each job $j$ |
+| `assignedSlot` | `number[]` | Assigned timeslot index 0 to $T-1$ for each job $j$ |
 | `overtime` | `number[]` | Non-negative overtime slots worked by each staff member $i$ |
 | `totalCost` | `number` | Minimized total staff, overtime, and slot penalty cost |
 

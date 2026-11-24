@@ -24,6 +24,8 @@ $$
 
 ## Key Implementation
 
+In addition to each match's at-most-once assignment and venue compatibility constraints, cap each venue-slot block's total broadcast duration by the sum of its regular length and overtime. In WaSHI, build the constraint arrays with `forEach` and `flatMap`; in PuLP, express them with loops and `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -33,12 +35,16 @@ x.forEach((matchVenues, m) => {
     if (input.compatible[m][v] === 0) model.constraint(expr`${sum(venueSlots)} == 0`);
   });
 });
-for (let v = 0; v < V; v++) {
-  for (let s = 0; s < S; s++) {
-    const load = sum(x.map((matchVenues, m) => expr`${input.durations[m]} * ${matchVenues[v][s]}`));
-    model.constraint(expr`${load} <= ${input.regularLength} + ${overtime[v][s]}`);
-  }
-}
+model.constraint(
+  overtime.flatMap((venueSlots, v) =>
+    venueSlots.map((ot, s) => {
+      const load = sum(
+        x.map((matchVenues, mIdx) => expr`${input.durations[mIdx]} * ${matchVenues[v][s]}`)
+      );
+      return expr`${load} <= ${input.regularLength} + ${ot}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

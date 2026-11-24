@@ -1,16 +1,19 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"production": list[float], "sales": list[float], "inventory": list[float], "backlog": list[float], "lostSales": list[float], "netProfit": float}."""
-    demands = input_data["demands"]
-    capacities = input_data["capacities"]
-    prod_costs = input_data["prodCosts"]
-    unit_price = input_data["unitPrice"]
-    hold_cost = input_data["holdCost"]
-    backorder_cost = input_data["backorderCost"]
-    lost_penalty = input_data["lostSalePenalty"]
-    init_inv = input_data["initialInventory"]
+def solve(
+    demands,
+    capacities,
+    prod_costs,
+    unit_price,
+    hold_cost,
+    backorder_cost,
+    lost_sale_penalty,
+    initial_inventory,
+) -> dict:
+    """Return {"production": list[float], "sales": list[float], "inventory": list[float], "backlog": list[float], "lost_sales": list[float], "net_profit": float}."""
+    lost_penalty = lost_sale_penalty
+    init_inv = initial_inventory
     T = len(demands)
 
     prob = pulp.LpProblem("backorders_lost_sales", pulp.LpMaximize)
@@ -41,6 +44,6 @@ def solve(input_data: dict) -> dict:
         "sales": [float(pulp.value(v)) for v in sales],
         "inventory": [float(pulp.value(v)) for v in inventory],
         "backlog": [float(pulp.value(v)) for v in backlog],
-        "lostSales": [float(pulp.value(v)) for v in lost_sales],
-        "netProfit": float(pulp.value(prob.objective)),
+        "lost_sales": [float(pulp.value(v)) for v in lost_sales],
+        "net_profit": float(pulp.value(prob.objective)),
     }

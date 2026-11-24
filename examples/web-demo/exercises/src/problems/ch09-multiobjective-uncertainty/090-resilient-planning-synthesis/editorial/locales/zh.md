@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+通过 `input.dropAmounts.map(...)` 注册第一阶段鲁棒容量对偶约束，并用 `w.flatMap(...)` 批量生成各情景恢复计划与事前承诺之间汉明距离的线性不等式对。
+
 **WaSHI (TypeScript)**
 
 ```ts

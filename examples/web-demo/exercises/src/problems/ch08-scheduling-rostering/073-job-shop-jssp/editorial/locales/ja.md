@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+Pumpkin ソルバーを指定したモデルで整数開始時刻変数を宣言し、同一機械に割り当てられた工程リストを `disjoint()` に渡して非重複制約を一括登録します。最後に全工程の完了時刻の `max()` を目的関数として最小化します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -29,7 +31,7 @@ const m = new Model("JobShopCP", { solver: "pumpkin" });
 const starts = input.durations.map((jobDurs, j) =>
   jobDurs.map((d, o) => m.integer(`s_${j}_${o}`, { lb: 0, ub: horizon - d }))
 );
-for (let mach = 0; mach < numMachines; mach++) {
+Array.from({ length: numMachines }, (_, mach) => mach).forEach((mach) => {
   const ops = input.machines.flatMap((jobMachs, j) =>
     jobMachs
       .map((opMach, o) =>
@@ -38,6 +40,6 @@ for (let mach = 0; mach < numMachines; mach++) {
       .filter((item): item is NonNullable<typeof item> => item !== null)
   );
   if (ops.length >= 2) m.constraint(disjoint(ops), `machine_${mach}`);
-}
+});
 m.objective(minimize(max(completions)));
 ```

@@ -1,14 +1,10 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"quantities": list[float], "totalProfit": float}."""
-    profits = input_data["profits"]
-    nominal = input_data["nominalUsages"]
-    deviations = input_data["deviations"]
-    max_units = input_data["maxUnits"]
-    cap = input_data["capacityCap"]
-    gamma = input_data["gamma"]
+def solve(profits, nominal_usages, deviations, max_units, capacity_cap, gamma) -> dict:
+    """Return {"quantities": list[float], "total_profit": float}."""
+    nominal = nominal_usages
+    cap = capacity_cap
     n = len(profits)
 
     prob = pulp.LpProblem("bertsimas_sim_robust", pulp.LpMaximize)
@@ -25,5 +21,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "quantities": [float(pulp.value(v)) for v in x],
-        "totalProfit": float(pulp.value(prob.objective)),
+        "total_profit": float(pulp.value(prob.objective)),
     }

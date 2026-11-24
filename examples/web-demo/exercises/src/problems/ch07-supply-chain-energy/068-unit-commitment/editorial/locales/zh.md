@@ -25,6 +25,8 @@ $$
 
 ## 实现要点
 
+为每台机组与每个时段构建状态转移等式，以及利用最近 `minUp[g]` 和 `minDown[g]` 切片之和的开机/停机窗口不等式。在 WaSHI 中使用 `slice` 和 `sum()` 对时间窗口求和，在 PuLP 中则用 `pulp.lpSum` 表达相同逻辑。
+
 **WaSHI (TypeScript)**
 
 ```ts

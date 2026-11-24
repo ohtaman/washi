@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Declare integer start-time variables with the Pumpkin solver, then register the DAG precedence constraints and per-resource `cumulative()` constraints. Filtering to only tasks with positive demand keeps each resource constraint concise.
+
 **WaSHI (TypeScript)**
 
 ```ts

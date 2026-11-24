@@ -21,6 +21,8 @@ $$
 
 ## 実装の勘所
 
+`allowedRules` には `allowed(...)`、`forbiddenRules` には `not(allowed(...))` を `m.constraint([...])` で一括登録し、`at(costs, choices[c])` の総和を最小化して Pumpkin で解きます。
+
 **WaSHI (TypeScript)**
 
 ```ts

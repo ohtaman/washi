@@ -1,6 +1,6 @@
 ## Approach
 
-Use binary routing arcs $x_{ij}$ ($i \ne j$) enforcing degree $1$ at every customer and at most `maxVehicles` departures/returns at depot `0`, paired with continuous cumulative load variables $u_i \in [d_i, Q]$ that enforce vehicle capacity and eliminate subtours simultaneously via $u_i - u_j + Q x_{ij} \le Q - d_j$.
+Use binary routing arcs $x_{ij}$ ($i \ne j$) enforcing degree $1$ at every customer and at most `maxVehicles` departures/returns at depot 0, paired with continuous cumulative load variables $u_i \in [d_i, Q]$ that enforce vehicle capacity and eliminate subtours simultaneously via $u_i - u_j + Q x_{ij} \le Q - d_j$.
 
 ## Mathematical Model
 
@@ -22,18 +22,19 @@ $$
 
 ## Key Implementation
 
+Use `flatMap` and `filter` over the customer index array `customers` to enumerate distinct customer pairs and register the capacity-based MTZ constraints in one batch, enforcing both vehicle load limits and subtour elimination simultaneously.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(
-        expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`
-      );
-    }
-  }
-}
+const customers = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  customers.flatMap((i) =>
+    customers
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`)
+  )
+);
 ```
 
 **PuLP (Python)**

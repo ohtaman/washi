@@ -1,16 +1,19 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"assignedStaff": list[int], "assignedSlot": list[int], "overtime": list[float], "totalCost": float}."""
-    certified = input_data["certified"]
-    equip_needs = input_data["equipNeeds"]
-    equip_cap = input_data["equipCap"]
-    slot_penalties = input_data["slotPenalties"]
-    staff_costs = input_data["staffCosts"]
-    reg_limits = input_data["regularLimits"]
-    max_limits = input_data["maxLimits"]
-    ot_costs = input_data["overtimeCosts"]
+def solve(
+    certified,
+    equip_needs,
+    equip_cap,
+    slot_penalties,
+    staff_costs,
+    regular_limits,
+    max_limits,
+    overtime_costs,
+) -> dict:
+    """Return {"assigned_staff": list[int], "assigned_slot": list[int], "overtime": list[float], "total_cost": float}."""
+    reg_limits = regular_limits
+    ot_costs = overtime_costs
     num_staff = len(certified)
     num_jobs = len(equip_needs)
     num_slots = len(slot_penalties[0])
@@ -68,8 +71,8 @@ def solve(input_data: dict) -> dict:
                     assigned_slot[j] = t
 
     return {
-        "assignedStaff": assigned_staff,
-        "assignedSlot": assigned_slot,
+        "assigned_staff": assigned_staff,
+        "assigned_slot": assigned_slot,
         "overtime": [max(0.0, float(pulp.value(v))) for v in overtime],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

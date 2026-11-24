@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+仅在第 0 期（`t === 0`）引用常数 `initialInventory`，之后各期均引用上一期的变量 `inventory[t - 1]`，从而串联起各期的库存平衡等式。
+
 **WaSHI (TypeScript)**
 
 ```ts

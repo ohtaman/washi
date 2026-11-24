@@ -1,12 +1,12 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"starts": list[float], "totalWeightedTardiness": float}."""
-    r = input_data["releaseDates"]
-    p = input_data["processingTimes"]
-    d = input_data["dueDates"]
-    w = input_data["weights"]
+def solve(release_dates, processing_times, due_dates, weights) -> dict:
+    """Return {"starts": list[float], "total_weighted_tardiness": float}."""
+    r = release_dates
+    p = processing_times
+    d = due_dates
+    w = weights
     n = len(p)
     horizon = max(r) + sum(p)
     big_m = horizon
@@ -32,5 +32,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "starts": [float(pulp.value(v)) for v in starts],
-        "totalWeightedTardiness": float(pulp.value(prob.objective)),
+        "total_weighted_tardiness": float(pulp.value(prob.objective)),
     }

@@ -10,7 +10,7 @@ Find an irreducible minimal unsatisfiable subset of clue IDs—a subset that is 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `cells` | `string[]` | Named puzzle cells (each is either safe `0` or a mine `1`) |
+| `cells` | `string[]` | Named puzzle cells (each is either safe 0 or a mine 1) |
 | `clues` | `PuzzleClue[]` | Named clues (`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`) |
 
 ### Output

@@ -19,25 +19,25 @@ $$
 
 ## ポイント
 
-- **対称性除去**: 順序制約がないと、$m$ 個のビンを使う解には $m!$ 通りの同値な置換が生じます。$k > i$ のとき $x_{ik} = 0$（これにより品目 0 は必ずビン 0 に入る）および $y_k \ge y_{k+1}$ を課すことで、最適値を変えずに冗長な探索枝を排除できます。
-- **拡張極小カバー不等式**: $\sum_{i \in C} w_i > B$ かつ $\sum_{i \in C} w_i - \min_{i \in C} w_i \le B$ を満たす極小カバー $C$ に対し、最大要素以上に重い品目を加えた $E(C)$ からはどのビンにも高々 $|C| - 1$ 個しか入りません。
-- **LP 緩和の強化**: 2 個の共存不可ペア（$w_i + w_j > B$）や 3 個の拡張カバー、総容量切り上げカットを組み合わせることで、弱い分数緩和値（`[6,6,6,2]` や `[4,4,4,4,4]` での `2.0`）を大きく引き上げられます。
+- **対称性除去**: 順序制約がないと、$m$ 個のコンテナを使う解には $m!$ 通りの同値な置換が生じます。$k > i$ のとき $x_{ik} = 0$（これにより荷物 0 は必ずコンテナ 0 に入る）および $y_k \ge y_{k+1}$ を課すことで、最適値を変えずに冗長な探索枝を排除できます。
+- **拡張極小カバー不等式**: $\sum_{i \in C} w_i > B$ かつ $\sum_{i \in C} w_i - \min_{i \in C} w_i \le B$ を満たす極小カバー $C$ に対し、最大要素以上に重い荷物を加えた $E(C)$ からはどのコンテナにも高々 $|C| - 1$ 個しか入りません。
+- **LP 緩和の強化**: 2 個の共存不可ペア（$w_i + w_j > B$）や 3 個の拡張カバー、総容量切り上げカットを組み合わせることで、弱い分数緩和値（`[6,6,6,2]` や `[4,4,4,4,4]` での 2.0）を大きく引き上げられます。
 - 用語の確認: [ガイド・用語集 — 代表的な問題クラス](?view=guide&lang=ja#paradigms) / [モデルの基本構成要素](?view=guide&lang=ja#building-blocks)
 
 ## 実装の勘所
 
+先頭詰め順序制約は `used.slice(0, -1).map(...)` で、拡張極小カバー不等式は `buildExtendedCovers(...).flatMap(...)` と `used.map(...)` のネストで一括生成し、`await m.relax()` と `await m.solve()` を順に実行します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let k = 0; k < n - 1; k++) {
-  m.constraint(expr`${used[k]} >= ${used[k + 1]}`, `sym_order_${k}`);
-}
+m.constraint(used.slice(0, -1).map((u, k) => expr`${u} >= ${used[k + 1]}`));
 m.constraint(expr`sum(${used}) >= ${Math.ceil(totalWeight / input.binCapacity)}`, "global_cap");
-for (const cut of buildExtendedCovers(input.weights, input.binCapacity)) {
-  for (let k = 0; k < n; k++) {
-    m.constraint(expr`sum(${cut.items.map((i) => assign[i][k])}) <= ${cut.rhsMult} * ${used[k]}`);
-  }
-}
+m.constraint(
+  buildExtendedCovers(input.weights, input.binCapacity).flatMap((cut) =>
+    used.map((u, k) => expr`sum(${cut.items.map((i) => assign[i][k])}) <= ${cut.rhsMult} * ${u}`)
+  )
+);
 await m.relax();
 const lpBound = m.objectiveValue!;
 await m.solve();

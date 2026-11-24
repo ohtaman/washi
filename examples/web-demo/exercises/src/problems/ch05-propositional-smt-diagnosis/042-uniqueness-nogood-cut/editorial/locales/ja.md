@@ -19,6 +19,8 @@ $$
 
 ## 実装の勘所
 
+最初の `m.check({ solver: "z3" })` で得た割り当てを `Object.fromEntries` で取り出し、その割り当てだけを否定する `nogood_cut` 制約を追加して再度 `m.check` を呼び出します。2 回目が `"Unsat"` であれば解は一意です。
+
 **WaSHI (TypeScript)**
 
 ```ts

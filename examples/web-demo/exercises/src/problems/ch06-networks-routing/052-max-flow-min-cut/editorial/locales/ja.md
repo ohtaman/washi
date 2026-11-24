@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+最大流 LP を解いた後、残余容量がある順方向枝と正のフローが流れている逆方向枝を辿って始点から幅優先探索（BFS）を行い、到達可能集合 `visited` を求めます。最後に `visited[e.from] && !visited[e.to]` を満たす枝を最小カットとして抽出します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -28,8 +30,7 @@ visited[input.source] = true;
 const queue = [input.source];
 while (queue.length > 0) {
   const u = queue.shift()!;
-  for (let i = 0; i < input.edges.length; i++) {
-    const e = input.edges[i];
+  input.edges.forEach((e, i) => {
     if (e.from === u && !visited[e.to] && flowVals[i] < e.cap - 1e-6) {
       visited[e.to] = true;
       queue.push(e.to);
@@ -38,7 +39,7 @@ while (queue.length > 0) {
       visited[e.from] = true;
       queue.push(e.from);
     }
-  }
+  });
 }
 ```
 

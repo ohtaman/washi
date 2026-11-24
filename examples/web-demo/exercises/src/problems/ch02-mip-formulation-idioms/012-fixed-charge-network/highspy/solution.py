@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"open": list[list[int]], "shipments": list[list[float]], "totalCost": float}."""
-    supplies = input_data["supplies"]
-    demands = input_data["demands"]
-    fixed_costs = input_data["fixedCosts"]
-    unit_costs = input_data["unitCosts"]
-    capacities = input_data["capacities"]
+def solve(supplies, demands, fixed_costs, unit_costs, capacities) -> dict:
+    """Return {"open": list[list[int]], "shipments": list[list[float]], "total_cost": float}."""
     n_s, n_d = len(supplies), len(demands)
 
     prob = pulp.LpProblem("fixed_charge_network", pulp.LpMinimize)
@@ -38,5 +33,5 @@ def solve(input_data: dict) -> dict:
     return {
         "open": [[round(pulp.value(open_vars[i][j])) for j in range(n_d)] for i in range(n_s)],
         "shipments": [[float(pulp.value(shipments[i][j])) for j in range(n_d)] for i in range(n_s)],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

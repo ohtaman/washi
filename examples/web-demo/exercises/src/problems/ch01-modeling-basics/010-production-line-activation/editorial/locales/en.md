@@ -1,6 +1,6 @@
 ## Approach
 
-Pair a binary variable array `open` with a non-negative continuous array `quantities`, link each pair via the capacity gate `quantities[i] <= capacities[i] * open[i]`, enforce the shared material budget, and maximize net profit (`margins - fixedCosts`).
+Pair a binary variable array `open` with a non-negative continuous array `quantities`, link each pair via the capacity gate `quantities[i] <= capacities[i] * open[i]`, enforce the resin pellet stock limit, and maximize net profit (gross margin minus fixed costs).
 
 ## Mathematical Model
 
@@ -20,6 +20,8 @@ $$
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Link each binary variable `open[i]` with continuous variable `quantities[i]` via `quantities[i] <= capacities[i] * open[i]`, and combine gross margin minus fixed costs into a single objective function.
 
 **WaSHI (TypeScript)**
 

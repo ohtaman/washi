@@ -1,9 +1,9 @@
 # #031. Weighted N-Queens
 
 <!-- section:scenario -->
-Place N queens on an N-by-N chessboard, with exactly one queen in each row. Every queen occupies a column from 0 to N - 1, and no two queens may share the same column or lie on the same diagonal.
+A puzzle designer is placing $N$ queens on an $N \times N$ chessboard, with one queen in each row. Each queen's column index is an integer from 0 to $N - 1$, and no two queens may share the same column or lie on the same diagonal.
 
-Placing a queen on row r and column c incurs board weight costMatrix[r][c]. Find a valid non-attacking placement that minimizes the total board cost.
+Each cell has its own integer placement cost. Among all mutually non-attacking placements, minimize the total cost of the selected cells.
 
 <!-- section:io -->
 ### Input
@@ -42,7 +42,7 @@ Placing a queen on row r and column c incurs board weight costMatrix[r][c]. Find
 }
 ```
 
-Queens at `(0, 1)`, `(1, 3)`, `(2, 0)`, and `(3, 2)` share no columns or diagonals and incur total cost $2 + 1 + 3 + 2 =$ **8**.
+Queens at (0, 1), (1, 3), (2, 0), and (3, 2) share no columns or diagonals and incur total cost $2 + 1 + 3 + 2 =$ **8**.
 
 <!-- section:hint1 -->
 Introduce one integer decision variable per row representing the column index of that row's queen. Enforce uniqueness across columns as well as uniqueness across both sets of diagonals, and sum the selected cell weights across all rows.

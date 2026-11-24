@@ -10,7 +10,7 @@ Given the number of positions, the category value lists, and the clue list, deci
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `n` | `number` | Number of positions (`0` through `n - 1` from left to right) |
+| `n` | `number` | Number of positions (0 through `n - 1` from left to right) |
 | `categories` | `Record<string, string[]>` | Map from each category name to its `n` distinct attribute values |
 | `clues` | `ZebraClue[]` | Structured clues (`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`) |
 
@@ -56,7 +56,7 @@ Given the number of positions, the category value lists, and the clue list, deci
 }
 ```
 
-House `0` is red with cat and tea, house `1` is green with bird and water, and house `2` is blue with dog and coffee, satisfying every exact-one and positional clue.
+Position 0 is red with cat and tea, position 1 is green with bird and water, and position 2 is blue with dog and coffee, satisfying every exact-one and positional clue.
 
 
 <!-- section:hint1 -->

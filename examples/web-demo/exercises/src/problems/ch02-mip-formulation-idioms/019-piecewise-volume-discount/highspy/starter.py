@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"tierSelected": list[list[int]], "tierQuantities": list[list[float]], "totalCost": float}."""
-    demand = input_data["demand"]
-    suppliers = input_data["suppliers"]
+def solve(demand, suppliers) -> dict:
+    """Return {"tier_selected": list[list[int]], "tier_quantities": list[list[float]], "total_cost": float}."""
 
     prob = pulp.LpProblem("volume_discount", pulp.LpMinimize)
     tier_sel = [

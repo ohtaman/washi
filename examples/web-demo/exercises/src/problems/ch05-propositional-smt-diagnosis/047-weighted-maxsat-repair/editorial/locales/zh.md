@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+为每条软规则分配松弛标志 `violated[k]`，通过 `or(cond, ...)` 允许在违背时松弛，并通过 `implies(cond, ...)` 强制在满足时取 0；最后使用 `minimize` 最小化 `dot(weights, violated)`。
+
 **WaSHI (TypeScript)**
 
 ```ts

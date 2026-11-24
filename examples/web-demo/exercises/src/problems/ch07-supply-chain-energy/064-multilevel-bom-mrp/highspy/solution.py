@@ -1,16 +1,19 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "totalCost": float}."""
-    ext_demands = input_data["externalDemands"]
-    bom = input_data["bom"]
-    lead_times = input_data["leadTimes"]
-    init_inv = input_data["initialInventory"]
-    setup_costs = input_data["setupCosts"]
-    prod_costs = input_data["prodCosts"]
-    hold_costs = input_data["holdCosts"]
-    capacities = input_data["capacities"]
+def solve(
+    external_demands,
+    bom,
+    lead_times,
+    initial_inventory,
+    setup_costs,
+    prod_costs,
+    hold_costs,
+    capacities,
+) -> dict:
+    """Return {"setups": list[list[int]], "production": list[list[int]], "inventory": list[list[float]], "total_cost": float}."""
+    ext_demands = external_demands
+    init_inv = initial_inventory
     n_items = len(ext_demands)
     T = len(ext_demands[0]) if n_items > 0 else 0
 
@@ -55,5 +58,5 @@ def solve(input_data: dict) -> dict:
         "setups": [[round(pulp.value(v)) for v in row] for row in setups],
         "production": [[round(pulp.value(v)) for v in row] for row in production],
         "inventory": [[float(pulp.value(v)) for v in row] for row in inventory],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

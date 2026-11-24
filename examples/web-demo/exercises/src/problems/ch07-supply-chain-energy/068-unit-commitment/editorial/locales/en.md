@@ -25,6 +25,8 @@ Here $S_g = \max(P^{\min}_g, R_g)$, $p_{g,0} \le S_g$, $u_{g,t}, v_{g,t} \in \{0
 
 ## Key Implementation
 
+For each generator and hour, construct the state-transition equality and the turn-on/turn-off window-sum inequalities using the trailing `minUp[g]` and `minDown[g]` slices. In WaSHI, sum the time windows with `slice` and `sum()`; in PuLP, express them similarly with `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts

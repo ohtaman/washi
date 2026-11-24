@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"flows": list[float], "totalCost": float}."""
-    supplies = input_data["supplies"]
-    edges = input_data["edges"]
+def solve(supplies, edges) -> dict:
+    """Return {"flows": list[float], "total_cost": float}."""
     n = len(supplies)
 
     prob = pulp.LpProblem("min_cost_flow_tu", pulp.LpMinimize)
@@ -23,5 +21,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "flows": [float(pulp.value(v)) or 0.0 for v in flows],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

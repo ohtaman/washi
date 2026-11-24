@@ -10,7 +10,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `cells` | `string[]` | 命名格子列表（每个格子为安全 `0` 或地雷 `1`） |
+| `cells` | `string[]` | 命名格子列表（每个格子为安全 0 或地雷 1） |
 | `clues` | `PuzzleClue[]` | 命名线索列表（`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`） |
 
 ### 输出

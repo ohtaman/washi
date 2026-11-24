@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+Register the minimum requirement constraints and objective using each process's non-negative variable `quantities`, call `m.solve()`, and extract `.reducedCost` (or `.dj` in PuLP) from each variable.
+
 **WaSHI (TypeScript)**
 
 ```ts

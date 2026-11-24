@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+在 `quantities.map(...)` 中以 `Math.min(input.capacities[i], input.demand)` 作为上界一次性生成所有工厂的关联约束，随后对同一模型 `m` 先调用 `await m.relax()` 获取 LP 松弛下界，再调用 `await m.solve()` 求解整数解。
+
 **WaSHI (TypeScript)**
 
 ```ts

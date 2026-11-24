@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Register `allowed(...)` for `allowedRules` and `not(allowed(...))` for `forbiddenRules` in bulk via `m.constraint([...])`, minimize the sum of `at(costs, choices[c])`, and solve on Pumpkin.
+
 **WaSHI (TypeScript)**
 
 ```ts

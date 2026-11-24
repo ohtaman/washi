@@ -23,6 +23,8 @@ $$
 
 ## Key Implementation
 
+Precompute the target `mean` as an input constant, create bounded continuous variables with `minAlloc.map(...)`, and pass the squared expression `(x - mean)^2` directly as a convex quadratic objective in `expr`.
+
 **WaSHI (TypeScript)**
 
 ```ts

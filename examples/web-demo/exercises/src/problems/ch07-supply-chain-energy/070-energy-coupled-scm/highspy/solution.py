@@ -1,22 +1,27 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
-    demands = input_data["demands"]
-    setup_cost = input_data["setupCost"]
-    hold_cost = input_data["holdCost"]
-    prod_cap = input_data["prodCap"]
-    setup_power = input_data["setupPower"]
-    unit_power = input_data["unitPower"]
-    base_loads = input_data["baseLoads"]
-    prices = input_data["prices"]
-    demand_charge = input_data["demandCharge"]
-    bat_cap = input_data["batteryCap"]
-    init_soc = input_data["initSoc"]
-    p_max = input_data["maxPower"]
-    eta_c = input_data["etaCharge"]
-    eta_d = input_data["etaDischarge"]
+def solve(
+    demands,
+    setup_cost,
+    hold_cost,
+    prod_cap,
+    setup_power,
+    unit_power,
+    base_loads,
+    prices,
+    demand_charge,
+    battery_cap,
+    init_soc,
+    max_power,
+    eta_charge,
+    eta_discharge,
+) -> dict:
+    """Return {"setups": list[int], "production": list[float], "inventory": list[float], "charge": list[float], "discharge": list[float], "soc": list[float], "peak_load": float, "total_cost": float}."""
+    bat_cap = battery_cap
+    p_max = max_power
+    eta_c = eta_charge
+    eta_d = eta_discharge
     T = len(demands)
 
     prob = pulp.LpProblem("energy_coupled_scm", pulp.LpMinimize)
@@ -32,7 +37,7 @@ def solve(input_data: dict) -> dict:
         for t in range(T)
     ]
     grid_load = [pulp.LpVariable(f"grid_{t}", lowBound=0) for t in range(T)]
-    peak_load = pulp.LpVariable("peakLoad", lowBound=0)
+    peak_load = pulp.LpVariable("peak_load", lowBound=0)
 
     for t in range(T):
         prev_inv = 0 if t == 0 else inventory[t - 1]
@@ -68,6 +73,6 @@ def solve(input_data: dict) -> dict:
         "charge": [float(pulp.value(v)) for v in charge],
         "discharge": [float(pulp.value(v)) for v in discharge],
         "soc": [float(pulp.value(v)) for v in soc],
-        "peakLoad": float(pulp.value(peak_load)),
-        "totalCost": float(pulp.value(prob.objective)),
+        "peak_load": float(pulp.value(peak_load)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

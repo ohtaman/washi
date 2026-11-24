@@ -31,6 +31,8 @@ $$
 
 ## 实现要点
 
+在第一阶段的隐式击中集（Implicit Hitting Set）循环中，从 `checkPolicyWithZ3` 返回的 UNSAT 核中仅提取软规则加入 `hittingSets`，并通过 `solveHittingSetMip` 更新最小权重的放弃集合 `droppedSet`，持续迭代直至达到 `"Sat"`。
+
 **WaSHI (TypeScript)**
 
 ```ts

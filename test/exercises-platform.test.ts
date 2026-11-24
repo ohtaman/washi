@@ -2223,7 +2223,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     pyMode = "ac";
     await h.inputTarget(
       h.editorHighspy,
-      `def solve(inp):\n    ${secretPyMarker}\n    return {"sum": inp["a"] + inp["b"]}`
+      `def solve(a, b):\n    ${secretPyMarker}\n    return {"sum": a + b}`
     );
     await h.clickTarget(h.runHighspyBtn);
 

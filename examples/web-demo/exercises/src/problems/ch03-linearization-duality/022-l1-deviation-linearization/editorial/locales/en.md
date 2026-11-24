@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+In addition to the total-output equality and budget-cap constraints, express each generating unit's difference from its target as `dPlus[i] - dMinus[i]` and minimize the weighted sum.
+
 **WaSHI (TypeScript)**
 
 ```ts

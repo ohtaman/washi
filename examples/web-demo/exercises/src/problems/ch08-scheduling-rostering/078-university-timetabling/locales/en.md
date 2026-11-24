@@ -20,8 +20,8 @@ Courses taught by the same teacher or sharing any student cohort cannot be place
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `rooms` | `number[]` | Assigned room index `0..R-1` for each course |
-| `slots` | `number[]` | Assigned timeslot index `0..T-1` for each course |
+| `rooms` | `number[]` | Assigned room index 0 to $R-1$ for each course |
+| `slots` | `number[]` | Assigned timeslot index 0 to $T-1$ for each course |
 | `totalScore` | `number` | Maximized sum of preference scores |
 
 <!-- section:example -->

@@ -1,7 +1,7 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"setlist": list[int], "totalCost": float}."""
+def solve(transitions) -> dict:
+    """Return {"setlist": list[int], "total_cost": float}."""
     # TODO: Build and solve the setlist sequencing MIP, then reconstruct and return the setlist.
     raise NotImplementedError("Not implemented")

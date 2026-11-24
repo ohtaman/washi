@@ -15,10 +15,12 @@ $$
 ## Key Points
 
 - **Data-driven constraints with `.map()`**: Rather than hardcoding each row as in **#001**, `input.capacities.map(...)` builds all $m$ resource constraints in one array call `m.constraint([...])`.
-- **Fractional optima in continuous LP**: Unlike **#003** where integer constraints narrowed the search to whole numbers, production volumes here are continuous real numbers, so the optimal polytope vertex can legitimately take fractional values.
+- **Fractional optima in continuous LP**: Unlike **#003** where integer constraints narrowed the search to whole numbers, production volumes here are modeled as continuous variables (LP). In an LP whose feasible region is bounded and non-empty, an optimal solution exists at a vertex of the polytope, where constraint intersections can legitimately yield fractional values.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Because the number of flavors and resources varies with the input, generate constraints dynamically with `.map()` (WaSHI) or list/loop iteration (PuLP) and use `dot` / `pulp.lpDot` for concise inner products.
 
 **WaSHI (TypeScript)**
 

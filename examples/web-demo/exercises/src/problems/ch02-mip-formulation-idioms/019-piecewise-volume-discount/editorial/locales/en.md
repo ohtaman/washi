@@ -17,10 +17,12 @@ $$
 ## Key Points
 
 - **Why volume discounts require MIP (non-convexity)**: When minimizing cost, pure LP only models **convex** piecewise-linear functions with *increasing* marginal prices (e.g., tiered overtime surcharges). Both incremental volume discounts (decreasing marginal prices, which are concave) and all-units volume discounts (which drop earlier units' prices too, creating downward jumps at thresholds $L_{s,k}$) are non-convex and require binary variables.
-- **Strategic over-purchasing and tier splitting**: Using `>= demand` allows buying slightly above `demand` when hitting the next tier threshold lowers the total bill (as in Case 1: buying `50` at `7.0` costs `350` vs `414` for `45` at `9.2`), and using `<= 1` lets unused suppliers stay completely off even when `minQty > 0`.
+- **Strategic over-purchasing and tier splitting**: Using `>= demand` allows buying slightly above `demand` when hitting the next tier threshold lowers the total bill (as in Case 1: buying 50 at 7.0 costs 350 vs. 414 for 45 at 9.2), and using `<= 1` lets unused suppliers stay completely off even when `minQty > 0`.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Cap the sum of selected tiers per supplier at 1, and sandwich each tier's order quantity `tierQuantities[s][k]` between `minQty` and `maxQty` multiplied by the binary selection variable `tierSelected[s][k]`.
 
 **WaSHI (TypeScript)**
 

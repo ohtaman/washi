@@ -34,14 +34,52 @@ export interface HighspyBatchResult {
   error?: string;
 }
 
+/** Convert camelCase JSON input field names to Python snake_case parameter names. */
+export function toSnakeCase(name: string): string {
+  return name
+    .replace(/(.)([A-Z][a-z]+)/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase();
+}
+
+/** Extract parameter names from `def solve(...) -> dict:` (supports multi-line and type annotations). */
+export function extractPySolveParams(source: string): string[] | null {
+  const m = source.match(/^def\s+solve\s*\(([\s\S]*?)\)\s*->\s*dict(?:\[[^\]]+\])?\s*:/m);
+  if (!m) return null;
+  const raw = m[1].trim();
+  if (!raw) return [];
+  const params: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of raw) {
+    if (ch === "[" || ch === "(" || ch === "{") depth++;
+    else if (ch === "]" || ch === ")" || ch === "}") depth--;
+    if (ch === "," && depth === 0) {
+      if (cur.trim()) params.push(cur.trim());
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur.trim()) params.push(cur.trim());
+  return params.map((p) => p.split(/[:=]/)[0].trim());
+}
+
 export function runHighspyBatch(jobs: HighspyJob[]): Record<string, HighspyBatchResult> {
   if (jobs.length === 0) return {};
   const script = `
-import json, sys, traceback, math
+import json, re, sys, traceback, math
 try:
     import numpy as np
 except Exception:
     np = None
+
+def to_snake(name):
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\\1_\\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\\1_\\2", s1).lower()
+
+def to_camel(name):
+    return re.sub(r"_([a-z0-9])", lambda m: m.group(1).upper(), name)
 
 def to_jsonable(obj):
     if obj is None or isinstance(obj, (bool, str, int)):
@@ -60,7 +98,7 @@ def to_jsonable(obj):
         if isinstance(obj, np.ndarray):
             return [to_jsonable(v) for v in obj.tolist()]
     if isinstance(obj, dict):
-        return {str(k): to_jsonable(v) for k, v in obj.items()}
+        return {to_camel(str(k)): to_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [to_jsonable(v) for v in obj]
     raise TypeError(f"Unsupported output type: {type(obj).__name__}")
@@ -73,8 +111,8 @@ for job in jobs:
         exec(compile(job["code"], f"solution_{job['id']}.py", "exec"), ns)
         fn = ns.get("solve")
         if not callable(fn):
-            raise RuntimeError("Missing solve(input_data) function")
-        outs = [to_jsonable(fn(inp)) for inp in job["inputs"]]
+            raise RuntimeError("Missing solve() function")
+        outs = [to_jsonable(fn(**{to_snake(k): v for k, v in inp.items()})) for inp in job["inputs"]]
         results[job["id"]] = {"ok": True, "outputs": outs}
     except Exception:
         results[job["id"]] = {"ok": False, "error": traceback.format_exc()}
@@ -209,11 +247,14 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
         );
 
         if (isDual) {
+          const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>).map(
+            toSnakeCase
+          );
           expect(prob.highspyStarter).toContain("import pulp");
-          expect(prob.highspyStarter).toContain("def solve(input_data: dict) -> dict:");
+          expect(extractPySolveParams(prob.highspyStarter)).toEqual(expectedPyParams);
           expect(prob.highspyStarter).toContain('"""Return {');
           expect(prob.highspySolution).toContain("import pulp");
-          expect(prob.highspySolution).toContain("def solve(input_data: dict) -> dict:");
+          expect(extractPySolveParams(prob.highspySolution)).toEqual(expectedPyParams);
           expect(prob.highspySolution).toContain('"""Return {');
         } else {
           expect(prob.highspyStarter).toBe("");
@@ -235,7 +276,8 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
           const sections = parseProblemMarkdown(md);
           expect(sections.title.trim().length, `${prob.meta.id} (${locale}) title`).toBeGreaterThan(0);
           expect(sections.scenario.trim().length, `${prob.meta.id} (${locale}) scenario`).toBeGreaterThan(0);
-          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has backticks`).not.toContain("`");
+          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has fenced code`).not.toContain("```");
+          expect(sections.scenario, `${prob.meta.id} (${locale}) scenario has formula/recipe`).not.toMatch(/<=|>=|==|\bsum\(|\bdot\(/);
           expect(sections.ioSpec.trim().length, `${prob.meta.id} (${locale}) ioSpec`).toBeGreaterThan(0);
           expect(renderSafeMarkdown(sections.ioSpec), `${prob.meta.id} (${locale}) ioSpec table`).toContain("<table>");
           expect(sections.example.trim().length, `${prob.meta.id} (${locale}) example`).toBeGreaterThan(0);

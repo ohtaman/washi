@@ -1,23 +1,23 @@
 # #032. Element-Indexed Machine Assignment
 
 <!-- section:scenario -->
-A workshop has n manufacturing jobs and m available machines, with n <= m. Each job must be assigned to a distinct machine, and no machine may process more than one job.
+A production manager at an automotive parts factory is assigning multiple machining jobs—such as laser cutting and gear milling—to a pool of candidate CNC machines (at least as many machines as jobs). Each job must be assigned to a distinct CNC machine, and no machine may be shared by multiple jobs.
 
-Entry costs[i][j] records the integer setup and preference cost of assigning job i to machine j. Choose a machine assignment[i] for each job so all assigned machines are distinct and total assignment cost is minimized.
+Every job-machine combination has an integer setup cost (in 1,000 JPY). Choose a distinct machine for every job so as to minimize the total setup cost (in 1,000 JPY).
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | `n × m` integer cost matrix (`costs[i][j]` = cost of job `i` on machine `j`, with `n <= m`) |
+| `costs` | `number[][]` | `n × m` integer setup cost matrix (`costs[i][j]` = cost of assigning job `i` to machine `j` in 1,000 JPY, with `n <= m`) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `assignment` | `number[]` | Assigned machine index (`0` to `m - 1`) for each job |
-| `totalCost` | `number` | Minimized total assignment cost |
+| `totalCost` | `number` | Minimized total assignment cost (1,000 JPY) |
 
 <!-- section:example -->
 **Input**
@@ -41,7 +41,7 @@ Entry costs[i][j] records the integer setup and preference cost of assigning job
 }
 ```
 
-Assigning `[0, 2, 1]` uses three distinct machines and sums `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42**.
+Assigning [0, 2, 1] uses three distinct machines and sums `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42** (1,000 JPY).
 
 <!-- section:hint1 -->
 Instead of an $n \times m$ binary assignment matrix, introduce one integer variable per job representing its assigned machine index in `[0, numMachines - 1]`. Require all jobs to receive distinct machines.

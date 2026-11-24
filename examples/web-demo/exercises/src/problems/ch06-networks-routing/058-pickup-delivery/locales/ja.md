@@ -10,7 +10,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `dist` | `number[][]` | $N \times N$ の距離行列（`0` がデポ、`1..N-1` が集荷・配達地点） |
+| `dist` | `number[][]` | $N \times N$ の距離行列（0 がデポ、1..N-1 が集荷・配達地点） |
 | `requests` | `Array<{ pickup, delivery, demand }>` | 集荷点 `pickup`・配達点 `delivery`・荷物量 `demand` の依頼リスト |
 | `capacity` | `number` | 車両 1 台あたりの積載容量上限 $Q$ |
 | `maxVehicles` | `number` | 使用できる最大車両台数 |

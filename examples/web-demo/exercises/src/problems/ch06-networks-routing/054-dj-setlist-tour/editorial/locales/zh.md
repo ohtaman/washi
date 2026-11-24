@@ -21,16 +21,19 @@ $$
 
 ## 核心实现
 
+准备除开场曲外的索引数组 `nonStart`，利用 `flatMap` 与 `filter` 枚举不同曲目对，统一注册 MTZ 子环消除约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`);
-    }
-  }
-}
+const nonStart = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  nonStart.flatMap((i) =>
+    nonStart
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${n} * ${x[i][j]!} <= ${n - 1}`)
+  )
+);
 ```
 
 **PuLP (Python)**

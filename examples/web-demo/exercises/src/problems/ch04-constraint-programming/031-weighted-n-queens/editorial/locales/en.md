@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Apply `distinct()` to the row column variables `cols` and both diagonal expressions, minimize the sum of costs looked up via `at(row, cols[r])`, and solve on Pumpkin.
+
 **WaSHI (TypeScript)**
 
 ```ts

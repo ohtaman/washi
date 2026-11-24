@@ -21,6 +21,8 @@ $$
 
 ## 実装の勘所
 
+各ソフトルールに緩和フラグ `violated[k]` を割り当て、`or(cond, ...)` で違反時の緩和を、`implies(cond, ...)` で充足時のフラグ 0 を強制します。最後に `dot(weights, violated)` を `minimize` で最小化します。
+
 **WaSHI (TypeScript)**
 
 ```ts

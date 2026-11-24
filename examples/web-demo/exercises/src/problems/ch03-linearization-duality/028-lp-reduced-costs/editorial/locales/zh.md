@@ -20,6 +20,8 @@ $$
 
 ## 实现要点
 
+使用各工艺的非负变量 `quantities` 注册最低要求约束与目标函数，调用 `m.solve()` 后从每个变量提取 `.reducedCost`（PuLP 中为 `.dj`）。
+
 **WaSHI (TypeScript)**
 
 ```ts

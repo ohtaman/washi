@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+For each period, register the SOC transition equation, net grid-load balance equation, peak-demand epigraph inequality, and binary-mode mutual-exclusion constraints. In WaSHI, register all five constraints inside `baseLoads.forEach`; in PuLP, express the same structure in a loop.
+
 **WaSHI (TypeScript)**
 
 ```ts

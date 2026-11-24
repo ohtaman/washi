@@ -15,11 +15,13 @@ $$
 
 ## 要点总结
 
-- **为什么初始代码会返回 `VIOLATION`**：缺少黄油约束时，求解器会把全部面粉用于吐司（$c=0, \ell=40$），导致黄油用量达到 `80 > 70`。
-- **LP 的几何直观**：由于所有变量均为连续型、约束与目标均为线性，这是一个标准的 **LP（线性规划）**，最优解一定会落在可行域多边形的某个顶点上。
+- **为什么初始代码会返回 `VIOLATION`**：初始代码中缺少黄油库存约束，求解出的产量会超出黄油库存上限，因此判定为 `VIOLATION`。
+- **LP（线性规划）**：所有变量均为连续型（`continuous`），且所有约束和目标函数均为一次线性式的模型称为 **LP**。
 - 术语参考：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks)
 
 ## 核心代码片段
+
+约束表达式可以通过模板字面量 `expr`（WaSHI）或 `prob += ...`（PuLP）直观地编写。传入第二个参数（例如 `"butter"`）为约束命名，有助于后续调试和核对模型。
 
 **WaSHI (TypeScript)**
 
@@ -30,5 +32,5 @@ m.constraint(expr`${c} + 2 * ${l} <= ${input.butterCap}`, "butter");
 **PuLP (Python)**
 
 ```python
-prob += c + 2 * l <= input_data["butterCap"], "butter"
+prob += c + 2 * l <= butter_cap, "butter"
 ```

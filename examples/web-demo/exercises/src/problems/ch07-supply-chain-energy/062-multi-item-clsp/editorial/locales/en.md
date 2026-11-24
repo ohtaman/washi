@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+In addition to the per-item, per-period inventory balance equations and remaining-demand setup-linking constraints, construct the capacity constraints that cap total processing and setup time across all items in each period. In WaSHI, build these array constraints with `forEach` and `map`; in PuLP, write the per-period sums using `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts

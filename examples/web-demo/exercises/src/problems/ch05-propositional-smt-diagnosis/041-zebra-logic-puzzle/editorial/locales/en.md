@@ -21,16 +21,18 @@ $$
 
 ## Key Implementation
 
+The `exactOne` helper registers at-least-one via `or(...)` and pairwise at-most-one via `.forEach()`, and the solver returns unsatisfiable if `m.check({ solver: "z3" })` does not return `"Sat"`.
+
 **WaSHI (TypeScript)**
 
 ```ts
 function exactOne(m: Model, vars: BoolVar[], prefix: string): void {
   m.constraint(or(...vars), `${prefix}_at_least_one`);
-  for (let i = 0; i < vars.length; i++) {
-    for (let j = i + 1; j < vars.length; j++) {
-      m.constraint(not(and(vars[i], vars[j])), `${prefix}_at_most_one_${i}_${j}`);
-    }
-  }
+  vars.forEach((vi, i) => {
+    vars.slice(i + 1).forEach((vj, offset) => {
+      m.constraint(not(and(vi, vj)), `${prefix}_at_most_one_${i}_${i + 1 + offset}`);
+    });
+  });
 }
 
 const res = await m.check({ solver: "z3" });

@@ -1,16 +1,17 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"invite": list[int], "giftBudget": list[float], "totalEnjoyment": float}."""
-    budget = input_data["budget"]
-    base_enjoyment = input_data["baseEnjoyment"]
-    bonus_rates = input_data["bonusRates"]
-    min_spend = input_data["minSpend"]
-    max_spend = input_data["maxSpend"]
-    implications = input_data["implications"]
-    conflicts = input_data["conflicts"]
-    group_rules = input_data["groupRules"]
+def solve(
+    budget,
+    base_enjoyment,
+    bonus_rates,
+    min_spend,
+    max_spend,
+    implications,
+    conflicts,
+    group_rules,
+) -> dict:
+    """Return {"invite": list[int], "gift_budget": list[float], "total_enjoyment": float}."""
     n = len(base_enjoyment)
 
     prob = pulp.LpProblem("party_invite_logic", pulp.LpMaximize)

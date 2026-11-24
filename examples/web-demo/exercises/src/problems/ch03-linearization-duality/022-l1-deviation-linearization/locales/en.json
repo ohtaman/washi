@@ -8,11 +8,11 @@
     "Linearization"
   ],
   "caseNames": [
-    "3-channel budget rebalancing",
+    "3-unit power dispatch rebalancing",
     "4-unit demand expansion",
     "4-unit exact target feasibility",
-    "5-product capacity shift",
-    "6-region budget contraction"
+    "5-unit capacity-constrained dispatch",
+    "6-unit budget contraction rebalancing"
   ],
   "judge": {
     "m0": "Output must be an object { allocations, totalDeviation }.",

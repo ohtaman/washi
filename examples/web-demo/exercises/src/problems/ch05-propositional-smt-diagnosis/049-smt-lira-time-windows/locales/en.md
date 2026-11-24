@@ -64,7 +64,7 @@ Every shipment must avoid a scheduled dock maintenance blackout interval, no two
 }
 ```
 
-Shipment 0 runs in Standard mode over `[0, 2.5]` before the `[3, 4]` blackout (`0` tardiness), and Shipment 1 switches to Express mode over `[4, 5]` with fee `15` and tardiness `12 * (5 - 3) = 24`, totaling `39`.
+Shipment 0 runs in Standard mode over `[0, 2.5]` before the `[3, 4]` blackout (0 tardiness), and Shipment 1 switches to Express mode over `[4, 5]` with fee 15 and tardiness `12 * (5 - 3) = 24`, totaling 39.
 
 
 <!-- section:hint1 -->

@@ -28,6 +28,8 @@ $$
 
 ## 实现要点
 
+在 `master.solveBenders` 的 `subproblem` 回调中检查开放产能是否充足：不足时从 Phase-I 松弛 LP 返回 `kind: "feasibility"` 割平面；可行时从运输 LP 的对偶价格返回 `kind: "optimality"` 割平面与 `subproblemObjective`。
+
 **WaSHI (TypeScript)**
 
 ```ts

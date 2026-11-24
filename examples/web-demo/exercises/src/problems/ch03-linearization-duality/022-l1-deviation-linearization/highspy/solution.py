@@ -1,14 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"allocations": list[float], "totalDeviation": float}."""
-    targets = input_data["targets"]
-    weights = input_data["weights"]
-    upper_bounds = input_data["upperBounds"]
-    costs = input_data["costs"]
-    budget = input_data["budget"]
-    total_output = input_data["totalOutput"]
+def solve(targets, weights, upper_bounds, costs, budget, total_output) -> dict:
+    """Return {"allocations": list[float], "total_deviation": float}."""
     n = len(targets)
 
     prob = pulp.LpProblem("l1_deviation", pulp.LpMinimize)
@@ -30,5 +24,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "allocations": [float(pulp.value(v)) for v in allocations],
-        "totalDeviation": float(pulp.value(prob.objective)),
+        "total_deviation": float(pulp.value(prob.objective)),
     }

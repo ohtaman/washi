@@ -23,6 +23,8 @@ $$
 
 ## 实现要点
 
+使用 `or(...)` 和 `implies(...)` 将必选根包与依赖规则注册为逻辑约束，用 `minimize(sum(allUsed))` 最小化 0-1 计数变量 `allUsed` 之和，并调用 `m.solve({ solver: "z3" })` 求得最优解。
+
 **WaSHI (TypeScript)**
 
 ```ts

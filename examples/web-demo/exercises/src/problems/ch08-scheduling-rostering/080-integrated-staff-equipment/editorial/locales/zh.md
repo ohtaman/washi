@@ -25,27 +25,33 @@ $$
 
 ## 实现要点
 
+除了每位员工的单时段互斥、最大工作上限和加班上镜图约束外，还需构建每个时间片的共享设备容量约束。在 WaSHI 中使用 `forEach` 和 `flatMap` 生成约束数组，在 PuLP 中则通过循环与 `pulp.lpSum` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < N; i++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`);
-  }
+input.staffCosts.forEach((_, i) => {
+  m.constraint(
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`
+    )
+  );
   const staffLoad = sum(x.flatMap((jobStaff) => jobStaff[i]));
   m.constraint([
     expr`${staffLoad} <= ${input.maxLimits[i]}`,
     expr`${overtime[i]} >= ${staffLoad} - ${input.regularLimits[i]}`,
   ]);
-}
-for (let t = 0; t < T; t++) {
-  const eqUsed = sum(
-    x.flatMap((jobStaff, j) =>
-      jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
-    )
-  );
-  m.constraint(expr`${eqUsed} <= ${input.equipCap}`);
-}
+});
+m.constraint(
+  Array.from({ length: T }, (_, t) => {
+    const eqUsed = sum(
+      x.flatMap((jobStaff, j) =>
+        jobStaff.map((staffSlots) => expr`${input.equipNeeds[j]} * ${staffSlots[t]}`)
+      )
+    );
+    return expr`${eqUsed} <= ${input.equipCap}`;
+  })
+);
 ```
 
 **PuLP (Python)**

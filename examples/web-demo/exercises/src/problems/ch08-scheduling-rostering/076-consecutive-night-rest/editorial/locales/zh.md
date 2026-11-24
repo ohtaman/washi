@@ -24,18 +24,20 @@ $$
 
 ## 实现要点
 
+针对每位员工的日出勤指示和 `work`，构建每日至多一班上限、长度为 $K + 1$ 的连续工作限制窗口以及夜班转日班的禁止衔接约束。在 WaSHI 中使用 `slice` 和 `map` 生成各窗口与相邻日对的约束数组，在 PuLP 中则通过循环与 `pulp.lpSum` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
 x.forEach((staffDays) => {
   const work = staffDays.map((dayVars) => sum(dayVars));
   m.constraint(work.map((w) => expr`${w} <= 1`));
-  for (let t = 0; t <= D - K - 1; t++) {
-    m.constraint(expr`${sum(work.slice(t, t + K + 1))} <= ${K}`);
-  }
-  for (let d = 0; d < D - 1; d++) {
-    m.constraint(expr`${staffDays[d][2]} + ${staffDays[d + 1][0]} <= 1`);
-  }
+  m.constraint(
+    Array.from({ length: D - K }, (_, t) => expr`${sum(work.slice(t, t + K + 1))} <= ${K}`)
+  );
+  m.constraint(
+    staffDays.slice(0, -1).map((dayVars, d) => expr`${dayVars[2]} + ${staffDays[d + 1][0]} <= 1`)
+  );
 });
 ```
 

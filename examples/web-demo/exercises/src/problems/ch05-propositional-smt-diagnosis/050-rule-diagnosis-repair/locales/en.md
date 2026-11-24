@@ -63,7 +63,7 @@ First check whether all hard and soft rules are jointly consistent. If consisten
 }
 ```
 
-`{ H1, H2, S1, S2 }` forms the irreducible conflict (`prod => mfa`, `not(mfa && legacy)`, `prod`, `legacy`); relaxing `S2` (weight `2`) restores full feasibility with `prod = mfa = audit = true, legacy = false, tier = 2`.
+`{ H1, H2, S1, S2 }` forms the irreducible conflict (`prod => mfa`, `not(mfa && legacy)`, `prod`, `legacy`); relaxing `S2` (weight 2) restores full feasibility with `prod = mfa = audit = true, legacy = false, tier = 2`.
 
 
 <!-- section:hint1 -->

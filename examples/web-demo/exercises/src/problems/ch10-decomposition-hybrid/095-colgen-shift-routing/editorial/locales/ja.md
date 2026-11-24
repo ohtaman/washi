@@ -30,6 +30,8 @@ $$
 
 ## 実装の勘所
 
+価格付け子問題では `input.shiftCosts.map(...)` で各日の純利得係数を計算して `dot` で目的関数を組み立て、連続勤務の上限制約は `Array.from` と `a.slice(...)` でスライディングウィンドウ制約として一括登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -39,16 +41,16 @@ const result = await solveColumnGeneration<number[]>({
   pricing: async ({ getDual }) => {
     const sub = new Model("ShiftPricing");
     const a = sub.binary(D, { prefix: "a" });
-    let netGain = expr`0`;
-    for (let d = 0; d < D; d++) {
-      netGain = netGain.add(a[d].mul(getDual(`demand_${d}`) - input.shiftCosts[d]));
-    }
-    sub.objective(maximize(netGain));
+    const netGains = input.shiftCosts.map((c, d) => getDual(`demand_${d}`) - c);
+    sub.objective(maximize(expr`dot(${netGains}, ${a})`));
     sub.constraint(expr`sum(${a}) >= 1`, "nonempty");
     sub.constraint(expr`sum(${a}) <= ${input.maxWorkDays}`, "max_work");
-    for (let t = 0; t <= D - (input.maxConsecutive + 1); t++) {
+    const windowSize = input.maxConsecutive + 1;
+    if (D >= windowSize) {
       sub.constraint(
-        expr`sum(${a.slice(t, t + input.maxConsecutive + 1)}) <= ${input.maxConsecutive}`
+        Array.from({ length: D - windowSize + 1 }, (_, t) =>
+          expr`sum(${a.slice(t, t + windowSize)}) <= ${input.maxConsecutive}`
+        )
       );
     }
     if ((await sub.solve()) !== "Optimal") return null;

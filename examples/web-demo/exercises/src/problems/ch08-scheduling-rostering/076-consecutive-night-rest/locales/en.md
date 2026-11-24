@@ -10,7 +10,7 @@ To prevent fatigue, no staff member may work more than a specified maximum numbe
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demands` | `number[][]` | Required staff per day $d$ for Day (`0`), Evening (`1`), and Night (`2`) |
+| `demands` | `number[][]` | Required staff per day $d$ for Day (0), Evening (1), and Night (2) |
 | `shiftCosts` | `number[][]` | Cost of assigning staff $i$ to shift $s \in \{0, 1, 2\}$ ($N \times 3$) |
 | `maxConsecutiveDays` | `number` | Maximum consecutive working days $K$ allowed for any staff member |
 
@@ -18,7 +18,7 @@ To prevent fatigue, no staff member may work more than a specified maximum numbe
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `schedule` | `number[][]` | $N \times D$ matrix with `-1` (Off), `0` (Day), `1` (Evening), or `2` (Night) |
+| `schedule` | `number[][]` | $N \times D$ matrix with -1 (Off), 0 (Day), 1 (Evening), or 2 (Night) |
 | `totalCost` | `number` | Minimized total shift assignment cost |
 
 <!-- section:example -->
@@ -56,7 +56,7 @@ To prevent fatigue, no staff member may work more than a specified maximum numbe
 }
 ```
 
-Every staff member works at most 2 consecutive days and has zero Night (`2`) to Day (`0`) transitions, daily demands are satisfied, and total cost is $(10+10+10) + (14+14+14) + (11+12+11) + 15 =$ **121**.
+Every staff member works at most 2 consecutive days and has zero Night (2) to Day (0) transitions, daily demands are satisfied, and total cost is $(10+10+10) + (14+14+14) + (11+12+11) + 15 =$ **121**.
 
 <!-- section:hint1 -->
 Use a three-dimensional binary assignment variable for staff member $i$, day $d$, and shift $s \in \{0, 1, 2\}$. In addition to daily shift coverage and at most one shift per staff-day, you need two temporal coupling rules across adjacent days: a rolling consecutive-workday limit and a forbidden shift transition rule.

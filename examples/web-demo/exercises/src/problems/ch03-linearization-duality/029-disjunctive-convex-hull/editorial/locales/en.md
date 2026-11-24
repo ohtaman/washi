@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Register the constraints that each unit selects exactly one band and the convex-hull bounds scaling each band's output variable `x[i][k]` by its indicator `y[i][k]` in bulk using `flatMap`.
+
 **WaSHI (TypeScript)**
 
 ```ts

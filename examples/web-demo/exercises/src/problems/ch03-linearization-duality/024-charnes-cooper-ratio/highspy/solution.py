@@ -1,15 +1,22 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"x": list[float], "maxRatio": float}."""
-    num_c = input_data["numCoeffs"]
-    num_0 = input_data["numConst"]
-    den_c = input_data["denCoeffs"]
-    den_0 = input_data["denConst"]
-    usages = input_data["usages"]
-    caps = input_data["capacities"]
-    ubs = input_data["upperBounds"]
+def solve(
+    num_coeffs,
+    num_const,
+    den_coeffs,
+    den_const,
+    usages,
+    capacities,
+    upper_bounds,
+) -> dict:
+    """Return {"x": list[float], "max_ratio": float}."""
+    num_c = num_coeffs
+    num_0 = num_const
+    den_c = den_coeffs
+    den_0 = den_const
+    caps = capacities
+    ubs = upper_bounds
     n = len(num_c)
 
     prob = pulp.LpProblem("charnes_cooper_ratio", pulp.LpMaximize)
@@ -29,5 +36,5 @@ def solve(input_data: dict) -> dict:
     t_val = float(pulp.value(t))
     return {
         "x": [float(pulp.value(v)) / t_val for v in y],
-        "maxRatio": float(pulp.value(prob.objective)),
+        "max_ratio": float(pulp.value(prob.objective)),
     }

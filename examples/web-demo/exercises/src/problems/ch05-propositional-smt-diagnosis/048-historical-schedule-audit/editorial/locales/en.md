@@ -19,6 +19,8 @@ $$
 
 ## Key Implementation
 
+Register each compliance rule with `m.constraint` named by its rule ID `r.id`, call `m.verify({ values: input.candidateValues })`, and deduplicate and sort the violated rule IDs from `report.violations`.
+
 **WaSHI (TypeScript)**
 
 ```ts

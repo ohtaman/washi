@@ -24,6 +24,8 @@ $$
 
 ## 关键实现
 
+除了每场比赛至多安排一次及场馆兼容性约束外，还需将每个场馆时段块的总直播时长限制在常规时长与加时时长之和以内。在 WaSHI 中使用 `forEach` 和 `flatMap` 构建约束数组，在 PuLP 中则通过循环与 `pulp.lpSum` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -33,12 +35,16 @@ x.forEach((matchVenues, m) => {
     if (input.compatible[m][v] === 0) model.constraint(expr`${sum(venueSlots)} == 0`);
   });
 });
-for (let v = 0; v < V; v++) {
-  for (let s = 0; s < S; s++) {
-    const load = sum(x.map((matchVenues, m) => expr`${input.durations[m]} * ${matchVenues[v][s]}`));
-    model.constraint(expr`${load} <= ${input.regularLength} + ${overtime[v][s]}`);
-  }
-}
+model.constraint(
+  overtime.flatMap((venueSlots, v) =>
+    venueSlots.map((ot, s) => {
+      const load = sum(
+        x.map((matchVenues, mIdx) => expr`${input.durations[mIdx]} * ${matchVenues[v][s]}`)
+      );
+      return expr`${load} <= ${input.regularLength} + ${ot}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

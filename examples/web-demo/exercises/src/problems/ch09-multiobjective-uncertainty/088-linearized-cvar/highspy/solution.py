@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"weights": list[float], "varThreshold": float, "cvar": float, "totalObjective": float}."""
-    returns = input_data["returns"]
-    probs = input_data["probs"]
-    alpha = input_data["alpha"]
-    risk_weight = input_data["riskWeight"]
-    max_weight = input_data["maxWeight"]
+def solve(returns, probs, alpha, risk_weight, max_weight) -> dict:
+    """Return {"weights": list[float], "var_threshold": float, "cvar": float, "total_objective": float}."""
     S = len(returns)
     n = len(returns[0])
 
@@ -29,7 +24,7 @@ def solve(input_data: dict) -> dict:
 
     return {
         "weights": [float(pulp.value(v)) for v in w],
-        "varThreshold": float(pulp.value(eta)),
+        "var_threshold": float(pulp.value(eta)),
         "cvar": float(pulp.value(cvar_expr)),
-        "totalObjective": float(pulp.value(prob.objective)),
+        "total_objective": float(pulp.value(prob.objective)),
     }

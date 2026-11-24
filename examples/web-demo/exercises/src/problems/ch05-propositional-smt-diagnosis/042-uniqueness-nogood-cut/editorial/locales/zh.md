@@ -19,6 +19,8 @@ $$
 
 ## 实现要点
 
+通过 `Object.fromEntries` 提取首次 `m.check({ solver: "z3" })` 得到的赋值，添加仅否定该赋值的 `nogood_cut` 约束并再次调用 `m.check`；若第二次返回 `"Unsat"`，则解唯一。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -21,12 +21,14 @@ $$
 
 ## Key Points
 
-- **Reduced cost criterion**: Each new roll pattern costs `1` in the master objective, so its reduced cost is $\bar{c} = 1 - \sum_i \pi_i a_i$. Whenever the knapsack optimum exceeds `1` ($\bar{c} < -10^{-5}$), adding that pattern improves the master LP relaxation.
+- **Reduced cost criterion**: Each new roll pattern costs 1 in the master objective, so its reduced cost is $\bar{c} = 1 - \sum_i \pi_i a_i$. Whenever the knapsack optimum exceeds 1 ($\bar{c} < -10^{-5}$), adding that pattern improves the master LP relaxation.
 - **Initial feasible basis**: Seeding one pure single-item pattern (`floor(W / w_i)` copies of item `i`) guarantees the RMP starts feasible and produces finite dual prices on iteration 1.
 - **Price-and-Branch (`finalizeAsMIP: true`)**: Once no improving column exists for the LP relaxation, `solveColumnGeneration` automatically enforces integrality on all generated columns and solves the final MIP.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
+
+Inside the `pricing` callback of `solveColumnGeneration`, read each item's dual price via `getDual` and solve a bounded knapsack subproblem over integer variables `a` to propose cutting patterns with negative reduced cost.
 
 **WaSHI (TypeScript)**
 

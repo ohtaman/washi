@@ -51,7 +51,7 @@ Solve this two-stage problem using Classical Benders Decomposition via WaSHI, se
 }
 ```
 
-Opening both warehouses yields fixed cost `100 + 120 = 220` plus shipping cost `60 + 60 + 50 = 170` for optimal total cost **390**.
+Opening both warehouses gives shipments of $30 + 20 = 50 \le 50$ at Warehouse 0 and $25 \le 60$ at Warehouse 1, meeting customer demands `[30, 25, 20]` with fixed cost $100 + 120 = 220$ and shipping cost $(2 \times 30 + 3 \times 20) + 2 \times 25 = 170$, for a total cost of $220 + 170 =$ **390**.
 
 <!-- section:hint1 -->
 Keep only the binary facility-opening variables and a non-negative recourse estimator `theta` in the master MIP, minimizing fixed costs plus `theta`. For each candidate opening vector, evaluate the continuous shipping LP subproblem to generate either a feasibility cut (if total open capacity cannot cover total demand) or an optimality cut bounding `theta` from below.

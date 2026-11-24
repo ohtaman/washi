@@ -10,7 +10,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `numTasks` | `number` | タスク総数（インデックス `0` 〜 `numTasks - 1`） |
+| `numTasks` | `number` | タスク総数（インデックス 0 〜 `numTasks - 1`） |
 | `costs` | `number[]` | 各候補ルートの運行コスト |
 | `routes` | `number[][]` | 各候補ルート $j$ が担当するタスク番号の配列 |
 
@@ -18,7 +18,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `selected` | `number[]` | 各候補ルートの採択有無（`0` または `1`） |
+| `selected` | `number[]` | 各候補ルートの採択有無（0 または 1） |
 | `totalCost` | `number` | 最小化された総運行コスト |
 
 <!-- section:example -->

@@ -29,6 +29,8 @@ $$
 
 ## 実装の勘所
 
+`pricing` コールバック内で共有制約の双対価格 `piShared` を取得し、`input.productCaps.entries()` で各工場のブロック LP を構築・求解して、被約利益が正の端点を `proposals` として返します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,10 +40,11 @@ const result = await solveColumnGeneration<DwColumnMeta>({
   pricing: async ({ getDual }) => {
     const piShared = getDual("shared_cap");
     const proposals: Array<ColumnProposal<DwColumnMeta>> = [];
-    for (let k = 0; k < K; k++) {
+    for (const [k, caps] of input.productCaps.entries()) {
       const muK = getDual(`conv_${k}`);
       const sub = new Model(`BlockPricing_${k}`);
-      const x = input.productCaps[k].map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const x = caps.map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const reducedUnits = input.profits[k].map((p, j) => p - piShared * input.sharedUsages[k][j]);
       sub.objective(maximize(expr`dot(${reducedUnits}, ${x})`));
       sub.constraint(expr`dot(${input.localUsages[k]}, ${x}) <= ${input.localCaps[k]}`);
       if ((await sub.solve()) !== "Optimal") continue;

@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+For every collection-center and supermarket pair, cap `shipments[i][j]` at `capacities[i][j] * open[i][j]`, and minimize the sum of fixed contract fees and variable shipping costs in the objective.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -21,6 +21,8 @@ $$
 
 ## 实现要点
 
+由于 `compositions[i][k]` 以原料为行、元素为列，提取各元素的列向量并与 `amounts` 求内积，即可成对构建上下界约束。
+
 **WaSHI (TypeScript)**
 
 ```ts

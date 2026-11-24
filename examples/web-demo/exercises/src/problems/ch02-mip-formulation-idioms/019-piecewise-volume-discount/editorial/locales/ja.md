@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+各サプライヤーの価格帯選択の和を 1 以下に抑えつつ、各帯の発注量 `tierQuantities[s][k]` を `minQty` と `maxQty` に選択変数 `tierSelected[s][k]` を掛けた範囲で挟みます。
+
 **WaSHI (TypeScript)**
 
 ```ts

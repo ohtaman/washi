@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+同一の `Model` インスタンスを保持したまま `while` ループで `await m.solve()` を実行し、単一の巡回路でなければ見つかった各部分巡回路 `comp` に対して `m.constraint(...)` で DFJ カットを逐次追加します。
+
 **WaSHI (TypeScript)**
 
 ```ts

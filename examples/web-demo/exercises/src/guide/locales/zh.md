@@ -2,11 +2,11 @@
 
 本页汇总了学习 **数理优化百题训练** 所需的核心建模术语、判题结果含义与基本建模规范。
 
-## 1. 判题机制（`solve(input)`） {#solve-contract}
+## 1. 判题机制（`solve()`） {#solve-contract}
 
-- 每道题都要求实现一个函数：在 **WaSHI (TypeScript)** 中实现 `solve(input)`，或在 **PuLP (Python)** 中实现 `solve(input_data)`，并返回结果 JSON 对象（Python 为 `dict`）。
+- 每道题都要求实现一个 `solve` 函数：在 **WaSHI (TypeScript)** 中实现接收输入对象的 **`solve(input)`**，或在 **PuLP (Python)** 中实现将输入字段转换为 `snake_case` 后直接作为参数接收的 **`solve(field_1, field_2, ...)`**，并返回结果对象（Python 为 `snake_case` 键的 `dict`）。
 - **WaSHI** 本身是 TypeScript / JavaScript 建模库而非 Python 包；为了让 Python 使用者也能免安装直接在浏览器中刷题并对照写法，系统通过 Pyodide 提供了经典的 **PuLP (Python)**（后端为 HiGHS）作为并行练习环境。
-- 点击 **「运行并判题」** 后，系统会对每个测试用例传入输入并检查返回值是否满足约束且达到最优目标值。
+- 点击 **「运行并判题」** 后，系统会对每个测试用例调用 `solve` 函数，并检查返回值是否满足约束且达到最优目标值。
 - 在**任意一种**运行时下通过（**AC**）即可标记为已完成（`✓`）。`console.log` 或 `print` 仅用于调试查看。
 
 ## 2. 模型基本要素 {#building-blocks}

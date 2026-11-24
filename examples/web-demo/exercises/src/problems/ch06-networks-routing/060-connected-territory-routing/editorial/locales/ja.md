@@ -24,20 +24,26 @@ $$
 
 ## 実装の勘所
 
+全区画 `nodes` に対して出次数・入次数 1 の制約を課しつつ、`filter` と `flatMap` で異なる区画ペア `(i, j)` を列挙して同一テリトリー制限とハブ基準の MTZ 制約を登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < n; i++) {
+const nodes = Array.from({ length: n }, (_, i) => i);
+const territories = Array.from({ length: K }, (_, k) => k);
+
+nodes.forEach((i) => {
   m.constraint(expr`${sum(x[i].filter((v) => v !== null))} == 1`);
   m.constraint(expr`${sum(x.map((row) => row[i]).filter((v) => v !== null))} == 1`);
-  for (let j = 0; j < n; j++) {
-    if (i === j) continue;
-    for (let k = 0; k < K; k++) {
-      m.constraint(expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`);
-    }
-    m.constraint(expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`);
-  }
-}
+  m.constraint(
+    nodes
+      .filter((j) => i !== j)
+      .flatMap((j) => [
+        ...territories.map((k) => expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`),
+        expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`,
+      ])
+  );
+});
 ```
 
 **PuLP (Python)**

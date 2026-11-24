@@ -1,13 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"take": list[int], "totalInterest": float}."""
-    interest = input_data["interest"]
-    requirements = input_data["requirements"]
-    caps = input_data["caps"]
-    prerequisites = input_data["prerequisites"]
-    time_conflicts = input_data["timeConflicts"]
+def solve(interest, requirements, caps, prerequisites, time_conflicts) -> dict:
+    """Return {"take": list[int], "total_interest": float}."""
     n = len(interest)
 
     prob = pulp.LpProblem("degree_course_planner", pulp.LpMaximize)

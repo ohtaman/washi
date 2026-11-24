@@ -1,6 +1,6 @@
 ## Approach
 
-Pair a binary vector `open[i]` for facility activation with a continuous matrix `shipments[i][j]` for customer deliveries, gate total outflow per facility with `sum(shipments[i]) <= capacities[i] * open[i]`, satisfy every customer's demand, and minimize fixed plus shipping cost.
+Pair a binary vector `open[i]` for roastery activation with a continuous matrix `shipments[i][j]` for café store deliveries, gate total outflow per roastery with `sum(shipments[i]) <= capacities[i] * open[i]`, satisfy every café store's demand, and minimize fixed operating plus shipping cost.
 
 ## Mathematical Model
 
@@ -15,11 +15,13 @@ $$
 
 ## Key Points
 
-- **Node-level vs. arc-level fixed charge**: Unlike Problem #012 (where every arc has a binary switch), CFLP puts binary switches on facility nodes, linking each facility's entire row sum $\sum_j x_{i,j}$ to $C_i y_i$.
+- **Node-level vs. arc-level fixed charge**: Unlike Problem #012 (where every route has a binary switch), CFLP puts binary switches on roastery nodes, linking each roastery's entire row sum $\sum_j x_{i,j}$ to $C_i y_i$.
 - **Tightening the LP relaxation (valid inequalities)**: With nonnegative shipping costs $c_{i,j} \ge 0$, adding disaggregated linking constraints $x_{i,j} \le \min(C_i, d_j) y_i$ prunes unnecessary oversupply while preserving an optimal integer solution (and preserves the entire integer feasible set if demand constraints are written as exact equalities `==`), eliminating weak fractional openings ($y_i = d_j / C_i$) at the root node.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
+
+Add the linking constraints capping each roastery `i`'s total outflow at `capacities[i] * open[i]` and the column-sum constraints meeting each café store `j`'s demand, and minimize the sum of fixed operating costs and shipping costs.
 
 **WaSHI (TypeScript)**
 

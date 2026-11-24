@@ -1,13 +1,11 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"rooms": list[int], "slots": list[int], "totalScore": float}."""
-    sizes = input_data["courseSizes"]
-    caps = input_data["roomCapacities"]
-    teachers = input_data["teachers"]
-    cohorts = input_data["cohorts"]
-    scores = input_data["slotScores"]
+def solve(course_sizes, room_capacities, teachers, cohorts, slot_scores) -> dict:
+    """Return {"rooms": list[int], "slots": list[int], "total_score": float}."""
+    sizes = course_sizes
+    caps = room_capacities
+    scores = slot_scores
     num_courses = len(sizes)
     num_rooms = len(caps)
     num_slots = len(scores[0])
@@ -68,5 +66,5 @@ def solve(input_data: dict) -> dict:
     return {
         "rooms": rooms,
         "slots": slots,
-        "totalScore": float(pulp.value(prob.objective)),
+        "total_score": float(pulp.value(prob.objective)),
     }

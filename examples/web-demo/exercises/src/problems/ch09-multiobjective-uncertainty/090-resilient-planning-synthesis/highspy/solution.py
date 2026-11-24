@@ -1,18 +1,20 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"committed": list[int], "recovered": list[list[int]], "totalCost": float}."""
-    fixed_costs = input_data["fixedCosts"]
-    capacities = input_data["capacities"]
-    drop_amounts = input_data["dropAmounts"]
-    gamma = input_data["gamma"]
-    robust_min_cap = input_data["robustMinCap"]
-    probs = input_data["probs"]
-    demands = input_data["demands"]
-    offline = input_data["offline"]
-    disruption_cost = input_data["disruptionCost"]
-    shortfall_pen = input_data["shortfallPenalty"]
+def solve(
+    fixed_costs,
+    capacities,
+    drop_amounts,
+    gamma,
+    robust_min_cap,
+    probs,
+    demands,
+    offline,
+    disruption_cost,
+    shortfall_penalty,
+) -> dict:
+    """Return {"committed": list[int], "recovered": list[list[int]], "total_cost": float}."""
+    shortfall_pen = shortfall_penalty
     n = len(fixed_costs)
     S = len(probs)
 
@@ -46,5 +48,5 @@ def solve(input_data: dict) -> dict:
     return {
         "committed": [round(pulp.value(v)) for v in y],
         "recovered": [[round(pulp.value(v)) for v in row] for row in w],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

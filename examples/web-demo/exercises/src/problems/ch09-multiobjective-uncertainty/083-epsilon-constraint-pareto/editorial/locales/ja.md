@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+排出枠 `input.epsilons` の各しきい値ごとに独立した `Model` を生成し、`dot(...)` で予算制約・排出制約・利益最大化を記述して順次 `await m.solve()` を呼び出します。
+
 **WaSHI (TypeScript)**
 
 ```ts

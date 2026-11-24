@@ -24,21 +24,28 @@ $$
 
 ## 实现要点
 
+构建各教室与时段的至多一门课约束，以及同一教师、同一群组在各时段的团冲突约束。在 WaSHI 中使用 `flatMap` 和 `forEach` 聚合各组变量并生成约束数组，在 PuLP 中则通过列表推导式实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let r = 0; r < R; r++) {
-  for (let t = 0; t < T; t++) {
-    m.constraint(expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`);
-  }
-}
-for (const group of [...teacherGroups.values(), ...cohortGroups.values()]) {
-  if (group.length < 2) continue;
-  for (let t = 0; t < T; t++) {
-    const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
-    m.constraint(expr`${sum(vars)} <= 1`);
-  }
-}
+m.constraint(
+  input.roomCapacities.flatMap((_, r) =>
+    Array.from({ length: T }, (__, t) =>
+      expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`
+    )
+  )
+);
+[...teacherGroups.values(), ...cohortGroups.values()]
+  .filter((group) => group.length >= 2)
+  .forEach((group) => {
+    m.constraint(
+      Array.from({ length: T }, (_, t) => {
+        const vars = group.flatMap((c) => x[c].map((roomSlots) => roomSlots[t]));
+        return expr`${sum(vars)} <= 1`;
+      })
+    );
+  });
 ```
 
 **PuLP (Python)**

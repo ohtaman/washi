@@ -22,8 +22,8 @@ Every venue-slot block has a regular broadcast length that may be extended up to
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignedVenue` | `number[]` | Venue index `0..V-1` per match, or `-1` if unscheduled |
-| `assignedSlot` | `number[]` | Timeslot index `0..S-1` per match, or `-1` if unscheduled |
+| `assignedVenue` | `number[]` | Venue index 0 to $V-1$ per match, or -1 if unscheduled |
+| `assignedSlot` | `number[]` | Timeslot index 0 to $S-1$ per match, or -1 if unscheduled |
 | `overtime` | `number[][]` | Non-negative overtime $o_{v,s}$ used in each `(venue, slot)` ($V \times S$) |
 | `netScore` | `number` | Maximized viewership total minus overtime cost |
 
@@ -62,10 +62,10 @@ Every venue-slot block has a regular broadcast length that may be extended up to
 }
 ```
 
-Matches 0–3 are each assigned to compatible venues (`compatible[m][v] = 1`), with block loads `[4, 3]` at venue 0 and `[3, 2]` at venue 1 fitting within regular length `3` plus overtime `[[1, 0], [0, 0]]` (within `maxOvertime = 1`), match 4 unscheduled (`-1`), and net score $(55 + 95 + 70 + 65) - 25 \times 1 =$ **260**.
+Matches 0–3 are each assigned to compatible venues (`compatible[m][v] = 1`), with block loads [4, 3] at venue 0 and [3, 2] at venue 1 fitting within regular length 3 plus overtime [[1, 0], [0, 0]] (within `maxOvertime = 1`), match 4 unscheduled (-1), and net score $(55 + 95 + 70 + 65) - 25 \times 1 =$ **260**.
 
 <!-- section:hint1 -->
 Use a three-dimensional binary decision for assigning each match to a venue and timeslot, paired with a continuous non-negative overtime variable for each venue-slot block bounded above by the overtime cap. Each match can be scheduled at most once in a compatible venue, and each block's total match duration must fit within its regular length plus its overtime.
 
 <!-- section:hint2 -->
-Because `overtimeCost` is positive and you are maximizing `netScore`, the continuous overtime variables (`m.continuous` / `pulp.LpVariable`) naturally take the exact excess above `regularLength` without needing extra binary indicator variables. Remember to fix incompatible `(m, v)` assignments to zero and decode unscheduled matches as `-1` in both `assignedVenue` and `assignedSlot`.
+Because `overtimeCost` is positive and you are maximizing `netScore`, the continuous overtime variables (`m.continuous` / `pulp.LpVariable`) naturally take the exact excess above `regularLength` without needing extra binary indicator variables. Remember to fix incompatible `(m, v)` assignments to zero and decode unscheduled matches as -1 in both `assignedVenue` and `assignedSlot`.

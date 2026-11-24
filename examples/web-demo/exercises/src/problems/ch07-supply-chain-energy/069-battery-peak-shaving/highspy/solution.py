@@ -1,18 +1,24 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peakLoad": float, "totalCost": float}."""
-    base_loads = input_data["baseLoads"]
-    prices = input_data["prices"]
-    demand_charge = input_data["demandCharge"]
-    cap = input_data["capacity"]
-    min_soc = input_data["minSoc"]
-    init_soc = input_data["initSoc"]
-    min_final = input_data["minFinalSoc"]
-    p_max = input_data["maxPower"]
-    eta_c = input_data["etaCharge"]
-    eta_d = input_data["etaDischarge"]
+def solve(
+    base_loads,
+    prices,
+    demand_charge,
+    capacity,
+    min_soc,
+    init_soc,
+    min_final_soc,
+    max_power,
+    eta_charge,
+    eta_discharge,
+) -> dict:
+    """Return {"charge": list[float], "discharge": list[float], "soc": list[float], "peak_load": float, "total_cost": float}."""
+    cap = capacity
+    min_final = min_final_soc
+    p_max = max_power
+    eta_c = eta_charge
+    eta_d = eta_discharge
     T = len(base_loads)
 
     prob = pulp.LpProblem("battery_peak_shaving", pulp.LpMinimize)
@@ -29,7 +35,7 @@ def solve(input_data: dict) -> dict:
         for t in range(T)
     ]
     grid_load = [pulp.LpVariable(f"grid_{t}", lowBound=0) for t in range(T)]
-    peak_load = pulp.LpVariable("peakLoad", lowBound=0)
+    peak_load = pulp.LpVariable("peak_load", lowBound=0)
 
     for t in range(T):
         prev_soc = init_soc if t == 0 else soc[t - 1]
@@ -46,6 +52,6 @@ def solve(input_data: dict) -> dict:
         "charge": [float(pulp.value(v)) for v in charge],
         "discharge": [float(pulp.value(v)) for v in discharge],
         "soc": [float(pulp.value(v)) for v in soc],
-        "peakLoad": float(pulp.value(peak_load)),
-        "totalCost": float(pulp.value(prob.objective)),
+        "peak_load": float(pulp.value(peak_load)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

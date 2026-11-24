@@ -89,7 +89,7 @@ Every unit transferred from inbound truck $i$ (docked at inbound door $r$) to ou
 }
 ```
 
-Pairing inbound 0 with outbound 2 on door `(0, 0)` and pairing inbounds 1–2 with outbounds 0–1 on door `(1, 1)` routes all 110 units at unit handling cost 2 with departures `[5, 5, 3] <= [6, 8, 7]` (zero delay), giving total cost $110 \times 2 =$ **220**.
+Pairing inbound 0 with outbound 2 on door pair (0, 0) and pairing inbounds 1–2 with outbounds 0–1 on door pair (1, 1) routes all 110 units at unit handling cost 2 with departures [5, 5, 3] within due times [6, 8, 7] (zero delay), giving total cost $110 \times 2 =$ **220**.
 
 
 <!-- section:hint1 -->

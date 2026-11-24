@@ -24,20 +24,26 @@ $$
 
 ## Key Implementation
 
+For all zones `nodes`, enforce unit out-degree and in-degree while using `filter` and `flatMap` to enumerate distinct zone pairs `(i, j)` and register the same-territory coupling and hub-anchored MTZ constraints.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < n; i++) {
+const nodes = Array.from({ length: n }, (_, i) => i);
+const territories = Array.from({ length: K }, (_, k) => k);
+
+nodes.forEach((i) => {
   m.constraint(expr`${sum(x[i].filter((v) => v !== null))} == 1`);
   m.constraint(expr`${sum(x.map((row) => row[i]).filter((v) => v !== null))} == 1`);
-  for (let j = 0; j < n; j++) {
-    if (i === j) continue;
-    for (let k = 0; k < K; k++) {
-      m.constraint(expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`);
-    }
-    m.constraint(expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`);
-  }
-}
+  m.constraint(
+    nodes
+      .filter((j) => i !== j)
+      .flatMap((j) => [
+        ...territories.map((k) => expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`),
+        expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`,
+      ])
+  );
+});
 ```
 
 **PuLP (Python)**

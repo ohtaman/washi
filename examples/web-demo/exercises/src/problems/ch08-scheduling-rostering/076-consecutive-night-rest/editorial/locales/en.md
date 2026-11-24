@@ -24,18 +24,20 @@ $$
 
 ## Key Implementation
 
+For each staff member's daily work indicators `work`, build the one-shift-per-day cap, the rolling consecutive-workday windows of length $K + 1$, and the forbidden Night-to-Day transitions. In WaSHI, generate the constraint arrays for each window and adjacent-day pair with `slice` and `map`; in PuLP, express them with loops and `pulp.lpSum`.
+
 **WaSHI (TypeScript)**
 
 ```ts
 x.forEach((staffDays) => {
   const work = staffDays.map((dayVars) => sum(dayVars));
   m.constraint(work.map((w) => expr`${w} <= 1`));
-  for (let t = 0; t <= D - K - 1; t++) {
-    m.constraint(expr`${sum(work.slice(t, t + K + 1))} <= ${K}`);
-  }
-  for (let d = 0; d < D - 1; d++) {
-    m.constraint(expr`${staffDays[d][2]} + ${staffDays[d + 1][0]} <= 1`);
-  }
+  m.constraint(
+    Array.from({ length: D - K }, (_, t) => expr`${sum(work.slice(t, t + K + 1))} <= ${K}`)
+  );
+  m.constraint(
+    staffDays.slice(0, -1).map((dayVars, d) => expr`${dayVars[2]} + ${staffDays[d + 1][0]} <= 1`)
+  );
 });
 ```
 

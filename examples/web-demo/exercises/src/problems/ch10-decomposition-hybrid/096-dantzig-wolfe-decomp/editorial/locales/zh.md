@@ -29,6 +29,8 @@ $$
 
 ## 实现要点
 
+在 `pricing` 回调中获取共享约束的对偶价格 `piShared`，通过 `input.productCaps.entries()` 构建并求解各工厂的区块 LP，并将检验利润为正的极点作为 `proposals` 返回。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,10 +40,11 @@ const result = await solveColumnGeneration<DwColumnMeta>({
   pricing: async ({ getDual }) => {
     const piShared = getDual("shared_cap");
     const proposals: Array<ColumnProposal<DwColumnMeta>> = [];
-    for (let k = 0; k < K; k++) {
+    for (const [k, caps] of input.productCaps.entries()) {
       const muK = getDual(`conv_${k}`);
       const sub = new Model(`BlockPricing_${k}`);
-      const x = input.productCaps[k].map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const x = caps.map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const reducedUnits = input.profits[k].map((p, j) => p - piShared * input.sharedUsages[k][j]);
       sub.objective(maximize(expr`dot(${reducedUnits}, ${x})`));
       sub.constraint(expr`dot(${input.localUsages[k]}, ${x}) <= ${input.localCaps[k]}`);
       if ((await sub.solve()) !== "Optimal") continue;

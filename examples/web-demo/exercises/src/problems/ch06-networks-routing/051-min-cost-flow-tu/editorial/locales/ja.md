@@ -20,6 +20,8 @@ $$
 
 ## 実装の勘所
 
+各枝に連続変数 `flows[e]` を割り当て、`input.supplies.map` で各頂点の流出和と流入和の差が供給量 `supply` に一致する保存則制約をまとめて登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts

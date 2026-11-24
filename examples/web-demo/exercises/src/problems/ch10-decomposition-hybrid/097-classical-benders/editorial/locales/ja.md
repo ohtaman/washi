@@ -28,6 +28,8 @@ $$
 
 ## 実装の勘所
 
+`master.solveBenders` の `subproblem` コールバック内で供給能力不足を判定し、不足時は Phase-I 緩和 LP から `kind: "feasibility"` カットを、実行可能時は輸送 LP の双対価格から `kind: "optimality"` カットと `subproblemObjective` を返します。
+
 **WaSHI (TypeScript)**
 
 ```ts

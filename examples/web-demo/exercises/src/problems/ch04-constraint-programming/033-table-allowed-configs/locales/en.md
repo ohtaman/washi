@@ -1,25 +1,25 @@
 # #033. Compatible System Configuration (Table Constraints)
 
 <!-- section:scenario -->
-An engineer is configuring a hardware system consisting of several discrete components. Each component c has an array of candidate options with prices in componentCosts[c].
+A system designer is configuring a hardware system composed of multiple components. Each component has multiple candidate options, each with its own component cost (in 1,000 JPY).
 
-Positive compatibility tables in allowedRules require the selected options of the listed components to match one of the approved tuples, while negative rules in forbiddenRules forbid any tuple in their conflict table. Select one option per component to satisfy every table rule at minimum total cost.
+In addition, compatibility rules require specified groups of components to match one of the allowed tuples in a table, while conflict rules forbid selecting any of the prohibited combinations. Find the lowest-cost component configuration that satisfies all rules.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `componentCosts` | `number[][]` | Cost of each option `opt` for component `c` (`componentCosts[c][opt]`) |
-| `allowedRules` | `TableRule[]` | Positive table rules `{ vars, tuples }` requiring `(choices[v])` in `tuples` |
-| `forbiddenRules` | `TableRule[]` | Negative table rules `{ vars, tuples }` forbidding `(choices[v])` in `tuples` |
+| `componentCosts` | `number[][]` | Integer cost `componentCosts[c][opt]` for option `opt` of component `c` (1,000 JPY) |
+| `allowedRules` | `TableRule[]` | Positive table constraints requiring the values of specified components `vars` to match one of `tuples` |
+| `forbiddenRules` | `TableRule[]` | Negative table constraints forbidding the values of specified components `vars` from matching any of `tuples` |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `choices` | `number[]` | Selected option index (`0` to `componentCosts[c].length - 1`) per component |
-| `totalCost` | `number` | Minimized total configuration cost |
+| `totalCost` | `number` | Minimized total configuration cost (1,000 JPY) |
 
 <!-- section:example -->
 **Input**
@@ -63,7 +63,7 @@ Positive compatibility tables in allowedRules require the selected options of th
 }
 ```
 
-Choices `[0, 1, 1]` satisfy `(choices[0], choices[1]) = (0, 1)` in `allowedRules[0]`, avoid `(1, 0)` and `(0, 0)` on components `(1, 2)`, and cost $10 + 18 + 14 =$ **42**.
+Choices [0, 1, 1] have (0, 1) included in `allowedRules[0]`, avoid the forbidden pairs (1, 0) and (0, 0) for components (1, 2), and incur a total cost of $10 + 18 + 14 =$ **42** (1,000 JPY).
 
 <!-- section:hint1 -->
 Introduce one integer decision variable per component whose domain covers its available option indices. Express both positive compatibility tables and negative conflict tables directly over the corresponding component variable tuples, and sum the selected option costs as the objective.

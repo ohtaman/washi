@@ -1,9 +1,9 @@
 # #042. Solution Uniqueness via No-Good Cuts
 
 <!-- section:scenario -->
-Finding one satisfying assignment proves that a rule system is consistent, but configuration and puzzle verification often requires knowing whether that solution is unique.
+When verifying operational rules for security configurations or feature flags (such as authentication methods, encryption, and audit logging), finding one valid setting is not enough—you also need to verify that no unintended alternative remains (that the configuration is uniquely determined).
 
-Given Boolean variables and propositional rules, first check whether a satisfying assignment exists; when one exists, also determine whether it is unique among all truth assignments.
+Imagine a system administrator validating a configuration: given Boolean variables and a list of propositional rules, first determine whether a satisfying assignment exists, and if so, determine and report whether that assignment is unique.
 
 <!-- section:io -->
 ### Input

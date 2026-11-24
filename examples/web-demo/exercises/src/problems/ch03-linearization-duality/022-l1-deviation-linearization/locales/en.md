@@ -1,27 +1,27 @@
 # #022. Weighted L1 Target Tracking
 
 <!-- section:scenario -->
-An operations planner must set non-negative allocation levels across several channels within individual upper limits so their sum meets an exact total output target and their total spending stays within budget. Because the desired target levels may violate the budget or sum constraint, some channels must adjust upward or downward.
+A power utility operator must decide the non-negative power generation allocations (in MW) across multiple generating units (thermal, gas, hydro, etc.). Each unit's output must stay within its rated upper limit, total cost (in 10k JPY) must stay within the budget cap, and total output must exactly match the required demand (in MW). Because the ideal target outputs of individual units may conflict with the budget or total output constraint, some units must be adjusted upward or downward.
 
-Each unit of deviation above or below a channel's target incurs a priority penalty weight. Choose the channel allocations to **minimize the weighted L1 deviation** from the target levels.
+Each unit of deviation above or below a generating unit's target incurs a unit-specific penalty weight. Find the output allocations that satisfy all constraints while **minimizing the weighted sum of absolute deviations from target (weighted L1 deviation)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `targets` | `number[]` | Target allocation $\tau_i$ for channel $i$ |
-| `weights` | `number[]` | Deviation penalty weight $w_i$ per unit |
-| `upperBounds` | `number[]` | Maximum allowed allocation $u_i$ for channel $i$ |
-| `costs` | `number[]` | Unit cost $c_i$ for channel $i$ |
-| `budget` | `number` | Maximum allowable total spending |
-| `totalOutput` | `number` | Required exact sum of allocations |
+| `targets` | `number[]` | Target output $\tau_i$ for generating unit $i$ (MW) |
+| `weights` | `number[]` | Penalty weight $w_i$ per MW of deviation from target |
+| `upperBounds` | `number[]` | Maximum rated output $u_i$ for generating unit $i$ (MW) |
+| `costs` | `number[]` | Unit generation cost $c_i$ for generating unit $i$ (10k JPY/MW) |
+| `budget` | `number` | Maximum allowable total cost (10k JPY) |
+| `totalOutput` | `number` | Required total output sum (MW) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `allocations` | `number[]` | Chosen allocation $x_i$ for each channel |
+| `allocations` | `number[]` | Output allocation $x_i$ for each generating unit (MW) |
 | `totalDeviation` | `number` | Minimized weighted L1 deviation $\sum_i w_i \lvert x_i - \tau_i \rvert$ |
 
 <!-- section:example -->
@@ -47,11 +47,11 @@ Each unit of deviation above or below a channel's target incurs a priority penal
 }
 ```
 
-Allocations `[25, 30, 45]` sum to $100$, spend $5 \times 25 + 2 \times 30 + 1 \times 45 = 230 \le 230$, and give weighted deviation $3 \lvert 25 - 40 \rvert + 2 \lvert 30 - 30 \rvert + 1 \lvert 45 - 30 \rvert =$ **60**.
+Allocations [25, 30, 45] sum to 100 MW, incur a total cost of $5 \times 25 + 2 \times 30 + 1 \times 45 = 230 \le 230$ (10k JPY), and give a weighted L1 deviation of $3 \lvert 25 - 40 \rvert + 2 \lvert 30 - 30 \rvert + 1 \lvert 45 - 30 \rvert =$ **60**.
 
 
 <!-- section:hint1 -->
-Declare a continuous allocation variable for each channel bounded between zero and its upper limit. To model absolute deviations linearly without binary variables, also introduce a pair of non-negative auxiliary variables per channel representing the positive overshoot above target and the negative shortfall below target.
+Declare a continuous output variable for each generating unit bounded between 0 and its upper limit. To linearize absolute deviations without binary variables, also introduce a pair of non-negative auxiliary variables per generating unit representing the positive overshoot above target and the negative shortfall below target.
 
 <!-- section:hint2 -->
-Express each channel's signed deviation from its target as the difference between its non-negative overshoot and shortfall variables, and penalize their sum in the minimization objective. Because penalty weights are non-negative, at least one of the two auxiliary variables vanishes automatically at optimality, linearizing the absolute value without binary indicators.
+Express each generating unit's signed deviation from its target as the difference between its overshoot and shortfall variables, and penalize their sum in the objective. Because penalty weights are non-negative, at least one of the two auxiliary variables vanishes automatically at optimality, linearizing the absolute value without binary variables.

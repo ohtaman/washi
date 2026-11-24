@@ -1,25 +1,25 @@
 # #008. Bipartite Transportation Planning
 
 <!-- section:scenario -->
-A distribution network moves goods from several warehouses to several retail stores. Each warehouse holds a limited supply stock, each store requires at least its demand quantity, and every warehouse-to-store lane has a unit shipping cost.
+Consider a logistics network shipping coffee beans (kg) from multiple roasting plants to multiple café stores. Each roasting plant has an available supply stock, each café store has a required demand, and every plant-to-store route has a unit shipping cost per kg.
 
-Determine non-negative continuous shipping quantities along every lane to **minimize total freight cost** without exceeding any warehouse supply while fulfilling every store demand.
+Determine non-negative continuous shipment quantities (kg) along every route to **minimize total shipping cost** without exceeding any plant's supply limit while fulfilling every store's demand.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `supplies` | `number[]` | Available supply stock at each warehouse $i$ |
-| `demands` | `number[]` | Required demand at each store $j$ |
-| `unitCosts` | `number[][]` | Shipping cost per unit from warehouse $i$ to store $j$ |
+| `supplies` | `number[]` | Available supply (kg) at roasting plant $i$ |
+| `demands` | `number[]` | Required demand (kg) at café store $j$ |
+| `unitCosts` | `number[][]` | Shipping cost per kg from plant $i$ to store $j$ |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `shipments` | `number[][]` | $S \times D$ matrix of non-negative shipment flows |
-| `totalCost` | `number` | Minimized total freight cost |
+| `shipments` | `number[][]` | $S \times D$ matrix of non-negative shipment quantities (kg) |
+| `totalCost` | `number` | Minimized total shipping cost |
 
 <!-- section:example -->
 **Input**
@@ -47,4 +47,4 @@ Determine non-negative continuous shipping quantities along every lane to **mini
 }
 ```
 
-Warehouse shipments total 50 ≤ 60 and 80 ≤ 80, store receipts equal `[40, 50, 40]`, and total freight cost is $4 \times 40 + 6 \times 10 + 3 \times 40 + 2 \times 40 =$ **420**.
+Plant shipments are $40 + 10 = 50 \le 60$ and $40 + 40 = 80 \le 80$, café store receipts `[40, 50, 40]` meet all demands, and total shipping cost is $4 \times 40 + 6 \times 10 + 3 \times 40 + 2 \times 40 =$ **420**.

@@ -16,10 +16,12 @@ $$
 ## ポイント
 
 - **組合せ爆発なしで小数 $\Gamma$ まで厳密線形化**: $\binom{n}{\Gamma}$ 通りの部分集合を列挙しなくても、連続多面体 $\{0 \le \delta_j \le 1,\; \sum \delta_j \le \Gamma\}$ 上の強双対性により、わずか $n+1$ 個の双対変数と $n$ 本の制約で（Case 3 の $\Gamma = 2.5$ のような小数も含め）厳密に定式化できます。
-- **ノミナル（$\Gamma = 0$）から Soyster 最悪保護（$\Gamma = n$）までの連続調整**: $\Gamma = 0$ では高利益（Case 1 で `237.14`）な反面変動に脆く、$\Gamma = n$ では過剰防衛（Case 2 で `172`）になります。中間の $\Gamma$ では上位のリスク露出 $\hat{a}_j x_j$ を均等化するように分散生産されます（Case 0 では全 3 品目が均等に $3$）。
+- **ノミナル（$\Gamma = 0$）から Soyster 最悪保護（$\Gamma = n$）までの連続調整**: $\Gamma = 0$ では高利益（Case 1 で 237.14）な反面変動に脆く、$\Gamma = n$ では過剰防衛（Case 2 で 172）になります。中間の $\Gamma$ では上位のリスク露出 $\hat{a}_j x_j$ を均等化するように分散生産されます（Case 0 では全 3 製品が均等に $3$）。
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+双対変数 `z` と `p` を非負連続変数として定義し、`input.deviations.map(...)` で各製品の最悪偏差を抑える制約を登録したうえで、容量制約の左辺へ `gamma * z + sum(p)` を加算します。
 
 **WaSHI (TypeScript)**
 

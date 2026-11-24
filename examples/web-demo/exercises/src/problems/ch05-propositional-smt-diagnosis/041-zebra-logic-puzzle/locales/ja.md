@@ -10,7 +10,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `n` | `number` | 位置の数（左から右へ `0` から `n - 1`） |
+| `n` | `number` | 位置の数（左から右へ 0 から `n - 1`） |
 | `categories` | `Record<string, string[]>` | カテゴリ名から `n` 個の相異なる属性値配列へのマップ |
 | `clues` | `ZebraClue[]` | 構造化ヒント（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
 
@@ -56,7 +56,7 @@
 }
 ```
 
-位置 `0` が red/cat/tea、位置 `1` が green/bird/water、位置 `2` が blue/dog/coffee となり、すべての唯一割り当てと位置ヒントを満たします。
+位置 0 が red/cat/tea、位置 1 が green/bird/water、位置 2 が blue/dog/coffee となり、各カテゴリ・位置への重複ない割り当てとすべての位置ヒントを満たします。
 
 
 <!-- section:hint1 -->

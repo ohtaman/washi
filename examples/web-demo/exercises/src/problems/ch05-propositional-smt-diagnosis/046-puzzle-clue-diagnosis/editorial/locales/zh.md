@@ -18,6 +18,8 @@ $$
 
 ## 核心实现
 
+将初始 `unsatCore` 作为候选集合 `core`，依次移除单个线索 ID 并重新执行 `checkSubset`，若仍为 `"Unsat"` 则将该线索剔除并继续收缩。
+
 **WaSHI (TypeScript)**
 
 ```ts

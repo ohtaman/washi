@@ -10,7 +10,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `numElements` | `number` | 対象要素数（インデックス `0` 〜 `numElements - 1`） |
+| `numElements` | `number` | 対象要素数（インデックス 0 〜 `numElements - 1`） |
 | `costs` | `number[]` | 各候補集合の導入コスト |
 | `sets` | `number[][]` | 各候補集合 $j$ がカバーする要素インデックスの配列 |
 
@@ -18,7 +18,7 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `selected` | `number[]` | 各候補集合の採択有無（`0` または `1`） |
+| `selected` | `number[]` | 各候補集合の採択有無（0 または 1） |
 | `totalCost` | `number` | 最小化された総コスト |
 
 <!-- section:example -->

@@ -22,18 +22,19 @@ $$
 
 ## 実装の勘所
 
+顧客インデックス配列 `customers` に対して `flatMap` と `filter` で異なる顧客ペアを列挙し、容量ベースの MTZ 制約を一括登録します。これにより積載量上限と部分巡回路排除を同時に強制できます。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 1; i < n; i++) {
-  for (let j = 1; j < n; j++) {
-    if (i !== j) {
-      m.constraint(
-        expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`
-      );
-    }
-  }
-}
+const customers = Array.from({ length: n - 1 }, (_, k) => k + 1);
+m.constraint(
+  customers.flatMap((i) =>
+    customers
+      .filter((j) => i !== j)
+      .map((j) => expr`${u[i]!} - ${u[j]!} + ${Q} * ${x[i][j]!} <= ${Q - input.demands[j]}`)
+  )
+);
 ```
 
 **PuLP (Python)**

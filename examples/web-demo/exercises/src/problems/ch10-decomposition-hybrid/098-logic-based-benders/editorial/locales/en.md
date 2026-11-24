@@ -28,6 +28,8 @@ $$
 
 ## Key Implementation
 
+Inside the `subproblem` callback of `master.solveBenders`, verify each machine `m`'s assigned jobs with `checkMachineSchedule` (Pumpkin CP's `disjoint` constraint), and for any machine returning `Unsat`, extract a minimal conflict set and emit a no-good cut.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -35,7 +37,7 @@ const bendersRes = await master.solveBenders({
   maxIterations: 200,
   subproblem: async ({ getMasterValue }) => {
     const cuts: BendersCut[] = [];
-    for (let m = 0; m < M; m++) {
+    for (const m of Array.from({ length: M }, (_, idx) => idx)) {
       const assigned = jobs.filter((j) => getMasterValue(x[j][m]) > 0.5);
       const check = await checkMachineSchedule(input, assigned);
       if (check.sat) continue;

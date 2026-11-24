@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Since `compositions[i][k]` has raw metals as rows and elements as columns, extract each element's column vector, take its dot product with `amounts`, and construct both the lower- and upper-bound constraints together.
+
 **WaSHI (TypeScript)**
 
 ```ts

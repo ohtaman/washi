@@ -22,6 +22,8 @@ $$
 
 ## 実装の勘所
 
+総需要の下限制約を登録し、各サプライヤについて Glover / McCormick の 4 本の不等式を `flatMap` で展開して `m.constraint([...])` にまとめて渡します。
+
 **WaSHI (TypeScript)**
 
 ```ts

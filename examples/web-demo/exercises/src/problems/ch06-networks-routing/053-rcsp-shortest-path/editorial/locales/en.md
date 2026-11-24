@@ -20,15 +20,19 @@ $$
 
 ## Key Implementation
 
+Build unit flow conservation constraints across all nodes at once with `Array.from` (setting `source` to +1, `sink` to -1, and intermediate nodes to 0), and add the resource budget constraint capping the weighted sum of arc resource consumption at `maxResource`.
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let v = 0; v < input.nodeCount; v++) {
-  const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
-  const outVars = x.filter((_, i) => input.edges[i].from === v);
-  const inVars = x.filter((_, i) => input.edges[i].to === v);
-  m.constraint(expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`);
-}
+m.constraint(
+  Array.from({ length: input.nodeCount }, (_, v) => {
+    const rhs = v === input.source ? 1 : v === input.sink ? -1 : 0;
+    const outVars = x.filter((_, i) => input.edges[i].from === v);
+    const inVars = x.filter((_, i) => input.edges[i].to === v);
+    return expr`${sum(outVars)} - ${sum(inVars)} == ${rhs}`;
+  })
+);
 m.constraint(
   expr`${sum(x.map((v, i) => expr`${input.edges[i].resource} * ${v}`))} <= ${input.maxResource}`
 );

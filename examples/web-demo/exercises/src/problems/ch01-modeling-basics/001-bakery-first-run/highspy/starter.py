@@ -1,15 +1,15 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"croissants": float, "loaves": float, "totalProfit": float}."""
+def solve(flour_cap, butter_cap) -> dict:
+    """Return {"croissants": float, "loaves": float, "total_profit": float}."""
     prob = pulp.LpProblem("Bakery", pulp.LpMaximize)
 
     c = pulp.LpVariable("croissants", lowBound=0)
     l = pulp.LpVariable("loaves", lowBound=0)
 
-    prob += 2 * c + 3 * l <= input_data["flourCap"], "flour"
-    # TODO: Add butter constraint: prob += c + 2 * l <= input_data["butterCap"], "butter"
+    prob += 2 * c + 3 * l <= flour_cap, "flour"
+    # TODO: Add butter constraint: prob += c + 2 * l <= butter_cap, "butter"
     prob += 40 * c + 70 * l, "total_profit"
 
     prob.solve(pulp.HiGHS(msg=False))
@@ -17,5 +17,5 @@ def solve(input_data: dict) -> dict:
     return {
         "croissants": float(pulp.value(c)),
         "loaves": float(pulp.value(l)),
-        "totalProfit": float(pulp.value(prob.objective)),
+        "total_profit": float(pulp.value(prob.objective)),
     }

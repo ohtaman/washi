@@ -1,25 +1,25 @@
-# #006. 0-1 Project Selection (Binary Variables)
+# #006. Disaster-Prevention Equipment Selection (0-1 Binary Variables)
 
 <!-- section:scenario -->
-A product team is evaluating a list of candidate R&D projects under a fixed total budget. Each project is strictly **all-or-nothing**: either approve it in full (incurring its full cost and gaining its full strategic value) or skip it.
+A municipality is selecting disaster-prevention equipment (such as security cameras, backup generators, and AEDs) from a list of candidates within a fixed total budget (in 10,000 yen). Each item is strictly **all-or-nothing**: you cannot install half of a unit—you either install it (incurring its full cost and gaining its expected disaster-prevention score) or skip it.
 
-Select a subset of projects to **maximize total value** without exceeding the available budget.
+Select a subset of equipment to **maximize the total score** without exceeding the available budget.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `budget` | `number` | Available total budget |
-| `costs` | `number[]` | Cost required by each candidate project |
-| `values` | `number[]` | Strategic value delivered by each project |
+| `budget` | `number` | Available total budget (10,000 yen) |
+| `costs` | `number[]` | Required cost of each equipment item (10,000 yen) |
+| `values` | `number[]` | Expected disaster-prevention score of each item |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary choices (`0` or `1`) for each project |
-| `totalValue` | `number` | Maximized total value |
+| `selected` | `number[]` | Binary installation flags (`0` or `1`) for each item |
+| `totalValue` | `number` | Maximized total score |
 
 <!-- section:example -->
 **Input**
@@ -41,4 +41,4 @@ Select a subset of projects to **maximize total value** without exceeding the av
 }
 ```
 
-Selecting projects 1, 2, and 3 (`[0, 1, 1, 1, 0]`) uses $5 + 7 + 3 = 15$ of the 15 budget and gives total value $12 + 16 + 8 =$ **36**.
+Selecting items 1, 2, and 3 (`[0, 1, 1, 1, 0]`) gives total cost $5 + 7 + 3 = 15 \le 15$ (within budget) and total score $12 + 16 + 8 =$ **36**.

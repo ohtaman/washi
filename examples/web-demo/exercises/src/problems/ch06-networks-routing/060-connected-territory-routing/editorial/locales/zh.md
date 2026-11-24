@@ -24,20 +24,26 @@ $$
 
 ## 实现要点
 
+对所有小区 `nodes` 施加出度与入度为 1 的约束，同时使用 `filter` 和 `flatMap` 枚举不同小区对 `(i, j)`，统一注册同辖区限制与基于枢纽的 MTZ 约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let i = 0; i < n; i++) {
+const nodes = Array.from({ length: n }, (_, i) => i);
+const territories = Array.from({ length: K }, (_, k) => k);
+
+nodes.forEach((i) => {
   m.constraint(expr`${sum(x[i].filter((v) => v !== null))} == 1`);
   m.constraint(expr`${sum(x.map((row) => row[i]).filter((v) => v !== null))} == 1`);
-  for (let j = 0; j < n; j++) {
-    if (i === j) continue;
-    for (let k = 0; k < K; k++) {
-      m.constraint(expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`);
-    }
-    m.constraint(expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`);
-  }
-}
+  m.constraint(
+    nodes
+      .filter((j) => i !== j)
+      .flatMap((j) => [
+        ...territories.map((k) => expr`${y[i][k]} - ${y[j][k]} <= 1 - ${x[i][j]!}`),
+        expr`${u[i]} + 1 - ${u[j]} <= ${n} * (1 - ${x[i][j]!} + ${sum(h[j])})`,
+      ])
+  );
+});
 ```
 
 **PuLP (Python)**

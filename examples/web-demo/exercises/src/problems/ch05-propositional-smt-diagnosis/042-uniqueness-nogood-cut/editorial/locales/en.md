@@ -14,10 +14,12 @@ $$
 ## Key Points
 
 - **Exact blocking clause (De Morgan)**: Requiring the new assignment to differ from $x^*$ in at least one variable is $\neg\bigl(\bigwedge_i (x_i = x^*_i)\bigr)$, which equals a single disjunction where true variables appear negated and false variables appear positive (for the sample `{ a: true, b: true, c: false, d: true }`, this is `or(not(a), not(b), c, not(d))`).
-- **Refutation as an `AC` proof**: When the second `m.check()` returns `"Unsat"`, that solver status is the mathematical proof of uniqueness (`unique: true`), not a modeling error.
+- **Refutation as a uniqueness proof**: When the second `m.check()` returns `"Unsat"`, that solver status is the mathematical proof of uniqueness (`unique: true`), not a modeling error.
 - Related definitions: [Guide & Glossary — Solver Statuses](?view=guide&lang=en#solver-status).
 
 ## Key Implementation
+
+Extract the assignment from the first `m.check({ solver: "z3" })` using `Object.fromEntries`, add a `nogood_cut` constraint that negates only that assignment, and call `m.check` again—if the second check returns `"Unsat"`, the solution is unique.
 
 **WaSHI (TypeScript)**
 

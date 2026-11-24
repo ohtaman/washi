@@ -11,10 +11,12 @@ $$
 ## Key Points
 
 - In every exercise, the judge calls the `solve` function in the editor once per test case and checks the **returned** object rather than console output.
-- Running the untouched starter returns `0`, which produces **VIOLATION**; updating it to return `a + b` passes all cases with **AC**.
+- Running the untouched starter returns 0, which produces **VIOLATION**; updating it to return `a + b` passes all cases with **AC**.
 - Before moving on to **#001**, you can review decision variables, constraints, and verdicts in the [Guide & Glossary](?view=guide&lang=en#solve-contract).
 
 ## Key Implementation
+
+Add the two input numbers `a` and `b` and return the result in the `sum` field.
 
 **WaSHI (TypeScript)**
 
@@ -25,5 +27,5 @@ return { sum: input.a + input.b };
 **PuLP (Python)**
 
 ```python
-return {"sum": input_data["a"] + input_data["b"]}
+return {"sum": a + b}
 ```

@@ -14,11 +14,13 @@ $$
 
 ## ポイント
 
-- **$\eta$ を必ず自由変数（`lb: -Infinity` / `lowBound=None`）にする**: WaSHI も PuLP もデフォルトの下界は `0` です。Case 1 のようにテールシナリオでもリターンが正（損失が負、$\eta^* = -0.0428$）のとき、$\eta \ge 0$ のままだと CVaR が歪み最適解に到達できません（`-0.0596` 対 `-0.1742`）。
+- **$\eta$ を必ず自由変数（`lb: -Infinity` / `lowBound=None`）にする**: WaSHI も PuLP もデフォルトの下界は 0 です。Case 1 のようにテールシナリオでもリターンが正（損失が負、$\eta^* = -0.0428$）のとき、$\eta \ge 0$ のままだと CVaR が歪み最適解に到達できません（-0.0596 対 -0.1742）。
 - **VaR の非凸性と CVaR の凸性**: VaR（分位点）の直接制約は 0-1 変数を必要としますが、CVaR は整数変数ゼロの厳密な凸線形計画として高速に解けます。
 - 用語の確認: [ガイド・用語集 — 上下界](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
+
+補助しきい値変数 `eta` を `{ lb: -Infinity, ub: Infinity }` で自由変数として宣言し、`input.returns.map(...)` で各シナリオのヒンジ不等式を一括登録して CVaR の線形表現を組み立てます。
 
 **WaSHI (TypeScript)**
 

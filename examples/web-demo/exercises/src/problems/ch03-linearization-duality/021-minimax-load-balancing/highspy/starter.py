@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"assignments": list[list[float]], "peakLoad": float}."""
-    weights = input_data["weights"]
-    compatible = input_data["compatible"]
+def solve(weights, compatible) -> dict:
+    """Return {"assignments": list[list[float]], "peak_load": float}."""
     n_jobs = len(weights)
     n_servers = len(compatible[0])
 

@@ -22,20 +22,20 @@ $$
 
 ## 实现要点
 
+使用 `flatMap` 枚举不同客户对 `(ci, cj)`，并利用跨所有车场的边变量之和 `yij` 统一注册针对共享载重势能 `u` 的 MTZ 约束。
+
 **WaSHI (TypeScript)**
 
 ```ts
-for (let idxI = 0; idxI < customers.length; idxI++) {
-  for (let idxJ = 0; idxJ < customers.length; idxJ++) {
-    if (idxI === idxJ) continue;
-    const ci = customers[idxI];
-    const cj = customers[idxJ];
-    const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
-    m.constraint(
-      expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`
-    );
-  }
-}
+m.constraint(
+  customers.flatMap((ci, idxI) =>
+    customers.flatMap((cj, idxJ) => {
+      if (idxI === idxJ) return [];
+      const yij = sum(x.map((xd) => xd.get(`${ci}_${cj}`)!));
+      return [expr`${u[idxI]} - ${u[idxJ]} + ${Q} * ${yij} <= ${Q - input.demands[cj]}`];
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

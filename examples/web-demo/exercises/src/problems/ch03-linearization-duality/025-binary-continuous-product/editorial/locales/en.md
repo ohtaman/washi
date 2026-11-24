@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Register the total demand lower-bound constraint, then expand the four Glover/McCormick inequalities for each supplier with `flatMap` and pass them together to `m.constraint([...])`.
+
 **WaSHI (TypeScript)**
 
 ```ts

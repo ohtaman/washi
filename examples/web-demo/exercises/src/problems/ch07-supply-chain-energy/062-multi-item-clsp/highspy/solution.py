@@ -1,14 +1,15 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"setups": list[list[int]], "production": list[list[float]], "inventory": list[list[float]], "totalCost": float}."""
-    demands = input_data["demands"]
-    setup_costs = input_data["setupCosts"]
-    hold_costs = input_data["holdCosts"]
-    unit_times = input_data["unitTimes"]
-    setup_times = input_data["setupTimes"]
-    capacities = input_data["capacities"]
+def solve(
+    demands,
+    setup_costs,
+    hold_costs,
+    unit_times,
+    setup_times,
+    capacities,
+) -> dict:
+    """Return {"setups": list[list[int]], "production": list[list[float]], "inventory": list[list[float]], "total_cost": float}."""
     n_items = len(demands)
     T = len(capacities)
 
@@ -54,5 +55,5 @@ def solve(input_data: dict) -> dict:
         "setups": [[round(pulp.value(v)) for v in row] for row in setups],
         "production": [[float(pulp.value(v)) for v in row] for row in production],
         "inventory": [[float(pulp.value(v)) for v in row] for row in inventory],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

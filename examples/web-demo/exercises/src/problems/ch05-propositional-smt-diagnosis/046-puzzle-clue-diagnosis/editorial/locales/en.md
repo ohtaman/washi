@@ -18,6 +18,8 @@ $$
 
 ## Key Implementation
 
+Initialize `core` from the initial `unsatCore`, then re-run `checkSubset` after removing one clue ID at a time and shrink `core` whenever the subset remains `"Unsat"`.
+
 **WaSHI (TypeScript)**
 
 ```ts

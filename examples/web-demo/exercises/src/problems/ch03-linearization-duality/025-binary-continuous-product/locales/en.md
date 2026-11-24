@@ -1,30 +1,30 @@
 # #025. Binary-Continuous Product (Glover Linearization)
 
 <!-- section:scenario -->
-A procurement team must order continuous quantities from several qualified suppliers to satisfy a total demand target. Every supplier enforces a strictly positive minimum order commitment and a maximum supply limit regardless of discount status, charging a standard base cost per unit.
+A procurement specialist is planning raw material orders (continuous quantities in kg) from multiple suppliers to meet a total demand requirement. Regardless of whether a discount contract is signed, each supplier has a minimum order quantity (kg) and a maximum supply limit (kg), with a standard base unit price (JPY/kg).
 
-For each supplier, the team can optionally sign an annual discount contract for a one-time fixed fee, earning a per-unit rebate on every unit purchased from that supplier. Choose which discount contracts to sign, the order quantities, and the linearized discounted volume terms to **minimize total net procurement cost**.
+By paying a fixed contract fee (JPY) for a supplier, you can sign a discount contract that grants a per-kg discount on every kilogram ordered from that supplier. Decide whether to sign each contract, the order quantity for each supplier, and the discounted volume representing their product, so as to **minimize total procurement cost (JPY)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `minOrders` | `number[]` | Minimum order quantity $L_i$ from supplier $i$ |
-| `maxOrders` | `number[]` | Maximum supply limit $U_i$ from supplier $i$ |
-| `baseCosts` | `number[]` | Standard unit price $c_i$ |
-| `discounts` | `number[]` | Per-unit rebate $d_i$ when contract $b_i = 1$ |
-| `contractFees` | `number[]` | Fixed fee $F_i$ to activate contract $b_i = 1$ |
-| `totalDemand` | `number` | Minimum total quantity $\sum_i x_i$ required |
+| `minOrders` | `number[]` | Minimum order quantity $L_i$ for supplier $i$ (kg) |
+| `maxOrders` | `number[]` | Maximum supply limit $U_i$ for supplier $i$ (kg) |
+| `baseCosts` | `number[]` | Base unit price $c_i$ for supplier $i$ (JPY/kg) |
+| `discounts` | `number[]` | Unit discount $d_i$ when contracted ($b_i = 1$) (JPY/kg) |
+| `contractFees` | `number[]` | Fixed contract fee $F_i$ when contracted (JPY) |
+| `totalDemand` | `number` | Required lower bound on total order quantity $\sum_i x_i$ (kg) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `b` | `number[]` | Binary (`0` or `1`) discount contract selections |
-| `x` | `number[]` | Order quantities $x_i \in [L_i, U_i]$ |
-| `z` | `number[]` | Linearized bilinear products $z_i = b_i x_i$ |
-| `totalCost` | `number` | Minimized net procurement cost |
+| `b` | `number[]` | Discount contract selection (0 or 1) |
+| `x` | `number[]` | Order quantity $x_i \in [L_i, U_i]$ for each supplier (kg) |
+| `z` | `number[]` | Discounted volume representing the product $z_i = b_i x_i$ (kg) |
+| `totalCost` | `number` | Minimized total procurement cost (JPY) |
 
 <!-- section:example -->
 **Input**
@@ -51,7 +51,7 @@ For each supplier, the team can optionally sign an annual discount contract for 
 }
 ```
 
-Ordering `[50, 15, 30]` totals $95 \ge 95$ within bounds, activates only contract 0 (`z = [50, 0, 0]`), and costs $(20 \times 50 + 22 \times 15 + 18 \times 30) + 160 - 5 \times 50 =$ **1,780**.
+Order quantities [50, 15, 30] total $95 \ge 95$ kg and satisfy all bounds; signing only with supplier 0 (`z` is [50, 0, 0]) yields a total cost of $(20 \times 50 + 22 \times 15 + 18 \times 30) + 160 - 5 \times 50 =$ **1,780** JPY.
 
 
 <!-- section:hint1 -->

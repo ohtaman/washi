@@ -22,7 +22,9 @@ $$
 - **最小余剰変数の下限**: 合計家賃が総評価額を上回り余剰が負になる場合にも対応できるよう、`minSurplus` は非負制約なし（WaSHI では `lb: -Infinity`、PuLP では `lowBound=None`）で宣言します。
 - 関連用語: [ガイド＆用語集 — 問題ファミリー](?view=guide&lang=ja#paradigms) / [判定ステータス](?view=guide&lang=ja#verdicts)。
 
-## 実装のポイント
+## 実装の勘所
+
+第1段階の割当モデル `m1` を解いて部屋割り $\sigma$ を確定させた後、第2段階のモデル `m2` を新規に構築し、`rents` の下限を 0、`minSurplus` を符号制約なしの自由変数として定義します。
 
 **WaSHI (TypeScript)**
 

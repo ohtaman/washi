@@ -1,15 +1,20 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"openPlants": list[int], "openDcs": list[int], "plantToDc": list[list[float]], "dcToCustomer": list[list[float]], "totalCost": float}."""
-    plant_fixed = input_data["plantFixedCosts"]
-    plant_caps = input_data["plantCaps"]
-    dc_fixed = input_data["dcFixedCosts"]
-    dc_caps = input_data["dcCaps"]
-    demands = input_data["demands"]
-    p2d_costs = input_data["plantDcCosts"]
-    d2c_costs = input_data["dcCustomerCosts"]
+def solve(
+    plant_fixed_costs,
+    plant_caps,
+    dc_fixed_costs,
+    dc_caps,
+    demands,
+    plant_dc_costs,
+    dc_customer_costs,
+) -> dict:
+    """Return {"open_plants": list[int], "open_dcs": list[int], "plant_to_dc": list[list[float]], "dc_to_customer": list[list[float]], "total_cost": float}."""
+    plant_fixed = plant_fixed_costs
+    dc_fixed = dc_fixed_costs
+    p2d_costs = plant_dc_costs
+    d2c_costs = dc_customer_costs
     n_plants = len(plant_caps)
     n_dcs = len(dc_caps)
     n_custs = len(demands)
@@ -56,9 +61,9 @@ def solve(input_data: dict) -> dict:
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "openPlants": [round(pulp.value(v)) for v in open_plants],
-        "openDcs": [round(pulp.value(v)) for v in open_dcs],
-        "plantToDc": [[float(pulp.value(v)) for v in row] for row in plant_to_dc],
-        "dcToCustomer": [[float(pulp.value(v)) for v in row] for row in dc_to_cust],
-        "totalCost": float(pulp.value(prob.objective)),
+        "open_plants": [round(pulp.value(v)) for v in open_plants],
+        "open_dcs": [round(pulp.value(v)) for v in open_dcs],
+        "plant_to_dc": [[float(pulp.value(v)) for v in row] for row in plant_to_dc],
+        "dc_to_customer": [[float(pulp.value(v)) for v in row] for row in dc_to_cust],
+        "total_cost": float(pulp.value(prob.objective)),
     }

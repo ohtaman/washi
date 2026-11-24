@@ -24,6 +24,8 @@ $$
 
 ## Key Implementation
 
+Link each guest's gift budget with their invitation flag via lower and upper bounds, and sequentially add the implication, conflict, and group-minimum rules as linear inequalities over the `invite` variables.
+
 **WaSHI (TypeScript)**
 
 ```ts

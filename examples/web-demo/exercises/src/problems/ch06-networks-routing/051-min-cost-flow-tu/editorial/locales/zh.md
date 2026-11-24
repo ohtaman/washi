@@ -20,6 +20,8 @@ $$
 
 ## 实现要点
 
+为每条边分配连续变量 `flows[e]`，并通过 `input.supplies.map` 统一注册各节点净流出（流出和减去流入和）等于 `supply` 的流量守恒约束。
+
 **WaSHI (TypeScript)**
 
 ```ts

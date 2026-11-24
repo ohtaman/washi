@@ -1,21 +1,21 @@
 # #009. Multi-Period Production & Inventory
 
 <!-- section:scenario -->
-A factory plans regular production, overtime production, and end-of-period inventory across multiple consecutive time periods, starting from a known initial inventory level.
+An electric bicycle assembly plant plans regular production, overtime production, and end-of-period inventory across multiple consecutive periods (months), starting from a known initial inventory (units).
 
-In every period, regular and overtime production cannot exceed their respective period capacities, warehouse storage cannot exceed the holding cap, and beginning inventory plus total output minus customer demand must equal ending inventory (all non-negative). Furthermore, ending inventory after the final period must meet or exceed a required safety stock threshold. Schedule regular production, overtime production, and inventory levels to **minimize total production and holding cost**.
+In every period, regular and overtime production cannot exceed their respective period capacities, warehouse storage cannot exceed the holding cap, and beginning inventory plus regular and overtime output minus demand must equal ending inventory (all non-negative). Furthermore, ending inventory after the final period must meet or exceed a required safety stock threshold. Schedule regular production, overtime production, and inventory levels to **minimize total production and holding cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demands` | `number[]` | Customer demand in each period $t$ |
-| `regCap` | `number[]` | Maximum regular production capacity in each period $t$ |
-| `otCap` | `number[]` | Maximum overtime production capacity in each period $t$ |
-| `invCap` | `number` | Warehouse storage capacity in every period |
-| `initialInventory` | `number` | Opening stock before period 0 |
-| `minFinalInventory` | `number` | Minimum required ending stock after the last period |
+| `demands` | `number[]` | Bicycle demand in each period $t$ (units) |
+| `regCap` | `number[]` | Maximum regular production capacity in each period $t$ (units) |
+| `otCap` | `number[]` | Maximum overtime production capacity in each period $t$ (units) |
+| `invCap` | `number` | Warehouse storage capacity in every period (units) |
+| `initialInventory` | `number` | Opening stock before period 0 (units) |
+| `minFinalInventory` | `number` | Minimum required safety stock after the last period (units) |
 | `regCost` | `number` | Unit regular production cost |
 | `otCost` | `number` | Unit overtime production cost |
 | `holdCost` | `number` | Unit holding cost per period |

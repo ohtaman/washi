@@ -1,9 +1,9 @@
 # #047. Weighted MaxSAT Policy Repair
 
 <!-- section:scenario -->
-When operational preferences conflict with mandatory invariants, an organization must satisfy every hard rule while relaxing only the least costly subset of soft rules.
+In production server configuration management (such as TLS encryption, legacy APIs, fast mode, and audit logging), mandatory security invariants (hard rules) can conflict with operational or usability preferences (soft rules).
 
-Given Boolean variables, mandatory hard rules, and weighted soft rules, find a truth assignment that satisfies all hard rules and minimizes the total penalty weight of violated soft rules.
+Given Boolean configuration variables, mandatory hard rules, and soft rules with violation penalty weights, find a configuration assignment that satisfies all hard rules while minimizing the total penalty weight of violated soft rules.
 
 <!-- section:io -->
 ### Input
@@ -55,11 +55,11 @@ Given Boolean variables, mandatory hard rules, and weighted soft rules, find a t
 }
 ```
 
-Setting `tls = true, legacyApi = false, fastMode = false, audit = true` satisfies both hard rules and violates only `S2` for a total penalty of `2` (compared to violating `S1` at cost `5`).
+Setting `tls = true, legacyApi = false, fastMode = false, audit = true` satisfies both hard rules and violates only `S2` for a total penalty of 2 (compared to violating `S1` at cost 5).
 
 
 <!-- section:hint1 -->
-Model the system state with Boolean variables for `vars`, and pair each soft rule with a binary relaxation indicator that is `1` when that soft rule is allowed to be violated. Enforce every hard rule unconditionally, and minimize the weighted sum of the relaxation indicators.
+Model the system state with Boolean variables for `vars`, and pair each soft rule with a binary relaxation indicator that is 1 when that soft rule is allowed to be violated. Enforce every hard rule unconditionally, and minimize the weighted sum of the relaxation indicators.
 
 <!-- section:hint2 -->
 Declare `m.bool(input.vars)` and `m.binary(...)` indicators `viol[k]` for each soft rule `k`. Guard each soft rule with `or(softExpr, expr\`${viol[k]} == 1\`)`—minimizing `dot(weights, viol)` with positive weights naturally keeps `viol[k] = 0` whenever the soft rule can hold—and solve via `minimize(dot(weights, viol))` and `await m.solve({ solver: "z3" })`.

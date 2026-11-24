@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Only period 0 (`t === 0`) references the constant `initialInventory`; all subsequent periods link to the previous period's variable `inventory[t - 1]` to form the inventory-balance equalities.
+
 **WaSHI (TypeScript)**
 
 ```ts

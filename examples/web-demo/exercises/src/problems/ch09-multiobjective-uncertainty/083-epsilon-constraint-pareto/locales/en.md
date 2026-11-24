@@ -1,9 +1,9 @@
 # #083. Epsilon-Constraint Pareto Frontier
 
 <!-- section:scenario -->
-A portfolio planner must choose a binary subset of candidate capital projects within a fixed capital budget while balancing profit maximization against carbon emissions. Instead of collapsing both metrics into a single weight, management wants the exact trade-off curve across a list of emission limits.
+An investment planner must choose a binary (0-1) subset of candidate projects—such as new equipment and renewable energy installations—within a limited capital budget (in million JPY) while balancing total profit maximization against greenhouse gas emissions (in tons). Rather than collapsing both objectives into a single weight, management wants the exact trade-off curve (Pareto frontier) across a specified list of emission limits.
 
-For each threshold in the input emission cap array, select binary projects within the shared capital budget and that threshold's emission limit to **maximize profit**, and return all per-threshold selections, their profits, and the sum of frontier profits.
+For each threshold in the input emission cap array, find a 0-1 selection that maximizes profit while satisfying both the shared capital budget limit and that threshold's emission cap, and return the selection vectors, maximum profits, and total sum of frontier profits.
 
 <!-- section:io -->
 ### Input
@@ -20,7 +20,7 @@ For each threshold in the input emission cap array, select binary projects withi
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selections` | `number[][]` | Binary (`0`/`1`) selection vectors for each threshold $k$ |
+| `selections` | `number[][]` | 0-1 selection vectors for each threshold $k$ |
 | `frontierProfits` | `number[]` | Maximum achievable profit at each threshold $k$ |
 | `frontierSum` | `number` | Sum of `frontierProfits` across all thresholds |
 

@@ -23,6 +23,8 @@ $$
 
 ## 実装の勘所
 
+各ジョブの納期遅れ下界制約と、全ジョブ対に対する非重複の選言 Big-M 制約を構築します。WaSHI では `slice` と `forEach` で各ペアの 2 本の制約を配列として登録し、PuLP では二重ループと `pulp.lpDot` で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -31,15 +33,16 @@ m.constraint(
     (T, j) => expr`${T} >= ${starts[j]} + ${input.processingTimes[j]} - ${input.dueDates[j]}`
   )
 );
-for (let i = 0; i < n; i++) {
-  for (let j = i + 1; j < n; j++) {
+starts.forEach((sI, i) => {
+  starts.slice(i + 1).forEach((sJ, offset) => {
+    const j = i + 1 + offset;
     const y = m.binary(`y_${i}_${j}`);
     m.constraint([
-      expr`${starts[i]} + ${input.processingTimes[i]} <= ${starts[j]} + ${M} * (1 - ${y})`,
-      expr`${starts[j]} + ${input.processingTimes[j]} <= ${starts[i]} + ${M} * ${y}`,
+      expr`${sI} + ${input.processingTimes[i]} <= ${sJ} + ${M} * (1 - ${y})`,
+      expr`${sJ} + ${input.processingTimes[j]} <= ${sI} + ${M} * ${y}`,
     ]);
-  }
-}
+  });
+});
 m.objective(minimize(expr`dot(${input.weights}, ${tardiness})`));
 ```
 

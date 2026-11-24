@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Encode the share cap directly in the variable upper bound `ub` at declaration time, then add the active-supplier count bounds and per-supplier semi-continuous order constraints (minimum order and maximum capacity). In WaSHI, specify `ub` via the `m.continuous` options and build each supplier's total-order constraints with `forEach`.
+
 **WaSHI (TypeScript)**
 
 ```ts

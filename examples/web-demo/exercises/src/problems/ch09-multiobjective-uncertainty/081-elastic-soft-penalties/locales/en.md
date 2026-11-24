@@ -1,30 +1,30 @@
 # #081. Elastic Programming & Tiered Soft Penalties
 
 <!-- section:scenario -->
-A plant produces continuous quantities of several products under two strict rules: total machine hours used cannot exceed the available machine capacity, and total output across all products must meet or exceed a required floor.
+A confectionery factory decides the continuous production quantities (in kg, $\ge 0$) of several baked and confectionery items such as chocolate, cookies, and madeleines. Total machine hours consumed across the factory must not exceed the available machine capacity, and total output across all products must meet or exceed a required minimum (in kg).
 
-Each product also has a soft production target. Falling below target incurs a per-unit shortfall penalty according to the product's priority tier, while exceeding target incurs a per-unit excess penalty. Determine non-negative production quantities and target deviations to **minimize total production cost plus soft-target penalties**.
+Each product also has a target production quantity (in kg). Falling below target incurs a priority-tiered shortfall penalty per kg, while exceeding target incurs an excess penalty per kg. While strictly satisfying the hard constraints, minimize the sum of production costs and target deviation penalties.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `unitCosts` | `number[]` | Direct production cost per unit of each product |
-| `hours` | `number[]` | Machine hours consumed per unit of each product |
-| `targets` | `number[]` | Soft production target for each product |
-| `shortfallPenalties` | `number[]` | Tiered penalty per unit below target |
-| `excessPenalties` | `number[]` | Penalty per unit above target |
-| `machineCap` | `number` | Hard upper limit on total machine hours |
-| `minTotal` | `number` | Hard lower limit on total produced quantity |
+| `unitCosts` | `number[]` | Production cost per kg of each product |
+| `hours` | `number[]` | Machine hours consumed per kg of each product (hours) |
+| `targets` | `number[]` | Soft production target for each product (kg) |
+| `shortfallPenalties` | `number[]` | Tiered penalty per kg below target |
+| `excessPenalties` | `number[]` | Penalty per kg above target |
+| `machineCap` | `number` | Hard upper limit on total machine hours (hours) |
+| `minTotal` | `number` | Hard lower limit on total produced quantity (kg) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `quantities` | `number[]` | Continuous non-negative production quantities |
-| `shortfalls` | `number[]` | Non-negative underproduction below each target |
-| `excesses` | `number[]` | Non-negative overproduction above each target |
+| `quantities` | `number[]` | Production quantities of each product (non-negative real values, kg) |
+| `shortfalls` | `number[]` | Shortfall below each target (kg) |
+| `excesses` | `number[]` | Excess above each target (kg) |
 | `totalCost` | `number` | Minimized sum of production costs and deviation penalties |
 
 <!-- section:example -->

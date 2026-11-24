@@ -29,6 +29,8 @@ $$
 
 ## Key Implementation
 
+Inside the `pricing` callback, read the shared constraint's dual price `piShared`, build and solve each plant's block LP using `input.productCaps.entries()`, and return extreme points with positive reduced profit as `proposals`.
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,10 +40,11 @@ const result = await solveColumnGeneration<DwColumnMeta>({
   pricing: async ({ getDual }) => {
     const piShared = getDual("shared_cap");
     const proposals: Array<ColumnProposal<DwColumnMeta>> = [];
-    for (let k = 0; k < K; k++) {
+    for (const [k, caps] of input.productCaps.entries()) {
       const muK = getDual(`conv_${k}`);
       const sub = new Model(`BlockPricing_${k}`);
-      const x = input.productCaps[k].map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const x = caps.map((cap, j) => sub.continuous(`x_${k}_${j}`, { lb: 0, ub: cap }));
+      const reducedUnits = input.profits[k].map((p, j) => p - piShared * input.sharedUsages[k][j]);
       sub.objective(maximize(expr`dot(${reducedUnits}, ${x})`));
       sub.constraint(expr`dot(${input.localUsages[k]}, ${x}) <= ${input.localCaps[k]}`);
       if ((await sub.solve()) !== "Optimal") continue;

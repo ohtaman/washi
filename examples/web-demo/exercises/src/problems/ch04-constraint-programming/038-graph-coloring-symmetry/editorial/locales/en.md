@@ -23,6 +23,8 @@ $$
 
 ## Key Implementation
 
+In addition to requiring distinct colors at both endpoints of every edge, register the symmetry-breaking constraints that introduce new color numbers sequentially from the first vertex and the upper-bound constraints for `maxColor`, then minimize `maxColor + 1`.
+
 **WaSHI (TypeScript)**
 
 ```ts

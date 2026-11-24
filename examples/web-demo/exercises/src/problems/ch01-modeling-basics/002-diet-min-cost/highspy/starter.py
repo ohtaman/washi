@@ -1,8 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"oats": float, "beans": float, "totalCost": float}."""
+def solve(min_protein, min_fiber) -> dict:
+    """Return {"oats": float, "beans": float, "total_cost": float}."""
     prob = pulp.LpProblem("diet", pulp.LpMinimize)
 
     oats = pulp.LpVariable("oats", lowBound=0)
@@ -16,5 +16,5 @@ def solve(input_data: dict) -> dict:
     return {
         "oats": float(pulp.value(oats)),
         "beans": float(pulp.value(beans)),
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

@@ -1,18 +1,18 @@
 # #038. Graph Coloring with Symmetry Breaking
 
 <!-- section:scenario -->
-Given an undirected graph with numNodes vertices and a list of edges, assign each vertex an integer color from 0 to maxColors - 1. Every pair of vertices connected by an edge must receive different colors.
+A radio spectrum planner is assigning frequency channels (0-based integer indices) within an available limit to wireless base stations on an undirected interference graph. Any two base stations that interfere with each other (connected by an edge) must be assigned different channel numbers.
 
-Find a valid coloring that minimizes the total number of distinct colors used.
+Among all valid interference-free channel assignments (colorings), minimize the total number of distinct channels (colors) used.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `numNodes` | `number` | Number of graph vertices (`0` to `numNodes - 1`) |
-| `maxColors` | `number` | Upper bound on available color indices (`0` to `maxColors - 1`) |
-| `edges` | `number[][]` | Undirected edges `[u, v]` requiring `colors[u] != colors[v]` |
+| `numNodes` | `number` | Number of base stations (vertices, `0` to `numNodes - 1`) |
+| `maxColors` | `number` | Number of available channel (color) indices (`0` to `maxColors - 1`) |
+| `edges` | `number[][]` | List of interfering pairs (undirected edges `[u, v]`) requiring `colors[u] != colors[v]` |
 
 ### Output
 
@@ -47,7 +47,7 @@ Find a valid coloring that minimizes the total number of distinct colors used.
 }
 ```
 
-Every edge connects vertices with distinct colors—`(0, 1)`, `(1, 2)`, `(2, 0)`, `(2, 3)`, and `(3, 4)`—using **3** distinct colors `{0, 1, 2}`.
+Every edge—(0, 1), (1, 2), (2, 0), (2, 3), and (3, 4)—has different channel numbers at its endpoints, using **3** distinct channels {0, 1, 2}.
 
 <!-- section:hint1 -->
 Introduce one integer color variable per vertex and an integer variable tracking the maximum color index used. Because color labels are interchangeable, enforce canonical first-appearance numbering across vertices so each new color is introduced in order without gaps, then minimize the number of used colors.

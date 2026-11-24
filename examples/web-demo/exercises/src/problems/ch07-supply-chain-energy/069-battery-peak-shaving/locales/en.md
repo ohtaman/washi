@@ -61,7 +61,7 @@ Charging adds energy scaled by the charging efficiency while discharging drains 
 }
 ```
 
-Charging off-peak up to `soc = 78` and discharging during periods 3–4 caps net grid loads at `[70, 80, 80, 80, 70.6, 80]` (`peakLoad = 80`) while ending at `soc = 30`, giving total cost $93.968 + 8 \times 80 =$ **733.968**.
+Charging off-peak up to `soc = 78` and discharging during periods 3–4 caps net grid loads at [70, 80, 80, 80, 70.6, 80] (`peakLoad = 80`) while ending at final SOC 30, giving total cost $93.968 + 8 \times 80 =$ **733.968**.
 
 
 <!-- section:hint1 -->

@@ -1,14 +1,18 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"quantities": list[float], "duals": list[float], "optimalCost": float}."""
-    costs = input_data["costs"]
-    capacities = input_data["capacities"]
-    yields = input_data["yields"]
-    min_reqs = input_data["minRequirements"]
-    usages = input_data["resourceUsages"]
-    max_res = input_data["maxResources"]
+def solve(
+    costs,
+    capacities,
+    yields,
+    min_requirements,
+    resource_usages,
+    max_resources,
+) -> dict:
+    """Return {"quantities": list[float], "duals": list[float], "optimal_cost": float}."""
+    min_reqs = min_requirements
+    usages = resource_usages
+    max_res = max_resources
     n = len(costs)
 
     prob = pulp.LpProblem("shadow_prices", pulp.LpMinimize)
@@ -29,5 +33,5 @@ def solve(input_data: dict) -> dict:
     return {
         "quantities": [float(pulp.value(v)) for v in quantities],
         "duals": [0.0 if abs(c.pi) < 1e-9 else float(c.pi) for c in req_constrs + cap_constrs],
-        "optimalCost": float(pulp.value(prob.objective)),
+        "optimal_cost": float(pulp.value(prob.objective)),
     }

@@ -1,10 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"selectedNodes": list[int], "selectedEdges": list[int], "netValue": float}."""
-    prizes = input_data["prizes"]
-    edges = input_data["edges"]
+def solve(prizes, edges) -> dict:
+    """Return {"selected_nodes": list[int], "selected_edges": list[int], "net_value": float}."""
     n = len(prizes)
     m = len(edges)
 
@@ -42,7 +40,7 @@ def solve(input_data: dict) -> dict:
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "selectedNodes": [round(pulp.value(v)) for v in y],
-        "selectedEdges": [round(pulp.value(v)) for v in w],
-        "netValue": float(pulp.value(prob.objective)),
+        "selected_nodes": [round(pulp.value(v)) for v in y],
+        "selected_edges": [round(pulp.value(v)) for v in w],
+        "net_value": float(pulp.value(prob.objective)),
     }

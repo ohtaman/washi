@@ -1,6 +1,6 @@
 ## 解题思路
 
-将表示产线开关的 0-1 变量 `open` 与非负连续产量 `quantities` 绑定，通过产能门控约束 `quantities[i] <= capacities[i] * open[i]` 限制未开启产线零产出，并在共享原材料限制下最大化净利润（毛利之和减去固定成本之和）。
+将表示产线开启状态的 0-1 变量 `open` 与非负连续产量 `quantities` 配对，通过 `quantities[i] <= capacities[i] * open[i]` 联动开关与产能上限，在树脂颗粒库存上限约束下最大化净利润（毛利之和减去固定成本之和）。
 
 ## 数学模型
 
@@ -20,6 +20,8 @@ $$
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
+
+用 `quantities[i] <= capacities[i] * open[i]` 将 0-1 变量 `open[i]` 与连续变量 `quantities[i]` 关联起来，并将毛利与固定成本之差写入同一个目标函数中。
 
 **WaSHI (TypeScript)**
 

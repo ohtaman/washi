@@ -31,6 +31,8 @@ $$
 
 ## Key Implementation
 
+In the Phase 1 Implicit Hitting Set loop, extract only the soft rules from the UNSAT core returned by `checkPolicyWithZ3`, append them to `hittingSets`, and iterate while updating the minimum-weight `droppedSet` via `solveHittingSetMip` until `"Sat"` is reached.
+
 **WaSHI (TypeScript)**
 
 ```ts

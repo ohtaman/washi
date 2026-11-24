@@ -1,9 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"setlist": list[int], "totalCost": float}."""
-    transitions = input_data["transitions"]
+def solve(transitions) -> dict:
+    """Return {"setlist": list[int], "total_cost": float}."""
     n = len(transitions)
 
     prob = pulp.LpProblem("dj_setlist_tour", pulp.LpMinimize)
@@ -41,5 +40,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "setlist": setlist,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

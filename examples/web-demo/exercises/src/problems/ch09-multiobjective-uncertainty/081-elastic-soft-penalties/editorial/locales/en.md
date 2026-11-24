@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Register all product target balance equations at once using `input.targets.map(...)` with `shortfalls` and `excesses` slacks, and express the machine capacity, minimum total output, and objective concisely with `dot` and `sum`.
+
 **WaSHI (TypeScript)**
 
 ```ts

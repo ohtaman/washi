@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Generate all plant linking constraints at once inside `quantities.map(...)` using `Math.min(input.capacities[i], input.demand)` as the tight upper bound, then call `await m.relax()` on the same model `m` to obtain the LP relaxation lower bound before solving the MIP with `await m.solve()`.
+
 **WaSHI (TypeScript)**
 
 ```ts

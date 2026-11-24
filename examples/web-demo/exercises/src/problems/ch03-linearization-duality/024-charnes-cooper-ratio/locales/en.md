@@ -1,29 +1,29 @@
 # #024. Linear-Fractional Efficiency Ratio (Charnes-Cooper)
 
 <!-- section:scenario -->
-An operations division must choose continuous activity levels subject to linear resource limits and individual upper bounds. Rather than maximizing raw profit, management wants to **maximize the return-to-resource efficiency ratio** where both numerator (net return plus fixed offset) and denominator (resource usage plus positive base cost) are linear functions of the activity levels.
+A precision parts factory production planner is deciding non-negative production quantities (in units) for multiple precision parts subject to shared resource capacities (such as raw materials and machining hours) and per-part production upper bounds. Rather than maximizing raw profit, the planner wants to **maximize the investment efficiency ratio**—the ratio of total net return including fixed income (in 10k JPY) to total input cost including base maintenance cost (in 10k JPY).
 
-Choose the non-negative activity vector within all resource and upper limits to **maximize the linear-fractional ratio**.
+Using the Charnes-Cooper transformation, which scales the entire problem by the reciprocal of the denominator to linearize it, find the production quantities and maximum ratio that satisfy all resource constraints and production upper bounds while **maximizing the efficiency ratio**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `numCoeffs` | `number[]` | Numerator marginal return vector $c$ |
-| `numConst` | `number` | Numerator constant offset $c_0$ |
-| `denCoeffs` | `number[]` | Non-negative denominator vector $d$ |
-| `denConst` | `number` | Strictly positive denominator base constant $d_0 > 0$ |
-| `usages` | `number[][]` | Resource consumption matrix $A$ |
-| `capacities` | `number[]` | Resource capacity limits $b$ |
-| `upperBounds` | `number[]` | Per-activity upper bounds $u$ |
+| `numCoeffs` | `number[]` | Numerator net return per unit vector $c$ (10k JPY/unit) |
+| `numConst` | `number` | Numerator fixed income term $c_0$ (10k JPY) |
+| `denCoeffs` | `number[]` | Non-negative denominator input cost per unit vector $d$ (10k JPY/unit) |
+| `denConst` | `number` | Strictly positive denominator base maintenance cost $d_0 > 0$ (10k JPY) |
+| `usages` | `number[][]` | Resource consumption per part matrix $A$ |
+| `capacities` | `number[]` | Shared resource capacity limit vector $b$ |
+| `upperBounds` | `number[]` | Production upper bound $u$ for each part (units) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `x` | `number[]` | Activity levels in original units |
-| `maxRatio` | `number` | Maximized ratio $(c^\top x + c_0) / (d^\top x + d_0)$ |
+| `x` | `number[]` | Part production quantities in original scale (units) |
+| `maxRatio` | `number` | Maximized efficiency ratio $(c^\top x + c_0) / (d^\top x + d_0)$ |
 
 <!-- section:example -->
 **Input**
@@ -51,7 +51,7 @@ Choose the non-negative activity vector within all resource and upper limits to 
 }
 ```
 
-Setting `x = [0, 6]` satisfies $0 + 6 \le 8$ and `[0, 6] <= [5, 6]`, giving numerator $9 \times 6 + 10 = 64$, denominator $2 \times 6 + 8 = 20$, and ratio $64 / 20 =$ **3.2**.
+When `x` is [0, 6], resource consumption $0 + 6 \le 8$ and individual upper bounds [5, 6] are satisfied, giving numerator $9 \times 6 + 10 = 64$, denominator $2 \times 6 + 8 = 20$, and efficiency ratio $64 / 20 =$ **3.2**.
 
 
 <!-- section:hint1 -->

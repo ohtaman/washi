@@ -1,12 +1,10 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"counts": list[int], "totalCoins": int}."""
+def solve(denominations, max_counts, target_amount) -> dict:
+    """Return {"counts": list[int], "total_coins": int}."""
     prob = pulp.LpProblem("coin_change", pulp.LpMinimize)
 
-    denominations = input_data["denominations"]
-    max_counts = input_data["maxCounts"]
 
     # TODO 1: Switch `cat=pulp.LpContinuous` to `cat=pulp.LpInteger` and set `upBound=cap`
     counts = [
@@ -14,12 +12,12 @@ def solve(input_data: dict) -> dict:
         for i in range(len(denominations))
     ]
 
-    # TODO 2: Add the exact target amount constraint == input_data["targetAmount"]
+    # TODO 2: Add the exact target amount constraint == target_amount
 
     prob += pulp.lpSum(counts)
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
         "counts": [float(pulp.value(c)) for c in counts],
-        "totalCoins": float(pulp.value(prob.objective)),
+        "total_coins": float(pulp.value(prob.objective)),
     }

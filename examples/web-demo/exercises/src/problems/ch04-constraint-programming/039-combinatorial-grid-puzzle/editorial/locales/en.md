@@ -22,6 +22,8 @@ $$
 
 ## Key Implementation
 
+Register `distinct` constraints for every row and column, equality constraints for fixed clues, and both sum-equality and `distinct` constraints for every cage, then run Pumpkin with no objective function.
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -24,18 +24,20 @@ $$
 
 ## 実装の勘所
 
+各スタッフの日次稼働和 `work` に対して、1 日 1 シフト上限・長さ $K + 1$ の連続勤務制限ウィンドウ・夜勤から翌日日勤への禁止遷移を構築します。WaSHI では `slice` と `map` で各ウィンドウや隣接日ペアの制約配列を生成し、PuLP ではループと `pulp.lpSum` で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
 x.forEach((staffDays) => {
   const work = staffDays.map((dayVars) => sum(dayVars));
   m.constraint(work.map((w) => expr`${w} <= 1`));
-  for (let t = 0; t <= D - K - 1; t++) {
-    m.constraint(expr`${sum(work.slice(t, t + K + 1))} <= ${K}`);
-  }
-  for (let d = 0; d < D - 1; d++) {
-    m.constraint(expr`${staffDays[d][2]} + ${staffDays[d + 1][0]} <= 1`);
-  }
+  m.constraint(
+    Array.from({ length: D - K }, (_, t) => expr`${sum(work.slice(t, t + K + 1))} <= ${K}`)
+  );
+  m.constraint(
+    staffDays.slice(0, -1).map((dayVars, d) => expr`${dayVars[2]} + ${staffDays[d + 1][0]} <= 1`)
+  );
 });
 ```
 

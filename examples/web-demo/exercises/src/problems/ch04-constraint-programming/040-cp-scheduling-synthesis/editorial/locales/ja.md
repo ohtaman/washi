@@ -23,6 +23,8 @@ $$
 
 ## 実装の勘所
 
+前段取り・先行制約には `at(..., modes[i])` を、機械別の非重複には `disjoint(...)` を、電力上限には `cumulative(..., input.powerCap)` を、モード互換には `allowed(...)` をそれぞれ組み合わせて登録します。
+
 **WaSHI (TypeScript)**
 
 ```ts

@@ -22,6 +22,8 @@ $$
 
 ## 实现要点
 
+通过 `m.constraint([...])` 批量注册 `assignments` 每行之和等于 1 的约束以及每台服务器总负载不超过上界变量 `peak` 的约束，然后最小化 `peak`。
+
 **WaSHI (TypeScript)**
 
 ```ts

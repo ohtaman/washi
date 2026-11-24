@@ -24,6 +24,8 @@ $$
 
 ## 実装の勘所
 
+スタッフごとの指定休・1 日 1 シフト上限・勤務回数上下限に加え、各日・各シフトの必要人数制約を構築します。WaSHI では `forEach` と `flatMap` で制約配列を組み立て、PuLP ではループと `pulp.lpSum` で記述します。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -38,11 +40,11 @@ x.forEach((staffDays, i) => {
     expr`${totalWorked} <= ${input.maxShifts[i]}`,
   ]);
 });
-for (let d = 0; d < D; d++) {
-  for (let s = 0; s < S; s++) {
-    m.constraint(expr`${sum(x.map((staff) => staff[d][s]))} >= ${input.demands[d][s]}`);
-  }
-}
+m.constraint(
+  input.demands.flatMap((dayDemands, d) =>
+    dayDemands.map((req, s) => expr`${sum(x.map((staff) => staff[d][s]))} >= ${req}`)
+  )
+);
 ```
 
 **PuLP (Python)**

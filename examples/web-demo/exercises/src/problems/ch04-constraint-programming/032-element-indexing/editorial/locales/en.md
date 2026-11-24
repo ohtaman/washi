@@ -20,6 +20,8 @@ $$
 
 ## Key Implementation
 
+Enforce `distinct` on the integer machine-index array `assignment` for all jobs, minimize the sum of costs looked up via `at(row, assignment[i])`, and solve on Pumpkin.
+
 **WaSHI (TypeScript)**
 
 ```ts

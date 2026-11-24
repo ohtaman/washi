@@ -1,31 +1,31 @@
 # #099. Large Neighborhood Search (Fix-and-Optimize)
 
 <!-- section:scenario -->
-A manufacturing plant plans production over a discrete horizon. Each period has a fixed demand, a binary setup decision that unlocks production up to capacity while incurring a setup cost, a per-unit production cost, and an end-of-period inventory holding cost. Over long horizons, monolithic binary lot sizing can stall in branch-and-bound.
+At an injection-molding parts manufacturer's plant, plan multi-period production of plastic parts (in cases). Each period has a demand (in cases), a 0-1 setup decision (such as mold changeover) that unlocks production capacity while incurring a fixed setup cost, a unit production cost (JPY/case), and an end-of-period inventory holding cost (JPY/case). Over long horizons, a single monolithic MIP can stall in branch-and-bound.
 
-Use Fix-and-Optimize Large Neighborhood Search starting from the given initial setup plan and window size to iteratively improve the lot-sizing schedule until a full sweep yields no further cost reduction, returning the final setups, production, inventory, and total cost.
+Starting from the given initial setup plan and window width, run Fix-and-Optimize Large Neighborhood Search to iteratively improve the lot-sizing plan until a full sweep yields no cost reduction, and return the final setups, production quantities, inventory levels, and total cost.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demands` | `number[]` | Product demand required in period $t$ |
-| `setupCosts` | `number[]` | Fixed machine setup cost incurred if period $t$ produces |
-| `prodCosts` | `number[]` | Unit production cost in period $t$ |
-| `holdCost` | `number` | Per-unit holding cost on end-of-period inventory |
-| `capacities` | `number[]` | Maximum production capacity in period $t$ when setup is active |
-| `initialPlan` | `number[]` | Feasible starting binary setup vector |
+| `demands` | `number[]` | Required demand in period $t$ (cases) |
+| `setupCosts` | `number[]` | Fixed setup cost when performing a setup in period $t$ (JPY) |
+| `prodCosts` | `number[]` | Production cost per case in period $t$ (JPY) |
+| `holdCost` | `number` | Inventory holding cost per case of ending inventory (JPY) |
+| `capacities` | `number[]` | Maximum production capacity in period $t$ when setup is active (cases) |
+| `initialPlan` | `number[]` | Feasible initial 0/1 setup vector |
 | `windowSize` | `number` | Number of consecutive periods unfixed in each LNS subproblem |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `setups` | `number[]` | Binary setup decisions ($0$ or $1$) across all periods |
-| `production` | `number[]` | Continuous production quantities per period |
-| `inventory` | `number[]` | End-of-period inventory quantities (starting from zero initial stock) |
-| `totalCost` | `number` | Total setup, production, and inventory holding cost |
+| `setups` | `number[]` | 0/1 setup vector across all periods |
+| `production` | `number[]` | Production quantities per period (non-negative real values, cases) |
+| `inventory` | `number[]` | Ending inventory levels (starting from zero initial inventory, cases) |
+| `totalCost` | `number` | Sum of fixed setup, production, and inventory holding costs (JPY) |
 
 <!-- section:example -->
 **Input**
@@ -53,7 +53,7 @@ Use Fix-and-Optimize Large Neighborhood Search starting from the given initial s
 }
 ```
 
-Consolidating six setups down to three reduces setup cost to `360`, combined with production `540` and holding `75` for total cost **975**.
+Consolidating 6 setups down to 3 gives setup cost $120 \times 3 = 360$ + production cost $4 \times 135 = 540$ + holding cost $1 \times (40 + 15 + 0 + 20 + 0 + 0) = 75 =$ **975**.
 
 <!-- section:hint1 -->
 Maintain a current best binary setup vector initialized from `initialPlan` and sweep overlapping windows of length `windowSize` across the horizon. In each subproblem, only the setup decisions inside the active window are free binary variables while outside setups stay fixed and continuous production and inventory variables remain free across all periods.

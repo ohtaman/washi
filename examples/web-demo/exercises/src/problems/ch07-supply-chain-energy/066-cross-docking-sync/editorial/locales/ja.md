@@ -27,25 +27,29 @@ $$
 
 ## 実装の勘所
 
+各トラック対について積替フロー総和をドック対変数 $w_{i,j,r,s}$ に分解し、両端のドック割当と時刻同期の Big-M 制約を同時に課します。WaSHI では `map` と `flatMap` でドック対の配列制約を一括生成し、PuLP では二重ループで各 $(r, s)$ の制約を追加します。
+
 **WaSHI (TypeScript)**
 
 ```ts
 m.constraint(expr`${pairFlowSum} <= ${maxPairFlow} * ${z[i][j]}`);
 m.constraint(expr`${sum(w[i][j].flat())} - ${pairFlowSum} == 0`);
-for (let r = 0; r < R; r++) {
-  m.constraint(expr`${sum(w[i][j][r])} <= ${maxPairFlow} * ${x[i][r]}`);
-}
-for (let s = 0; s < S; s++) {
-  m.constraint(expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`);
-}
-for (let r = 0; r < R; r++) {
-  for (let s = 0; s < S; s++) {
-    const rhs = input.arrivalTimes[i] + input.transferTimes[r][s] - 3 * bigMT;
-    m.constraint(
-      expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`
-    );
-  }
-}
+m.constraint(
+  w[i][j].map((row, r) => expr`${sum(row)} <= ${maxPairFlow} * ${x[i][r]}`)
+);
+m.constraint(
+  input.outDoorCaps.map((_, s) =>
+    expr`${sum(w[i][j].map((row) => row[s]))} <= ${maxPairFlow} * ${y[j][s]}`
+  )
+);
+m.constraint(
+  input.transferTimes.flatMap((row, r) =>
+    row.map((tau, s) => {
+      const rhs = input.arrivalTimes[i] + tau - 3 * bigMT;
+      return expr`${dep[j]} - ${bigMT} * ${x[i][r]} - ${bigMT} * ${y[j][s]} - ${bigMT} * ${z[i][j]} >= ${rhs}`;
+    })
+  )
+);
 ```
 
 **PuLP (Python)**

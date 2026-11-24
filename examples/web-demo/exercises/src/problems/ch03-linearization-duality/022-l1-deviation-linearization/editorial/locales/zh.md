@@ -1,6 +1,6 @@
 ## 解题思路
 
-将每个渠道的有符号偏差 $x_i - \tau_i$ 拆分为非负正偏差 $d_i^+ \ge 0$ 与非负负偏差 $d_i^- \ge 0$ 之差，即 $x_i - \tau_i = d_i^+ - d_i^-$。由于惩罚权重 $w_i > 0$，最小化 $\sum_i w_i (d_i^+ + d_i^-)$ 会在最优解处自动确保 $d_i^+ + d_i^- = |x_i - \tau_i|$。
+将每个发电机组的有符号偏差 $x_i - \tau_i$ 拆分为非负正偏差 $d_i^+ \ge 0$ 与非负负偏差 $d_i^- \ge 0$ 之差，即 $x_i - \tau_i = d_i^+ - d_i^-$。由于惩罚权重 $w_i > 0$，最小化 $\sum_i w_i (d_i^+ + d_i^-)$ 会在最优解处自动确保 $d_i^+ + d_i^- = |x_i - \tau_i|$。
 
 ## 数学模型
 
@@ -20,6 +20,8 @@ $$
 - 概念参考：[指南与术语表 — 核心要素](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
+
+在总出力一致与预算上限约束的基础上，将各发电机组与目标值的差表示为 `dPlus[i] - dMinus[i]`，并最小化其加权和。
 
 **WaSHI (TypeScript)**
 

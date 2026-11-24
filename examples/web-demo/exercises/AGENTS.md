@@ -10,12 +10,12 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
 - **Minimal Input Schema**: Avoid splitting constants into excessive scalar fields (e.g., do not expose 8 separate camelCase coefficients for a 2-variable LP). Keep inputs to the essential dimensions (`2`–`4` clean fields, concise vectors, or a single matrix).
 - **Concise Problem Tab (`locales/{en,ja,zh}.md`)**:
   - Header `# #NNN. <Title>` followed by:
-    - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No backticks (enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
+    - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No fenced code blocks or constraint formulas (inline backticks are allowed for identifiers only; enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
     - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`).
     - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
   - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
   - Target 3–5 test cases per exercise (with 5 cases as the standard for Chapter 1+) covering boundary, binding-constraint, rectangular/dimension-varying, and fractional/zero-activity cases.
-  - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, `dict` in Python); keep `#001`–`#100` purely focused on optimization modeling.
+  - Keep `#000` as the sole onboarding exercise explaining the workbook `solve()` submission contract (`P000Input` / `P000Output` in TS, unpacked input fields and `dict` output in Python); keep `#001`–`#100` purely focused on optimization modeling.
   - Keep cross-exercise definitions (decision variables, bounds, verdicts, LP vs. MIP, solver statuses) in `src/guide/locales/{en,ja,zh}.md` rather than repeating them in every problem.
   - Keep judge messages (`locales/*.json` → `judge.m*`) diagnostic: report what is wrong with the output, not which cuts, variables, or steps to add.
 
@@ -55,7 +55,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
-  - Python (`highspy/{starter,solution}.py`): declare `def solve(input_data: dict) -> dict:` with a concise `"""Return {...}."""` schema docstring matching `PNNNOutput`.
+  - Python (`highspy/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
 - **Idiomatic WaSHI (TypeScript)**:
   - **Prefer `.map()` + batch `m.constraint([...])` over C-style `for (let i = 0; ...)` loops**:
     ```ts

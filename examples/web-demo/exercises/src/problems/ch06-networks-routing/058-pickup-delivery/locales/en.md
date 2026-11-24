@@ -10,17 +10,17 @@ Formulate the Pickup and Delivery Problem as a mixed-integer program to **minimi
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `dist` | `number[][]` | $N \times N$ travel distance matrix (`0` is depot, `1..N-1` are pickup/delivery stops) |
+| `dist` | `number[][]` | $N \times N$ travel distance matrix (0 is depot, 1..N-1 are pickup/delivery stops) |
 | `requests` | `Array<{ pickup, delivery, demand }>` | Paired requests with pickup node, delivery node, and load `demand` |
 | `capacity` | `number` | Vehicle load capacity $Q$ |
-| `maxVehicles` | `number` | Maximum number of active routes leaving depot `0` |
+| `maxVehicles` | `number` | Maximum number of active routes leaving depot 0 |
 | `maxStopsPerVehicle` | `number` | Maximum number of non-depot stops visited by any single route |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `routes` | `number[][]` | List of routes, each starting and ending at `0` (`[0, ..., 0]`) |
+| `routes` | `number[][]` | List of routes, each starting and ending at 0 (`[0, ..., 0]`) |
 | `totalDistance` | `number` | Minimized sum of travel distances across all routes |
 
 <!-- section:example -->
@@ -56,7 +56,7 @@ Formulate the Pickup and Delivery Problem as a mixed-integer program to **minimi
 }
 ```
 
-Route `[0, 1, 3, 2, 4, 0]` picks up request 0 (`load = 3`) and request 1 (`load = 7 <= 7`) before delivering `2` (`load = 4`) and `4` (`load = 0`), obeying pairing, precedence, and stop limits with distance $2 + 1 + 4 + 1 + 8 =$ **16**.
+Route `[0, 1, 3, 2, 4, 0]` picks up request 0 (`load = 3`) and request 1 (`load = 7 <= 7`) before delivering 2 (`load = 4`) and 4 (`load = 0`), obeying pairing, precedence, and stop limits with distance $2 + 1 + 4 + 1 + 8 =$ **16**.
 
 <!-- section:hint1 -->
 Index binary arc variables by vehicle `k` so you can enforce same-vehicle pairing directly. Also introduce continuous visit-order variables and continuous cumulative-load variables per location, enforcing that every non-depot stop is visited once, flow is conserved per vehicle, and each vehicle's total stops stay within `maxStopsPerVehicle`.

@@ -1,11 +1,8 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"shipments": list[list[float]], "totalCost": float}."""
-    supplies = input_data["supplies"]
-    demands = input_data["demands"]
-    unit_costs = input_data["unitCosts"]
+def solve(supplies, demands, unit_costs) -> dict:
+    """Return {"shipments": list[list[float]], "total_cost": float}."""
     n_s = len(supplies)
     n_d = len(demands)
 
@@ -19,5 +16,5 @@ def solve(input_data: dict) -> dict:
     # TODO:
     # 1. Enforce row sum <= supplies[i] and column sum >= demands[j]
     # 2. Set objective `prob += ...` on sum(unit_costs[i][j] * shipments[i][j]) and call `prob.solve(pulp.HiGHS(msg=False))`
-    # 3. Return {"shipments": [[float(pulp.value(v)) for v in row] for row in shipments], "totalCost": float(pulp.value(prob.objective))}
+    # 3. Return {"shipments": [[float(pulp.value(v)) for v in row] for row in shipments], "total_cost": float(pulp.value(prob.objective))}
     raise NotImplementedError("Not implemented")

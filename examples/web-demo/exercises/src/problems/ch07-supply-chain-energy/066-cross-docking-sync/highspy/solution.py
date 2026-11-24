@@ -1,17 +1,22 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"inDoor": list[int], "outDoor": list[int], "flows": list[list[list[float]]], "departures": list[float], "totalCost": float}."""
-    supplies = input_data["supplies"]
-    demands = input_data["demands"]
-    arrivals = input_data["arrivalTimes"]
-    dues = input_data["dueTimes"]
-    in_caps = input_data["inDoorCaps"]
-    out_caps = input_data["outDoorCaps"]
-    handling_costs = input_data["handlingCosts"]
-    transfer_times = input_data["transferTimes"]
-    delay_cost = input_data["delayCost"]
+def solve(
+    supplies,
+    demands,
+    arrival_times,
+    due_times,
+    in_door_caps,
+    out_door_caps,
+    handling_costs,
+    transfer_times,
+    delay_cost,
+) -> dict:
+    """Return {"in_door": list[int], "out_door": list[int], "flows": list[list[list[float]]], "departures": list[float], "total_cost": float}."""
+    arrivals = arrival_times
+    dues = due_times
+    in_caps = in_door_caps
+    out_caps = out_door_caps
 
     n_in = len(supplies)
     n_out = len(demands)
@@ -82,9 +87,9 @@ def solve(input_data: dict) -> dict:
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
-        "inDoor": [next(r for r in range(R) if round(pulp.value(x[i][r])) == 1) for i in range(n_in)],
-        "outDoor": [next(s for s in range(S) if round(pulp.value(y[j][s])) == 1) for j in range(n_out)],
+        "in_door": [next(r for r in range(R) if round(pulp.value(x[i][r])) == 1) for i in range(n_in)],
+        "out_door": [next(s for s in range(S) if round(pulp.value(y[j][s])) == 1) for j in range(n_out)],
         "flows": [[[float(pulp.value(f[i][j][k])) for k in range(n_comms)] for j in range(n_out)] for i in range(n_in)],
         "departures": [float(pulp.value(v)) for v in dep],
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

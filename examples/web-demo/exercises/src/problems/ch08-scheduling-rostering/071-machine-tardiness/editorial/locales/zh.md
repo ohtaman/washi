@@ -23,6 +23,8 @@ $$
 
 ## 实现要点
 
+构建各作业的交期延迟下界约束以及全部作业对的互不重叠 Big-M 析取约束。在 WaSHI 中使用 `slice` 和 `forEach` 将每对作业的两条约束以数组形式注册，在 PuLP 中则通过双重循环与 `pulp.lpDot` 实现。
+
 **WaSHI (TypeScript)**
 
 ```ts
@@ -31,15 +33,16 @@ m.constraint(
     (T, j) => expr`${T} >= ${starts[j]} + ${input.processingTimes[j]} - ${input.dueDates[j]}`
   )
 );
-for (let i = 0; i < n; i++) {
-  for (let j = i + 1; j < n; j++) {
+starts.forEach((sI, i) => {
+  starts.slice(i + 1).forEach((sJ, offset) => {
+    const j = i + 1 + offset;
     const y = m.binary(`y_${i}_${j}`);
     m.constraint([
-      expr`${starts[i]} + ${input.processingTimes[i]} <= ${starts[j]} + ${M} * (1 - ${y})`,
-      expr`${starts[j]} + ${input.processingTimes[j]} <= ${starts[i]} + ${M} * ${y}`,
+      expr`${sI} + ${input.processingTimes[i]} <= ${sJ} + ${M} * (1 - ${y})`,
+      expr`${sJ} + ${input.processingTimes[j]} <= ${sI} + ${M} * ${y}`,
     ]);
-  }
-}
+  });
+});
 m.objective(minimize(expr`dot(${input.weights}, ${tardiness})`));
 ```
 

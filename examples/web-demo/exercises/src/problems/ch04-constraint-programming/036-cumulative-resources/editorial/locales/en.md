@@ -21,6 +21,8 @@ $$
 
 ## Key Implementation
 
+Bundle each task's `{ start, duration, demand }` into a single `cumulative(..., input.capacity)` constraint and minimize the maximum completion time across all tasks.
+
 **WaSHI (TypeScript)**
 
 ```ts

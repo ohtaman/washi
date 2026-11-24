@@ -1,14 +1,10 @@
 import pulp
 
 
-def solve(input_data: dict) -> dict:
-    """Return {"territories": list[dict], "totalCost": float}."""
-    num_t = input_data["numTerritories"]
-    demands = input_data["demands"]
-    min_d, max_d = input_data["demandBounds"]
-    hub_costs = input_data["hubCosts"]
-    adj_edges = input_data["adjEdges"]
-    dist = input_data["dist"]
+def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -> dict:
+    """Return {"territories": list[dict], "total_cost": float}."""
+    num_t = num_territories
+    min_d, max_d = demand_bounds
     n = len(demands)
 
     prob = pulp.LpProblem("connected_territory_routing", pulp.LpMinimize)
@@ -91,5 +87,5 @@ def solve(input_data: dict) -> dict:
 
     return {
         "territories": territories,
-        "totalCost": float(pulp.value(prob.objective)),
+        "total_cost": float(pulp.value(prob.objective)),
     }

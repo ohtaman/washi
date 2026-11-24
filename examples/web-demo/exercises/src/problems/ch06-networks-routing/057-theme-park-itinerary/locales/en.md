@@ -1,26 +1,26 @@
 # #057. Theme Park Group Itinerary (Time Windows)
 
 <!-- section:scenario -->
-Up to K friend groups enter the theme park at gate 0 at time earliest[0] and must visit every selected attraction exactly once before meeting back at gate 0 no later than latest[0]. Each attraction has an opening window [earliest[i], latest[i]] and a ride or show duration; if a group arrives early it waits until earliest[i], but arriving after latest[i] is forbidden.
+Up to K groups enter the theme park at the entrance (location 0) at opening time, must visit every designated attraction exactly once, and return to the entrance before closing time. Each attraction has an allowed start time window (from opening to cutoff) and a visit duration; if a group arrives early it may wait until the window opens, but starting after the cutoff is forbidden.
 
-Plan itineraries for up to K groups from gate 0 to cover every attraction within its time window and return before the park closes, **minimizing total walking travel time**.
+Plan up to K tour routes satisfying all time windows and the park closing time while **minimizing total walking travel time**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `travelTimes` | `number[][]` | $(n+1) \times (n+1)$ walking time matrix (`0` is park entrance) |
+| `travelTimes` | `number[][]` | $(n+1) \times (n+1)$ walking time matrix (0 is park entrance) |
 | `earliest` | `number[]` | Earliest allowed visit start time at each node (`earliest[0] = 0`) |
 | `latest` | `number[]` | Latest allowed visit start time at attractions; `latest[0]` is park closing deadline |
 | `visitDurations` | `number[]` | Ride or show duration at each node (`visitDurations[0] = 0`) |
-| `maxGroups` | `number` | Maximum number of group itineraries leaving gate `0` |
+| `maxGroups` | `number` | Maximum number of group itineraries leaving gate 0 |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `itineraries` | `number[][]` | List of group itineraries, each starting and ending at `0` (`[0, ..., 0]`) |
+| `itineraries` | `number[][]` | List of group itineraries, each starting and ending at 0 (`[0, ..., 0]`) |
 | `totalCost` | `number` | Minimized sum of walking travel times across all itineraries |
 
 <!-- section:example -->
