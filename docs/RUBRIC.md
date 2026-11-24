@@ -40,7 +40,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **+5** | Natural target-language prose | Reads naturally in the target language (`en`, `ja`, `zh`) with idiomatic phrasing and word order rather than literal translation. |
 | **+1** | Backticks for identifiers | Wraps API names, option keys, variable/type names, and status strings in inline backticks (`` `...` ``). |
 | **-1** | Terminology inconsistency | Uses inconsistent translations or terms for the same concept within a page or across the docs (e.g., mixing multiple terms for `unsatCore`). |
-| **-5** | Awkward literal translationese | Contains stiff, unnatural, or incomprehensible literal translations (e.g., 「仮定追跡付きの競合抽出」「前提ドメインとして扱われます」「トランザクション的に一括登録」). |
+| **-5** | Awkward literal translationese | Contains stiff, unnatural, or incomprehensible literal translations (e.g., literal calques of "assumption-tracked", "background domain declarations", or "register transactionally"). |
 
 ---
 

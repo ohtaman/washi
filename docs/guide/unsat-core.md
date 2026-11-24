@@ -1,4 +1,4 @@
-# Conflict Diagnosis (`unsatCore`), Verification & Debugging
+# Conflict Diagnosis (`unsatCore`), Validation & Debugging
 
 When a model has no solution (`"Infeasible"`), or when you want to double-check solver output before using it in production, WaSHI provides four built-in tools:
 
