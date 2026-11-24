@@ -19,17 +19,21 @@ def solve(
     S = len(probs)
 
     prob = pulp.LpProblem("resilient_planning_synthesis", pulp.LpMinimize)
+    # First-stage commitment y[j] and Bertsimas-Sim robust dual variables (z, p)
     y = [pulp.LpVariable(f"y_{j}", cat=pulp.LpBinary) for j in range(n)]
     z = pulp.LpVariable("z", lowBound=0)
     p = [pulp.LpVariable(f"p_{j}", lowBound=0) for j in range(n)]
+    # Second-stage recourse per scenario s: recovered status w[s][j], |w - y| diff, and shortfall
     w = [[pulp.LpVariable(f"w_{s}_{j}", cat=pulp.LpBinary) for j in range(n)] for s in range(S)]
     diff = [[pulp.LpVariable(f"d_{s}_{j}", lowBound=0, upBound=1) for j in range(n)] for s in range(S)]
     shortfall = [pulp.LpVariable(f"u_{s}", lowBound=0) for s in range(S)]
 
+    # Robust minimum capacity: guarantees >= robust_min_cap even if up to gamma committed units drop
     prob += pulp.lpDot(capacities, y) - gamma * z - pulp.lpSum(p) >= robust_min_cap
     for j in range(n):
         prob += z + p[j] >= drop_amounts[j] * y[j]
 
+    # Scenario recourse: offline units forced to 0, linearize |w - y|, and meet demand with shortfall
     for s in range(S):
         for j in range(n):
             if offline[s][j] == 1:
@@ -38,6 +42,7 @@ def solve(
             prob += diff[s][j] >= y[j] - w[s][j]
         prob += pulp.lpDot(capacities, w[s]) + shortfall[s] >= demands[s]
 
+    # Minimize first-stage fixed cost plus expected second-stage disruption and shortfall costs
     stage2_expected = pulp.lpSum(
         probs[s] * (disruption_cost * pulp.lpSum(diff[s]) + shortfall_pen * shortfall[s])
         for s in range(S)

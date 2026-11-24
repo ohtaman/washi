@@ -20,10 +20,12 @@ export interface P033Output {
 export async function solve(input: P033Input): Promise<P033Output> {
   const m = new Model("TableConfig");
 
+  // choices[c]: 0-based option index selected for component c
   const choices = input.componentCosts.map((costs, c) =>
     m.integer(`comp_${c}`, { lb: 0, ub: costs.length - 1 })
   );
 
+  // Enforce positive table constraints (selected tuples must be in allowed list)
   m.constraint(
     input.allowedRules.map((rule) =>
       allowed(
@@ -32,6 +34,7 @@ export async function solve(input: P033Input): Promise<P033Output> {
       )
     )
   );
+  // Enforce negative table constraints via negated allowed() for forbidden tuples
   m.constraint(
     input.forbiddenRules.map((rule) =>
       not(
@@ -43,11 +46,13 @@ export async function solve(input: P033Input): Promise<P033Output> {
     )
   );
 
+  // Minimize total component cost using element indexing (at)
   m.objective(
     minimize(sum(input.componentCosts.map((costs, c) => at(costs, choices[c]))))
   );
   await m.solve({ solver: "pumpkin" });
 
+  // Round solver output to clean integers and normalize -0 to 0
   return {
     choices: choices.map((v) => Math.round(v.value!) || 0),
     totalCost: Math.round(m.objectiveValue!) || 0,

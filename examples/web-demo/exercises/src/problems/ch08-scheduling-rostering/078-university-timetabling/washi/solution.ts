@@ -20,12 +20,14 @@ export async function solve(input: P078Input): Promise<P078Output> {
   const T = input.slotScores[0].length;
   const m = new Model("UniversityTimetabling");
 
+  // x[c][r][t] = 1 if course c is scheduled in room r at time slot t (binary)
   const x = Array.from({ length: C }, (_, c) =>
     Array.from({ length: R }, (_, r) =>
       Array.from({ length: T }, (_, t) => m.binary(`x_${c}_${r}_${t}`))
     )
   );
 
+  // Course assignment & room capacity: each course gets 1 (room, slot) pair, excluding undersized rooms
   x.forEach((courseRooms, c) => {
     m.constraint(expr`${sum(courseRooms.flat())} == 1`);
     courseRooms.forEach((roomSlots, r) => {
@@ -35,12 +37,14 @@ export async function solve(input: P078Input): Promise<P078Output> {
     });
   });
 
+  // Room-slot exclusivity: at most one course per room and time slot
   for (let r = 0; r < R; r++) {
     for (let t = 0; t < T; t++) {
       m.constraint(expr`${sum(x.map((courseRooms) => courseRooms[r][t]))} <= 1`);
     }
   }
 
+  // Group courses sharing the same teacher or student cohort to prevent time-slot conflicts
   const teacherGroups = new Map<number, number[]>();
   input.teachers.forEach((tc, c) => {
     const list = teacherGroups.get(tc) ?? [];
@@ -57,6 +61,7 @@ export async function solve(input: P078Input): Promise<P078Output> {
     });
   });
 
+  // Teacher & cohort conflict clique: at most 1 course per group in any time slot t
   for (const group of [...teacherGroups.values(), ...cohortGroups.values()]) {
     if (group.length < 2) continue;
     for (let t = 0; t < T; t++) {
@@ -65,6 +70,7 @@ export async function solve(input: P078Input): Promise<P078Output> {
     }
   }
 
+  // Objective: maximize total time-slot preference scores across all courses
   m.objective(
     maximize(
       sum(
@@ -78,6 +84,7 @@ export async function solve(input: P078Input): Promise<P078Output> {
   );
   await m.solve();
 
+  // Extract assigned (room, slot) per course, rounding binary values for tolerance safety
   const rooms = new Array<number>(C);
   const slots = new Array<number>(C);
   for (let c = 0; c < C; c++) {

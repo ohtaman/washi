@@ -30,6 +30,7 @@ export interface P041Output {
   assignment: Array<Record<string, string>> | null;
 }
 
+// Pairwise SAT encoding for an exact-one (at-least-one + at-most-one) constraint
 function exactOne(m: Model, vars: BoolVar[], prefix: string): void {
   m.constraint(or(...vars), `${prefix}_at_least_one`);
   for (let i = 0; i < vars.length; i++) {
@@ -42,6 +43,7 @@ function exactOne(m: Model, vars: BoolVar[], prefix: string): void {
 export async function solve(input: P041Input): Promise<P041Output> {
   const m = new Model("ZebraPuzzle");
   const catNames = Object.keys(input.categories);
+  // vars[cat][val][pos]: Boolean indicator that category `cat` takes `val` at 0-based position `pos`
   const vars: Record<string, Record<string, BoolVar[]>> = {};
 
   for (const cat of catNames) {
@@ -53,7 +55,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
     }
   }
 
-  // Exact-one value per position & category, and exact-one position per value.
+  // Bijection constraints: each position has one value per category, and each value appears once
   for (const cat of catNames) {
     const vals = input.categories[cat];
     for (let pos = 0; pos < input.n; pos++) {
@@ -68,7 +70,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
     }
   }
 
-  // Add structured puzzle clues.
+  // Encode each structured puzzle clue into propositional logic over position indicators
   input.clues.forEach((clue, idx) => {
     const tag = `clue_${idx}`;
     switch (clue.type) {
@@ -76,6 +78,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
         m.constraint(vars[clue.category][clue.value][clue.position], tag);
         break;
       case "same": {
+        // Biconditional at every position: a holds at pos iff b holds at pos
         const [ca, va] = clue.a;
         const [cb, vb] = clue.b;
         for (let pos = 0; pos < input.n; pos++) {
@@ -103,6 +106,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
         break;
       }
       case "leftOf": {
+        // Left item cannot occupy the rightmost slot; if at pos, right item is at pos+1 (or > pos)
         const [cl, vl] = clue.left;
         const [cr, vr] = clue.right;
         if (clue.immediate) {
@@ -123,6 +127,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
         break;
       }
       case "nextTo": {
+        // Adjacency: if a is at pos, b must appear at pos-1 or pos+1
         const [ca, va] = clue.a;
         const [cb, vb] = clue.b;
         for (let pos = 0; pos < input.n; pos++) {
@@ -136,6 +141,7 @@ export async function solve(input: P041Input): Promise<P041Output> {
     }
   });
 
+  // Check satisfiability with Z3 and decode the true indicator at each position
   const res = await m.check({ solver: "z3" });
   if (res.status !== "Sat") {
     return { satisfiable: false, assignment: null };

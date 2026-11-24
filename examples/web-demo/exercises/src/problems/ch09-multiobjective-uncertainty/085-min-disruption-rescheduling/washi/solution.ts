@@ -18,10 +18,12 @@ export interface P085Output {
 export async function solve(input: P085Input): Promise<P085Output> {
   const m = new Model("MinDisruptionRescheduling");
 
+  // x[i][t] = 1 if worker i is assigned to slot t in the revised schedule
   const x = input.baseline.map((row, i) =>
     row.map((_, t) => m.binary(`x_${i}_${t}`))
   );
 
+  // Respect worker unavailability
   m.constraint(
     x.flatMap((row, i) =>
       row
@@ -29,15 +31,18 @@ export async function solve(input: P085Input): Promise<P085Output> {
         .map((v) => expr`${v} == 0`)
     )
   );
+  // Limit total shifts per worker
   m.constraint(
     x.map((row, i) => expr`${sum(row)} <= ${input.maxShifts[i]}`)
   );
+  // Cover exact staffing demand in every slot
   m.constraint(
     input.demands.map(
       (demand, t) => expr`${sum(x.map((row) => row[t]))} == ${demand}`
     )
   );
 
+  // Linearized Hamming distance |x[i][t] - baseline[i][t]| for binary variables
   const hammingExpr = sum(
     x.flatMap((row, i) =>
       row.map((v, t) => {
@@ -50,9 +55,11 @@ export async function solve(input: P085Input): Promise<P085Output> {
     x.map((row, i) => expr`${input.workerCosts[i]} * ${sum(row)}`)
   );
 
+  // Minimize weighted schedule disruption plus assignment cost
   m.objective(minimize(expr`${input.disruptionWeight} * ${hammingExpr} + ${assignCostExpr}`));
   await m.solve();
 
+  // Round binary values to clean 0/1 integers before computing exact Hamming distance
   const schedule = x.map((row) => row.map((v) => Math.round(v.value!) || 0));
   const hammingDistance = schedule.reduce(
     (acc, row, i) =>

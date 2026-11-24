@@ -5,12 +5,15 @@ def solve(min_protein, min_fiber) -> dict:
     """Return {"oats": float, "beans": float, "total_cost": float}."""
     prob = pulp.LpProblem("diet", pulp.LpMinimize)
 
+    # Decision variables: continuous non-negative servings of oats and beans.
     oats = pulp.LpVariable("oats", lowBound=0)
     beans = pulp.LpVariable("beans", lowBound=0)
 
+    # Minimum daily nutritional requirements for protein and fiber.
     prob += 2 * oats + beans >= min_protein
     prob += oats + 3 * beans >= min_fiber
 
+    # Objective: minimize total ingredient cost.
     prob += 30 * oats + 50 * beans
     prob.solve(pulp.HiGHS(msg=False))
 

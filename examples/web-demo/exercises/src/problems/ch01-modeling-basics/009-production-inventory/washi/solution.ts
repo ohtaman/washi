@@ -23,6 +23,8 @@ export async function solve(input: P009Input): Promise<P009Output> {
   const T = input.demands.length;
   const m = new Model("ProductionInventory");
 
+  // Decision variables: regular production, overtime production, and end-of-period inventory per period t.
+  // Final period inventory has a lower bound of minFinalInventory; earlier periods are >= 0.
   const regular = input.regCap.map((ub, t) =>
     m.continuous({ lb: 0, ub, name: `reg_${t}` })
   );
@@ -37,6 +39,7 @@ export async function solve(input: P009Input): Promise<P009Output> {
     })
   );
 
+  // Flow balance per period: previous inventory + production - ending inventory == demand.
   m.constraint(
     input.demands.map((demand, t) => {
       const prev = t === 0 ? input.initialInventory : inventory[t - 1];
@@ -44,6 +47,7 @@ export async function solve(input: P009Input): Promise<P009Output> {
     })
   );
 
+  // Objective: minimize total regular, overtime, and inventory holding costs.
   m.objective(
     minimize(
       expr`${input.regCost} * ${sum(regular)} + ${input.otCost} * ${sum(overtime)} + ${input.holdCost} * ${sum(inventory)}`

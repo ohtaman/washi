@@ -5,6 +5,7 @@ def _solve_variant(fixed_costs, unit_costs, capacities, demand, relax: bool):
     n = len(fixed_costs)
 
     prob = pulp.LpProblem("tight_big_m", pulp.LpMinimize)
+    # Relaxed LP uses continuous [0, 1] open_vars to measure the tightened LP lower bound
     cat = pulp.LpContinuous if relax else pulp.LpBinary
     open_vars = [pulp.LpVariable(f"open_{i}", lowBound=0, upBound=1, cat=cat) for i in range(n)]
     quantities = [
@@ -12,9 +13,11 @@ def _solve_variant(fixed_costs, unit_costs, capacities, demand, relax: bool):
         for i in range(n)
     ]
 
+    # Tight Big-M linking: min(capacities[i], demand) strengthens the LP relaxation
     for i in range(n):
         tight_m = min(capacities[i], demand)
         prob += quantities[i] <= tight_m * open_vars[i]
+    # Demand satisfaction and total fixed + variable cost objective
     prob += pulp.lpSum(quantities) >= demand
     prob += pulp.lpDot(fixed_costs, open_vars) + pulp.lpDot(unit_costs, quantities)
 

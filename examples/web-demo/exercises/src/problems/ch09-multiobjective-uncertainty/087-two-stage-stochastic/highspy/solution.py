@@ -14,7 +14,9 @@ def solve(
     S = len(probs)
 
     prob = pulp.LpProblem("two_stage_stochastic", pulp.LpMinimize)
+    # First-stage order quantities committed before demand is revealed
     orders = [pulp.LpVariable(f"x_{j}", lowBound=0) for j in range(n)]
+    # Second-stage recourse per scenario s: unmet demand (shortage) and excess inventory (leftover)
     shortage = [
         [pulp.LpVariable(f"short_{s}_{j}", lowBound=0) for j in range(n)]
         for s in range(S)
@@ -24,11 +26,13 @@ def solve(
         for s in range(S)
     ]
 
+    # First-stage warehouse capacity and second-stage scenario demand balance
     prob += pulp.lpSum(orders) <= warehouse_cap
     for s in range(S):
         for j in range(n):
             prob += orders[j] + shortage[s][j] - leftover[s][j] == demands[s][j]
 
+    # Minimize first-stage order cost plus expected second-stage shortage cost minus salvage revenue
     stage2_expected = pulp.lpSum(
         probs[s] * (pulp.lpDot(shortage_costs, shortage[s]) - pulp.lpDot(salvage_values, leftover[s]))
         for s in range(S)

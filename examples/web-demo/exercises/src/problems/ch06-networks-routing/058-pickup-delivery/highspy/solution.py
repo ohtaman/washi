@@ -10,6 +10,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
     n = len(dist)
 
     prob = pulp.LpProblem("pickup_delivery", pulp.LpMinimize)
+    # x[i][j][k] in {0, 1}: binary indicator that vehicle k traverses arc i -> j (i != j; 0 is depot)
     x = [
         [
             [pulp.LpVariable(f"x_{i}_{j}_{k}", cat=pulp.LpBinary) if i != j else None for k in range(max_v)]
@@ -17,6 +18,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
         ]
         for i in range(n)
     ]
+    # t[i]: continuous visit-order index for node i (0 at depot, 1..n-1 at stops)
     t = [
         pulp.LpVariable(
             f"t_{i}",
@@ -27,11 +29,13 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
         for i in range(n)
     ]
 
+    # Net load change at each stop (+demand at pickup, -demand at delivery)
     delta = [0] * n
     for r in reqs:
         delta[r["pickup"]] = r["demand"]
         delta[r["delivery"]] = -r["demand"]
 
+    # load[i]: vehicle load immediately after visiting node i, tightened by delta[i]
     load = [
         pulp.LpVariable(
             f"L_{i}",
@@ -42,9 +46,11 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
         for i in range(n)
     ]
 
+    # Each non-depot stop is visited once overall
     for i in range(1, n):
         prob += pulp.lpSum(x[i][j][k] for k in range(max_v) for j in range(n) if j != i) == 1
 
+    # Per-vehicle flow conservation, depot dispatch limit, and stop-count cap
     for k in range(max_v):
         prob += pulp.lpSum(x[0][j][k] for j in range(1, n)) <= 1
         prob += pulp.lpSum(x[0][j][k] for j in range(1, n)) == pulp.lpSum(
@@ -59,6 +65,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
                 x[i][j][k] for j in range(n) if j != i
             )
 
+    # Same-vehicle pairing and pickup-before-delivery precedence
     for r in reqs:
         p, d = r["pickup"], r["delivery"]
         for k in range(max_v):
@@ -67,6 +74,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
             )
         prob += t[p] + 1 <= t[d]
 
+    # Big-M visit-order and vehicle-load propagation across traversed arcs
     for i in range(n):
         for j in range(1, n):
             if i != j:
@@ -76,6 +84,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
                 m_load = cap + max(0, delta[j])
                 prob += load[i] + delta[j] - load[j] <= m_load * (1 - y_ij)
 
+    # Minimize total travel distance across all vehicles
     prob += pulp.lpSum(
         dist[i][j] * x[i][j][k]
         for k in range(max_v)
@@ -85,6 +94,7 @@ def solve(dist, requests, capacity, max_vehicles, max_stops_per_vehicle) -> dict
     )
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Reconstruct each active vehicle's route from depot 0 back to depot 0
     routes = []
     for k in range(max_v):
         starts = [j for j in range(1, n) if round(pulp.value(x[0][j][k])) == 1]

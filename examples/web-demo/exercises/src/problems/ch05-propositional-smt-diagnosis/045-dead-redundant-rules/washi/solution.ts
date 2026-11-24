@@ -46,6 +46,7 @@ function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): Logi
   return xor(...node.xor.map((c) => compileFormula(c, bools)));
 }
 
+// Helper: check satisfiability of a list of propositional formulas over Boolean variables `vars`
 async function isSat(vars: string[], formulas: PropFormula[]): Promise<boolean> {
   const m = new Model("RuleAudit");
   const bools = m.bool(vars);
@@ -59,13 +60,16 @@ async function isSat(vars: string[], formulas: PropFormula[]): Promise<boolean> 
 export async function solve(input: P045Input): Promise<P045Output> {
   const deadRules: string[] = [];
   const redundantRules: string[] = [];
+  // Accumulate base rules and prior trigger implications (condition => effect) in order
   const prior: PropFormula[] = [...input.baseRules];
 
   for (const r of input.rules) {
+    // Dead rule: condition can never be satisfied under prior rules
     const canFire = await isSat(input.vars, [...prior, r.condition]);
     if (!canFire) {
       deadRules.push(r.id);
     } else {
+      // Redundant rule: prior rules + condition already entail effect (negated effect is Unsat)
       const hasViol = await isSat(input.vars, [...prior, r.condition, { not: r.effect }]);
       if (!hasViol) {
         redundantRules.push(r.id);

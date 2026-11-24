@@ -19,12 +19,14 @@ export async function solve(input: P075Input): Promise<P075Output> {
   const S = input.demands[0].length;
   const m = new Model("ShiftCoverageDaysOff");
 
+  // x[i][d][s] = 1 if staff i works shift s on day d (binary)
   const x = Array.from({ length: N }, (_, i) =>
     Array.from({ length: D }, (_, d) =>
       Array.from({ length: S }, (_, s) => m.binary(`x_${i}_${d}_${s}`))
     )
   );
 
+  // Per-staff constraints: requested days off (0 shifts), at most 1 shift per working day, and total shift bounds
   x.forEach((staffDays, i) => {
     const offSet = new Set(input.daysOff[i]);
     staffDays.forEach((dayVars, d) => {
@@ -39,6 +41,7 @@ export async function solve(input: P075Input): Promise<P075Output> {
     ]);
   });
 
+  // Shift coverage: enough staff assigned to meet demand on every (day, shift)
   for (let d = 0; d < D; d++) {
     for (let s = 0; s < S; s++) {
       m.constraint(
@@ -47,6 +50,7 @@ export async function solve(input: P075Input): Promise<P075Output> {
     }
   }
 
+  // Objective: minimize total shift assignment costs
   m.objective(
     minimize(
       sum(
@@ -61,6 +65,7 @@ export async function solve(input: P075Input): Promise<P075Output> {
   await m.solve();
 
   return {
+    // Decode assigned shift index per (staff, day); findIndex returns -1 for day off (rounded for tolerance safety)
     schedule: x.map((staffDays) =>
       staffDays.map((dayVars) =>
         dayVars.findIndex((v) => Math.round(v.value!) === 1)

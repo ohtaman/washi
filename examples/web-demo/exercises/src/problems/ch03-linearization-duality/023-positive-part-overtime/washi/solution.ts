@@ -19,16 +19,20 @@ export async function solve(input: P023Input): Promise<P023Output> {
   const T = input.demands.length;
   const m = new Model("PositivePartOvertime");
 
+  // Decision variables: regular[t] in [minRegular[t], maxRegular[t]] and auxiliary shortage[t] >= 0.
   const regular = input.demands.map((_, t) =>
     m.continuous(`reg_${t}`, { lb: input.minRegular[t], ub: input.maxRegular[t] })
   );
   const shortage = m.continuous(T, { lb: 0, prefix: "short" });
 
+  // Total regular-time capacity across the horizon.
   m.constraint(expr`${sum(regular)} <= ${input.totalRegularCap}`, "total_regular");
+  // Positive-part linearization: with non-negative penalties and shortage >= 0, shortage[t] = max(0, demand[t] - regular[t]).
   m.constraint(
     input.demands.map((demand, t) => expr`${shortage[t]} >= ${demand} - ${regular[t]}`)
   );
 
+  // Objective: minimize total regular production cost plus overtime shortage penalties.
   m.objective(
     minimize(
       expr`dot(${input.regularCosts}, ${regular}) + dot(${input.overtimePenalties}, ${shortage})`

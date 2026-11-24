@@ -21,18 +21,22 @@ export async function solve(input: P081Input): Promise<P081Output> {
   const n = input.unitCosts.length;
   const m = new Model("ElasticSoftPenalties");
 
+  // Decision variables: production quantities and non-negative elastic slacks (shortfall/excess vs. targets)
   const quantities = m.continuous(n, { lb: 0, prefix: "q" });
   const shortfalls = m.continuous(n, { lb: 0, prefix: "s_neg" });
   const excesses = m.continuous(n, { lb: 0, prefix: "s_pos" });
 
+  // Elastic target balance: quantities[j] = targets[j] - shortfalls[j] + excesses[j]
   m.constraint(
     input.targets.map(
       (target, j) => expr`${quantities[j]} + ${shortfalls[j]} - ${excesses[j]} == ${target}`
     )
   );
+  // Hard machine-hour capacity and minimum total production requirements
   m.constraint(expr`dot(${input.hours}, ${quantities}) <= ${input.machineCap}`, "machine_cap");
   m.constraint(expr`sum(${quantities}) >= ${input.minTotal}`, "min_total");
 
+  // Minimize direct production cost plus linear soft-constraint violation penalties
   m.objective(
     minimize(
       expr`dot(${input.unitCosts}, ${quantities}) + dot(${input.shortfallPenalties}, ${shortfalls}) + dot(${input.excessPenalties}, ${excesses})`

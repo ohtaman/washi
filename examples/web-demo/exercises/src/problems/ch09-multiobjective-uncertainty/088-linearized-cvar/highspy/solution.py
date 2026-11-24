@@ -7,14 +7,17 @@ def solve(returns, probs, alpha, risk_weight, max_weight) -> dict:
     n = len(returns[0])
 
     prob = pulp.LpProblem("linearized_cvar", pulp.LpMinimize)
+    # Portfolio weights w, free VaR threshold eta, and tail-loss excess u[s] >= 0 (Rockafellar-Uryasev LP)
     w = [pulp.LpVariable(f"w_{j}", lowBound=0, upBound=max_weight) for j in range(n)]
     eta = pulp.LpVariable("eta", lowBound=None, upBound=None)
     u = [pulp.LpVariable(f"u_{s}", lowBound=0) for s in range(S)]
 
+    # Fully invested portfolio and linearized tail excess u[s] >= max(0, -returns[s]·w - eta)
     prob += pulp.lpSum(w) == 1
     for s in range(S):
         prob += pulp.lpDot(returns[s], w) + eta + u[s] >= 0
 
+    # Mean-CVaR objective: expected loss + risk_weight * (eta + E[u] / (1 - alpha))
     expected_loss = -pulp.lpSum(
         probs[s] * pulp.lpDot(returns[s], w) for s in range(S)
     )

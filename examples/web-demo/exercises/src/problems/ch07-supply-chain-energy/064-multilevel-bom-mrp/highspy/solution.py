@@ -19,6 +19,9 @@ def solve(
 
     prob = pulp.LpProblem("multilevel_bom_mrp", pulp.LpMinimize)
 
+    # setups[i][t]: 1 if item i is set up in period t (binary)
+    # production[i][t]: integer units of item i started in period t (in [0, capacities[i]])
+    # inventory[i][t]: ending inventory of item i in period t (>= 0)
     setups = [
         [pulp.LpVariable(f"y_{i}_{t}", cat=pulp.LpBinary) for t in range(T)]
         for i in range(n_items)
@@ -32,12 +35,15 @@ def solve(
         for i in range(n_items)
     ]
 
+    # Setup-capacity linking and multi-level BOM inventory balance with lead time L = lead_times[i]
     for i in range(n_items):
         L = lead_times[i]
         for t in range(T):
             prob += production[i][t] <= capacities[i] * setups[i][t]
             prev_inv = init_inv[i] if t == 0 else inventory[i][t - 1]
+            # Production started at t - L completes and enters stock at period t
             arrival = production[i][t - L] if t >= L else 0
+            # Dependent demand consumed by parent items j produced in period t
             dep_demand = pulp.lpSum(
                 bom[i][j] * production[j][t]
                 for j in range(n_items)
@@ -45,6 +51,7 @@ def solve(
             )
             prob += prev_inv + arrival - dep_demand - inventory[i][t] == ext_demands[i][t]
 
+    # Objective: minimize total setup, production, and holding costs
     prob += pulp.lpSum(
         setup_costs[i] * setups[i][t]
         + prod_costs[i] * production[i][t]
@@ -55,6 +62,7 @@ def solve(
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
+        # Round binary/integer values to eliminate floating-point solver tolerance noise
         "setups": [[round(pulp.value(v)) for v in row] for row in setups],
         "production": [[round(pulp.value(v)) for v in row] for row in production],
         "inventory": [[float(pulp.value(v)) for v in row] for row in inventory],

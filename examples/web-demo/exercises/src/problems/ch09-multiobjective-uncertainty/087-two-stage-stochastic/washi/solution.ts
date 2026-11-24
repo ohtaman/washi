@@ -18,7 +18,9 @@ export async function solve(input: P087Input): Promise<P087Output> {
   const n = input.orderCosts.length;
   const m = new Model("TwoStageStochastic");
 
+  // First-stage decision: order quantities committed before demand is revealed
   const orders = m.continuous(n, { lb: 0, prefix: "x" });
+  // Second-stage recourse per scenario s: unmet demand (shortage) and excess inventory (leftover)
   const shortage = input.probs.map((_, s) =>
     m.continuous(n, { lb: 0, prefix: `short_${s}` })
   );
@@ -26,7 +28,9 @@ export async function solve(input: P087Input): Promise<P087Output> {
     m.continuous(n, { lb: 0, prefix: `left_${s}` })
   );
 
+  // First-stage warehouse capacity across all items
   m.constraint(expr`sum(${orders}) <= ${input.warehouseCap}`, "warehouse_cap");
+  // Second-stage demand balance per scenario s and item j
   m.constraint(
     input.demands.flatMap((row, s) =>
       row.map(
@@ -35,6 +39,7 @@ export async function solve(input: P087Input): Promise<P087Output> {
     )
   );
 
+  // Minimize first-stage order cost plus expected second-stage shortage cost minus salvage revenue
   const stage2Expected = sum(
     input.probs.map(
       (p, s) =>

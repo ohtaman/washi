@@ -24,19 +24,27 @@ export async function solve(input: P030Input): Promise<P030Output> {
   const P = input.pairs.length;
   const m = new Model("LinearizationSynthesis");
 
+  // Decision variables:
+  // - selected[i]: binary indicator for selecting item i
+  // - pairProducts[k]: continuous in [0, 1] representing x_i * x_j (forced to {0, 1} by binary selected)
+  // - peakLoad >= 0: epigraph variable for minimax zone load
+  // - dPlus[r], dMinus[r] >= 0: positive/negative deviations from zone target[r] for L1 penalty
   const selected = m.binary(n, { prefix: "x" });
   const pairProducts = m.continuous(P, { lb: 0, ub: 1, prefix: "w" });
   const peakLoad = m.continuous("peak", { lb: 0 });
   const dPlus = m.continuous(mZones, { lb: 0, prefix: "dp" });
   const dMinus = m.continuous(mZones, { lb: 0, prefix: "dm" });
 
+  // Minimum total value requirement.
   m.constraint(expr`dot(${input.values}, ${selected}) >= ${input.minValue}`, "min_val");
+  // Zone load constraints: minimax bound (load <= peakLoad) and L1 target deviation split.
   m.constraint(
     input.loads.flatMap((row, r) => [
       expr`dot(${row}, ${selected}) <= ${peakLoad}`,
       expr`dot(${row}, ${selected}) - ${input.targets[r]} == ${dPlus[r]} - ${dMinus[r]}`,
     ])
   );
+  // Fortet/McCormick linearization of w_k = x_i * x_j (handles both positive and negative pair costs).
   m.constraint(
     input.pairs.flatMap(([i, j], k) => [
       expr`${pairProducts[k]} <= ${selected[i]}`,
@@ -45,6 +53,7 @@ export async function solve(input: P030Input): Promise<P030Output> {
     ])
   );
 
+  // Objective: minimize base costs + pairwise interaction costs + weighted peak load + weighted L1 deviations.
   const pairCosts = input.pairs.map(([, , s]) => s);
   m.objective(
     minimize(
@@ -53,6 +62,7 @@ export async function solve(input: P030Input): Promise<P030Output> {
   );
   await m.solve();
 
+  // Round binary/linearized indicators to eliminate solver tolerance noise and normalize -0 to 0.
   return {
     selected: selected.map((v) => Math.round(v.value!) || 0),
     pairProducts: pairProducts.map((v) => Math.round(v.value!) || 0),

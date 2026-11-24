@@ -23,10 +23,12 @@ export async function solve(input: P052Input): Promise<P052Output> {
   const n = input.nodeCount;
   const m = new Model("MaxFlowMinCut");
 
+  // flows[i]: continuous flow along edge i in [0, cap]
   const flows = input.edges.map((e, i) =>
     m.continuous(`f_${i}`, { lb: 0, ub: e.cap })
   );
 
+  // Flow conservation at all intermediate nodes (excluding source and sink)
   for (let v = 0; v < n; v++) {
     if (v === input.source || v === input.sink) continue;
     const outFlows = flows.filter((_, i) => input.edges[i].from === v);
@@ -34,14 +36,17 @@ export async function solve(input: P052Input): Promise<P052Output> {
     m.constraint(expr`${sum(outFlows)} - ${sum(inFlows)} == 0`);
   }
 
+  // Maximize net outflow leaving the source
   const sOut = flows.filter((_, i) => input.edges[i].from === input.source);
   const sIn = flows.filter((_, i) => input.edges[i].to === input.source);
   m.objective(maximize(expr`${sum(sOut)} - ${sum(sIn)}`));
   await m.solve();
 
+  // Normalize -0.0 to 0
   const flowVals = flows.map((f) => f.value! || 0);
 
-  // Extract canonical minimum s-t cut via residual reachability from source
+  // Extract canonical minimum s-t cut via BFS on the residual graph from source
+  // (forward edge has slack > 1e-6, or backward edge carries flow > 1e-6)
   const visited = new Array(n).fill(false);
   visited[input.source] = true;
   const queue = [input.source];

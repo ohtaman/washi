@@ -8,10 +8,12 @@ def solve(dist, demands, capacity, max_vehicles) -> dict:
     n = len(dist)
 
     prob = pulp.LpProblem("cvrp_routing", pulp.LpMinimize)
+    # x[i][j] in {0, 1}: binary indicator for traversing arc i -> j (i != j; node 0 is depot)
     x = [
         [pulp.LpVariable(f"x_{i}_{j}", cat=pulp.LpBinary) if i != j else None for j in range(n)]
         for i in range(n)
     ]
+    # u[i] in [demands[i], cap]: cumulative vehicle load after serving customer i > 0
     u = [
         pulp.LpVariable(f"u_{i}", lowBound=demands[i], upBound=cap, cat=pulp.LpContinuous)
         if i > 0
@@ -19,21 +21,26 @@ def solve(dist, demands, capacity, max_vehicles) -> dict:
         for i in range(n)
     ]
 
+    # Every customer i > 0 is visited exactly once (one incoming and one outgoing arc)
     for i in range(1, n):
         prob += pulp.lpSum(x[i][j] for j in range(n) if j != i) == 1
         prob += pulp.lpSum(x[j][i] for j in range(n) if j != i) == 1
 
+    # Depot flow balance and fleet size cap (<= max_v routes)
     prob += pulp.lpSum(x[0][j] for j in range(1, n)) <= max_v
     prob += pulp.lpSum(x[0][j] for j in range(1, n)) == pulp.lpSum(x[i][0] for i in range(1, n))
 
+    # MTZ capacity & subtour elimination: x[i][j] == 1 => u[j] >= u[i] + demands[j]
     for i in range(1, n):
         for j in range(1, n):
             if i != j:
                 prob += u[i] - u[j] + cap * x[i][j] <= cap - demands[j]
 
+    # Minimize total travel distance across all vehicle routes
     prob += pulp.lpSum(dist[i][j] * x[i][j] for i in range(n) for j in range(n) if i != j)
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Reconstruct each vehicle route starting and ending at depot 0
     routes = []
     for j in range(1, n):
         if round(pulp.value(x[0][j])) == 1:

@@ -39,6 +39,7 @@ export interface P044Output {
   counterexample: Record<string, boolean | number> | null;
 }
 
+// Compile a mixed Boolean + linear-integer-arithmetic (SMT) AST into WaSHI expressions
 function compileSmt(
   node: SmtFormula,
   bools: Record<string, BoolVar>,
@@ -55,6 +56,7 @@ function compileSmt(
     );
   }
   if ("xor" in node) return xor(...node.xor.map((c) => compileSmt(c, bools, ints)));
+  // Linear arithmetic comparison leaf: sum(coeff * var) <sense> rhs
   let lhs = expr`0`;
   for (const [name, coeff] of Object.entries(node.terms)) {
     lhs = lhs.add(ints[name].mul(coeff));
@@ -67,12 +69,14 @@ function compileSmt(
 
 export async function solve(input: P044Input): Promise<P044Output> {
   const m = new Model("PolicyCounterexample");
+  // bools: Boolean policy flags; ints: bounded integer state variables
   const bools = m.bool(input.boolVars);
   const ints: Record<string, Var> = {};
   for (const spec of input.intVars) {
     ints[spec.name] = m.integer(spec.name, { lb: spec.lb, ub: spec.ub });
   }
 
+  // Assert all policy rules and the negation of safeInvariant to search for a violating state
   input.rules.forEach((rule, i) => {
     m.constraint(compileSmt(rule, bools, ints), `rule_${i}`);
   });
@@ -83,6 +87,7 @@ export async function solve(input: P044Input): Promise<P044Output> {
     return { hasViolation: false, counterexample: null };
   }
 
+  // Extract counterexample state, rounding integer values and normalizing -0 to 0
   const counterexample: Record<string, boolean | number> = {};
   for (const name of input.boolVars) {
     counterexample[name] = Boolean(bools[name].value);

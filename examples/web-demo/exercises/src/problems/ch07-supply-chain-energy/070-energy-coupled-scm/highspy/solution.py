@@ -26,6 +26,9 @@ def solve(
 
     prob = pulp.LpProblem("energy_coupled_scm", pulp.LpMinimize)
 
+    # setups[t] (binary), production[t] in [0, prod_cap], inventory[t] >= 0
+    # charge/discharge in [0, p_max], mode[t] (binary: 1 = charge, 0 = discharge)
+    # soc[t] in [0, bat_cap] with terminal SoC >= init_soc; grid_load[t] >= 0; peak_load >= max_t grid_load[t]
     setups = [pulp.LpVariable(f"y_{t}", cat=pulp.LpBinary) for t in range(T)]
     production = [pulp.LpVariable(f"x_{t}", lowBound=0, upBound=prod_cap) for t in range(T)]
     inventory = [pulp.LpVariable(f"inv_{t}", lowBound=0) for t in range(T)]
@@ -40,12 +43,15 @@ def solve(
     peak_load = pulp.LpVariable("peak_load", lowBound=0)
 
     for t in range(T):
+        # Production capacity linking and inventory balance
         prev_inv = 0 if t == 0 else inventory[t - 1]
         prob += production[t] <= prod_cap * setups[t]
         prob += prev_inv + production[t] - inventory[t] == demands[t]
 
+        # Battery SoC dynamics
         prev_soc = init_soc if t == 0 else soc[t - 1]
         prob += soc[t] == prev_soc + eta_c * charge[t] - discharge[t] / eta_d
+        # Coupled power balance (base + setup + production + charge - discharge), peak epigraph, and mode exclusion
         prob += (
             grid_load[t]
             == base_loads[t]
@@ -58,6 +64,7 @@ def solve(
         prob += charge[t] <= p_max * mode[t]
         prob += discharge[t] <= p_max * (1 - mode[t])
 
+    # Objective: minimize setup, holding, grid energy, and peak demand charges
     prob += (
         setup_cost * pulp.lpSum(setups)
         + hold_cost * pulp.lpSum(inventory)
@@ -67,6 +74,7 @@ def solve(
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
+        # Round binary setup flags to eliminate floating-point tolerance noise
         "setups": [round(pulp.value(v)) for v in setups],
         "production": [float(pulp.value(v)) for v in production],
         "inventory": [float(pulp.value(v)) for v in inventory],

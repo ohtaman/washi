@@ -15,12 +15,15 @@ export interface P094Output {
 export async function solve(input: P094Input): Promise<P094Output> {
   const m = input.widths.length;
   const master = new Model("CuttingStockMaster");
+  // Master objective minimizes total stock rolls used (columns added dynamically with cost 1)
   master.objective(minimize(0));
 
+  // Demand constraints for each item width i (RHS populated by column coefficients)
   for (let i = 0; i < m; i++) {
     master.constraint(expr`0 >= ${input.demands[i]}`, `demand_${i}`);
   }
 
+  // Seed Restricted Master Problem (RMP) with homogeneous single-width patterns for initial feasibility
   const initCols: Array<{ variable: Var; pattern: number[] }> = [];
   for (let i = 0; i < m; i++) {
     if (input.demands[i] <= 0) continue;
@@ -37,12 +40,14 @@ export async function solve(input: P094Input): Promise<P094Output> {
   }
 
   let genCounter = 0;
+  // Gilmore-Gomory column generation: solve LP master, price new patterns, then finalize as integer MIP
   const result = await solveColumnGeneration<number[]>({
     master,
     maxIterations: 100,
     reducedCostTolerance: 1e-5,
     finalizeAsMIP: true,
     pricing: async ({ getDual }) => {
+      // Knapsack pricing subproblem: find a feasible cutting pattern maximizing dual value
       const sub = new Model("KnapsackPricing");
       const a = input.widths.map((w, i) =>
         sub.integer(`a_${i}`, { lb: 0, ub: Math.floor(input.rollWidth / w) })
@@ -54,10 +59,12 @@ export async function solve(input: P094Input): Promise<P094Output> {
       const status = await sub.solve();
       if (status !== "Optimal") return null;
 
+      // Reduced cost = 1 - sum(dual_i * a_i); stop if no negative reduced cost pattern exists
       const reducedCost = 1 - (sub.objectiveValue ?? 0);
       if (reducedCost >= -1e-5) return null;
 
       genCounter++;
+      // Round integer pattern counts from pricing subproblem
       const pat = a.map((v) => Math.round(v.value ?? 0) || 0);
       const coeffs: Record<string, number> = {};
       for (let i = 0; i < m; i++) {

@@ -19,6 +19,8 @@ def solve(
     num_slots = len(slot_penalties[0])
 
     prob = pulp.LpProblem("integrated_staff_equipment", pulp.LpMinimize)
+    # x[j][i][t] = 1 if job j is assigned to staff i in slot t (binary)
+    # overtime[i]: jobs worked by staff i beyond reg_limits[i], bounded by max_limits[i]
     x = [
         [
             [
@@ -34,12 +36,14 @@ def solve(
         for i in range(num_staff)
     ]
 
+    # Each job is assigned to exactly one certified (staff, slot) pair
     for j in range(num_jobs):
         prob += pulp.lpSum(x[j][i][t] for i in range(num_staff) for t in range(num_slots)) == 1
         for i in range(num_staff):
             if certified[i][j] == 0:
                 prob += pulp.lpSum(x[j][i]) == 0
 
+    # Staff exclusivity per slot, max workload limit, and overtime epigraph definition
     for i in range(num_staff):
         for t in range(num_slots):
             prob += pulp.lpSum(x[j][i][t] for j in range(num_jobs)) <= 1
@@ -47,12 +51,14 @@ def solve(
         prob += staff_load <= max_limits[i]
         prob += overtime[i] >= staff_load - reg_limits[i]
 
+    # Shared equipment capacity per time slot t
     for t in range(num_slots):
         prob += (
             pulp.lpSum(equip_needs[j] * x[j][i][t] for j in range(num_jobs) for i in range(num_staff))
             <= equip_cap
         )
 
+    # Objective: minimize assignment + slot penalty costs plus overtime costs
     prob += pulp.lpSum(
         (staff_costs[i] + slot_penalties[j][t]) * x[j][i][t]
         for j in range(num_jobs)
@@ -61,6 +67,7 @@ def solve(
     ) + pulp.lpDot(ot_costs, overtime)
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Extract assigned (staff, slot) per job, rounding binary flags for tolerance safety
     assigned_staff = [-1] * num_jobs
     assigned_slot = [-1] * num_jobs
     for j in range(num_jobs):
@@ -73,6 +80,7 @@ def solve(
     return {
         "assigned_staff": assigned_staff,
         "assigned_slot": assigned_slot,
+        # Clamp negative floating-point solver tolerances to 0.0
         "overtime": [max(0.0, float(pulp.value(v))) for v in overtime],
         "total_cost": float(pulp.value(prob.objective)),
     }

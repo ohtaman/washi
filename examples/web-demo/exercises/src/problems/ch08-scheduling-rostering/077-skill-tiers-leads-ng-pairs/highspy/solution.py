@@ -16,6 +16,7 @@ def solve(
     num_skills = len(staff_skills[0])
 
     prob = pulp.LpProblem("skill_tiers_leads_ng_pairs", pulp.LpMinimize)
+    # x[i][d][s] = 1 if staff i works shift s on day d (binary)
     x = [
         [
             [
@@ -27,10 +28,12 @@ def solve(
         for i in range(num_staff)
     ]
 
+    # At most 1 shift per day per staff member
     for i in range(num_staff):
         for d in range(num_days):
             prob += pulp.lpSum(x[i][d]) <= 1
 
+    # Active shift coverage: total headcount, >= 1 senior lead, and per-skill minimums
     for d in range(num_days):
         for s in range(num_shifts):
             if demands[d][s] <= 0:
@@ -45,11 +48,13 @@ def solve(
                         >= skill_demands[s][k]
                     )
 
+    # Incompatible (NG) staff pairs cannot work the same (day, shift)
     for a, b in ng_pairs:
         for d in range(num_days):
             for s in range(num_shifts):
                 prob += x[a][d][s] + x[b][d][s] <= 1
 
+    # Objective: minimize total shift assignment costs
     prob += pulp.lpSum(
         shift_costs[i][s] * x[i][d][s]
         for i in range(num_staff)
@@ -58,6 +63,7 @@ def solve(
     )
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Decode shift index per (staff, day), defaulting to -1 on days off (rounded for tolerance safety)
     schedule = [
         [
             next((s for s in range(num_shifts) if round(pulp.value(x[i][d][s])) == 1), -1)

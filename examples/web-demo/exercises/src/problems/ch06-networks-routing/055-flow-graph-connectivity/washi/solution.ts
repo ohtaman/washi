@@ -22,6 +22,10 @@ export async function solve(input: P055Input): Promise<P055Output> {
   const mEdges = input.edges.length;
   const m = new Model("FlowConnectivity");
 
+  // y[v]: binary indicator that node v is selected
+  // w[e]: binary indicator that undirected edge e is purchased
+  // zFwd[e], zRev[e]: directed orientation indicators for flow on edge e
+  // fFwd[e], fRev[e]: continuous single-commodity connectivity flow in [0, n-1]
   const y = m.binary(n, { prefix: "y" });
   const w = m.binary(mEdges, { prefix: "w" });
   const zFwd = m.binary(mEdges, { prefix: "zf" });
@@ -29,8 +33,11 @@ export async function solve(input: P055Input): Promise<P055Output> {
   const fFwd = m.continuous(mEdges, { lb: 0, ub: n - 1, prefix: "ff" });
   const fRev = m.continuous(mEdges, { lb: 0, ub: n - 1, prefix: "fr" });
 
+  // Root node 0 must be active to anchor the connected component
   m.constraint(expr`${y[0]} == 1`, "root_active");
 
+  // Edge activation and flow capacity coupling: an edge can carry flow in at most one direction
+  // and only if both endpoints and the edge itself are selected
   input.edges.forEach((e, idx) => {
     m.constraint(expr`${w[idx]} <= ${y[e.u]}`);
     m.constraint(expr`${w[idx]} <= ${y[e.v]}`);
@@ -39,6 +46,7 @@ export async function solve(input: P055Input): Promise<P055Output> {
     m.constraint(expr`${fRev[idx]} <= ${n - 1} * ${zRev[idx]}`);
   });
 
+  // Connectivity flow: root 0 supplies 1 unit of flow to every other selected node v (y[v])
   const nonRootSum = sum(y.slice(1));
   for (let v = 0; v < n; v++) {
     const inFlows = [
@@ -56,6 +64,7 @@ export async function solve(input: P055Input): Promise<P055Output> {
     }
   }
 
+  // Maximize net value: total selected node prizes minus purchased edge costs
   m.objective(
     maximize(
       expr`${sum(y.map((yv, v) => expr`${input.prizes[v]} * ${yv}`))} - ${sum(
@@ -65,6 +74,7 @@ export async function solve(input: P055Input): Promise<P055Output> {
   );
   await m.solve();
 
+  // Round binary indicators to clean integers and normalize -0 to 0
   return {
     selectedNodes: y.map((v) => Math.round(v.value!) || 0),
     selectedEdges: w.map((v) => Math.round(v.value!) || 0),

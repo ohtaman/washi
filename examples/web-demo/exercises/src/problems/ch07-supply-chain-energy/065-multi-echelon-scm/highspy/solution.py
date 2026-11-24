@@ -21,6 +21,8 @@ def solve(
 
     prob = pulp.LpProblem("multi_echelon_scm", pulp.LpMinimize)
 
+    # open_plants[p], open_dcs[d]: binary facility-opening decisions
+    # plant_to_dc[p][d], dc_to_cust[d][c]: non-negative continuous shipment flows
     open_plants = [pulp.LpVariable(f"plant_{p}", cat=pulp.LpBinary) for p in range(n_plants)]
     open_dcs = [pulp.LpVariable(f"dc_{d}", cat=pulp.LpBinary) for d in range(n_dcs)]
     plant_to_dc = [
@@ -32,18 +34,22 @@ def solve(
         for d in range(n_dcs)
     ]
 
+    # Plant capacity linking: shipments require the plant to be open
     for p in range(n_plants):
         prob += pulp.lpSum(plant_to_dc[p]) <= plant_caps[p] * open_plants[p]
 
+    # DC throughput capacity linking and flow conservation (inflow == outflow)
     for d in range(n_dcs):
         inflow = pulp.lpSum(plant_to_dc[p][d] for p in range(n_plants))
         outflow = pulp.lpSum(dc_to_cust[d])
         prob += inflow <= dc_caps[d] * open_dcs[d]
         prob += inflow == outflow
 
+    # Customer demand satisfaction
     for c in range(n_custs):
         prob += pulp.lpSum(dc_to_cust[d][c] for d in range(n_dcs)) >= demands[c]
 
+    # Objective: minimize fixed opening costs plus plant-to-DC and DC-to-customer transport costs
     prob += (
         pulp.lpDot(plant_fixed, open_plants)
         + pulp.lpDot(dc_fixed, open_dcs)
@@ -61,6 +67,7 @@ def solve(
     prob.solve(pulp.HiGHS(msg=False))
 
     return {
+        # Round binary values to eliminate floating-point solver tolerance noise
         "open_plants": [round(pulp.value(v)) for v in open_plants],
         "open_dcs": [round(pulp.value(v)) for v in open_dcs],
         "plant_to_dc": [[float(pulp.value(v)) for v in row] for row in plant_to_dc],

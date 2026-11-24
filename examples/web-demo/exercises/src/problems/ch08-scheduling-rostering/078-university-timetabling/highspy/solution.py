@@ -11,6 +11,7 @@ def solve(course_sizes, room_capacities, teachers, cohorts, slot_scores) -> dict
     num_slots = len(scores[0])
 
     prob = pulp.LpProblem("university_timetabling", pulp.LpMaximize)
+    # x[c][r][t] = 1 if course c is assigned to room r at time slot t (binary)
     x = [
         [
             [
@@ -22,16 +23,19 @@ def solve(course_sizes, room_capacities, teachers, cohorts, slot_scores) -> dict
         for c in range(num_courses)
     ]
 
+    # Each course is scheduled once, and only in rooms with sufficient capacity
     for c in range(num_courses):
         prob += pulp.lpSum(x[c][r][t] for r in range(num_rooms) for t in range(num_slots)) == 1
         for r in range(num_rooms):
             if sizes[c] > caps[r]:
                 prob += pulp.lpSum(x[c][r]) == 0
 
+    # At most one course per (room, slot)
     for r in range(num_rooms):
         for t in range(num_slots):
             prob += pulp.lpSum(x[c][r][t] for c in range(num_courses)) <= 1
 
+    # Group courses by teacher and by student cohort to enforce time-slot non-overlap
     teacher_groups = {}
     for c, tc in enumerate(teachers):
         teacher_groups.setdefault(tc, []).append(c)
@@ -40,12 +44,14 @@ def solve(course_sizes, room_capacities, teachers, cohorts, slot_scores) -> dict
         for g in c_list:
             cohort_groups.setdefault(g, []).append(c)
 
+    # Conflict clique: at most 1 course per teacher or cohort in any time slot t
     for group in list(teacher_groups.values()) + list(cohort_groups.values()):
         if len(group) < 2:
             continue
         for t in range(num_slots):
             prob += pulp.lpSum(x[c][r][t] for c in group for r in range(num_rooms)) <= 1
 
+    # Objective: maximize total course slot-preference scores
     prob += pulp.lpSum(
         scores[c][t] * x[c][r][t]
         for c in range(num_courses)
@@ -54,6 +60,7 @@ def solve(course_sizes, room_capacities, teachers, cohorts, slot_scores) -> dict
     )
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Extract assigned (room, slot) per course, rounding binary flags for tolerance safety
     rooms = [-1] * num_courses
     slots = [-1] * num_courses
     for c in range(num_courses):

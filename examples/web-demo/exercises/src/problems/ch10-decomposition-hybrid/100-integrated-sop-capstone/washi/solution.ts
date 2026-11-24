@@ -31,6 +31,7 @@ export interface P100Output {
   totalCost: number;
 }
 
+// Encode a symbolic policy rule over boolean line-active variables for Z3 audit
 function encodeRuleSmt(rule: PolicyRule, b: BoolVar[]): BoolExpr | BoolVar {
   switch (rule.type) {
     case "must_run":
@@ -44,15 +45,18 @@ function encodeRuleSmt(rule: PolicyRule, b: BoolVar[]): BoolExpr | BoolVar {
   }
 }
 
+// Phase 1a (Z3): check satisfiability of hard rules + retained soft rules + capacity cover; returns UNSAT core on conflict
 async function checkPolicyWithZ3(
   input: P100Input,
   droppedSet: Set<string>
 ): Promise<{ sat: boolean; core: readonly string[] }> {
   const N = input.capacities.length;
   const smt = new Model("PolicyAuditZ3");
+  // b[i] = boolean active indicator; u[i] in {0, 1} = integer mirror for linear capacity sum
   const b = Array.from({ length: N }, (_, i) => smt.bool(`b_${i}`));
   const u = Array.from({ length: N }, (_, i) => smt.integer(`u_${i}`, { lb: 0, ub: 1 }));
 
+  // Link boolean b[i] <-> integer u[i] and enforce total capacity >= demand
   let capSum = expr`0`;
   for (let i = 0; i < N; i++) {
     smt.constraint(b[i].implies(u[i].eq(1)), `link_on_${i}`);
@@ -77,11 +81,13 @@ async function checkPolicyWithZ3(
   };
 }
 
+// Phase 1b (HiGHS IHS): minimum-weight hitting-set MIP over accumulated Z3 UNSAT cores
 async function solveHittingSetMip(
   softRules: Array<PolicyRule & { weight: number }>,
   hittingSets: string[][]
 ): Promise<Set<string>> {
   const hs = new Model("IhsDropMip");
+  // drop[id] = 1 if soft policy rule id is dropped to resolve conflicts
   const dropById = new Map(softRules.map((r) => [r.id, hs.binary(`drop_${r.id}`)]));
   let obj = expr`0`;
   for (const r of softRules) {
@@ -113,6 +119,7 @@ export async function solve(input: P100Input): Promise<P100Output> {
   const hittingSets: string[][] = [];
   let droppedSet = new Set<string>();
 
+  // Phase 1: Implicit Hitting Set (IHS) loop alternating Z3 UNSAT-core extraction and HiGHS hitting-set MIP
   for (let iter = 0; iter <= 1 << input.softRules.length; iter++) {
     const audit = await checkPolicyWithZ3(input, droppedSet);
     if (audit.sat) break;
@@ -121,6 +128,7 @@ export async function solve(input: P100Input): Promise<P100Output> {
     if (coreSoft.length > 0) {
       hittingSets.push(coreSoft);
     } else {
+      // Fallback if Z3 core contains only hard rules/capacity: hit at least one remaining active soft rule
       const activeSoft = input.softRules
         .map((r) => r.id)
         .filter((id) => !droppedSet.has(id));
@@ -133,12 +141,15 @@ export async function solve(input: P100Input): Promise<P100Output> {
     droppedSet = await solveHittingSetMip(input.softRules, hittingSets);
   }
 
+  // Phase 2: Minimum-cost S&OP rescheduling MIP over the consistent retained policy set
   const N = input.capacities.length;
   const mip = new Model("RescheduleSopMip");
+  // y[i] = line active, q[i] = production quantity, delta[i] = |y[i] - baselineActive[i]| disruption
   const y = mip.binary(N, { prefix: "y" });
   const q = input.capacities.map((cap, i) => mip.continuous(`q_${i}`, { lb: 0, ub: cap }));
   const delta = mip.continuous(N, { prefix: "delta", lb: 0, ub: 1 });
 
+  // Minimize fixed + variable production + baseline disruption costs; enforce capacity, |y - baseline|, and demand
   let obj = expr`0`;
   let totalSupply = expr`0`;
   for (let i = 0; i < N; i++) {
@@ -155,6 +166,7 @@ export async function solve(input: P100Input): Promise<P100Output> {
   mip.constraint(expr`${totalSupply} >= ${input.demand}`, "demand");
   mip.objective(minimize(obj));
 
+  // Enforce all hard rules and non-dropped soft rules as linear MIP constraints
   const retained: PolicyRule[] = [
     ...input.hardRules,
     ...input.softRules.filter((r) => !droppedSet.has(r.id)),

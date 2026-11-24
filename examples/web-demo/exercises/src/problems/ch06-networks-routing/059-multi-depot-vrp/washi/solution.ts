@@ -20,6 +20,7 @@ export async function solve(input: P059Input): Promise<P059Output> {
   const customers = Array.from({ length: n - D }, (_, k) => D + k);
   const m = new Model("MultiDepotVRP");
 
+  // x[d].get(`${i}_${j}`) in {0, 1}: binary indicator that a vehicle from depot d traverses i -> j
   const x = Array.from({ length: D }, (_, d) => {
     const vd = [d, ...customers];
     const map = new Map<string, ReturnType<Model["binary"]>>();
@@ -31,6 +32,7 @@ export async function solve(input: P059Input): Promise<P059Output> {
     return map;
   });
 
+  // u[c] in [demands[c], Q]: continuous cumulative vehicle load after serving customer c
   const u = customers.map((c) =>
     m.continuous(`u_${c}`, { lb: input.demands[c], ub: Q })
   );
@@ -81,6 +83,7 @@ export async function solve(input: P059Input): Promise<P059Output> {
     }
   }
 
+  // Minimize total travel distance across all depots and routes
   const costTerms = [];
   for (let d = 0; d < D; d++) {
     const vd = [d, ...customers];
@@ -95,6 +98,7 @@ export async function solve(input: P059Input): Promise<P059Output> {
   m.objective(minimize(sum(costTerms)));
   await m.solve();
 
+  // Reconstruct each vehicle route starting and ending at its assigned depot d
   const routes: number[][] = [];
   for (let d = 0; d < D; d++) {
     const vd = [d, ...customers];
