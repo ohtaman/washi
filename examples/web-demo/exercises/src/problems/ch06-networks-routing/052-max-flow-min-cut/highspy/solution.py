@@ -8,11 +8,13 @@ def solve(node_count, source, sink, edges) -> dict:
     t = sink
 
     prob = pulp.LpProblem("max_flow_min_cut", pulp.LpMaximize)
+    # flows[i]: continuous flow along edge i in [0, cap]
     flows = [
         pulp.LpVariable(f"f_{i}", lowBound=0, upBound=e["cap"], cat=pulp.LpContinuous)
         for i, e in enumerate(edges)
     ]
 
+    # Flow conservation at all intermediate nodes (excluding source and sink)
     for v in range(n):
         if v in (s, t):
             continue
@@ -20,13 +22,16 @@ def solve(node_count, source, sink, edges) -> dict:
         in_flow = pulp.lpSum(flows[i] for i, e in enumerate(edges) if e["to"] == v)
         prob += out_flow - in_flow == 0
 
+    # Maximize net outflow leaving the source
     prob += pulp.lpSum(flows[i] for i, e in enumerate(edges) if e["from"] == s) - pulp.lpSum(
         flows[i] for i, e in enumerate(edges) if e["to"] == s
     )
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Normalize -0.0 to 0.0
     flow_vals = [float(pulp.value(v)) or 0.0 for v in flows]
 
+    # Extract canonical minimum s-t cut via BFS on the residual graph from source
     visited = [False] * n
     visited[s] = True
     queue = [s]

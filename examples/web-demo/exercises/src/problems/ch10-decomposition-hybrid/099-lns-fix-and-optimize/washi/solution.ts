@@ -17,6 +17,7 @@ export interface P099Output {
   totalCost: number;
 }
 
+// Fix-and-Optimize subproblem: free binary setups y[t] inside [winStart, winEnd) and fix all others to fixedSetups
 async function solveWindow(
   input: P099Input,
   fixedSetups: number[],
@@ -26,6 +27,7 @@ async function solveWindow(
   const T = input.demands.length;
   const m = new Model("LotSizingWindow");
 
+  // Setup indicators y[t] (binary in window, fixed integer outside), production p[t], and inventory inv[t]
   const y: Var[] = [];
   for (let t = 0; t < T; t++) {
     if (t >= winStart && t < winEnd) {
@@ -39,6 +41,7 @@ async function solveWindow(
   );
   const inv = m.continuous(T, { prefix: "inv", lb: 0 });
 
+  // Minimize setup + production + holding costs subject to capacity linking and inventory balance
   let obj = expr`0`;
   for (let t = 0; t < T; t++) {
     obj = obj
@@ -74,11 +77,13 @@ async function solveWindow(
 export async function solve(input: P099Input): Promise<P099Output> {
   const T = input.demands.length;
   const win = Math.max(1, Math.min(T, input.windowSize));
+  // Evaluate initial setup plan (empty window [0, 0) fixes all setups)
   let best = await solveWindow(input, input.initialPlan, 0, 0);
   if (!best) {
     throw new Error("Initial plan is infeasible");
   }
 
+  // Sliding-window LNS passes: re-optimize windowSize consecutive setups until a full pass yields no improvement
   for (let pass = 0; pass < 10; pass++) {
     let improved = false;
     for (let start = 0; start <= T - win; start++) {
@@ -91,6 +96,7 @@ export async function solve(input: P099Input): Promise<P099Output> {
     if (!improved) break;
   }
 
+  // Final LP re-solve with all setups fixed to verify exact continuous flows and cost
   const verified = await solveWindow(input, best.setups, 0, 0);
   return verified ?? best;
 }

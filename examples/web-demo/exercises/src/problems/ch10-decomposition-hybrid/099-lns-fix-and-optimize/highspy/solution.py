@@ -14,6 +14,7 @@ def _solve_window(
     n_periods = len(demands)
 
     prob = pulp.LpProblem("lot_sizing_window", pulp.LpMinimize)
+    # Setup indicators y[t] (binary inside [win_start, win_end), fixed outside), production p[t], inventory inv[t]
     y = []
     for t in range(n_periods):
         if win_start <= t < win_end:
@@ -30,12 +31,14 @@ def _solve_window(
     p = [pulp.LpVariable(f"p_{t}", lowBound=0, upBound=capacities[t]) for t in range(n_periods)]
     inv = [pulp.LpVariable(f"inv_{t}", lowBound=0) for t in range(n_periods)]
 
+    # Minimize setup + production + holding costs
     prob += (
         pulp.lpDot(setup_costs, y)
         + pulp.lpDot(prod_costs, p)
         + hold_cost * pulp.lpSum(inv)
     )
 
+    # Capacity linking and period-by-period inventory balance
     for t in range(n_periods):
         prob += p[t] <= capacities[t] * y[t]
         if t == 0:
@@ -67,12 +70,14 @@ def solve(
     """Return {"setups": list[int], "production": list[float], "inventory": list[float], "total_cost": float}."""
     n_periods = len(demands)
     win = max(1, min(n_periods, int(window_size)))
+    # Evaluate initial setup plan (empty window [0, 0) fixes all setups)
     best = _solve_window(
         demands, setup_costs, prod_costs, hold_cost, capacities, list(initial_plan), 0, 0
     )
     if best is None:
         raise RuntimeError("Initial plan is infeasible")
 
+    # Sliding-window LNS passes: re-optimize window_size consecutive setups until a full pass stalls
     for _ in range(10):
         improved = False
         for start in range(0, n_periods - win + 1):
@@ -92,6 +97,7 @@ def solve(
         if not improved:
             break
 
+    # Final LP re-solve with all setups fixed to verify exact continuous flows and cost
     verified = _solve_window(
         demands, setup_costs, prod_costs, hold_cost, capacities, best["setups"], 0, 0
     )

@@ -24,17 +24,19 @@ export async function solve(input: P065Input): Promise<P065Output> {
   const nCusts = input.demands.length;
   const m = new Model("MultiEchelonSCM");
 
+  // openPlants[p], openDcs[d]: binary facility-opening indicators for plants and DCs
   const openPlants = m.binary(nPlants, { prefix: "plant" });
   const openDcs = m.binary(nDcs, { prefix: "dc" });
+  // plantToDc[p][d], dcToCustomer[d][c]: continuous shipment flows (>= 0)
   const plantToDc = m.continuous(nPlants, nDcs, { lb: 0, prefix: "p2d" });
   const dcToCustomer = m.continuous(nDcs, nCusts, { lb: 0, prefix: "d2c" });
 
-  // Plant capacity linking
+  // Plant capacity linking: total outflow from plant p is 0 unless openPlants[p] == 1
   m.constraint(
     plantToDc.map((row, p) => expr`${sum(row)} <= ${input.plantCaps[p]} * ${openPlants[p]}`)
   );
 
-  // DC throughput capacity linking and flow conservation
+  // DC throughput capacity linking and flow conservation (inflow == outflow at each DC)
   input.dcCaps.forEach((cap, d) => {
     const dcInflow = sum(plantToDc.map((row) => row[d]));
     const dcOutflow = sum(dcToCustomer[d]);
@@ -42,13 +44,14 @@ export async function solve(input: P065Input): Promise<P065Output> {
     m.constraint(expr`${dcInflow} - ${dcOutflow} == 0`);
   });
 
-  // Customer demand satisfaction
+  // Customer demand satisfaction: total deliveries to customer c meet or exceed demands[c]
   m.constraint(
     input.demands.map(
       (demand, c) => expr`${sum(dcToCustomer.map((row) => row[c]))} >= ${demand}`
     )
   );
 
+  // Objective: minimize fixed opening costs for plants/DCs plus two-echelon transportation costs
   const p2dExpr = sum(
     plantToDc.flatMap((row, p) =>
       row.map((flow, d) => expr`${input.plantDcCosts[p][d]} * ${flow}`)
@@ -67,6 +70,7 @@ export async function solve(input: P065Input): Promise<P065Output> {
   await m.solve();
 
   return {
+    // Round binary facility flags to strip solver tolerance noise
     openPlants: openPlants.map((v) => Math.round(v.value!) || 0),
     openDcs: openDcs.map((v) => Math.round(v.value!) || 0),
     plantToDc: plantToDc.map((row) => row.map((v) => v.value!)),

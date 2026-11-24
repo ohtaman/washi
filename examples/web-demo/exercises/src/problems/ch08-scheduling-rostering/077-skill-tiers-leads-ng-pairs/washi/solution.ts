@@ -21,16 +21,19 @@ export async function solve(input: P077Input): Promise<P077Output> {
   const K = input.staffSkills[0].length;
   const m = new Model("SkillTiersLeadsNgPairs");
 
+  // x[i][d][s] = 1 if staff i works shift s on day d (binary)
   const x = Array.from({ length: N }, (_, i) =>
     Array.from({ length: D }, (_, d) =>
       Array.from({ length: S }, (_, s) => m.binary(`x_${i}_${d}_${s}`))
     )
   );
 
+  // At most 1 shift per day per staff member
   x.forEach((staffDays) => {
     m.constraint(staffDays.map((dayVars) => expr`${sum(dayVars)} <= 1`));
   });
 
+  // Active shift coverage: headcount, at least 1 senior lead, and per-skill quotas
   for (let d = 0; d < D; d++) {
     for (let s = 0; s < S; s++) {
       if (input.demands[d][s] <= 0) continue;
@@ -48,6 +51,7 @@ export async function solve(input: P077Input): Promise<P077Output> {
     }
   }
 
+  // Incompatible (NG) staff pairs cannot be assigned to the same (day, shift)
   for (const [a, b] of input.ngPairs) {
     for (let d = 0; d < D; d++) {
       for (let s = 0; s < S; s++) {
@@ -56,6 +60,7 @@ export async function solve(input: P077Input): Promise<P077Output> {
     }
   }
 
+  // Objective: minimize total shift assignment costs
   m.objective(
     minimize(
       sum(
@@ -70,6 +75,7 @@ export async function solve(input: P077Input): Promise<P077Output> {
   await m.solve();
 
   return {
+    // Decode assigned shift index per (staff, day); -1 if off (rounded for tolerance safety)
     schedule: x.map((staffDays) =>
       staffDays.map((dayVars) =>
         dayVars.findIndex((v) => Math.round(v.value!) === 1)

@@ -23,17 +23,20 @@ export async function solve(input: P079Input): Promise<P079Output> {
   const S = input.numSlots;
   const model = new Model("EsportsVenueScheduling");
 
+  // x[m][v][s] = 1 if match m is scheduled at venue v in slot s (binary)
   const x = Array.from({ length: M }, (_, m) =>
     Array.from({ length: V }, (_, v) =>
       Array.from({ length: S }, (_, s) => model.binary(`x_${m}_${v}_${s}`))
     )
   );
+  // overtime[v][s]: extra hours beyond regularLength for (venue v, slot s) in [0, maxOvertime]
   const overtime = Array.from({ length: V }, (_, v) =>
     Array.from({ length: S }, (_, s) =>
       model.continuous({ lb: 0, ub: input.maxOvertime, name: `ot_${v}_${s}` })
     )
   );
 
+  // Each match is scheduled at most once, and only at compatible venues
   x.forEach((matchVenues, m) => {
     model.constraint(expr`${sum(matchVenues.flat())} <= 1`);
     matchVenues.forEach((venueSlots, v) => {
@@ -43,6 +46,7 @@ export async function solve(input: P079Input): Promise<P079Output> {
     });
   });
 
+  // Venue-slot duration capacity: total match duration <= regularLength + overtime[v][s]
   for (let v = 0; v < V; v++) {
     for (let s = 0; s < S; s++) {
       const load = sum(x.map((matchVenues, m) => expr`${input.durations[m]} * ${matchVenues[v][s]}`));
@@ -50,6 +54,7 @@ export async function solve(input: P079Input): Promise<P079Output> {
     }
   }
 
+  // Objective: maximize total match value scores minus overtime penalty costs
   const totalScore = sum(
     x.map((matchVenues, m) => expr`${input.scores[m]} * ${sum(matchVenues.flat())}`)
   );
@@ -57,6 +62,7 @@ export async function solve(input: P079Input): Promise<P079Output> {
   model.objective(maximize(expr`${totalScore} - ${totalOvertimeCost}`));
   await model.solve();
 
+  // Extract assigned (venue, slot) per match (-1 if unscheduled), rounding binary flags for tolerance safety
   const assignedVenue = new Array<number>(M).fill(-1);
   const assignedSlot = new Array<number>(M).fill(-1);
   for (let m = 0; m < M; m++) {
@@ -72,6 +78,7 @@ export async function solve(input: P079Input): Promise<P079Output> {
   return {
     assignedVenue,
     assignedSlot,
+    // Clamp tiny negative solver tolerances (e.g. -1e-12) to 0
     overtime: overtime.map((row) => row.map((v) => Math.max(0, v.value!) || 0)),
     netScore: model.objectiveValue!,
   };

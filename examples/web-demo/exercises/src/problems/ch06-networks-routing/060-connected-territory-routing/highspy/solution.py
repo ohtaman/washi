@@ -8,6 +8,10 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
     n = len(demands)
 
     prob = pulp.LpProblem("connected_territory_routing", pulp.LpMinimize)
+    # y[i][k]: node i assigned to territory k; h[i][k]: node i chosen as hub of territory k
+    # s[i][k]: connectivity flow supply injected at hub i for territory k (0 if not hub)
+    # f[e][d][k]: directed connectivity flow on adjacency edge e (d=0 fwd, d=1 rev) for territory k
+    # x[i][j]: binary intra-territory TSP arc indicator; u[i]: MTZ visit-order variable
     y = [[pulp.LpVariable(f"y_{i}_{k}", cat=pulp.LpBinary) for k in range(num_t)] for i in range(n)]
     h = [[pulp.LpVariable(f"h_{i}_{k}", cat=pulp.LpBinary) for k in range(num_t)] for i in range(n)]
     s = [[pulp.LpVariable(f"s_{i}_{k}", lowBound=0, upBound=n) for k in range(num_t)] for i in range(n)]
@@ -21,6 +25,7 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
     ]
     u = [pulp.LpVariable(f"u_{i}", lowBound=0, upBound=n - 1) for i in range(n)]
 
+    # Zone partitioning, hub assignment, and balanced demand limits
     for i in range(n):
         prob += pulp.lpSum(y[i][k] for k in range(num_t)) == 1
     for k in range(num_t):
@@ -31,11 +36,13 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
             prob += h[i][k] <= y[i][k]
             prob += s[i][k] <= n * h[i][k]
 
+    # Symmetry breaking: order territories by increasing hub node index
     for k in range(num_t - 1):
         prob += pulp.lpSum(i * h[i][k] for i in range(n)) + 1 <= pulp.lpSum(
             i * h[i][k + 1] for i in range(n)
         )
 
+    # Single-commodity flow connectivity per territory along adj_edges
     for e_idx, (eu, ev) in enumerate(adj_edges):
         for k in range(num_t):
             prob += f[e_idx][0][k] <= (n - 1) * y[eu][k]
@@ -57,6 +64,7 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
             )
             prob += s[i][k] + in_f - out_f == y[i][k]
 
+    # Intra-territory TSP tours with hub-anchored MTZ subtour elimination
     for i in range(n):
         prob += pulp.lpSum(x[i][j] for j in range(n) if j != i) == 1
         prob += pulp.lpSum(x[j][i] for j in range(n) if j != i) == 1
@@ -67,11 +75,13 @@ def solve(num_territories, demands, demand_bounds, hub_costs, adj_edges, dist) -
                 h_j = pulp.lpSum(h[j][k] for k in range(num_t))
                 prob += u[i] + 1 - u[j] <= n * (1 - x[i][j] + h_j)
 
+    # Minimize total hub opening cost plus intra-territory TSP tour distance
     prob += pulp.lpSum(hub_costs[i] * h[i][k] for i in range(n) for k in range(num_t)) + pulp.lpSum(
         dist[i][j] * x[i][j] for i in range(n) for j in range(n) if i != j
     )
     prob.solve(pulp.HiGHS(msg=False))
 
+    # Reconstruct each territory's closed TSP tour starting from its hub
     territories = []
     for k in range(num_t):
         hub = next(i for i in range(n) if round(pulp.value(h[i][k])) == 1)

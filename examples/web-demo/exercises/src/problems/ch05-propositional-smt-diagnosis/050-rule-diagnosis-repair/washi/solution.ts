@@ -56,6 +56,7 @@ export interface P050Output {
   repairedAssignment: Record<string, boolean | number>;
 }
 
+// Compile a mixed Boolean + linear-integer-arithmetic (SMT) AST into WaSHI expressions
 function compileSmt(
   node: SmtFormula,
   bools: Record<string, BoolVar>,
@@ -72,6 +73,7 @@ function compileSmt(
     );
   }
   if ("xor" in node) return xor(...node.xor.map((c) => compileSmt(c, bools, ints)));
+  // Linear arithmetic comparison leaf: sum(coeff * var) <sense> rhs
   let lhs = expr`0`;
   for (const [name, coeff] of Object.entries(node.terms)) {
     lhs = lhs.add(ints[name].mul(coeff));
@@ -82,6 +84,7 @@ function compileSmt(
   return lhs.ne(node.rhs);
 }
 
+// Check satisfiability of a subset of hard and soft rules identified by activeIds
 async function checkRulesSubset(
   input: P050Input,
   activeIds: Set<string>
@@ -108,6 +111,7 @@ async function checkRulesSubset(
 }
 
 export async function solve(input: P050Input): Promise<P050Output> {
+  // Phase 1: Check full rule set consistency
   const allIds = [...input.hardRules.map((h) => h.id), ...input.softRules.map((s) => s.id)];
   const initial = await checkRulesSubset(input, new Set(allIds));
 
@@ -121,6 +125,7 @@ export async function solve(input: P050Input): Promise<P050Output> {
     };
   }
 
+  // Phase 2: Deletion-based MUS extraction starting from Z3's initial unsatCore
   let core = Array.from(new Set(initial.res.unsatCore ?? allIds));
   for (const ruleId of [...core]) {
     if (!core.includes(ruleId)) continue;
@@ -136,6 +141,7 @@ export async function solve(input: P050Input): Promise<P050Output> {
     }
   }
 
+  // Phase 3: Weighted MaxSMT repair — keep hard rules strict and minimize weighted soft-rule violations
   const optModel = new Model("PolicyRepair");
   const bools = optModel.bool(input.boolVars);
   const ints: Record<string, Var> = {};
@@ -145,6 +151,7 @@ export async function solve(input: P050Input): Promise<P050Output> {
   for (const h of input.hardRules) {
     optModel.constraint(compileSmt(h.expr, bools, ints), h.id);
   }
+  // violated[k] in {0, 1}: 1 iff soft rule k is relaxed/violated
   const violated = optModel.binary(input.softRules.length, { prefix: "viol" });
   const weights = input.softRules.map((s) => s.weight);
   input.softRules.forEach((s, k) => {
@@ -158,6 +165,7 @@ export async function solve(input: P050Input): Promise<P050Output> {
 
   await optModel.solve({ solver: "z3" });
 
+  // Extract repaired assignment (rounding integers and normalizing -0 to 0) and violated soft rules
   const repairedAssignment: Record<string, boolean | number> = {};
   for (const name of input.boolVars) {
     repairedAssignment[name] = Boolean(bools[name].value);

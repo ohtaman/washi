@@ -32,13 +32,16 @@ export async function solve(input: P070Input): Promise<P070Output> {
   const T = input.demands.length;
   const m = new Model("EnergyCoupledSCM");
 
+  // Production variables: setups[t] (binary), production[t] in [0, prodCap], inventory[t] >= 0
   const setups = m.binary(T, { prefix: "y" });
   const production = m.continuous(T, { lb: 0, ub: input.prodCap, prefix: "x" });
   const inventory = m.continuous(T, { lb: 0, prefix: "inv" });
 
+  // Battery & grid variables: charge/discharge in [0, maxPower], binary mode (1 = charge, 0 = discharge)
   const charge = m.continuous(T, { lb: 0, ub: input.maxPower, prefix: "chg" });
   const discharge = m.continuous(T, { lb: 0, ub: input.maxPower, prefix: "dis" });
   const mode = m.binary(T, { prefix: "mode" });
+  // soc[t] in [0, batteryCap], restoring at least initSoc by terminal period T - 1
   const soc = input.demands.map((_, t) =>
     m.continuous({
       lb: t === T - 1 ? input.initSoc : 0,
@@ -46,23 +49,27 @@ export async function solve(input: P070Input): Promise<P070Output> {
       name: `soc_${t}`,
     })
   );
+  // gridLoad[t]: total net grid draw (>= 0); peakLoad: epigraph variable for max_t gridLoad[t]
   const gridLoad = m.continuous(T, { lb: 0, prefix: "grid" });
   const peakLoad = m.continuous("peakLoad", { lb: 0 });
 
   const invEtaD = 1 / input.etaDischarge;
 
   input.demands.forEach((demand, t) => {
+    // Production setup linking and inventory balance
     const prevInv = t === 0 ? 0 : inventory[t - 1];
     m.constraint(expr`${production[t]} <= ${input.prodCap} * ${setups[t]}`);
     m.constraint(
       expr`${prevInv} + ${production[t]} - ${inventory[t]} == ${demand}`
     );
 
+    // Battery state-of-charge transition with charge/discharge efficiencies
     const prevSoc = t === 0 ? input.initSoc : soc[t - 1];
     m.constraint(
       expr`${soc[t]} - ${prevSoc} - ${input.etaCharge} * ${charge[t]} + ${invEtaD} * ${discharge[t]} == 0`
     );
 
+    // Coupled plant + battery + base load power balance, peak epigraph, and charge/discharge mutual exclusion
     m.constraint(
       expr`${gridLoad[t]} - ${input.setupPower} * ${setups[t]} - ${input.unitPower} * ${production[t]} - ${charge[t]} + ${discharge[t]} == ${input.baseLoads[t]}`
     );
@@ -71,6 +78,7 @@ export async function solve(input: P070Input): Promise<P070Output> {
     m.constraint(expr`${discharge[t]} <= ${input.maxPower} * (1 - ${mode[t]})`);
   });
 
+  // Objective: minimize setup, inventory holding, electricity TOU energy, and peak demand charges
   m.objective(
     minimize(
       expr`${input.setupCost} * ${sum(setups)} + ${input.holdCost} * ${sum(inventory)} + dot(${input.prices}, ${gridLoad}) + ${input.demandCharge} * ${peakLoad}`
@@ -79,6 +87,7 @@ export async function solve(input: P070Input): Promise<P070Output> {
   await m.solve();
 
   return {
+    // Round binary setup flags to strip solver tolerance noise
     setups: setups.map((v) => Math.round(v.value!) || 0),
     production: production.map((v) => v.value!),
     inventory: inventory.map((v) => v.value!),

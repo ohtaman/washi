@@ -24,15 +24,18 @@ export async function solve(input: P080Input): Promise<P080Output> {
   const T = input.slotPenalties[0].length;
   const m = new Model("IntegratedStaffEquipment");
 
+  // x[j][i][t] = 1 if job j is assigned to staff i in time slot t (binary)
   const x = Array.from({ length: J }, (_, j) =>
     Array.from({ length: N }, (_, i) =>
       Array.from({ length: T }, (_, t) => m.binary(`x_${j}_${i}_${t}`))
     )
   );
+  // overtime[i]: jobs worked by staff i beyond regularLimits[i], bounded by maxLimits[i]
   const overtime = input.maxLimits.map((ub, i) =>
     m.continuous({ lb: 0, ub, name: `ot_${i}` })
   );
 
+  // Each job is assigned to exactly one certified (staff, slot) pair
   x.forEach((jobStaff, j) => {
     m.constraint(expr`${sum(jobStaff.flat())} == 1`);
     jobStaff.forEach((staffSlots, i) => {
@@ -42,6 +45,7 @@ export async function solve(input: P080Input): Promise<P080Output> {
     });
   });
 
+  // Staff constraints: at most 1 job per slot, total workload <= maxLimits[i], and overtime epigraph
   for (let i = 0; i < N; i++) {
     for (let t = 0; t < T; t++) {
       m.constraint(expr`${sum(x.map((jobStaff) => jobStaff[i][t]))} <= 1`);
@@ -53,6 +57,7 @@ export async function solve(input: P080Input): Promise<P080Output> {
     ]);
   }
 
+  // Shared equipment pool capacity per time slot t
   for (let t = 0; t < T; t++) {
     const eqUsed = sum(
       x.flatMap((jobStaff, j) =>
@@ -62,6 +67,7 @@ export async function solve(input: P080Input): Promise<P080Output> {
     m.constraint(expr`${eqUsed} <= ${input.equipCap}`);
   }
 
+  // Objective: minimize staff assignment + slot penalty costs plus overtime costs
   const assignCost = sum(
     x.flatMap((jobStaff, j) =>
       jobStaff.flatMap((staffSlots, i) =>
@@ -76,6 +82,7 @@ export async function solve(input: P080Input): Promise<P080Output> {
   );
   await m.solve();
 
+  // Extract assigned (staff, slot) per job, rounding binary flags for tolerance safety
   const assignedStaff = new Array<number>(J);
   const assignedSlot = new Array<number>(J);
   for (let j = 0; j < J; j++) {
@@ -91,6 +98,7 @@ export async function solve(input: P080Input): Promise<P080Output> {
   return {
     assignedStaff,
     assignedSlot,
+    // Clamp tiny negative solver tolerances (e.g. -1e-12) to 0
     overtime: overtime.map((v) => Math.max(0, v.value!) || 0),
     totalCost: m.objectiveValue!,
   };

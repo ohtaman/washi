@@ -16,18 +16,22 @@ def solve(
 
     prob = pulp.LpProblem("blending", pulp.LpMinimize)
 
+    # Decision variables: continuous amount of each raw material, bounded by availability.
     amounts = [
         pulp.LpVariable(f"amt_{i}", lowBound=0, upBound=avail)
         for i, avail in enumerate(availabilities)
     ]
 
+    # Batch size constraint: total blended weight must equal target_batch.
     prob += pulp.lpSum(amounts) == target
 
+    # Composition constraints: each element k must stay within [min_ratio, max_ratio] of the batch.
     for k in range(n_elem):
         elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
         prob += elem_expr >= min_ratios[k] * target
         prob += elem_expr <= max_ratios[k] * target
 
+    # Objective: minimize total raw material cost.
     prob += pulp.lpDot(costs, amounts)
     prob.solve(pulp.HiGHS(msg=False))
 

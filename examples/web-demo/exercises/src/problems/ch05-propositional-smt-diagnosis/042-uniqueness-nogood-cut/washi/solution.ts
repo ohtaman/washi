@@ -29,6 +29,7 @@ export interface P042Output {
   unique: boolean;
 }
 
+// Recursively compile a propositional AST into WaSHI boolean expressions
 function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): LogicInput {
   if (typeof node === "string") return bools[node];
   if ("not" in node) return not(compileFormula(node.not, bools));
@@ -42,12 +43,15 @@ function compileFormula(node: PropFormula, bools: Record<string, BoolVar>): Logi
 
 export async function solve(input: P042Input): Promise<P042Output> {
   const m = new Model("UniquenessCheck");
+  // bools[name]: Boolean decision variable for each proposition in input.vars
   const bools = m.bool(input.vars);
 
+  // Assert all propositional rules
   input.rules.forEach((rule, i) => {
     m.constraint(compileFormula(rule, bools), `rule_${i}`);
   });
 
+  // First check: find any satisfying truth assignment
   const first = await m.check({ solver: "z3" });
   if (first.status !== "Sat") {
     return { satisfiable: false, assignment: null, unique: false };
@@ -58,6 +62,8 @@ export async function solve(input: P042Input): Promise<P042Output> {
     assignment[name] = Boolean(bools[name].value);
   }
 
+  // No-good cut: forbid the first solution by requiring at least one variable to flip;
+  // if the second check is Unsat, the first assignment is unique
   m.constraint(
     or(...input.vars.map((name) => (assignment[name] ? not(bools[name]) : bools[name]))),
     "nogood_cut"

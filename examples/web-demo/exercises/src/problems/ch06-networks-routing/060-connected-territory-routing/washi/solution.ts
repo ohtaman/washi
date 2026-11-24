@@ -25,6 +25,10 @@ export async function solve(input: P060Input): Promise<P060Output> {
   const [minDemand, maxDemand] = input.demandBounds;
   const m = new Model("ConnectedTerritoryRouting");
 
+  // y[i][k]: node i assigned to territory k; h[i][k]: node i chosen as hub of territory k
+  // s[i][k]: connectivity flow supply injected at hub i for territory k (0 if not hub)
+  // fFwd[e][k], fRev[e][k]: directed connectivity flow on adjacency edge e for territory k
+  // x[i][j]: binary intra-territory TSP arc indicator; u[i]: MTZ visit-order variable
   const y = Array.from({ length: n }, (_, i) => m.binary(K, { prefix: `y_${i}` }));
   const h = Array.from({ length: n }, (_, i) => m.binary(K, { prefix: `h_${i}` }));
   const s = Array.from({ length: n }, (_, i) =>
@@ -101,6 +105,7 @@ export async function solve(input: P060Input): Promise<P060Output> {
     }
   }
 
+  // Minimize total hub opening cost plus intra-territory TSP tour distance
   const hubTerm = sum(h.flatMap((row, i) => row.map((v) => expr`${input.hubCosts[i]} * ${v}`)));
   const tourTerm = sum(
     x.flatMap((row, i) => row.map((v, j) => (v ? expr`${input.dist[i][j]} * ${v}` : 0)))
@@ -108,6 +113,7 @@ export async function solve(input: P060Input): Promise<P060Output> {
   m.objective(minimize(expr`${hubTerm} + ${tourTerm}`));
   await m.solve();
 
+  // Reconstruct each territory's closed TSP tour starting from its hub
   const territories: P060Territory[] = [];
   for (let k = 0; k < K; k++) {
     const hub = h.findIndex((row) => Math.round(row[k].value!) === 1);
