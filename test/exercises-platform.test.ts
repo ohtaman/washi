@@ -1302,7 +1302,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         progress: state,
         activeRuntime: "washi",
         washiCode: unreviewedProb.washiStarter,
-        highspyCode: unreviewedProb.highspyStarter,
+        pulpCode: unreviewedProb.pulpStarter,
       });
       expect(unreviewedWs).toMatch(/<p class="ws-provenance" data-reviewed="false">/);
 
@@ -1318,7 +1318,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         progress: state,
         activeRuntime: "washi",
         washiCode: reviewedProb.washiStarter,
-        highspyCode: reviewedProb.highspyStarter,
+        pulpCode: reviewedProb.pulpStarter,
       });
       expect(reviewedWs).toMatch(/<p class="ws-provenance" data-reviewed="true">/);
       expect(reviewedWs).toContain("@ohtaman");

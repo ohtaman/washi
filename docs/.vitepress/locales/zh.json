@@ -9,7 +9,7 @@
       "activeMatch": "^/zh/(?:getting-started|guide|solvers|examples)/"
     },
     { "text": "案例展示", "link": "/zh/showcase/", "activeMatch": "^/zh/showcase/" },
-    { "text": "百题训练", "link": "/exercises/?lang=zh", "target": "_self" }
+    { "text": "N 题训练", "link": "/exercises/?lang=zh", "target": "_self" }
   ],
   "sidebar": [
     {

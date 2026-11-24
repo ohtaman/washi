@@ -4,7 +4,7 @@ Guidelines for coding agents and reviewers contributing to **WaSHI** (`@ohtaman/
 
 > **Modeling with `@ohtaman/washi`?** See the [AI Coding Agent Quick-Reference Guide](docs/getting-started/ai-agents.md) and [WaSHI Agent Skill (`skills/washi/SKILL.md`)](skills/washi/SKILL.md).
 >
-> **Authoring Optimization 100 exercises?** Follow [Exercises Authoring & Style Guidelines (`examples/web-demo/exercises/AGENTS.md`)](examples/web-demo/exercises/AGENTS.md).
+> **Authoring Optimization N exercises?** Follow [Exercises Authoring & Style Guidelines (`examples/web-demo/exercises/AGENTS.md`)](examples/web-demo/exercises/AGENTS.md).
 
 ---
 
