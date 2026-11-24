@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { LinExpr, Model, expr, maximize, minimize, MockSolver } from "../src/index.js";
+import { LinExpr, Model, expr, maximize, minimize, sum, MockSolver } from "../src/index.js";
 import {
   HighsSolver,
   mapHighsStatus,
@@ -60,19 +60,18 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
 
   it("distinguishes feasible-but-not-proven (SolutionLimit with incumbent) from Optimal in real HiGHS MIP solve", async () => {
     const m = new Model("SuboptimalMIPWithIncumbent");
-    const x1 = m.binary("x1");
-    const x2 = m.binary("x2");
-    const x3 = m.binary("x3");
-    const x4 = m.binary("x4");
-    const x5 = m.binary("x5");
-    const x6 = m.binary("x6");
+    const n = 24;
+    const x = Array.from({ length: n }, (_, i) => m.binary(`x_${i + 1}`));
+    const weights = Array.from({ length: n }, (_, i) => 101 + i * 7 + (i % 5) * 3);
+    const values = weights.map((w, i) => w + 10 + (i % 7) * 2);
+    const cap = Math.floor(weights.reduce((a, b) => a + b, 0) * 0.45);
 
     m.constraint(
-      expr`11 * ${x1} + 15 * ${x2} + 20 * ${x3} + 35 * ${x4} + 10 * ${x5} + 33 * ${x6} <= 47`,
+      sum(x.map((xi, i) => xi.mul(weights[i]))).le(cap),
       "knapsack"
     );
     m.objective(
-      maximize(expr`10 * ${x1} + 13 * ${x2} + 18 * ${x3} + 31 * ${x4} + 7 * ${x5} + 15 * ${x6}`)
+      maximize(sum(x.map((xi, i) => xi.mul(values[i]))))
     );
 
     // Stop after the first improving MIP incumbent is found (before optimality is proven)
