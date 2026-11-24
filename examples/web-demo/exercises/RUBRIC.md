@@ -18,7 +18,8 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **+1** | Natural title phrasing | Uses natural phrasing rather than stiff or literal translations. |
 | **+1** | Backticks for identifiers | Wraps I/O field names, function names, and type names in inline backticks. |
 | **-1** | Backticks for numbers | Wraps plain numeric constants in inline backticks. |
-| **-1** | Unnatural or redundant wording | Contains awkward, redundant, stiff literal translations, or unnecessary modifiers (e.g., "row/column sum" shorthand, "priority tier", "instance-derived", "minimize directly"). |
+| **-1** | Unnatural or redundant wording | Contains awkward, redundant, stiff literal translations, or unnecessary modifiers (e.g., "row/column sum" shorthand, "priority tier", "instance-derived", "minimize directly", or awkward parallel clauses like "decide X-ka-to, Y-ka-wo"). |
+| **-1** | Over-bolding obvious facts | Boldfaces self-evident domain facts in scenarios (e.g., bolding "nothing can be produced on a closed line") instead of reserving boldface for key objectives or non-obvious constraints. |
 | **-1** | Empty AI buzzwords | Uses hollow filler modifiers that add no concrete information (e.g., "predetermined", "seamlessly", "robust", "efficiently"). |
 | **-5** | Formulaic framing or contrast | Includes generic motivational intros/outros (e.g., "In real-world practice...") or dramatic "not just X, but Y" contrast clichés. |
 | **-5** | Generic placeholders only | Relies solely on abstract nouns ("factory", "product", "resource", "machine", "job") without concrete domain nouns or examples. |
