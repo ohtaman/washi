@@ -1,31 +1,39 @@
 # Cross-Origin Isolation (Z3 & Browsers)
 
-When running the **Z3** solver inside a web browser, Cross-Origin Isolation HTTP headers are required so the browser enables `SharedArrayBuffer`.
+Running the Z3 solver in a browser requires two browser security conditions: a **Secure Context** and **Cross-Origin Isolation**. Together, they enable `SharedArrayBuffer` for Z3's multithreaded WebAssembly build.
 
 > [!TIP]
-> **Not needed for HiGHS, Pumpkin, GLPK, or Node.js**: Bundled **HiGHS** and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`), as well as the **GLPK** plugin, run in standard browser contexts without Cross-Origin Isolation or `SharedArrayBuffer` (including Pumpkin CP solving, propositional logic, and `unsatCore` conflict diagnosis). Running Z3 in **Node.js** also requires no HTTP headers. You only need this page when using `@ohtaman/washi/solvers/z3` in the browser.
+> **Not needed for HiGHS, Pumpkin, GLPK, or Node.js**: Bundled HiGHS and Pumpkin, as well as the GLPK plugin, never use `SharedArrayBuffer` and work in standard browser contexts. Running Z3 in Node.js also requires no HTTP headers. You only need this guide when using `@ohtaman/washi/solvers/z3` in a browser.
 
 ---
 
-## Why is Cross-Origin Isolation Required?
+## Why Are These Preconditions Required?
 
-Z3's WebAssembly build uses multithreading (pthreads) backed by `SharedArrayBuffer` and Web Workers. Modern browsers (Chrome, Firefox, Safari, Edge) disable `SharedArrayBuffer` by default to mitigate Spectre-style side-channel attacks unless the top-level document opts into **Cross-Origin Isolation** (`window.crossOriginIsolated === true`).
+Z3's WebAssembly binary uses POSIX threads (`pthreads`) backed by `SharedArrayBuffer` and Web Workers. To mitigate Spectre-style side-channel attacks, modern browsers disable `SharedArrayBuffer` by default.
+
+Browsers re-enable `SharedArrayBuffer` only when both conditions hold on the top-level document:
+
+1. **Secure Context**: The page must load over `https://` or `http://localhost` (`window.isSecureContext === true`). Plain `http://` LAN IP addresses do not qualify.
+2. **Cross-Origin Isolation**: The document must opt into isolation headers so `window.crossOriginIsolated === true`.
 
 ---
 
 ## Required HTTP Response Headers
 
-Serve the top-level HTML document with:
+Serve the top-level HTML document with these two response headers:
+
+- **Cross-Origin-Opener-Policy (`COOP`)**: `same-origin`
+- **Cross-Origin-Embedder-Policy (`COEP`)**: `require-corp`
 
 ```http
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-If your page loads cross-origin subresources (such as scripts, images, or WASM files from another domain), those responses must also include `Cross-Origin-Resource-Policy: cross-origin` (or CORS headers).
+If your page loads scripts, images, or `.wasm` files from another origin, those responses must include **Cross-Origin-Resource-Policy (`CORP`)** set to `cross-origin` or valid CORS headers.
 
 > [!NOTE]
-> Chromium and Firefox also support `Cross-Origin-Embedder-Policy: credentialless`, which relaxes subresource CORP requirements, **but Safari (WebKit) does not support `credentialless`**. Use `require-corp` if you support Safari / iOS.
+> Chromium and Firefox also accept `Cross-Origin-Embedder-Policy: credentialless`, which relaxes `CORP` requirements on cross-origin subresources. **Safari (WebKit) does not support `credentialless`**, so use `require-corp` if you support Safari or iOS.
 
 ---
 
@@ -33,7 +41,7 @@ If your page loads cross-origin subresources (such as scripts, images, or WASM f
 
 ### 1. Vite (`vite.config.ts`)
 
-Configure both the local dev server (`vite`) and production preview server (`vite preview`):
+Configure both the `vite` dev server and `vite preview` server:
 
 ```typescript
 import { defineConfig } from "vite";
@@ -56,7 +64,7 @@ export default defineConfig({
 
 ### 2. Cloudflare Pages / Netlify (`public/_headers`)
 
-Place a `_headers` file in `public/` so it is copied to the root of your build output:
+Place a `_headers` file in `public/` so your build copies it to the site root:
 
 ```text
 /*
@@ -97,19 +105,24 @@ app.use((req, res, next) => {
 
 ### 5. Static Hosting without Header Control (e.g., GitHub Pages)
 
-Platforms like GitHub Pages do not allow customizing HTTP response headers directly. You can use **`coi-serviceworker`** to inject the isolation headers via a client-side Service Worker:
+Platforms like GitHub Pages do not let you customize HTTP response headers. You can use **`coi-serviceworker`** to inject `COOP` and `COEP` headers from a client-side Service Worker. Note that Service Workers themselves also require a Secure Context (`https://` or `http://localhost`).
 
-1. Obtain `coi-serviceworker.js` from [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) (GitHub / npm) or WaSHI's reference [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js), and place it at your site root.
+1. Copy `coi-serviceworker.js` from [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) or WaSHI's reference [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js) to your site root.
 2. Load it in your HTML `<head>`:
 
 ```html
 <script src="/coi-serviceworker.js"></script>
 ```
 
-On the first visit, the Service Worker registers and reloads the page once to establish `window.crossOriginIsolated === true`.
+On the first visit, the Service Worker registers and reloads the page once so `window.crossOriginIsolated` becomes `true`.
 
 ---
 
 ## Runtime Check in WaSHI
 
-WaSHI's Z3 adapter checks `crossOriginIsolated` before initializing Z3 in the browser. If Cross-Origin Isolation is missing, `solve()` / `check()` immediately rejects with an actionable error explaining that COOP/COEP headers or a Service Worker are required, rather than hanging silently.
+Before initializing Z3 in a browser, WaSHI validates both preconditions in order:
+
+| Check | Failure Condition | Result |
+| --- | --- | --- |
+| **Secure Context** | `!window.isSecureContext` and hostname is not `localhost`, `127.0.0.1`, or `[::1]` | `solve()` / `check()` immediately rejects with an HTTPS or `localhost` requirement error. |
+| **Cross-Origin Isolation** | `SharedArrayBuffer` is missing or `window.crossOriginIsolated !== true` | `solve()` / `check()` immediately rejects listing the required `COOP` and `COEP` headers instead of hanging. |

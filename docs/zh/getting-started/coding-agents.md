@@ -1,39 +1,36 @@
 # 使用 AI 编程助手
 
-本指南介绍如何配置 AI 编程助手（Claude Code、Cursor、Codex、Antigravity、Gemini CLI、Windsurf），使用 `@ohtaman/washi` 构建、求解、验证数理优化与约束规划模型，并将其打包为可分发的工具或应用。
+本指南介绍如何配置 AI 编程助手，用 `@ohtaman/washi` 构建、验证并打包数理优化与约束模型。涵盖 Claude Code、Cursor、Codex、Antigravity、Gemini CLI 与 Windsurf 等常见工具。
 
 ---
 
 ## 1. 环境与工具配置
 
-在 AI 编程助手中使用 WaSHI 分为两步：在项目中安装运行时库，以及为编程助手提供 WaSHI 当前的 API 与验证工作流。
+配合编程助手使用 WaSHI 分为两步。首先在项目中安装运行时库，然后将助手接入 WaSHI 的 API 参考与验证流程。
 
 ### 安装运行时库
 
-内置的 **HiGHS**（LP / MIP / 凸 QP）与 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`，CP / LCG）均零外部依赖，开箱即用：
+安装 `@ohtaman/washi` 即内置 **HiGHS**，用于线性、混合整数与凸二次规划（`LP`/`MIP`/`QP`）。同时还零外部依赖地内置了约束规划（`CP`）求解器 **Pumpkin**，入口为 `@ohtaman/washi/solvers/pumpkin`：
 
 ```bash
 npm install @ohtaman/washi
 
-# 仅在需要连续变量 SMT 逻辑约束或 GLPK 求解器时按需安装可选依赖：
+# 仅在需要可满足性模理论 (SMT) 连续变量逻辑约束或 GLPK 时按需安装可选依赖：
 # npm install z3-solver
 # npm install glpk.js
 ```
 
 ### 配置编程助手上下文
 
-根据您使用的工具选择以下任一方式：
+根据您使用的开发工具选择对应的接入方式：
 
-- **Agent Skill（推荐 — Claude Code、Cursor、Codex、Antigravity、Gemini CLI）**：
-  ```bash
-  npx skills add ohtaman/washi
-  ```
-  该命令会安装 `skills/washi/SKILL.md`（也随包附带在 `node_modules/@ohtaman/washi/skills/washi/SKILL.md` 中）。它能帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试验证。
-- **IDE 文档索引（Cursor、Windsurf 等中的 `@Docs`）**：
-  - 文档索引概览：`https://washi.ohtaman.dev/llms.txt`
-  - 单文件完整 API 与示例参考：`https://washi.ohtaman.dev/llms-full.txt`
-- **Context7 MCP**：
-  - 库 ID：`/ohtaman/washi`
+| 接入方式 | 适用工具 | 配置方法 |
+| --- | --- | --- |
+| **Agent Skill** *(推荐)* | Claude Code、Cursor、Codex、Antigravity、Gemini CLI | 运行 `npx skills add ohtaman/washi` |
+| **IDE `@Docs` 索引** | Cursor、Windsurf | 添加 `https://washi.ohtaman.dev/llms.txt` 或 `https://washi.ohtaman.dev/llms-full.txt` |
+| **Context7 MCP** | 支持 MCP 的助手 | 引用库 ID `/ohtaman/washi` |
+
+Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`）。它帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试。
 
 ---
 
@@ -53,15 +50,22 @@ npm install @ohtaman/washi
 
 运行该提示词时，助手会在本地依次执行三个步骤：
 
-1. **构建数学模型**：定义有界二元变量（`m.binary`）、代数表达式（`` expr`...` ``、`sum`）、具名约束（`m.constraint(..., "name")`）以及目标函数（`m.objective(minimize(...))`）。
-2. **在 Node.js 中通过 WebAssembly 求解**：使用内置 HiGHS WebAssembly 二进制文件直接运行脚本（例如 `npx tsx schedule.ts`），无需安装 Python 环境或本地编译求解器。
-3. **独立校验求解结果**：检查 `m.hasPrimalSolution` 并调用 `m.verify()`，在展示结果前独立校验变量上下界、整数性与约束残差。
+1. **构建数学模型**：用 `m.binary` 声明 0-1 二元变量，并通过 `` expr`...` `` 与 `sum` 编写表达式、具名约束及最小化目标。
+2. **在 Node.js 中通过 WebAssembly 求解**：使用内置 HiGHS 二进制文件直接运行脚本（例如 `npx tsx schedule.ts`）。无需 Python 环境或本地编译求解器。
+3. **独立校验求解结果**：检查 `m.hasPrimalSolution` 并调用 `m.verify()`。这会在输出结果前独立确认上下界、整数性与约束满足情况。
 
 ---
 
 ## 3. 常见问题类型与现成提示词
 
-以下提示词模板覆盖了 WaSHI 支持的核心数学问题类别，可根据实际数据结构与规则调整后直接使用。
+先在下表中找到对应的问题类型与推荐求解器，再根据您的数据结构修改相应提示词模板：
+
+| 问题类型 | 推荐求解器 | 核心建模原语 |
+| --- | --- | --- |
+| 分配、排程与 0-1 选择（`MILP` / `0-1 MIP`） | 内置 **HiGHS** | `m.binary()`、`sum()`、`dot()` |
+| 含共享资源的任务调度（`CP`） | 内置 **Pumpkin** | `disjoint()`、`cumulative()`、`distinct()` |
+| 目标配比均衡与方差最小化（凸 `QP`） | 内置 **HiGHS** | `m.continuous()`、`` expr`...^2` `` |
+| 规则冲突诊断（`unsatCore`） | 内置 **Pumpkin** 或可选 **Z3** | `m.check()` |
 
 ### 会议排程与评审人分配（MILP — 内置 HiGHS）
 
@@ -85,7 +89,7 @@ npm install @ohtaman/washi
 - 为每条约束指定清晰名称，并确认 m.verify().valid === true。
 ```
 
-### 含先后顺序与共享资源的任务调度（CP/LCG — 内置 Pumpkin）
+### 含先后顺序与共享资源的任务调度（CP — 内置 Pumpkin）
 
 ```text
 请使用 @ohtaman/washi 及其内置 CP 求解器（@ohtaman/washi/solvers/pumpkin），为 10 个发布流水线任务安排整数开始时间（lb: 0, ub: 120，给定固定持续时间），以最小化总完工时间（makespan）。
@@ -114,13 +118,17 @@ npm install @ohtaman/washi
 ```
 
 > [!NOTE]
-> `await m.check()` 默认即可配合内置 **HiGHS** 使用（通过弹性松弛定位冲突约束并返回于 `res.conflicts`）。若需在无需 `COOP`/`COEP` 响应头的环境下对有界整数与布尔模型提取 `res.unsatCore`，可导入内置的 `@ohtaman/washi/solvers/pumpkin`；若模型包含连续变量或实数系数并需要精确 SMT `unsatCore`，请安装 `z3-solver`（`@ohtaman/washi/solvers/z3`）。
+> `await m.check()` 默认即可配合内置 **HiGHS** 使用，并在 `res.conflicts` 中返回冲突约束名称。
+>
+> 若需提取精确的不可满足核心（`res.unsatCore`），请按变量类型选择求解器：
+> - **有界整数与布尔变量**：导入内置的 `@ohtaman/washi/solvers/pumpkin`（无需浏览器跨源隔离响应头）。
+> - **连续变量或实数系数**：安装 `z3-solver` 并导入 `@ohtaman/washi/solvers/z3`。
 
 ---
 
 ## 4. 应用打包与分发提示词（单文件 HTML、桌面端与移动端）
 
-当命令行脚本的建模与校验通过后，您可以让编程助手将同一模型打包为单文件网页工具或离线桌面/移动应用。
+命令行脚本验证通过后，您可以让编程助手将同一模型打包为单文件网页工具或离线应用。
 
 ### 零服务器单文件 `.html` 工具（`file://` 双击即用）
 
@@ -131,9 +139,13 @@ npm install @ohtaman/washi
 - 每次求得可行解后均调用 m.verify() 进行校验。
 ```
 
-- **`file://` 运行时说明**：
-  - 从 HTTPS CDN 加载 `washi.min.js`（使用 Pumpkin 时同时加载 `solvers/pumpkin.min.js`）时，直接通过 `file://` 双击打开本地 `.html` 无需启动本地 HTTP 服务器即可工作——WaSHI 检测到不透明源（`window.origin === "null"`）时会自动切换为主线程执行。
-  - 自托管的本地相对路径 `.wasm` 文件（在 `file://` 下会被浏览器的 `fetch()` CORS 规则拦截）以及 **Z3**（依赖 `SharedArrayBuffer` 与 `COOP`/`COEP` 响应头）仍需通过 `http://` 或 `https://` 服务访问。
+**`file://` 运行机制说明**：
+
+| 场景 | 行为与前提条件 |
+| --- | --- |
+| **CDN 脚本** | 从 HTTPS CDN 加载 `washi.min.js` 可在 `file://` 下直接运行，无需本地服务器。遇到不透明源（`window.origin === "null"`）时，WaSHI 会自动在主线程运行 HiGHS 与 Pumpkin。 |
+| **自托管 `.wasm`** | 浏览器会在 `file://` 下拦截本地 `.wasm` 的 `fetch()` 请求。自托管 WebAssembly 资源请通过 `http://` 或 `https://` 提供。 |
+| **浏览器中的 Z3** | 需要安全上下文（`https://` 或 `http://localhost`，普通 `http://` 局域网地址不行）以及 `Cross-Origin-Opener-Policy` 和 `Cross-Origin-Embedder-Policy`（`COOP`/`COEP`），详见[跨源隔离配置](./cross-origin.md)。 |
 
 ### 离线桌面端与移动端应用（Vite + Tauri / Capacitor / PWA）
 
@@ -143,16 +155,31 @@ npm install @ohtaman/washi
 - 配置内容安全策略（CSP）以允许 WebAssembly 编译（在 script-src 中加入 'wasm-unsafe-eval'）与 Web Worker（worker-src 'self' blob:）。
 ```
 
-- **WebView 运行时说明**：标准 Vite 构建会将 `highs.wasm` 与 `pumpkin.wasm` 作为静态资源一并打包，可在 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 以及离线 Service Worker PWA 中直接离线运行。关于 `tauri.conf.json` 的 CSP 配置（如 `'wasm-unsafe-eval'`），请参阅[运行时环境配置](./runtimes.md)。
+**WebView 部署机制说明**：
+
+标准 Vite 构建会将 `highs.wasm` 与 `pumpkin.wasm` 作为静态资源打包，可在 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA 中直接运行。请在内容安全策略（`CSP`）的 `script-src` 中加入 `'wasm-unsafe-eval'`；完整的 `tauri.conf.json` 示例请参阅[运行时环境配置](./runtimes.md)。
 
 ---
 
 ## 5. 与编程助手协作迭代与调试
 
-- **要求为所有约束命名并调用 `m.verify()`**：始终要求助手在调用 `m.constraint(c, "rule_name")`（以及 `m.indicator(...)` 的 `name`）时传入清晰的唯一名称，并在每次求解后断言 `m.verify().valid === true`。未命名的约束（`c_0`、`c_1`）会降低冲突诊断结果的可读性。
-- **遇到 `"Infeasible"` 时使用 `m.check()` 定位冲突**：当新增业务规则导致 `m.solve()` 返回 `"Infeasible"` 时，可发送如下追问提示词：
-  ```text
-  添加新约束后 m.solve() 返回了 "Infeasible"。
-  请调用 await m.check()（有界整数与布尔模型可调用 await m.check({ solver: "pumpkin" })），打印 res.conflicts / res.unsatCore，用通俗语言解释具体哪些具名规则与变量上下界相互矛盾，并建议将哪些非刚性规则改为带非负松弛惩罚变量的软约束。
-  ```
-- **上线前检查 `m.toLpString()` 与变量上下界**：让助手在小规模测试数据上输出 `m.toLpString()`，核对变量的 `lb` / `ub` 上下界（尤其是省略 `M` 时在 `m.indicator()` 中引用的变量必须设置有限上下界）、目标方向（`Maximize` / `Minimize`）以及不等号方向（`<=` / `>=`）是否与业务定义一致。
+### 为所有约束命名并校验每次求解
+
+要求助手在调用 `m.constraint(c, "rule_name")` 和 `m.indicator(...)` 时传入清晰的名称，并断言 `m.verify().valid === true`。未命名约束会按从 1 开始的编号自动命名（`c_1`、`c_2`），不利于排查冲突。
+
+### 遇到 `"Infeasible"` 时用 `m.check()` 定位冲突
+
+当新增规则导致 `m.solve()` 返回 `"Infeasible"` 时，可发送如下追问提示词：
+
+```text
+添加新约束后 m.solve() 返回了 "Infeasible"。
+请调用 await m.check()（有界整数与布尔模型可调用 await m.check({ solver: "pumpkin" })），打印 res.conflicts / res.unsatCore，用通俗语言解释具体哪些具名规则与变量上下界相互矛盾，并建议将哪些非刚性规则改为带非负松弛惩罚变量的软约束。
+```
+
+### 上线前检查 `m.toLpString()` 与变量上下界
+
+让助手在小规模测试数据上打印 `m.toLpString()`，重点核对以下三项：
+
+- **有限上下界（`lb` / `ub`）**：省略 `M` 时，`m.indicator()` 中引用的变量必须设置有限上下界。
+- **目标方向**：确认 `Maximize` 或 `Minimize` 与业务目标一致。
+- **不等号方向**：逐一核查 `<=`、`>=` 与 `==` 是否指向正确方向。

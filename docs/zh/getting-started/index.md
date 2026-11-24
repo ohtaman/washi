@@ -1,12 +1,21 @@
 # 安装与入门
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）为 TypeScript / JavaScript 带来了类似于 Python **PuLP** 的代数建模方式。通过标签模板字面量（`expr`）直观地编写代数公式，并借助 WebAssembly 求解器（**HiGHS**, **Pumpkin**, **Z3**, **GLPK**）直接在 **Node.js 与浏览器** 中求解数理优化与约束规划问题。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）是面向 TS/JS 的代数建模库。您可以像 Python PuLP 一样通过标签模板（`expr`）编写数式，并用内置 WebAssembly 求解器在 **Node.js 18+** 与浏览器中直接求解。
 
 ---
 
 ## 📦 安装
 
-默认的 **HiGHS** 求解器（LP / MIP / 凸QP）与 **Pumpkin** CP/LCG 求解器（`@ohtaman/washi/solvers/pumpkin`）均零外部依赖内置随包提供，开箱即用：
+安装 `@ohtaman/washi` 即可开箱获得两个零外部依赖的内置求解器，另外两个求解器可作为可选对等依赖按需安装：
+
+| 求解器 | 安装方式 | 支持的问题类型与能力 |
+| --- | --- | --- |
+| **HiGHS** *(默认)* | 内置于 `@ohtaman/washi` | 线性规划、混合整数规划与凸二次规划 — 支持 `LP`、`MIP` 与 `QP`。 |
+| **Pumpkin** | 内置于 `@ohtaman/washi/solvers/pumpkin` | 约束规划（`CP`），并支持有界整数与布尔模型的 `unsatCore` 冲突诊断。 |
+| **Z3** | 可选（`z3-solver`） | 可满足性模理论（`SMT`）、连续变量逻辑约束与精确 `unsatCore` 诊断。 |
+| **GLPK** | 可选（`glpk.js`） | 基于 GPL-3.0 协议的备选 LP 与 MIP 求解器。 |
+
+**不可满足核心（`unsatCore`）**是指一组无法同时成立的具名约束子集。Pumpkin 与 Z3 均可通过 `m.check()` 提取 `unsatCore`。
 
 ::: code-group
 
@@ -28,12 +37,14 @@ bun add @ohtaman/washi
 
 :::
 
-仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）或 **GLPK** 时按需安装可选依赖：
+需要使用 **Z3** 或 **GLPK** 时，请按需安装可选对等依赖：
 
 ```bash
-npm install z3-solver   # SMT 逻辑约束及 Unsat Core 冲突诊断
-npm install glpk.js     # GLPK 求解器 (GPL-3.0)
+npm install z3-solver   # 可选：SMT 逻辑约束与连续变量 Unsat Core 诊断
+npm install glpk.js     # 可选：GLPK 求解器 (GPL-3.0)
 ```
+
+在浏览器中使用 Z3 需要安全上下文以及跨源隔离响应头，即 `Cross-Origin-Opener-Policy` 与 `Cross-Origin-Embedder-Policy`（简称 `COOP`/`COEP`）。服务器配置方法请参阅[跨源隔离配置](./cross-origin.md)。
 
 如果使用 AI 编程助手，请参阅[使用 AI 编程助手](./coding-agents.md)了解 `npx skills add ohtaman/washi`、`llms.txt` 与现成提示词模板。
 
@@ -41,7 +52,9 @@ npm install glpk.js     # GLPK 求解器 (GPL-3.0)
 
 ## 🚀 快速开始
 
-以下生产规划问题展示了 WaSHI 建模的基本流程（1. 定义变量 $\to$ 2. 设置目标函数与约束 $\to$ 3. 求解与校验）：
+每个 WaSHI 优化模型都遵循三个步骤：先声明带有限上下界的决策变量，再注册目标函数与具名约束，最后求解并校验结果。
+
+下面的生产规划示例在木材与工时限制下最大化书桌和椅子的总利润：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -66,9 +79,9 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **定义决策变量（`lb`, `ub`）**：使用 `m.continuous()`、`m.integer()` 或 `m.binary()` 定义变量，并在已知范围时指定有限上下界。
-2. **用 `expr` 编写目标函数与约束**：使用 `` expr`...` `` 直观书写代数公式；为约束命名可在模型不可行（`Infeasible`）时快速定位冲突原因。
-3. **求解并校验结果（`solve`, `verify`）**：调用 `await m.solve()` 使用内置 HiGHS 求解器求解。先检查 `m.hasPrimalSolution` 再读取变量的 `.value`，并可调用 `m.verify()` 独立校验边界、整数性与约束满足情况。
+1. **定义决策变量**：使用 `m.continuous()`、`m.integer()` 或 `m.binary()` 创建变量。已知范围时请提供有限的 `lb` 与 `ub` 上下界。
+2. **编写目标函数与约束**：使用 `` expr`...` `` 书写代数公式。为每条约束传入清晰的名称，便于在模型不可行时定位冲突规则。
+3. **求解并校验结果**：调用 `await m.solve()` 运行内置 HiGHS。先检查 `m.hasPrimalSolution` 再读取 `.value`，并用 `m.verify()` 校验约束是否满足。
 
 ---
 
@@ -76,11 +89,11 @@ if (m.hasPrimalSolution) {
 
 ### 选择开发方式
 
-- **使用 AI 编程助手构建**：[使用 AI 编程助手](./coding-agents.md) — `npx skills add`、`llms.txt` / Context7 配置、各类数学问题与部署形态的现成提示词，以及冲突调试指南
-- **直接使用 TypeScript 编写模型**：[建模指南](../guide/variables.md) — 数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与冲突诊断
+- **使用 AI 编程助手构建**：[使用 AI 编程助手](./coding-agents.md) — `npx skills add`、`llms.txt` / Context7 配置与现成提示词模板
+- **直接使用 TypeScript 编写模型**：[建模指南](../guide/variables.md) — 变量容器、`sum` / `dot` 聚合、逻辑约束与冲突诊断
 
 ### 参考文档与示例
 
-- **[实际案例与 API 索引](../examples/)**：排班优化、投资组合 QP、车辆路径规划等 12 个可参考与运行的建模示例
-- **[求解器概览与对比](../solvers/)**：内置 HiGHS 与 Pumpkin，以及可选 Z3、GLPK 求解器的特性对比与切换方式
-- **[运行时环境配置](./runtimes.md)**：Node.js、Vite / Next.js 打包工具、CDN、单文件 HTML 与桌面/移动 WebView 配置说明
+- **[实际案例与 API 索引](../examples/)**：涵盖排班优化、投资组合 QP 等 12 个可运行的优化与 SMT 案例
+- **[求解器概览与对比](../solvers/)**：内置 HiGHS、Pumpkin 与可选 Z3、GLPK 的横向对比表
+- **[运行时环境配置](./runtimes.md)**：Node.js、Vite / Next.js、CDN、单文件 HTML 与桌面/移动 WebView 配置说明

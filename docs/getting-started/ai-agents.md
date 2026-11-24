@@ -1,16 +1,17 @@
 # AI Coding Agent Quick-Reference Guide
 
 > **Scope Note**: This document is the **consumer modeling quick-reference** for AI coding agents and developers building optimization or satisfiability models with `@ohtaman/washi`.
-> - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `verify()` verification, and Pumpkin / Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
+>
+> - **Portable Agent Skill**: Install [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`) for an end-to-end modeling, verification, and conflict-diagnosis workflow:
 >   ```bash
 >   # Install directly via the skills CLI (skills.sh / vercel-labs/skills)
 >   npx skills add ohtaman/washi
 >
->   # Or link/copy the packaged skill into your project's agent skills directory
+>   # Or copy the packaged skill into your project's agent skills directory
 >   mkdir -p .agents/skills/washi
 >   cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 >   ```
-> - **Repository Review Guidelines**: For repository contribution and pull-request review rules, see [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md) in the repository root.
+> - **Repository Review Guidelines**: See [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md) in the repository root.
 
 ---
 
@@ -42,7 +43,7 @@ import {
   setHighsWasmUrl,
 } from "@ohtaman/washi";
 
-// Bundled CP/LCG solver plugin (zero external dependencies; registers "pumpkin"):
+// Bundled Constraint Programming (CP) solver plugin (zero external dependencies; registers "pumpkin"):
 import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 // Optional solver plugins (require installing peer dependencies first):
 // npm install z3-solver
@@ -53,34 +54,43 @@ import "@ohtaman/washi/solvers/glpk";
 
 ### Browser ESM & Classic Script Tags
 
-- **Browser ESM**:
-  - Core (HiGHS built-in): `import { Model, expr, maximize } from "./washi/washi.js";`
-  - Pumpkin plugin: `import "./washi/solvers/pumpkin.js";`
-  - GLPK plugin: `import "./washi/solvers/glpk.js";`
-  - Z3 plugin: `import "./washi/solvers/z3.js";`
-- **Classic `<script>` / CodePen (IIFE)**:
-  - Core: `<script src="./washi/washi.min.js"></script>` (exposes global `Washi`)
-  - Pumpkin plugin: `<script src="./washi/solvers/pumpkin.min.js"></script>` (registers `"pumpkin"`, exposes `WashiPumpkin`)
-  - GLPK plugin: `<script src="./washi/solvers/glpk.min.js"></script>` (registers `"glpk"`, exposes `WashiGLPK`)
-  - Z3 plugin: `<script src="./washi/solvers/z3.min.js"></script>` (registers `"z3"`, exposes `WashiZ3`)
+Classic `<script>` tags load Immediately Invoked Function Expression (`IIFE`) bundles that attach globals to `window`:
+
+| Solver | Browser ESM (`<script type="module">`) | Classic `<script>` IIFE |
+| --- | --- | --- |
+| **Core (HiGHS)** | `import { Model, expr, maximize } from "./washi/washi.js";` | `<script src="./washi/washi.min.js"></script>` (global `Washi`) |
+| **Pumpkin** | `import "./washi/solvers/pumpkin.js";` | `<script src="./washi/solvers/pumpkin.min.js"></script>` (`WashiPumpkin`) |
+| **GLPK** | `import "./washi/solvers/glpk.js";` | `<script src="./washi/solvers/glpk.min.js"></script>` (`WashiGLPK`) |
+| **Z3** | `import "./washi/solvers/z3.js";` | `<script src="./washi/solvers/z3.min.js"></script>` (`WashiZ3`) |
 
 ### WebAssembly Asset & Runtime Rules
 
-1. **Bundled WASM by default (no implicit CDN fallback)**:
-   - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
-   - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
-   - In browser runtimes, to load `highs.wasm` or `pumpkin.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` (or `await m.solve({ wasmUrl: "https://.../highs.wasm" })`) for HiGHS, or `setPumpkinWasmUrl("https://.../pumpkin.wasm")` (or `await m.solve({ solver: "pumpkin", wasmUrl: "https://.../pumpkin.wasm" })`) for Pumpkin (ignored in Node.js for HiGHS; for Pumpkin in Node.js, bundled local `pumpkin.wasm` is used by default unless overridden with a `file://` URL).
-   - **Pumpkin runs without `COOP`/`COEP`**: Unlike Z3, Pumpkin (`@ohtaman/washi/solvers/pumpkin`) uses single-threaded WASM inside a regular Web Worker and does **not** require `SharedArrayBuffer` or Cross-Origin Isolation headers (`COOP`/`COEP`). It requires bounded finite integer/binary variables (`lb`, `ub` in `[-(2^30 - 1), 2^30 - 1]`) and integer linear coefficients/RHS, and supports `initialValue` warm starts across `solve()` and `check()` (no `Continuous`, `QuadExpr`, or `relax: true`).
-2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
-   - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
-     - `Cross-Origin-Opener-Policy: same-origin` (on the document)
-     - `Cross-Origin-Embedder-Policy: require-corp` (on the document)
-     - `Cross-Origin-Resource-Policy: cross-origin` and `Access-Control-Allow-Origin` (on cross-origin script/WASM asset responses)
-   - Importing `@ohtaman/washi` never auto-injects a Service Worker. When a secure context or cross-origin isolation is absent in a browser, Z3 rejects immediately with a descriptive error.
-3. **Web Workers & Cancellation (`AbortSignal`)**:
-   - Pre-solve cancellation (`signal.aborted` before execution starts) is supported across all solvers.
-   - In browsers where `Worker` is available on a non-opaque effective origin (`window.origin !== "null"`), both **HiGHS** and **Pumpkin** run in dedicated Web Workers by default (`useWorker: true`). On opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), both default to main-thread execution (`useWorker: false`). Passing `{ signal }` to `m.solve({ signal })` or `m.check({ signal })` preemptively terminates an in-flight Worker run (or cancels queued Worker requests).
-   - On main-thread HiGHS (`useWorker: false` or in Node.js), cooperative mid-solve cancellation is supported when `abort()` is triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint; arbitrary asynchronous aborts from outside cannot preempt a blocked synchronous WASM thread until a callback checkpoint or completion. Main-thread / Node.js Pumpkin checks `should_abort` checkpoints across branching and termination hooks. Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
+#### Bundled WASM & Custom Asset URLs
+
+- **Automatic resolution**: Node.js and bundlers resolve `.wasm` assets relative to the module with zero CDN fallback.
+- **Browser self-hosting**: Deploy `dist/browser/` intact (entry scripts, sibling chunks, Workers, and `.wasm` files). Missing URLs or HTML SPA fallbacks fail immediately and report the attempted URL.
+- **Custom browser URLs**: Call `setHighsWasmUrl(url)` or `setPumpkinWasmUrl(url)`, or pass `{ wasmUrl }` to `m.solve()` / `m.check()`. (Ignored for HiGHS in Node.js; Pumpkin in Node.js accepts `file://` URLs.)
+
+#### Browser Security & Cross-Origin Isolation
+
+- **HiGHS, Pumpkin, and GLPK**: Run in standard browser contexts without `SharedArrayBuffer` or isolation headers.
+- **Z3 browser preconditions**: Z3 uses `SharedArrayBuffer` multithreading, so browsers require a Secure Context (`window.isSecureContext === true`, HTTPS or `localhost`) and `window.crossOriginIsolated === true`.
+- **Required Z3 headers**: Serve the document with `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (`COOP`/`COEP`). Cross-origin script and WASM assets also require `Cross-Origin-Resource-Policy: cross-origin` (`CORP`) and `Access-Control-Allow-Origin`.
+- **Fail-fast check**: Importing `@ohtaman/washi` never auto-injects a Service Worker. Z3 rejects immediately if a Secure Context or Cross-Origin Isolation is missing.
+
+#### Web Workers & Cancellation (`AbortSignal`)
+
+- **Default Workers**: On non-opaque browser origins where `window.origin !== "null"`, HiGHS and Pumpkin default to Web Workers (`useWorker: true`). On opaque origins where `window.origin === "null"` (such as `file:` or sandboxed iframes), both default to `useWorker: false`.
+- **Cancellation behavior**: Pre-solve cancellation (`signal.aborted`) works on all solvers, and `{ signal }` terminates in-flight Worker runs immediately. On the main thread or Node.js, HiGHS checks `signal` inside `onProgress` callbacks, Pumpkin polls `signal` during search checkpoints, and GLPK/Z3 check before starting.
+
+#### Solver Capabilities & Unsupported Options (Throw on Pass)
+
+| Solver | Problem Classes | Accepted Options | Throws On |
+| --- | --- | --- | --- |
+| **HiGHS** *(default)* | Linear (`LP`), Mixed-Integer (`MIP`), convex Quadratic (`QP`) | `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `outputFlag`, `relax`, `useWorker`, `wasmUrl`, `signal`, `onProgress`, `initialValue` | `threads`, `verbose` (use `outputFlag`), unknown keys, MIQP (quadratic objective with integer/binary/boolean variables) |
+| **Pumpkin** | Constraint Programming (`CP`), bounded discrete `unsatCore` | `timeLimit`, `useWorker`, `wasmUrl`, `signal`, `onProgress`, `initialValue` | `relax: true`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `Continuous` variables, unbounded or out-of-range (`[-(2^30 - 1), 2^30 - 1]`) bounds, fractional coefficients/RHS, `QuadExpr` |
+| **Z3** | Satisfiability Modulo Theories (`SMT`), continuous/discrete `unsatCore` | `signal`, `onProgress`, `z3JsUrl`, `z3WasmUrl` | `relax: true`, `useWorker: true`, `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `QuadExpr`, `initialValue` |
+| **GLPK** | `LP`, `MIP` | `timeLimit`, `presolve`, `relativeGap`, `verbose`, `relax`, `signal`, `onProgress` | `useWorker: true`, `absoluteGap`, `threads`, `outputFlag` (use `verbose`), unknown keys, `QuadExpr`, `initialValue` |
 
 ---
 
@@ -98,7 +108,7 @@ const x = m.continuous("x", { lb: 0, ub: 100 });
 const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
-const flag = m.bool("flag"); // Propositional boolean (auto 0-1 MIP on HiGHS/GLPK, native LCG/SMT on Pumpkin/Z3)
+const flag = m.bool("flag"); // Propositional boolean (auto 0-1 MIP on HiGHS/GLPK, native CP/SMT on Pumpkin/Z3)
 
 // Indexed variable containers:
 // - Numeric dimension -> Array
@@ -109,30 +119,40 @@ const byItem = m.integer(["desk", "chair"] as const, { lb: 0 }); // Record<"desk
 const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 ```
 
-- **Optional Primal Initial Values (`initialValue?: number`)**:
-  - Numeric variable constructors (`m.continuous`, `m.integer`, `m.binary`, and `new Var`) and the mutable `v.initialValue` property accept an optional finite primal hint (validated with tolerance `1e-6` against bounds `[lb, ub]` and integer/binary domains), kept distinct from the solved `v.value`.
-  - A start may be complete or partial (e.g., transferred by stable variable names when rebuilding a MIP model). Supplying `initialValue` is a hint only—it does **not** fix the variable, add a hard constraint, or guarantee solver acceptance or a runtime speedup.
-  - Supported by **HiGHS** and **Pumpkin** (`supportsWarmStart: true`); solvers without warm-start support (**GLPK**, **Z3**) throw an error if any variable has `initialValue !== undefined`.
+- **Primal hints**: Numeric variable constructors and `v.initialValue` accept a finite starting value, validated against `[lb, ub]` and integrality (tolerance `1e-6`) and kept distinct from solved `v.value`.
+- **Hint semantics**: Complete or partial warm starts do not fix variables, add hard constraints, or guarantee solver acceptance or speedup.
+- **Warm-start support**: Supported by HiGHS and Pumpkin (`supportsWarmStart: true`). GLPK and Z3 throw if any variable defines `initialValue`.
 
 ### Step 2: Build Expressions (`expr`, `sum`, `dot`, `max`, `min`, `abs`, `at`)
 
-- **Unified `expr` template tag**:
-  - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``, `` expr`sum((${price} - ${cost}) * ${byItem})` ``
-  - Piecewise-linear & element primitives (`max`, `min`, `abs`, `at`, usable inside `expr` or standalone): `` expr`max(${vec}) + sum(abs(${vec} - ${target}))` ``, `` expr`max(abs(${pred} - ${actual}))` ``, `` expr`at(${costs}, ${idx})` `` (0-based integer `idx`, automatically enforcing $0 \le \text{idx} < \text{costs.length}$). On HiGHS/GLPK, convex directions (`minimize` or `<=` on `max`/`abs`, `maximize` or `>=` on `min`) lower to pure continuous LP epigraphs with zero binary variables, while non-convex/equality contexts use exact bounded MIP formulations (finite bounds required); Pumpkin lowers natively (`maximum`/`minimum`/`absolute`/`element`) and Z3 uses native `If` (ITE).
-  - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` (supported for convex QP objectives on purely continuous models using `m.continuous`; built-in HiGHS does not support MIQP models containing integer, binary, or boolean variables).
-  - Constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` (supports `<=`, `>=`, `==`, `=`, plus discrete integer-only `<`, `>`, `!=`).
-- **Aggregations & Element-Wise Container Arithmetic**:
-  - `sum(containerOrItems, mapper?)` (usable inside `` expr`sum(...)` `` or standalone `sum(...)`) sums a 1D/2D `Array`, `Iterable`, or plain `Record` of `Var` / `LinExpr` / `number` (without needing `Object.values(record)`), or maps over items/counts via `sum(items, (item, i) => ...)`. Inside `` expr`sum(...)` ``, element-wise container arithmetic (`+`, `-`, `*`, `/`, `^2`) and `abs(...)` mapping are also supported.
-  - `dot(a, b)` (usable inside `` expr`dot(${a}, ${b})` `` or standalone `dot(a, b)`) computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`, computing the Frobenius inner product $\sum_{i,j} A_{i,j} B_{i,j}$), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
-- **Fluent methods**:
-  - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
-  - Comparisons (on `Var`, `LinExpr`, and `QuadExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`, plus discrete integer-only `.lt(rhs, name?)`, `.gt(rhs, name?)`, `.ne(rhs, name?)` (Continuous / fractional operands throw immediately)
-  - CP global constraints (`BoolExpr` predicates composable with logical operators): `distinct(...args)` (pairwise `!=` on HiGHS/GLPK, `all_different` via pairwise `binary_not_equals` on Pumpkin `0.5.0`, `ctx.Distinct` on Z3), `disjoint(tasks)` (`{ start, duration }`, native `disjunctive_strict` Vilím edge-finding on Pumpkin), `cumulative(tasks, capacity)` (`{ start, duration, demand }`, native `cumulative` time-table on Pumpkin; MIP time-indexed formulation enforces a horizon memory guard recommending `{ solver: "pumpkin" }`), and `allowed(vars, tuples)` (`table` / `negative_table` on Pumpkin)
-  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint`): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`—solved natively on Z3 and Pumpkin (bounded integers) and automatically linearized to 0-1 MIP on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact $\pm 1$ shifts over integer-valued `Integer`/`Binary` expressions; `Continuous` or non-integer negated `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`)
+#### Unified `expr` Template Tag
+
+| Form | Examples | Notes |
+| --- | --- | --- |
+| Linear (`LinExpr`) | `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` `` | Also supports `` expr`sum((${price} - ${cost}) * ${byItem})` ``. |
+| Piecewise & element | `` expr`max(${vec}) + sum(abs(${vec} - ${target}))` ``, `` expr`at(${costs}, ${idx})` `` | 0-based integer `idx` enforces $0 \le \text{idx} < \text{costs.length}$. Convex directions stay pure LP on HiGHS/GLPK; non-convex contexts require finite bounds. |
+| Quadratic (`QuadExpr`) | `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` | Supported for convex QP objectives on continuous models (`m.continuous`); HiGHS rejects MIQP. |
+| Constraint (`Constraint`) | `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` | Supports `<=`, `>=`, `==`, `=`, plus discrete integer-only `<`, `>`, `!=`. |
+
+#### Aggregations & Fluent Methods
+
+- **`sum(containerOrItems, mapper?)`**: Sums a 1D/2D `Array`, `Iterable`, or plain `Record` of variables, expressions, or numbers, or maps via a callback. Inside `` expr`sum(...)` ``, element-wise `+`, `-`, `*`, `/`, `^2`, and `abs(...)` also work.
+- **`dot(a, b)`**: Computes the inner product of matching 1D arrays, 2D arrays (Frobenius inner product $\sum_{i,j} A_{i,j} B_{i,j}$), plain records, or mixed Array/Record containers.
+- **Fluent arithmetic & comparisons**: `.add()`, `.sub()`, `.mul()`, `.div(scalar)`, `.neg()`, plus `.le(rhs, name?)`, `.ge()`, `.eq()`, and integer-only `.lt()`, `.gt()`, `.ne()` (continuous/fractional operands throw).
+
+#### CP Global Constraints & Boolean Logic
+
+| Helper | Purpose | Solver Lowering |
+| --- | --- | --- |
+| `distinct(...args)` | All variables take pairwise distinct values | Native on Pumpkin and Z3; pairwise `!=` on HiGHS/GLPK. |
+| `disjoint(tasks)` | Non-overlapping intervals (`{ start, duration }`) | Native scheduling propagator on Pumpkin; linearized on MIP solvers. |
+| `cumulative(tasks, capacity)` | Shared resource capacity (`{ start, duration, demand }`) | Native propagator on Pumpkin; MIP time-indexed encoding enforces a horizon memory guard. |
+| `allowed(vars, tuples)` | Restrict variable tuples to an allowed table | Native table propagator on Pumpkin; linearized on MIP solvers. |
+| `and`, `or`, `not`, `implies`, `xor` | Composable boolean logic (standalone or fluent) | Native on Pumpkin and Z3; 0-1 MIP on HiGHS/GLPK (negated continuous constraints throw on MIP—use `{ solver: "z3" }` or `m.bool()`). |
 
 ### Step 3: Register Objective & Constraints on the Model
 
-Constructing an `expr` or `.le()` object does **not** attach it to the model until you pass it to `m.constraint(...)` or `m.objective(...)` (when `options.M` is omitted in `m.indicator()`, HiGHS/GLPK use tight derived Big-M and preserve `toLpString()`, while Pumpkin lowers natively via `implied_by` and Z3 via `ctx.Implies` unless the returned `Constraint` row is subsequently mutated):
+Constructing an `expr` or `.le()` object does **not** attach it to the model until you call `m.constraint(...)` or `m.objective(...)`. In `m.indicator()`, omitting `options.M` derives tight Big-M bounds for MIP solvers while keeping native indicator lowering on Pumpkin and Z3:
 
 ```ts
 // Set objective using maximize() or minimize()
@@ -147,16 +167,23 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 
 ### Step 4: Execute (`solve` or `check`) & Verify (`verify`)
 
-- **Optimization (`await m.solve(options?)`)**:
-  - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`). Built-in optimization solvers return the optimization statuses (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`), where a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`; `"Sat"` and `"Unsat"` are included in `SolverStatus` for satisfiability/custom solver adapters (such as `MockSolver`).
-  - Read values via `x.value`, `expr`...`.value`, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`, and inspect registered entities via `m.variables` (`ReadonlyMap<string, Var | BoolVar>`) and `m.constraints` (`ReadonlyMap<string, Constraint | LogicalConstraint>`).
-  - Call `m.verify()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`VerificationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `verify()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
-- **Satisfiability & Conflict Diagnosis (`await m.check(options?)`)**:
-  - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` is populated when the model is proven `"Unsat"`.
-  - For models containing linear arithmetic constraints or logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`), `m.check()` works with any solver (including the default HiGHS and GLPK via single-solve elastic slack relaxation, automatically linearizing logical constraints into 0-1 MIP formulation) and diagnoses conflicting constraints as `conflicts` (leaving `unsatCore: undefined` for semantic rigor).
-  - Exact unsatisfiable-core extraction (`result.unsatCore` and `result.conflicts`) is provided when using `{ solver: "z3" }` or `{ solver: "pumpkin" }`. Use `"pumpkin"` (`@ohtaman/washi/solvers/pumpkin`) for bounded-integer/propositional models in environments without `COOP`/`COEP` headers, and use `"z3"` when `Continuous` variables or fractional arithmetic are involved. Because Z3 and Pumpkin assert variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking registered constraints, `unsatCore` reports a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (and is not guaranteed minimal).
-- **No concurrent mutation during async solve/check**:
-  - Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight execution and rejects the stale promise.
+#### Optimization (`await m.solve(options?)`)
+
+- **Return value**: Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`).
+- **Status semantics**: Optimization solvers return `"Feasible"` when a limit or abort stops with a valid primal incumbent. `"Sat"` and `"Unsat"` apply to satisfiability or custom solver adapters.
+- **Reading results**: Check `m.hasPrimalSolution`, then read `x.value`, `` expr`...`.value ``, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`. Inspect entities via `m.variables` and `m.constraints` (`ReadonlyMap`).
+- **Independent verification**: Call `m.verify()` to check finiteness, variable bounds, integrality, and linear/logical constraints (`VerificationReport`: `{ valid, complete, maxViolation, violations }`). It checks primal feasibility only and does not recompute `m.objectiveValue`.
+
+#### Satisfiability & Conflict Diagnosis (`await m.check(options?)`)
+
+- **Return value**: Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`).
+- **HiGHS & GLPK**: Diagnose linear and logical conflicts in `conflicts` via slack relaxation, leaving `unsatCore` as `undefined`.
+- **Pumpkin & Z3**: Extract an exact unsatisfiable core into both `unsatCore` and `conflicts`. Use Pumpkin for bounded integer/boolean models and Z3 when continuous or fractional constraints are present.
+- **Bounds caveat**: Variable bounds `lb`/`ub` and binary domains are asserted directly, so `unsatCore` reports constraint names that conflict *together with those fixed bounds* (not guaranteed minimal).
+
+#### Concurrent Mutation Rule
+
+- Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight run and rejects the stale promise.
 
 ---
 
@@ -202,7 +229,7 @@ export async function runMipExample() {
 
 ### Example B: Convex Quadratic Programming (QP)
 
-Variable-by-variable products (`${x} * ${y}`) and squares (`${x}^2`) are supported in `expr` for quadratic objectives:
+Variable-by-variable products `${x} * ${y}` and squares `${x}^2` are supported in `expr` for quadratic objectives:
 
 ```ts
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -252,7 +279,7 @@ export async function runZ3Example() {
 }
 ```
 
-### Example D: Pumpkin CP Disjunctive Scheduling & Zero-COOP/COEP Unsat Core
+### Example D: Pumpkin CP Scheduling & Discrete Unsat Core
 
 ```ts
 import { Model, expr, disjoint, distinct, implies, minimize } from "@ohtaman/washi";
@@ -280,7 +307,7 @@ export async function runPumpkinExample() {
   const status = await cpModel.solve();
   const report = cpModel.verify();
 
-  // Part 2: Zero-COOP/COEP unsatCore diagnosis on bounded integers & booleans
+  // Part 2: Discrete unsatCore diagnosis on bounded integers & booleans
   const unsatModel = new Model("DiscreteConflict", { solver: "pumpkin" });
   const vip = unsatModel.bool("vip");
   const discount = unsatModel.integer("discount", { lb: 0, ub: 50 });
@@ -344,8 +371,6 @@ export function verifyNegativePatterns() {
 
 ### Practical OR Modeling Guardrails
 
-- **Prefer inequalities (`>=` / `<=`) over exact equalities (`==`)** for demand coverage and resource limits when objective costs are positive; reserve `==` for physical conservation laws (e.g., flow balance, portfolio weights summing to `1`).
-- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M (`m.indicator()` throws if required bounds are infinite and no explicit `M` is provided).
-- **Use soft constraints (elastic slack variables)** for non-rigid business targets (e.g., preferred staffing, safety stock, day-off requests) by adding a non-negative slack variable (`lb: 0`) with a tiered objective penalty, reserving hard constraints for physical or legal invariants.
-
-
+- **Prefer inequalities over equalities**: Use `>=` and `<=` for demand coverage and resource caps when costs are positive. Reserve `==` for conservation laws such as flow balance or weights summing to `1`.
+- **Provide finite bounds for `m.indicator()`**: Give referenced variables finite `lb` and `ub` bounds and omit `M` so WaSHI derives a tight Big-M. Infinite bounds without an explicit `M` throw an error.
+- **Model non-rigid targets as soft constraints**: Add a non-negative slack variable (`lb: 0`) with an objective penalty for preferences like safety stock or day-off requests. Reserve hard constraints for physical or legal invariants.

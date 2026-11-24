@@ -1,45 +1,42 @@
 # AI コーディングエージェントでの開発
 
-このガイドでは、AI コーディングエージェント（Claude Code, Cursor, Codex, Antigravity, Gemini CLI, Windsurf）を使って `@ohtaman/washi` の数理最適化・制約プログラミングモデルを定式化・求解・検証し、ツールやアプリとしてパッケージングする手順を説明します。
+このガイドでは、AI コーディングエージェントを使って `@ohtaman/washi` の最適化・制約モデルを構築、検証、パッケージングする手順を説明します。対象ツールは Claude Code、Cursor、Codex、Antigravity、Gemini CLI、Windsurf などです。
 
 ---
 
 ## 1. セットアップ
 
-AI コーディングエージェントで WaSHI を使う準備は、「プロジェクトへのランタイム導入」と「エージェントへの API・検証ワークフローの付与」の2つに分かれます。
+AI コーディングエージェントで WaSHI を使う準備は 2 段階に分かれます。まずプロジェクトにランタイムライブラリを導入し、次にエージェントへ WaSHI の API と検証フローを連携させます。
 
 ### ランタイムライブラリのインストール
 
-標準の **HiGHS**（LP / MIP / 凸QP）と **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`、CP / LCG）は外部依存ゼロでパッケージに同梱されています：
+`@ohtaman/washi` を導入すると、線形・混合整数・凸二次計画（`LP`/`MIP`/`QP`）向けの **HiGHS** が同梱されます。さらに、制約プログラミング（`CP`）向けの **Pumpkin** も `@ohtaman/washi/solvers/pumpkin` として外部依存ゼロで同梱されています：
 
 ```bash
 npm install @ohtaman/washi
 
-# 連続変数の SMT 論理制約や GLPK を使う場合のみオプション追加:
+# 充足可能性モジュロ理論 (SMT) による連続変数の論理制約や GLPK を使う場合のみ追加:
 # npm install z3-solver
 # npm install glpk.js
 ```
 
 ### コーディングエージェントへの連携
 
-使用しているツールに合わせて以下のいずれかを設定します：
+使用しているツールに合わせて連携方法を選びます：
 
-- **Agent Skill（推奨 — Claude Code, Cursor, Codex, Antigravity, Gemini CLI）**:
-  ```bash
-  npx skills add ohtaman/washi
-  ```
-  `skills/washi/SKILL.md`（`node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）がインストールされます。これにより、ソルバーの選び方や `expr` による定式化、`m.toLpString()`・`m.verify()`・`m.check()` を使った検証手順がエージェントに共有されます。
-- **IDE ドキュメントインデックス（Cursor, Windsurf 等の `@Docs`）**:
-  - ドキュメント目次: `https://washi.ohtaman.dev/llms.txt`
-  - 単一ファイルの全リファレンス・例題集: `https://washi.ohtaman.dev/llms-full.txt`
-- **Context7 MCP**:
-  - ライブラリ ID: `/ohtaman/washi`
+| 連携方法 | 対象ツール | 設定手順 |
+| --- | --- | --- |
+| **Agent Skill** *(推奨)* | Claude Code, Cursor, Codex, Antigravity, Gemini CLI | `npx skills add ohtaman/washi` を実行 |
+| **IDE `@Docs` 登録** | Cursor, Windsurf | `https://washi.ohtaman.dev/llms.txt` または `https://washi.ohtaman.dev/llms-full.txt` を追加 |
+| **Context7 MCP** | MCP 対応エージェント | ライブラリ ID `/ohtaman/washi` を指定 |
+
+Agent Skill を導入すると `skills/washi/SKILL.md` が配置されます（`node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）。これにより、ソルバー選定、`expr` モデリング、`m.toLpString()`・`m.verify()`・`m.check()` による検証手順がエージェントに共有されます。
 
 ---
 
 ## 2. 最初のエンドツーエンド実行
 
-`@ohtaman/washi` をインストールした Node.js / TypeScript プロジェクトで、以下のスタータープロンプトをコーディングエージェントに入力します：
+`@ohtaman/washi` を導入した Node.js / TypeScript プロジェクトで、次のスタータープロンプトをエージェントに入力します：
 
 ```text
 @ohtaman/washi を使って、社内勉強会の LT 発表 8 件を 2 会場（Room A, Room B）× 4 タイムスロットに割り当てる TypeScript スクリプトを作成して実行してください。
@@ -51,19 +48,26 @@ npm install @ohtaman/washi
 4. すべての制約に分かりやすい名前を付け、同梱の HiGHS で求解し、m.hasPrimalSolution と m.verify().valid === true を確認してから時間割表を表示する。
 ```
 
-このプロンプトを実行すると、エージェントはローカル環境で次の3ステップを行います：
+このプロンプトを実行すると、エージェントはローカル環境で次の 3 ステップを進めます：
 
-1. **モデルの定式化**: 上下限付きの二値変数（`m.binary`）、数式（`` expr`...` ``, `sum`）、名前付き制約（`m.constraint(..., "name")`）、目的関数（`m.objective(minimize(...))`）を組み立てます。
-2. **Node.js 上の WebAssembly での求解**: 同梱の HiGHS WebAssembly バイナリを用いてスクリプト（`npx tsx schedule.ts` など）をそのまま実行します。Python 環境やネイティブソルバーのインストールは不要です。
-3. **解の独立検証**: `m.hasPrimalSolution` を確認した上で `m.verify()` を呼び出し、変数の上下限・整数性・すべての制約条件を満たしていることを検証してから結果を出力します。
+1. **モデルの定式化**: `m.binary` で 0-1 バイナリ変数を宣言し、`` expr`...` `` と `sum` で数式・名前付き制約・最小化目的関数を組み立てます。
+2. **Node.js 上の WebAssembly での求解**: 同梱の HiGHS バイナリでスクリプト（`npx tsx schedule.ts` 等）を実行します。Python 環境やネイティブソルバーの導入は不要です。
+3. **解の独立検証**: `m.hasPrimalSolution` を確認して `m.verify()` を呼び出します。出力前に境界・整数性・制約の充足を検証できます。
 
 ---
 
 ## 3. 問題クラス別の実用プロンプト例
 
-WaSHI が対応する代表的な問題クラスごとのプロンプトテンプレートです。入力データの項目や制約条件を手元の題材に合わせて書き換えて使用してください。
+解決したい課題に対応する問題クラスとソルバーを下の表から選び、対応するテンプレートを書き換えて使ってください：
 
-### イベント時間割・レビュアー割り当て（MILP — 同梱 HiGHS）
+| 問題タイプ | 推奨ソルバー | 主な API |
+| --- | --- | --- |
+| 割当・時間割・0-1 選択（`MILP` / `0-1 MIP`） | 同梱 **HiGHS** | `m.binary()`, `sum()`, `dot()` |
+| 共有リソース付きタスクスケジューリング（`CP`） | 同梱 **Pumpkin** | `disjoint()`, `cumulative()`, `distinct()` |
+| 目標配分への追従・分散最小化（凸 `QP`） | 同梱 **HiGHS** | `m.continuous()`, `` expr`...^2` `` |
+| ルール矛盾の診断（`unsatCore`） | 同梱 **Pumpkin** または **Z3** | `m.check()` |
+
+### イベント時間割・レビュアー割当（MILP — 同梱 HiGHS）
 
 ```text
 @ohtaman/washi（同梱 HiGHS）を使って、24 件の設計ドキュメント / PR レビュー依頼を 6 名のエンジニアへ割り当て、各依頼に異なる 2 名のレビュアーを付けてください。
@@ -85,7 +89,7 @@ WaSHI が対応する代表的な問題クラスごとのプロンプトテン�
 - すべての制約に明確な名前を付け、m.verify().valid === true を確認してください。
 ```
 
-### 先行順序・共有リソース制約付きタスクスケジューリング（CP/LCG — 同梱 Pumpkin）
+### 先行順序・共有リソース制約付きタスクスケジューリング（CP — 同梱 Pumpkin）
 
 ```text
 @ohtaman/washi と同梱の CP ソルバー（@ohtaman/washi/solvers/pumpkin）を使って、10 個のリリース工程タスク（整数の開始時刻 lb: 0, ub: 120、固定所要時間）の完了時刻（メイクスパン）を最小化してください。
@@ -114,13 +118,17 @@ sum(w) == 1.0 と上限条件のもとで二乗誤差和 expr`sum((${w} - ${targ
 ```
 
 > [!NOTE]
-> `await m.check()` は標準の **HiGHS** でもそのまま動作します（スラック緩和により競合する制約名を `res.conflicts` に返します）。`COOP`/`COEP` ヘッダー不要で有界整数・真偽値モデルの `res.unsatCore` を抽出したい場合は同梱の `@ohtaman/washi/solvers/pumpkin` をインポートし、連続変数や実数係数を含む SMT 論理で厳密な `unsatCore` が必要な場合は `z3-solver`（`@ohtaman/washi/solvers/z3`）を使用してください。
+> `await m.check()` は標準の **HiGHS** でも動作し、競合する制約名を `res.conflicts` に返します。
+>
+> 厳密な充足不能コア（`res.unsatCore`）を抽出したい場合は、変数の種類でソルバーを選びます：
+> - **有界整数・真偽値モデル**: 同梱の `@ohtaman/washi/solvers/pumpkin` をインポートします（ブラウザの分離ヘッダー不要）。
+> - **連続変数・実数係数を含むモデル**: `z3-solver` を追加し、`@ohtaman/washi/solvers/z3` をインポートします。
 
 ---
 
 ## 4. アプリ化・配布用プロンプト（単一 HTML・デスクトップ・モバイル）
 
-CLI スクリプトで定式化と検証が完了したら、同じモデルをサーバー不要の単一 HTML ツールやオフラインのデスクトップ・モバイルアプリにパッケージングするようエージェントに指示できます。
+CLI スクリプトの定式化と検証が完了したら、同じモデルを単一 HTML ツールやオフラインアプリへ展開できます。
 
 ### サーバー不要の単一 `.html` ツール（`file://` ダブルクリック起動）
 
@@ -131,9 +139,13 @@ CLI スクリプトで定式化と検証が完了したら、同じモデルを�
 - 解が得られた場合は必ず m.verify() で検証すること。
 ```
 
-- **`file://` 実行時の技術仕様**:
-  - HTTPS CDN から `washi.min.js`（Pumpkin 利用時は `solvers/pumpkin.min.js` も追加）を読み込む構成では、ローカル `.html` を `file://`（HTTP サーバーなし）で直接開いてもそのまま動作します。不透明オリジン（`window.origin === "null"`）を検出すると、WaSHI が自動的にメインスレッド実行へ切り替えるためです。
-  - ローカルに配置した `.wasm` ファイルの相対読み込み（`file://` ではブラウザの `fetch()` CORS 制約でブロックされます）や **Z3**（`COOP`/`COEP` ヘッダーと `SharedArrayBuffer` が必須）を使う場合は、`http://` または `https://` サーバー経由で配信してください。
+**`file://` 実行時の動作仕様**:
+
+| シナリオ | 動作と前提条件 |
+| --- | --- |
+| **CDN スクリプト** | HTTPS CDN から読み込む `washi.min.js` は `file://` でもサーバー不要で動作します。不透明オリジン（`window.origin === "null"`）では HiGHS と Pumpkin が自動的にメインスレッドで実行されます。 |
+| **セルフホスト `.wasm`** | `file://` ではブラウザがローカル `.wasm` への `fetch()` をブロックします。セルフホスト時は `http://` または `https://` で配信してください。 |
+| **ブラウザでの Z3** | セキュアコンテキスト（`https://` または `http://localhost`、通常の `http://` LAN URL は不可）と `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`（`COOP`/`COEP`）が必要です。詳細は [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。 |
 
 ### オフラインのデスクトップ・モバイルアプリ（Vite + Tauri / Capacitor / PWA）
 
@@ -143,16 +155,31 @@ CLI スクリプトで定式化と検証が完了したら、同じモデルを�
 - Content Security Policy で WebAssembly の実行（script-src に 'wasm-unsafe-eval'）および Web Worker（worker-src 'self' blob:）を許可すること。
 ```
 
-- **WebView 環境の技術仕様**: 標準の Vite ビルド成果物は `highs.wasm` や `pumpkin.wasm` を静的アセットとして同梱するため、Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、オフライン対応 PWA 内でそのまま動作します。`tauri.conf.json` の CSP 設定（`'wasm-unsafe-eval'` 等）の詳細は [ランタイム環境設定](./runtimes.md) を参照してください。
+**WebView 環境での動作仕様**:
+
+標準の Vite ビルド成果物は `highs.wasm` と `pumpkin.wasm` を静的アセットとして同梱します。Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、Service Worker 対応 PWA でオフライン動作します。Content Security Policy（`CSP`）の `script-src` には `'wasm-unsafe-eval'` を許可してください。`tauri.conf.json` の設定例は [ランタイム環境設定](./runtimes.md) にまとめています。
 
 ---
 
 ## 5. エージェントとの反復改善とデバッグ
 
-- **制約への明示的な命名と `m.verify()` の徹底**: すべての `m.constraint(c, "rule_name")`（および `m.indicator(...)` の `name`）に意味のある一意な名前を付け、求解後に必ず `m.verify().valid === true` を確認するようエージェントに指示してください。名前を省略すると自動採番（`c_0`, `c_1`）になり、競合診断結果の解釈が難しくなります。
-- **`"Infeasible"`（解なし）発生時は `m.check()` で原因を特定する**: 要件追加によって解が見つからなくなった場合は、次のような追加プロンプトが有効です：
-  ```text
-  新しい条件を追加したところ m.solve() が "Infeasible" になりました。
-  await m.check()（有界整数・真偽値モデルなら await m.check({ solver: "pumpkin" })）を実行して res.conflicts / res.unsatCore を出力し、どの名前付きルールや変数の上下限が矛盾しているかを説明した上で、どの条件を非負スラック変数付きのソフト制約（ペナルティ項）に緩和すべきか提案してください。
-  ```
-- **本番利用前の `m.toLpString()` と変数上下限の確認**: 小規模なテストデータで `m.toLpString()` を出力させ、変数の `lb` / `ub`（特に `M` 省略時の `m.indicator()` 内で参照される変数には有限の上下限が必須）、目的関数の向き（`Maximize` / `Minimize`）、不等号の向き（`<=` / `>=`）が意図通りか確認してください。
+### すべての制約に命名し `m.verify()` を徹底する
+
+`m.constraint(c, "rule_name")` と `m.indicator(...)` に分かりやすい名前を付け、求解後に必ず `m.verify().valid === true` を検証するよう指示してください。名前を省略すると 1 始まりの自動名（`c_1`, `c_2`）になり、競合診断結果が読みにくくなります。
+
+### `"Infeasible"` 発生時は `m.check()` で原因を特定する
+
+条件の追加によって `m.solve()` が `"Infeasible"` を返した場合は、次のような追加プロンプトが有効です：
+
+```text
+新しい条件を追加したところ m.solve() が "Infeasible" になりました。
+await m.check()（有界整数・真偽値モデルなら await m.check({ solver: "pumpkin" })）を実行して res.conflicts / res.unsatCore を出力し、どの名前付きルールや変数の上下限が矛盾しているかを説明した上で、どの条件を非負スラック変数付きのソフト制約（ペナルティ項）に緩和すべきか提案してください。
+```
+
+### 本番利用前に `m.toLpString()` と変数上下限を確認する
+
+小規模なテストデータで `m.toLpString()` を出力させ、次の 3 点を確認します：
+
+- **有限の上下限（`lb` / `ub`）**: `M` を省略した `m.indicator()` 内で参照する変数には有限の上下限が必須です。
+- **目的関数の向き**: `Maximize` と `Minimize` が業務目的に一致しているか確認します。
+- **制約の不等号**: すべての `<=`・`>=`・`==` の向きが意図通りか点検します。
