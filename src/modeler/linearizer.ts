@@ -714,14 +714,19 @@ export function linearizeModelForMip(
         const aBin = getBinVarForBoolElement(el.children[0], originalName);
         const bBin = getBinVarForBoolElement(el.children[1], originalName);
         // binVar <=> (a => b)  <=>  binVar <=> (~a or b)
-        // binVar >= b - a  <=>  binVar - b + a >= 0
-        // binVar <= 1 - a + b
+        // 1. binVar >= 1 - a  <=>  binVar + a >= 1
+        // 2. binVar >= b      <=>  binVar - b >= 0
+        // 3. binVar <= (1 - a) + b  <=>  binVar + a - b <= 1
         emitConstraint(
-          new Constraint(linExpr([[binVar, 1], [bBin, -1], [aBin, 1]], 0), ">=", 0, `${originalName}_imp_1`),
+          new Constraint(linExpr([[binVar, 1], [aBin, 1]], 0), ">=", 1, `${originalName}_imp_1`),
           originalName
         );
         emitConstraint(
-          new Constraint(linExpr([[binVar, 1], [aBin, 1], [bBin, -1]], 0), "<=", 1, `${originalName}_imp_2`),
+          new Constraint(linExpr([[binVar, 1], [bBin, -1]], 0), ">=", 0, `${originalName}_imp_2`),
+          originalName
+        );
+        emitConstraint(
+          new Constraint(linExpr([[binVar, 1], [aBin, 1], [bBin, -1]], 0), "<=", 1, `${originalName}_imp_3`),
           originalName
         );
         return;
