@@ -55,7 +55,11 @@
     },
     "provenance": {
       "generatedBy": "Drafted by Gemini",
-      "reviewedBy": "Reviewed by {handles}"
+      "reviewedBy": "Reviewed by {handles}",
+      "unreviewedBadge": "未审阅",
+      "reviewedBadge": "已审阅",
+      "legendUnreviewed": "Drafted by Gemini（未审阅）",
+      "legendReviewed": "已审阅"
     },
     "workspace": {
       "jumpToEditorBtn": "跳转到答题区 ↓",

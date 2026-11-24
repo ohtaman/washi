@@ -55,7 +55,11 @@
     },
     "provenance": {
       "generatedBy": "Drafted by Gemini",
-      "reviewedBy": "Reviewed by {handles}"
+      "reviewedBy": "Reviewed by {handles}",
+      "unreviewedBadge": "Unreviewed",
+      "reviewedBadge": "Reviewed",
+      "legendUnreviewed": "Drafted by Gemini (Unreviewed)",
+      "legendReviewed": "Reviewed"
     },
     "workspace": {
       "jumpToEditorBtn": "Jump to Answer Editor ↓",

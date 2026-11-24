@@ -55,7 +55,11 @@
     },
     "provenance": {
       "generatedBy": "Drafted by Gemini",
-      "reviewedBy": "Reviewed by {handles}"
+      "reviewedBy": "Reviewed by {handles}",
+      "unreviewedBadge": "未レビュー",
+      "reviewedBadge": "レビュー済",
+      "legendUnreviewed": "Drafted by Gemini（未レビュー）",
+      "legendReviewed": "レビュー済"
     },
     "workspace": {
       "jumpToEditorBtn": "解答欄へ移動 ↓",
