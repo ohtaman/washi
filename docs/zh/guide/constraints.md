@@ -1,7 +1,7 @@
 # 约束条件 (`m.constraint` & `m.indicator`)
 
 约束条件定义了合法解必须满足的规则。
-在 WaSHI 中，线性算术约束与逻辑规则都通过 **`m.constraint()`** 注册：
+在 WaSHI 中，线性算术约束与逻辑规则均通过 `m.constraint()` 注册：
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -11,7 +11,7 @@ m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
 
 ## 代数线性约束 (`expr`)
 
-使用 `expr` 标签模板字面量语法，可以以标准数学记法编写等式与不等式约束：
+使用 `expr` 标签模板字面量，可以以标准数学记法编写线性等式与不等式约束：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -30,16 +30,19 @@ m.constraint(expr`3 * ${x} + ${y} >= 20`, "min_demand");
 m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 ```
 
-`m.constraint()` 返回已注册的 `Constraint`（逻辑公式返回 `BoolExpr`，传入批量数组时返回对应数组）。
+`m.constraint()` 返回已注册的 `Constraint`（逻辑公式返回 `BoolExpr`），传入数组时则返回对应的数组。
 
 ### 支持的比较运算符
-- `<=`：小于等于（上界）约束
-- `>=`：大于等于（下界）约束
-- `==` 或 `=`：等式约束
-- `<`、`>`、`!=`：严格不等与不等约束（仅限整数表达式；参见 [离散比较运算符](#discrete-comparisons)）
+
+- `<=`：小于等于（上界）约束。
+- `>=`：大于等于（下界）约束。
+- `==` 或 `=`：等式约束。
+- `<`、`>`、`!=`：仅限整数值表达式的严格不等与不等约束（见 [离散比较运算符](#discrete-comparisons)）。
 
 ### 数组批量注册
-向 `m.constraint([...])` 传入约束数组，可一次性全部注册（若任意一项无效，则全部不注册）：
+
+向 `m.constraint([...])` 传入约束数组即可原子化批量注册。
+如果数组中任意一项无效，则整体回滚，不会残留部分约束：
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -49,22 +52,23 @@ m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 
 ## 为约束命名
 
-在 `m.constraint(c, name)` 的第二个参数中，可为约束指定唯一且具描述性的名称：
+在 `m.constraint(c, name)` 的第二个参数中，可为约束指定唯一且易读的名称：
 
 ```typescript
 m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ```
 
 ### 为什么要为约束命名？
-1. **模型检查 (`m.toLpString()`)**：导出的 CPLEX LP 格式字符串会保留这些名称（必要时自动转义），便于核对生成的数学模型。
-2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，`m.check()`（通过内置 HiGHS 弹性松弛、内置 Pumpkin `unsatCore` 或 Z3 `unsatCore`）会返回构成冲突子集的具体约束名称。
-3. **按名称查询 (`m.constraints.get()`)**：求解后可按名称获取约束对象，读取其影子价格（`dual`）或松弛量（`slack`）。
+
+1. **模型检查 (`m.toLpString()`)**：导出的 CPLEX LP 字符串会保留这些名称，方便核对生成的数学模型。
+2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束相互矛盾导致无解时，`m.check()` 会返回冲突约束的名称。
+3. **按名称查询 (`m.constraints.get()`)**：求解后可按名称获取约束对象，读取其 `dual` 或 `slack` 值。
 
 ---
 
 ## 聚合约束 (`sum` & `dot`)
 
-在 `expr` 中直接使用 `sum(...)` 与 `dot(..., ...)`，即可简洁地表达数组或字典上的线性聚合约束：
+在 `expr` 中直接使用 `sum(...)` 与 `dot(..., ...)`，可简洁地表达数组或字典上的线性聚合约束：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -83,26 +87,32 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ---
 
-## 对偶值（影子价格）与松弛变量
+## 对偶值（影子价格）与松弛量
 
-对于连续线性规划（LP）问题，求解后可在每条约束（由 `m.constraint()` 返回，或通过 `m.constraints.get()` 查询）上读取其影子价格/对偶值（`dual`）与松弛量（`slack`）：
+使用 HiGHS 或 GLPK 求解连续线性规划（LP）模型后，每条线性约束会提供两个灵敏度分析属性：
+
+- **`dual`（影子价格 / 对偶值）**：约束右端项每放宽一个单位时，最优目标函数值的改善幅度。
+- **`slack`（松弛量）**：最优解下约束左端与右端之间的未用余量（约束取紧时为 `0`）。
+
+两个属性均返回 `number | null`；在求解前，或对于 MIP、CP 与逻辑约束，其值为 `null`。
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.solve();
 
-console.log("Shadow price (dual):", woodConstraint.dual);
-console.log("Slack surplus:", woodConstraint.slack);
-console.log("Looked-up dual:", m.constraints.get("wood")?.dual); // number | null（MIP / CP / 逻辑约束为 null）
-console.log("Total constraints:", m.constraints.size);
+console.log("影子价格 (dual):", woodConstraint.dual);
+console.log("松弛量 (slack):", woodConstraint.slack);
+console.log("按名称查询 dual:", m.constraints.get("wood")?.dual); // number | null
+console.log("已注册约束总数:", m.constraints.size);
 ```
 
 ---
 
 ## 条件约束 / 指示约束 (`m.indicator`)
 
-当某条线性约束仅在某个 0-1 二元决策变量（`m.binary()`）取特定值（`1` 或 `0`）时才生效，请使用 `m.indicator()`：
+当某条线性约束仅在 0-1 二元变量（`m.binary()`）取 `1` 或 `0` 时生效，请使用 `m.indicator()`。
+在 MIP 中，这类条件约束通过 **Big-M 法**编码：例如 $a^\top x \le b + M(1 - y)$ 在 $y = 1$ 时强制 $a^\top x \le b$，而在 $y = 0$ 时借助足够大的常数 $M$ 将约束放宽至不限制可行解：
 
 ```typescript
 const useDiscount = m.binary("use_discount");
@@ -118,19 +128,22 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ### 安全的自动 Big-M 推导与变量边界
 
-当省略 `options.M` 时，WaSHI 会根据有限的变量边界（`lb`、`ub`）自动推导安全且最小的 Big-M 值：
-- 对于 `<=` 约束，正系数变量需要有限上界（`ub`），负系数变量需要有限下界（`lb`）。
-- 对于 `>=` 约束，正系数变量需要有限下界（`lb`），负系数变量需要有限上界（`ub`）。
-- 对于 `==` 约束，会分别针对 `<=` 与 `>=` 两个方向独立推导安全边界（生成 `name_le` 与 `name_ge`）。
+当省略 `options.M` 时，WaSHI 会根据有限的变量上下界（`lb`、`ub`）自动推导最小的合法 Big-M 值：
 
-如果引用的任何变量缺少所需的有限边界，`m.indicator()` 会抛出错误，提示补充有限边界或显式指定 `options.M`。
+- 对于 `<=` 约束，正系数变量需要有限 `ub`，负系数变量需要有限 `lb`。
+- 对于 `>=` 约束，正系数变量需要有限 `lb`，负系数变量需要有限 `ub`。
+- 对于 `==` 约束，会分别对 `<=` 与 `>=` 两个方向独立推导，并生成 `name_le` 与 `name_ge`。
+
+若任意引用变量缺少所需有限边界，`m.indicator()` 会抛出错误，提示补充有限边界或显式传入 `options.M`。
 
 > [!NOTE]
-> **Pumpkin 与 Z3 上的原生指示约束**：省略 `options.M` 时，`HiGHS`、`GLPK` 和 `m.toLpString()` 仍按 Big-M 方式工作，而 **Pumpkin** 和 **Z3** 会原生求解，避免 Big-M 带来的数值误差。如果后续直接修改返回的约束对象，该原生标记会自动清除并使修改生效。
+> **`m.indicator()` 在 MIP、CP 与 SMT 求解器上的工作方式**：省略 `options.M` 时，`m.indicator()` 返回带原生指示标记的 Big-M 线性 `Constraint` 对象。
+> HiGHS、GLPK 和 `m.toLpString()` 直接使用其中的 Big-M 不等式，而 Pumpkin 和 Z3 会读取该标记并原生求解，避免 Big-M 数值误差。
+> 若后续直接修改返回的 `Constraint` 对象，WaSHI 会清除该原生标记，使修改后的线性约束在所有求解器中生效。
 
 ### 显式指定 `M`
 
-可以通过传入 `{ M: number }` 显式覆盖自动推导的 Big-M：
+传入 `{ M: number }` 可显式覆盖自动推导的 Big-M：
 
 ```typescript
 m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
@@ -140,13 +153,21 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **优先为变量设置有限边界（`lb`、`ub`）而非手动指定过大的 `M`**：过小的 $M$ 值可能截断合法可行解，而过大的 $M$ 值（如 $10^9$）会导致 MIP 求解器矩阵病态与数值不稳定。为变量设置符合实际的有限边界后，WaSHI 会自动推导出最紧致的安全 Big-M。
+> **优先设置有限变量边界而非手动指定过大的 `M`**：过小的 $M$ 会误删可行解，而过大的 $M$（如 $10^9$）会破坏 MIP 求解器的数值稳定性。
+> 为变量设置符合实际的 `lb` 与 `ub`，即可让 WaSHI 自动推导最紧致的安全 Big-M。
 
 ---
 
 ## 命题逻辑与 SMT 约束 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-WaSHI 提供一等逻辑运算符来组合命题布尔变量（`m.bool()`）与线性算术约束（`Constraint`）。逻辑公式在 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`，面向有界整数与布尔模型）与 **Z3**（`@ohtaman/washi/solvers/z3`）中原生求解，在 **HiGHS** 与 **GLPK** 中自动线性化为 0-1 MIP 约束：
+WaSHI 的逻辑运算符可将 `m.bool()` 创建的 `BoolVar` 与线性 `Constraint` 自由组合。
+Pumpkin 与 Z3 原生求解逻辑公式，而 HiGHS 与 GLPK 会自动将其线性化为 0-1 MIP 约束。
+可通过导入 `@ohtaman/washi/solvers/pumpkin` 或 `@ohtaman/washi/solvers/z3` 注册对应后端。
+
+> [!IMPORTANT]
+> **求解器前置条件**：
+> - **Pumpkin**：所有数值变量都必须是具备有限 `lb` 与 `ub` 的 `Integer` 或 `Binary` 变量。
+> - **Z3**：需要安装可选对等依赖（`npm install z3-solver`）。在浏览器中运行 Z3 还需要配置支持 `SharedArrayBuffer` 的 `COOP`/`COEP` 响应头。
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";
@@ -170,7 +191,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-所有已命名约束——包括线性 `Constraint` 与逻辑/CP `LogicalConstraint`（`{ kind: "logical", name, expr, dual: null, slack: null }`）——均统一保存在 `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）中，可通过 `m.constraints.get(name)` 按名称检索。
+所有已命名约束均统一存储在 `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）中，可通过 `m.constraints.get(name)` 检索。
+逻辑与 CP 约束条目的结构为 `{ kind: "logical", name, expr, dual: null, slack: null }`。
 
 ### 如何选择 `m.indicator()` 与 `implies()`
 
@@ -178,19 +200,20 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **触发条件变量** | 数值 `Binary` 变量 (`m.binary()`) | `BoolVar` (`m.bool()`)、`BoolOp` 或 `Constraint` |
 | **推论约束** | 线性 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp` 或线性 `Constraint` |
-| **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK 使用 Big-M；省略 `M` 时 Pumpkin / Z3 原生求解） | **所有求解器**（HiGHS、GLPK 自动 0-1 MIP 线性化，Pumpkin、Z3 原生支持） |
-| **主要用途** | 包含二元算术变量的数理优化模型（`m.solve()`） | 逻辑规则系统与 SMT 可满足性判定（`m.check()`） |
+| **适用求解器** | 全部求解器（HiGHS/GLPK 用 Big-M；省略 `M` 时 Pumpkin/Z3 原生求解） | 全部求解器（HiGHS/GLPK 自动 0-1 MIP 线性化；Pumpkin/Z3 原生求解） |
+| **主要用途** | 含数值二元变量的 MIP 优化模型 | 逻辑规则系统与 SMT 可满足性判定 |
 
 > [!NOTE]
 > **当比较约束出现在取反位置（`not`、`xor` 或 `implies` 条件侧）时**：
-> - **纯整数表达式**：例如 $\neg(x \le 5)$ 在 `HiGHS`/`GLPK` 上会自动转为 $x \ge 6$，在 `Pumpkin`/`Z3` 上则原生求解。
-> - **包含 `Continuous` 变量或小数时**：`HiGHS`/`GLPK` 无法表示连续域的严格 `<` / `>`，会直接报错。请改用 `{ solver: "z3" }` 或用 `m.bool()` 表达条件。
+> - **纯整数表达式**：例如 $\neg(x \le 5)$ 在 HiGHS 和 GLPK 上会自动转为 $x \ge 6$，在 Pumpkin 和 Z3 上则原生求解。
+> - **包含 `Continuous` 变量或小数时**：HiGHS 和 GLPK 无法用闭线性不等式表示连续域的严格 `<` / `>`，会直接报错。请改用 `{ solver: "z3" }` 或用 `m.bool()` 表达条件。
 
 ---
 
 ## 离散比较运算符 (`!=`, `<`, `>`) {#discrete-comparisons}
 
-WaSHI 在 `expr` 模板中（以及 `Var`、`LinExpr`、`QuadExpr` 上的 `.ne()`、`.lt()`、`.gt()` 链式方法）支持离散比较运算符 `!=`、`<` 和 `>`，且**仅限整数值表达式**（仅含 `Integer` / `Binary` 变量与安全整数系数和常数）：
+WaSHI 在 `expr` 模板以及 `Var`、`LinExpr`、`QuadExpr` 的 `.ne()`、`.lt()`、`.gt()` 方法中支持离散比较运算符 `!=`、`<` 和 `>`。
+这些运算符**仅限整数值表达式**——即仅包含 `Integer` 或 `Binary` 变量以及安全整数系数与常数的表达式：
 
 ```typescript
 const rankA = m.integer("rankA", { lb: 1, ub: 4 });
@@ -199,16 +222,20 @@ const roomA = m.integer("roomA", { lb: 1, ub: 3 });
 const roomB = m.integer("roomB", { lb: 1, ub: 3 });
 
 m.constraint(expr`${rankA} < ${rankB}`, "strict_order"); // 等价为 rankA - rankB <= -1
-m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin 原生 not_equals，Z3 原生 neq，HiGHS/GLPK 单二元变量 MIP
+m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin/Z3 原生支持，HiGHS/GLPK 单二元变量 MIP
 ```
 
-如果在 `!=`、`<` 或 `>` 中使用 `Continuous` 变量或小数常数，系统会立即拒绝并抛出错误，因为连续域上的严格不等式或不等约束并非闭多面体。
+包含 `Continuous` 变量或小数常数的表达式无法使用 `!=`、`<` 或 `>`，系统会立即报错。
+原因在于实数域上的严格不等式构成开集，例如 $x < 5$ 不存在最大实数解。
+因此 LP 与 MIP 求解器要求使用闭不等式（$\le$、$\ge$、$=$），以保证最优解可达。
 
 ---
 
 ## CP 全局约束 (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束。关于区间调度、对称性破缺与 **Pumpkin** 求解建模技巧，请参阅专门的 [约束规划 (CP) 建模指南](./constraint-programming.md)。
+WaSHI 提供后端无关的约束规划**全局约束**——即把多个变量之间的高层组合关系封装为单个可组合的 `BoolExpr` 谓词。
+它们可与 `and`、`or`、`not`、`implies`、`xor` 自由组合。
+有关区间调度、对称性破缺与 Pumpkin 建模技巧，请参阅 [约束规划 (CP) 建模指南](./constraint-programming.md)。
 
 | 约束 | 含义 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -232,4 +259,4 @@ m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
 
 > [!TIP]
-> 关于**使用松弛变量构建软约束**与**同构资源对称性破缺（Symmetry Breaking）**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。
+> 关于**使用松弛变量构建软约束**与**对称性破缺（Symmetry Breaking）**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。

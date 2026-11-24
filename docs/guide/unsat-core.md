@@ -1,18 +1,21 @@
 # Conflict Diagnosis (`unsatCore`), Validation & Debugging
 
-When a model has no solution (`"Infeasible"`), or when you want to double-check solver output before using it in production, WaSHI provides four built-in tools:
+When a model has no feasible solution (`"Infeasible"`), or when you want to verify solver output before using it in production, WaSHI provides four diagnostic tools:
 
-- **Find conflicting constraints (`m.check()`)**: Pinpoint which named constraints contradict each other.
-- **Verify solutions (`m.verify()`)**: Independently check that a solution satisfies all bounds, integrality rules, and constraints.
-- **Inspect generated equations (`m.toLpString()`)**: Export the model as CPLEX `.lp` text to check signs, coefficients, and names.
-- **Unit-test without WebAssembly (`MockSolver`)**: Return deterministic results instantly in CI.
+- **Conflict diagnosis (`m.check()`)**: Pinpoints which named constraints contradict each other.
+- **Solution verification (`m.verify()`)**: Independently checks bounds, integrality, and all constraints.
+- **Formulation inspection (`m.toLpString()`)**: Exports CPLEX `.lp` text to inspect signs, coefficients, and names.
+- **Deterministic testing (`MockSolver`)**: Returns fixed results in unit tests without loading WebAssembly.
 
 ---
 
 ## Finding Conflicting Constraints (`m.check()`)
 
-When `m.solve()` returns `"Infeasible"`, it tells you that no solution satisfies every rule—not *which* rules conflict.
-To find the conflicting constraints, call `m.check()` with `"pumpkin"` (for bounded integer and boolean models) or `"z3"` (for models with `Continuous` variables or decimal arithmetic):
+When `m.solve()` returns `"Infeasible"`, it proves that no solution satisfies every rule, but does not tell you *which* rules clash.
+To diagnose the cause, call `m.check()`.
+A logical **Unsat Core** is a subset of constraints that cannot hold simultaneously—even if every other constraint in the model were removed, those rules would still conflict.
+
+Pass `{ solver: "pumpkin" }` for bounded integer and Boolean models, or `{ solver: "z3" }` for models with `Continuous` variables or decimal arithmetic:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -34,24 +37,24 @@ if (result.status === "Unsat") {
 }
 ```
 
-`routine_operating_cost` ($x \ge 10$) is excluded because only `minimum_regulatory_reserve` ($x \ge 100$) and `budget_ceiling` ($x \le 50$) directly contradict each other.
+In this example, `routine_operating_cost` is excluded because only `minimum_regulatory_reserve` and `budget_ceiling` directly contradict each other.
 
 > [!IMPORTANT]
-> - **Use `m.check()`, not `m.solve()`, for conflict diagnosis**: `m.solve()` optimizes an objective and only returns `"Infeasible"`. Call `m.check()` to populate `result.conflicts` / `m.conflicts` (also aliased as `result.unsatCore` / `m.unsatCore`).
-> - **Name any rule you want to see in the output**: Variable bounds (`lb`, `ub`) do not have names, so they never appear in `conflicts` or `unsatCore`. If a bound might be part of a conflict, also register it as a named constraint via `m.constraint(expr`...`, "rule_name")`.
+> - **Use `m.check()` for diagnosis**: `m.solve()` only optimizes an objective and returns `"Infeasible"`. `m.check()` populates `conflicts` on all solvers, plus `unsatCore` on Pumpkin and Z3 (`undefined` on HiGHS/GLPK).
+> - **Name every rule you want diagnosed**: Variable `lb`/`ub` bounds are unnamed and never appear in `conflicts`. Register any bound you want diagnosed with ``m.constraint(expr`...`, "rule_name")``.
 
 ### Choosing a Diagnosis Solver
 
-You can diagnose infeasibility after `m.solve()` with any of three backends:
+After `m.solve()` returns `"Infeasible"`, choose among three backends based on your variable types and scale sensitivity:
 
 | | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
 | :--- | :--- | :--- | :--- |
-| **Best for** | Bounded integer & boolean models | Models with `Continuous` or decimal values | Quick check with zero extra imports |
-| **Setup** | Bundled (`@ohtaman/washi/solvers/pumpkin`) | Optional (`z3-solver`) | Built-in (`HiGHS`) / optional (`glpk.js`) |
+| **Best for** | Bounded integer & Boolean models | Models with `Continuous` or decimal values | Quick check with zero extra imports |
+| **Setup** | Bundled (`@ohtaman/washi/solvers/pumpkin`) | Optional (`z3-solver`) | Built-in (HiGHS) / optional (`glpk.js`) |
 | **Browser headers** | None | Requires `COOP` / `COEP` headers | None |
 | **Result fields** | `unsatCore` and `conflicts` | `unsatCore` and `conflicts` | `conflicts` only (`unsatCore` is `undefined`) |
-| **What it returns** | A set of rules that cannot all hold together | A set of rules that cannot all hold together | A set of rules that, if relaxed, restores feasibility |
-| **Unit-scale sensitivity** | Scale-invariant | Scale-invariant | Scale-sensitive (prefers relaxing smaller-numbered constraints) |
+| **What it returns** | Unsat Core (mutually incompatible rules) | Unsat Core (mutually incompatible rules) | Elastic-relaxation set (rules to relax to restore feasibility) |
+| **Unit-scale sensitivity** | Scale-invariant | Scale-invariant | Scale-sensitive (prefers relaxing smaller-scale constraints) |
 
 ```typescript
 // Import Pumpkin or Z3 at the top of your file if needed:
@@ -65,7 +68,7 @@ if (status === "Infeasible") {
   const diag = await m.check();
   console.error("Constraints to relax:", diag.conflicts);
 
-  // Option 2: Bundled Pumpkin (bounded int/bool; no COOP/COEP headers)
+  // Option 2: Bundled Pumpkin (bounded int/bool; scale-invariant Unsat Core)
   // const pumpkinDiag = await m.check({ solver: "pumpkin" });
   // console.error("Pumpkin Unsat Core:", pumpkinDiag.unsatCore);
 
@@ -76,13 +79,16 @@ if (status === "Infeasible") {
 ```
 
 > [!TIP]
-> If your model mixes constraints with very different scales (for example, headcount $\le 8$ alongside budget $\le 50{,}000$), default `m.check()` (HiGHS) tends to flag the smaller-numbered constraint even when the larger one is the real issue. Use `pumpkin` or `z3` for scale-invariant diagnosis, or normalize your constraint scales.
+> **Why HiGHS is scale-sensitive**: Default `m.check()` (HiGHS) diagnoses infeasibility by adding a non-negative relaxation slack to each named constraint and minimizing the **unweighted sum of relaxations**.
+> When constraints mix very different numeric scales—such as headcount $\le 8$ alongside budget $\le 50{,}000$—relaxing the smaller-scale constraint adds far less to the total slack, so HiGHS tends to flag it first.
+> Use `pumpkin` or `z3` for scale-invariant Unsat Core diagnosis, or normalize your constraint units.
 
 ---
 
 ## Verifying Solutions (`m.verify()`)
 
-After solving a model (or passing custom values via `values`), call `m.verify()` to check that all variable bounds, integer requirements, linear constraints, and logical constraints hold within tolerance:
+After solving a model, call `m.verify()` to check that every bound, integrality rule, linear constraint, and logical constraint holds within tolerance.
+You can also pass a custom `values` map to validate an externally produced assignment:
 
 ```typescript
 const status = await m.solve();
@@ -122,9 +128,11 @@ if (m.hasPrimalSolution) {
 
 ## Inspecting the LP Formulation (`m.toLpString()`)
 
-To verify coefficients, signs, or constraint names, call `m.toLpString()` to export the model in standard CPLEX `.lp` format:
+To inspect coefficients, signs, or constraint names, call `m.toLpString()` to export the model in standard CPLEX `.lp` format:
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
 const m = new Model("DebugModel");
 const x = m.integer("x", { lb: 0, ub: 10 });
 m.objective(maximize(expr`5 * ${x}`));
@@ -148,7 +156,7 @@ End
 
 ## Unit Testing Without WebAssembly (`MockSolver`)
 
-In unit tests for application code that builds or reads a `Model`, pass `MockSolver` to return fixed results instantaneously without loading WebAssembly:
+In unit tests for application code that builds or reads a `Model`, pass `MockSolver` to return fixed results immediately without loading WebAssembly:
 
 ```typescript
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";

@@ -1,7 +1,7 @@
 # 制約条件 (`m.constraint` & `m.indicator`)
 
 制約条件は、解が満たすべきルールを定義します。
-WaSHI では、線形制約と論理ルールの両方を **`m.constraint()`** で登録します：
+WaSHI では、線形制約と論理ルールの両方を `m.constraint()` で登録します。
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -11,7 +11,7 @@ m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
 
 ## 代数的な線形制約 (`expr`)
 
-`expr` タグ付きテンプレートリテラルを使うと、自然な数式表記で不等式や等式を記述できます：
+`expr` タグ付きテンプレートリテラルを使うと、標準的な数式表記で線形等式や不等式を記述できます。
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -30,16 +30,19 @@ m.constraint(expr`3 * ${x} + ${y} >= 20`, "min_demand");
 m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 ```
 
-`m.constraint()` は登録された `Constraint`（論理式の場合は `BoolExpr`、配列を渡した場合はその配列）を返します。
+`m.constraint()` は登録された `Constraint`（論理式の場合は `BoolExpr`）、配列を渡した場合はその配列を返します。
 
 ### サポートされる比較演算子
-- `<=`: 以下（上限）制約
-- `>=`: 以上（下限）制約
-- `==` または `=`: 等式制約
-- `<`, `>`, `!=`: 厳密不等式・非等式制約（整数値の式のみ。[離散比較演算子](#discrete-comparisons) 参照）
+
+- `<=`: 以下（上限）制約。
+- `>=`: 以上（下限）制約。
+- `==` または `=`: 等式制約。
+- `<`, `>`, `!=`: 整数値の式専用の厳密不等式・非等式制約（[離散比較演算子](#discrete-comparisons) 参照）。
 
 ### 配列による一括登録
-制約の配列を `m.constraint([...])` に渡すと、まとめて一括登録できます（1つでも不正な要素があれば何も登録されません）：
+
+制約の配列を `m.constraint([...])` に渡すと、まとめて一括登録できます。
+配列内に1つでも不正な要素があれば、何も登録されずにロールバックされます。
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -49,22 +52,23 @@ m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 
 ## 制約条件への名前付け
 
-`m.constraint(c, name)` の第2引数には、一意でわかりやすい制約名を指定できます：
+`m.constraint(c, name)` の第2引数には、一意でわかりやすい制約名を指定できます。
 
 ```typescript
 m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ```
 
 ### 名前を付けるメリット
-1. **LP 定式化の確認 (`m.toLpString()`)**: エクスポートされる CPLEX LP 文字列に制約名が出力されるため、生成された式の確認が容易になります。
-2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()`（標準 HiGHS の弾性緩和、同梱 Pumpkin の `unsatCore`、または Z3 の `unsatCore`）がどの名前付き制約同士が衝突しているかを返します。
-3. **名前による参照 (`m.constraints.get()`)**: 求解後に名前から制約オブジェクトを取得し、潜在価格（`dual`）や余剰（`slack`）を確認できます。
+
+1. **LP 定式化の確認 (`m.toLpString()`)**: エクスポートされる CPLEX LP 文字列に制約名が残り、生成された式を監査しやすくなります。
+2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()` が衝突している制約名を返します。
+3. **名前による参照 (`m.constraints.get()`)**: 求解後に名前から制約オブジェクトを取得し、`dual` や `slack` の値を確認できます。
 
 ---
 
 ## 総和・内積 (`sum` & `dot`) を使った集約制約
 
-`expr` の中で直接 `sum(...)` や `dot(..., ...)` を使うことで、配列や辞書に対する線形制約を簡潔に書けます：
+`expr` の中で直接 `sum(...)` や `dot(..., ...)` を使うことで、配列や辞書に対する線形制約を簡潔に書けます。
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -85,7 +89,12 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## 双対変数（潜在価格）とスラックの取得
 
-連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.constraints.get()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
+HiGHS や GLPK で連続線形計画（LP）モデルを解くと、各線形制約から2つの感度分析プロパティを取得できます。
+
+- **`dual`（潜在価格 / シャドウプライス）**: その制約の右辺を1単位緩和したとき、最適目的関数値がどれだけ改善するかを表します。
+- **`slack`（スラック）**: 最適解における左辺と右辺の余裕量です（制約が上限・下限にぴったり達しているときは `0`）。
+
+いずれも `number | null` を返し、未求解時や MIP・CP・論理制約では `null` になります。
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -93,8 +102,8 @@ const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 await m.solve();
 
 console.log("潜在価格 (dual):", woodConstraint.dual);
-console.log("余剰 (slack):", woodConstraint.slack);
-console.log("名前検索の dual:", m.constraints.get("wood")?.dual); // number | null（MIP / CP / 論理制約は null）
+console.log("スラック (slack):", woodConstraint.slack);
+console.log("名前検索の dual:", m.constraints.get("wood")?.dual); // number | null
 console.log("登録済み制約の総数:", m.constraints.size);
 ```
 
@@ -102,7 +111,8 @@ console.log("登録済み制約の総数:", m.constraints.size);
 
 ## 条件付き制約 / インジケータ制約 (`m.indicator`)
 
-バイナリ決定変数（`m.binary()`）が特定の値（`1` または `0`）のときだけ線形制約を有効にしたい場合は、`m.indicator()` を使用します：
+バイナリ決定変数（`m.binary()`）が `1` または `0` のときだけ線形制約を有効にしたい場合は、`m.indicator()` を使用します。
+MIP では **Big-M 法**で条件付き制約を表現します。たとえば $a^\top x \le b + M(1 - y)$ は、$y = 1$ のとき $a^\top x \le b$ を課し、$y = 0$ のときは十分大きな定数 $M$ を足して制約を無効化します。
 
 ```typescript
 const useDiscount = m.binary("use_discount");
@@ -118,19 +128,22 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ### Big-M の自動導出と変数境界
 
-`options.M` を省略すると、WaSHI は各変数の有限な上下限（`lb`, `ub`）から安全で最小の Big-M を自動計算します：
+`options.M` を省略すると、WaSHI は各変数の有限な上下限（`lb`, `ub`）から最小の安全な Big-M を自動計算します。
+
 - `<=` 制約では、正の係数を持つ変数に有限の `ub`、負の係数を持つ変数に有限の `lb` が必要です。
 - `>=` 制約では、正の係数を持つ変数に有限の `lb`、負の係数を持つ変数に有限の `ub` が必要です。
-- `==` 制約では、`<=` 側と `>=` 側の両方向について独立に Big-M が導出されます（`name_le` と `name_ge` を生成）。
+- `==` 制約では、`<=` 側と `>=` 側をそれぞれ独立に導出し、`name_le` と `name_ge` を生成します。
 
-必要な境界が無限大（`Infinity` / `-Infinity`）の場合は、`m.indicator()` がエラーをスローして有限な境界の設定または明示的な `options.M` の指定を促します。
+必要な上下限が無限大のままの場合、`m.indicator()` はエラーをスローして有限の上下限または明示的な `options.M` の指定を求めます。
 
 > [!NOTE]
-> **Pumpkin / Z3 でのネイティブ対応**: `options.M` を省略しても、`HiGHS`・`GLPK`・`m.toLpString()` 向けには従来どおり Big-M で動作し、**Pumpkin** と **Z3** では Big-M の数値誤差なしでネイティブに処理されます。返された制約を後から直接書き換えた場合は、変更後の式がそのまま使われます。
+> **MIP・CP・SMT 各ソルバーでの `m.indicator()` の挙動**: `options.M` を省略すると、`m.indicator()` は Big-M の線形 `Constraint` オブジェクトにネイティブ処理用のメタデータを付与して返します。
+> HiGHS・GLPK・`m.toLpString()` はその Big-M 不等式をそのまま使い、Pumpkin と Z3 はメタデータを読み取って Big-M の数値誤差なしでネイティブに解きます。
+> 返された `Constraint` オブジェクトを後から直接書き換えるとこのメタデータは解除され、編集後の線形制約が全ソルバーで使われます。
 
 ### 明示的な `M` の指定
 
-`{ M: number }` を渡すことで Big-M を明示的に上書きできます：
+`{ M: number }` を渡すと、自動導出された Big-M を明示的に上書きできます。
 
 ```typescript
 m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
@@ -140,13 +153,21 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **過大な `M` の手動指定よりも有限な変数境界（`lb`, `ub`）の設定を推奨**: $M$ が小さすぎると本来の実行可能解を切り落としてしまい、逆に不必要に巨大な $M$（例: $10^9$）を与えると MIP ソルバーの数値安定性が低下します。各変数に現実的な上下限（`lb`, `ub`）を設定し、WaSHI に最小限の Big-M を自動導出させることを推奨します。
+> **過大な `M` の手動指定より有限の上下限を設定する**: $M$ が小さすぎると本来の解を切り落とし、大きすぎる $M$（$10^9$ など）は数値安定性を損ねます。
+> 各変数に現実的な `lb` と `ub` を設定し、WaSHI に最もタイトな Big-M を自動導出させてください。
 
 ---
 
 ## 命題論理・SMT 制約 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-命題論理変数（`m.bool()`）と線形比較制約（`Constraint`）を論理演算子で組み合わせることができます。論理制約は **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`、有界整数・真偽値モデル向け）および **Z3**（`@ohtaman/washi/solvers/z3`）ではネイティブに処理され、**HiGHS** や **GLPK** では自動的に 0-1 MIP 制約へ線形化されます：
+WaSHI の論理演算子を使うと、`m.bool()` で作成した `BoolVar` と線形制約 `Constraint` を自在に組み合わせられます。
+Pumpkin と Z3 は論理式をネイティブに処理し、HiGHS と GLPK は 0-1 MIP 制約へ自動線形化します。
+バックエンドの登録には `@ohtaman/washi/solvers/pumpkin` または `@ohtaman/washi/solvers/z3` をインポートします。
+
+> [!IMPORTANT]
+> **ソルバーの前提条件**:
+> - **Pumpkin**: すべての数値変数が有限の `lb`・`ub` を持つ `Integer` または `Binary` 変数である必要があります。
+> - **Z3**: オプションのピア依存（`npm install z3-solver`）が必要です。ブラウザ環境では `SharedArrayBuffer` 用の `COOP`/`COEP` レスポンスヘッダーも必要になります。
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";
@@ -170,7 +191,8 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-名前付きの制約は、線形制約（`Constraint`）と論理/CP制約（`LogicalConstraint`: `{ kind: "logical", name, expr, dual: null, slack: null }`）のどちらも `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）に統一格納されており、`m.constraints.get(name)` で検索できます。
+名前付きの制約はすべて `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）に統一格納されており、`m.constraints.get(name)` で検索できます。
+論理制約および CP 制約の要素は `{ kind: "logical", name, expr, dual: null, slack: null }` の形式です。
 
 ### `m.indicator()` と `implies()` の使い分け
 
@@ -178,19 +200,20 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **条件側の変数** | 数値バイナリ変数 (`m.binary()`) | 命題変数 `BoolVar` (`m.bool()`)、`BoolOp`、または `Constraint` |
 | **帰結側の制約** | 線形制約 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp`、または線形制約 `Constraint` |
-| **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK は Big-M、`M` 省略時は Pumpkin / Z3 でネイティブ変換） | **全ソルバー**（HiGHS, GLPK は 0-1 MIP 自動線形化、Pumpkin, Z3 はネイティブ対応） |
-| **主な用途** | バイナリ変数を含む数理最適化（`m.solve()`） | 論理ルールの記述・充足可能性判定（`m.check()`） |
+| **対応ソルバー** | 全ソルバー（HiGHS・GLPK は Big-M、`M` 省略時は Pumpkin・Z3 でネイティブ） | 全ソルバー（HiGHS・GLPK は 0-1 MIP 自動線形化、Pumpkin・Z3 はネイティブ） |
+| **主な用途** | 数値バイナリ変数を含む MIP 最適化 | 論理ルールの記述・SMT 充足可能性判定 |
 
 > [!NOTE]
 > **比較制約を否定側（`not`・`xor`・`implies` の条件側）に書く場合**:
-> - **整数式のみの場合**: $\neg(x \le 5)$ のような否定は、`HiGHS`/`GLPK` では自動的に $x \ge 6$ に変換され、`Pumpkin`/`Z3` ではネイティブに処理されます。
-> - **`Continuous` 変数や小数を含む場合**: `HiGHS`/`GLPK` では連続値の `<` / `>` を表せないためエラーになります。`{ solver: "z3" }` を使うか、`m.bool()` で条件を表してください。
+> - **整数式のみの場合**: $\neg(x \le 5)$ のような否定は HiGHS・GLPK で自動的に $x \ge 6$ に変換され、Pumpkin・Z3 ではネイティブに処理されます。
+> - **`Continuous` 変数や小数を含む場合**: HiGHS・GLPK では連続値の厳密な `<`・`>` を閉じた線形不等式で表せないためエラーになります。`{ solver: "z3" }` を使うか、`m.bool()` で条件を表してください。
 
 ---
 
 ## 離散比較演算子 (`!=`, `<`, `>`) {#discrete-comparisons}
 
-WaSHI では、`expr` テンプレート内（および `Var`, `LinExpr`, `QuadExpr` 上の `.ne()`, `.lt()`, `.gt()` メソッド）で離散比較演算子 `!=`, `<`, `>` を利用できます。これらは**整数値の式**（`Integer` / `Binary` 変数と整数係数・整数定数のみ）に限定されます：
+WaSHI では、`expr` テンプレート内および `Var`・`LinExpr`・`QuadExpr` の `.ne()`, `.lt()`, `.gt()` メソッドで離散比較演算子 `!=`, `<`, `>` を使えます。
+対象は**整数値の式**（`Integer` / `Binary` 変数と整数係数・整数定数のみ）に限定されます。
 
 ```typescript
 const rankA = m.integer("rankA", { lb: 1, ub: 4 });
@@ -199,16 +222,20 @@ const roomA = m.integer("roomA", { lb: 1, ub: 3 });
 const roomB = m.integer("roomB", { lb: 1, ub: 3 });
 
 m.constraint(expr`${rankA} < ${rankB}`, "strict_order"); // rankA - rankB <= -1 へ正規化
-m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin: not_equals, Z3: neq, MIP: 単一バイナリ変数で線形化
+m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin/Z3 はネイティブ、HiGHS/GLPK は単一バイナリ変数 MIP
 ```
 
-`Continuous` 変数や小数定数を含む式に `!=`, `<`, `>` を適用すると、連続領域で開集合となるため即座にエラーが送出されます。
+`Continuous` 変数や小数定数を含む式に `!=`, `<`, `>` を適用すると即座にエラーになります。
+実数上の厳密不等式は開集合となり、たとえば $x < 5$ には最大の実数解が存在しません。
+そのため LP や MIP ソルバーは、最適解の存在を保証できる閉じた不等式（$\le$, $\ge$, $=$）を要求します。
 
 ---
 
 ## CP グローバル制約 (`distinct`, `disjoint`, `cumulative`, `allowed`)
 
-`and` / `or` / `not` / `implies` / `xor` と合成可能な `BoolExpr` を返すグローバル制約を提供しています。区間スケジューリング・対称性除去・**Pumpkin** 向け定式化の詳細は [制約プログラミング (CP) モデリングガイド](./constraint-programming.md) を参照してください。
+WaSHI は、制約プログラミングの**グローバル制約**（複数の変数間の高水準な関係をひとまとめに表す述語）をバックエンド非依存の `BoolExpr` として提供しています。
+いずれも `and`, `or`, `not`, `implies`, `xor` と自由に組み合わせられます。
+区間スケジューリング・対称性除去・Pumpkin 向け定式化の詳細は、[制約プログラミング (CP) モデリングガイド](./constraint-programming.md) を参照してください。
 
 | 制約 | 意味 | HiGHS / GLPK | Pumpkin | Z3 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -232,4 +259,4 @@ m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
 
 > [!TIP]
-> **スラック変数を用いたソフト制約化**や**同一リソースの対称性除去（Symmetry Breaking）**などの定式化テクニックについては、[定式化パターン・Tips](./formulation-tips.md#constraint-design) を参照してください。
+> **スラック変数を用いたソフト制約化**や**対称性除去（Symmetry Breaking）**などの定式化テクニックについては、[定式化パターン・Tips](./formulation-tips.md#constraint-design) を参照してください。

@@ -1,8 +1,8 @@
 # 数式の記述 (`expr`, `sum`, `dot`)
 
-数式は、決定変数と数値係数の線形または2次結合です。
-
-演算子オーバーロード（`+`, `*` 等）を持たない JavaScript / TypeScript において、WaSHI は **`expr` タグ付きテンプレートリテラル**、総和関数 **`sum()`**、およびベクトル・行列の内積関数 **`dot()`** を提供し、静的型安全性を保ったまま数式を記述できるようにしています。
+数式は、決定変数と数値係数の線形結合または2次式です。
+JavaScript / TypeScript には演算子オーバーロードがないため、WaSHI では `expr` タグ付きテンプレートリテラルと `sum()`・`dot()` を提供しています。
+これにより、静的型安全性を保ったまま読みやすい代数式を記述できます。
 
 | アプローチ | 記述例 | 数式の可読性 | 型安全性・IDE リネーム | 添字付き変数 (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -14,9 +14,11 @@
 
 ## タグ付きテンプレートリテラル (`expr`)
 
-SQL クエリビルダ（`sql` タグ）のパラメータバインディングと同様に、`expr` は演算子部分の文字列（`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`）と `${...}` に埋め込まれた値（`Var`, `LinExpr`, `QuadExpr`, 有限の `number`）を分離して受け取ります。変数名の文字列一致ではなくオブジェクト参照として直接バインドされるため、変数名の衝突を気にする必要がなく、TypeScript の型検査や IDE のシンボルリネーム（F2）がそのまま効きます。
+パラメータ化 `sql` テンプレートと同様、`expr` は演算子文字列（`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`）と `${...}` の埋め込み値を分けて受け取ります。
+埋め込み値には `Var`・`LinExpr`・`QuadExpr`・有限の `number` を直接渡せます。
+変数は名前文字列ではなくオブジェクト参照でバインドされるため、名前衝突を防ぎつつ IDE のリネーム機能もそのまま使えます。
 
-算術式（`LinExpr | QuadExpr`）と関係演算子による制約条件（`Constraint`）の両方に `expr` を使用します：
+算術式（`LinExpr | QuadExpr`）と比較制約（`Constraint`）の両方に `expr` を使います。
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -31,32 +33,32 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. 2次式: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. 関係制約条件:
+// 3. 比較制約:
 const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### `expr` でサポートされる構文
-- **加算と減算**: `${x} + ${y} - 5`
-- **スカラー乗算と除算**: `4 * ${x}`, `${x} / 2`
-- **変数同士の乗算（2次項）**: `${x} * ${y}`, `2 * ${x} * ${x}`
-- **べき乗・二乗**: `${x}^2`, `${x}**2`
-- **単項プラスとマイナス**: `-${x} + 10`, `+${x}`
-- **丸括弧**: `2 * (${x} + ${y})`
-- **集計関数 (`sum` & `dot`)**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
-- **区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`)**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})`（[区分線形関数・インデックス参照](#piecewise-linear) 参照）
+
+- **加算・減算**: `${x} + ${y} - 5`
+- **スカラー乗算・除算**: `4 * ${x}`, `${x} / 2`
+- **2次項・べき乗**: `${x} * ${y}`, `2 * ${x} * ${x}`, `${x}^2`, `${x}**2`
+- **単項符号・丸括弧**: `-${x} + 10`, `+${x}`, `2 * (${x} + ${y})`
+- **集計関数**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
+- **区分線形関数・インデックス参照**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})`（[区分線形関数・インデックス参照](#piecewise-linear) 参照）
 - **コンテナの要素ごとの四則演算**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
-- **ネスト式**: 変数、数値、`Array` / `Record` コンテナ（`sum` または `dot` の内部）、およびネストした `LinExpr` / `QuadExpr` を埋め込めます。
+- **ネスト式**: 変数・数値・ネストした `LinExpr` / `QuadExpr`、および `sum` / `dot` 内のコンテナを埋め込めます。
 
 > [!NOTE]
 > - **比較式（`<=`, `>=`, `==`）** は `Constraint` オブジェクトを返します。
-> - **算術式** は 1 次なら `LinExpr`、2 次なら `QuadExpr` を返します。配列や辞書は `sum(...)` か `dot(..., ...)` でスカラーにまとめてください。
+> - **算術式** は 1 次なら `LinExpr`、2 次なら `QuadExpr` を返します。埋め込んだ配列や辞書は `sum(...)` か `dot(..., ...)` でスカラーにまとめてください。
 > - **未対応の非線形式**: 3 次以上の項（`${x}^3` など）や非線形制約（`${x} * ${y} <= 10` など）はエラーになります。
 
 ---
 
 ## 高速な総和関数 (`sum`)
 
-1次元・2次元の `Array`, `Iterable`, `Record`（辞書）コンテナに対して、`` expr`sum(...)` `` の内部またはスタンドアロンの `sum()` 関数で直接総和を計算できます：
+`sum()` は、1次元・2次元の `Array`・`Iterable`・`Record` コンテナの総和を計算します。
+`` expr`sum(...)` `` の内部でもスタンドアロン関数としても使え、式の再コピーなしで $O(N)$ 線形時間に動作します。
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -78,16 +80,17 @@ const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 const count = sum(x);
 ```
 
-`sum()` は AST パースのオーバーヘッドなしに $O(N)$ 線形時間で動作します。
-
 > [!TIP]
-> **ループ内での `expr` の再代入（$O(N^2)$）を避ける**: `LinExpr` や `expr` の結果は不変（イミュータブル）であるため、ループの中で ``total = expr`${total} + ${x[i]}` `` のように1項ずつ加算すると、反復ごとに既存の全項がコピーされ $O(N^2)$ の時間・メモリを消費します。多数の変数を集計する際は、`sum(x)` または `dot(coeffs, x)` を使用して $O(N)$ で構築してください。
+> **ループ内での `expr` の再代入（$O(N^2)$）を避ける**: `LinExpr` オブジェクトは不変（イミュータブル）です。
+> ループ内で ``total = expr`${total} + ${x[i]}` `` を繰り返すと、毎回すべての既存項がコピーされ $O(N^2)$ の時間とメモリを消費します。
+> 多数の変数を集計する際は `sum()` または `dot()` を使い、$O(N)$ で構築してください。
 
 ---
 
 ## 内積関数 (`dot`)
 
-`dot(a, b)`（`` expr`dot(${a}, ${b})` `` の内部およびスタンドアロン関数 `dot(a, b)` の両方で使用可能）は、数値係数（`number`）と決定変数または1次式（`Var | LinExpr`）の線形結合を、引数の順序を問わず（`dot(coeffs, vars)` または `dot(vars, coeffs)`）計算します。
+`dot(a, b)` は、数値係数（`number`）と変数または1次式（`Var | LinExpr`）の重み付き線形結合を計算します。
+`` expr`dot(${a}, ${b})` `` 内部でもスタンドアロン関数としても使え、引数の順序はどちらでも構いません（`dot(coeffs, vars)` / `dot(vars, coeffs)`）。
 
 サポートされる 1次元・2次元コンテナ構造：
 - **1次元配列**: `number[]` $\times$ `(Var | LinExpr)[]`
@@ -96,21 +99,21 @@ const count = sum(x);
 - **2次元辞書**: `Record<R, Record<C, number>>` $\times$ `Record<R, Record<C, Var | LinExpr>>`
 - **2次元混合コンテナ**: `Array<Record<C, ...>>` または `Record<R, Array<...>>`
 
-配列長や辞書キーの不一致、あるいは非有限値・非線形要素が含まれている場合は、該当する要素パス（例: `at '[0].StoreB'`）を明示したエラーをスローします。
+配列長の不一致、辞書キーの欠落、無効な要素がある場合は、該当パス（例：`at '[0].StoreB'`）を示すエラーをスローします。
 
 ### 1次元ベクトルの内積
+
 ```typescript
 import { expr, dot } from "@ohtaman/washi";
 
 const profits = { desk: 30, chair: 50 };
 const vars = m.integer(["desk", "chair"] as const);
 
-// expr 内で 30 * vars.desk + 50 * vars.chair を計算（dot(profits, vars) と同等）
+// expr 内で 30 * vars.desk + 50 * vars.chair を計算
 const totalProfit = expr`dot(${profits}, ${vars})`;
 ```
 
 ### 2次元行列の内積（フロベニウス内積）
-2次元配列（`m.continuous(rows, cols)`）、ネストされた辞書（`m.continuous(rowKeys, colKeys)`）、または混合2次元コンテナと直接連携します：
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;
@@ -123,18 +126,19 @@ const costs = {
 
 const ship = m.continuous(factories, stores, { lb: 0 });
 
-// 全ルートの輸送コスト総和を1行で記述（expr`sum(${costs} * ${ship})` と同等）:
+// 全ルートの輸送コスト総和を1行で記述:
 const totalShippingCost = expr`dot(${costs}, ${ship})`;
 ```
 
 > [!NOTE]
-> **2次元の `dot(A, B)` はフロベニウス内積（Frobenius Inner Product）です**: 2次元配列や2次元辞書に対する `dot(A, B)` は、行列積 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$ ではなく、対応する全要素の積和スカラー $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$（`` expr`sum(${A} * ${B})` `` と同等）を計算します。
+> **2次元の `dot(A, B)` はフロベニウス内積です**: 2次元配列やネスト辞書に対する `dot(A, B)` は、対応する全要素の積和スカラー $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$ を計算します。
+> 行列積 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$ では**ありません**。
 
 ---
 
 ## `expr` による集計・一括記述の書き方
 
-演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）をテンプレート文字列側にまとめ、`${...}` には変数・定数・コンテナを直接渡します（`Object.values()` や事前呼び出しのネストは不要です）：
+`sum(...)`・`dot(..., ...)`・比較記号はテンプレート文字列側に直接書き、`Object.values()` や事前呼び出しのネストを避けると簡潔になります。
 
 ```typescript
 // テンプレートのネストと Object.values() を使った冗長な記述
@@ -160,10 +164,12 @@ const cap2 = expr`sum(${vars}) <= 100`;
 
 ## 2次式 (`QuadExpr` & `expr`)
 
-WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）の目的関数をサポートしています。2次式は `expr` テンプレートリテラルを用いて記述することも、`QuadExpr` や `.mul()` メソッドで組み立てることも可能です。
+WaSHI は HiGHS による凸2次計画問題（QP）の目的関数をサポートしています。
+2次式は `expr` テンプレートリテラルでも、`QuadExpr` や `.mul()` によるプログラム構築でも記述できます。
 
 ### 1. `expr` による記述（推奨）
-`*` や `^2`, `**2` を用いて2次目的関数を記述できます：
+
+`*` や `^2`, `**2` で2次目的関数を記述します。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -180,7 +186,8 @@ m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. `.mul()` や `QuadExpr` による構築
-プログラム的に2次式を組み立てることも可能です：
+
+プログラム的に2次式を組み立てることもできます。
 
 ```typescript
 import { Model, QuadExpr, minimize } from "@ohtaman/washi";
@@ -205,13 +212,18 @@ m.objective(minimize(risk));
 ```
 
 > [!NOTE]
-> **凸性条件（半正定値性 $\mathbf{Q} \succeq 0$）**: HiGHS を含む QP ソルバーで最小化を行う場合、2次形式の係数行列 $\mathbf{Q}$ が**半正定値（PSD）**である必要があります（最大化の場合は半負定値）。二乗和（$\sum_i (x_i - t_i)^2$）や共分散行列（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）は常に半正定値ですが、連続変数同士の不定な積（$x \cdot y$ の最小化など）は非凸となりソルバーでエラーになります。（*MIP におけるバイナリ変数同士の積 $x_A \cdot x_B$ の線形化については [定式化パターン・Tips](./formulation-tips.md#binary-product) を参照してください。*）
+> **凸性条件（半正定値性 $\mathbf{Q} \succeq 0$）**: 2次目的関数を最小化する場合、HiGHS では2次形式の係数行列 $\mathbf{Q}$ が**半正定値（PSD）**である必要があります。
+> 最大化の場合は半負定値である必要があります。
+> 二乗和（$\sum_i (x_i - t_i)^2$）や共分散行列（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）は常に半正定値です。
+> 一方、連続変数同士の不定な積（$x \cdot y$ の最小化など）は非凸となり、ソルバーでエラーになります。
+> MILP でバイナリ変数同士の積 $x_A \cdot x_B$ を線形化する方法は、[定式化パターン・Tips](./formulation-tips.md#binary-product) を参照してください。
 
 ---
 
 ## 区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`) {#piecewise-linear}
 
-WaSHI は区分線形関数（`max`, `min`, `abs`）および 0 始まり変数インデックス参照（`at`）を提供しており、`` expr`...` `` タグ内でも `@ohtaman/washi` のスタンドアロン関数としてもそのまま記述できます：
+WaSHI は区分線形関数（`max`, `min`, `abs`）と 0 始まりの変数インデックス参照（`at`）を提供しています。
+いずれも `` expr`...` `` タグ内と `@ohtaman/washi` のスタンドアロン関数の両方で使えます。
 
 ```typescript
 import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
@@ -222,7 +234,7 @@ const target = [4, 7, 10];
 const route = m.integer("route", { lb: 0, ub: 2 });
 const routeCost = [18, 12, 25];
 
-// 凸方向（minimize の max/abs 等）はバイナリ変数ゼロの純粋 LP エピグラフに変換：
+// 凸方向（max/abs の最小化など）はバイナリ変数なしの純粋な線形計画に変換：
 m.objective(
   minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
 );
@@ -233,17 +245,34 @@ const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
 m.constraint(expr`${maxErr} <= 3`);
 ```
 
-- **コンテナ要素ごとの合成**: `expr` 内では `abs(${arr} - ${target})` が 1D/2D の `Array`・`Iterable`・`Record` に対して要素ごとに展開されるため、`` expr`sum(abs(${w} - ${target}))` `` や `` expr`max(abs(${pred} - ${actual}))` `` を簡潔に記述できます。
-- **極性に応じた LP/MIP 変換とネイティブ CP/SMT 対応**:
-  - 凸方向（`max`/`abs` の最小化または `<=`、`min` の最大化または `>=`）では、HiGHS / GLPK 上で**バイナリ変数を一切導入しない**純粋 LP エピグラフへ変換されます（無界な連続変数にも対応）。
-  - 非凸方向・等式コンテキスト（`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs` 等）では、HiGHS / GLPK が有限境界つきの厳密 MIP 定式化を行い、Pumpkin は有界整数向けネイティブ伝播器（`maximum`/`minimum`/`absolute`）、Z3 はネイティブ `If`（ITE）として解きます。
-- **0 始まりインデックス参照 (`at(array, index)`)**: CP の `Element` 制約（`array[index]`）に相当し、整数値の `index` 式を要求して全ソルバー共通で $0 \le \text{index} < \text{array.length}$ を自動強制します（Pumpkin は `element` 伝播器、Z3 は入れ子 `If` ＋範囲ガード、HiGHS / GLPK は凸包バイナリ＋McCormick 線形化）。
+### コンテナ要素ごとの展開
+
+`expr` 内では、`abs(${arr} - ${target})` が 1D・2D の `Array`・`Iterable`・`Record` に対して要素ごとに展開されます。
+そのため、`` expr`sum(abs(${w} - ${target}))` `` や `` expr`max(abs(${pred} - ${actual}))` `` をそのまま記述できます。
+
+### 各ソルバーでの `max`・`min`・`abs` の扱い
+
+**凸方向**（`max`・`abs` の最小化や `<=` 制約、および `min` の最大化や `>=` 制約）では、HiGHS と GLPK は連続の補助変数1つと単純な線形不等式へ変換します。
+このエピグラフ定式化には**バイナリ変数が一切不要**で、無界な連続変数にもそのまま使えます。
+
+**非凸方向や等式コンテキスト**（`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs`）では、ソルバーごとに次のように処理されます。
+
+- **HiGHS・GLPK**: 厳密な MIP 符号化を行うため、関与する全変数に有限の上下限が必要です。
+- **Pumpkin**: 有界整数に対するネイティブ制約として求解します。
+- **Z3**: ネイティブの条件分岐（`If`）として表現します。
+
+### 0 始まりインデックス参照 (`at(array, index)`)
+
+`at(array, index)` は制約プログラミングの `Element` 制約に相当し、配列の添字自体を決定変数にできます（`array[index]`）。
+`index` には整数値の式を指定する必要があり、全ソルバー共通で $0 \le \text{index} < \text{array.length}$ が自動で強制されます。
+Pumpkin と Z3 はネイティブに処理し、HiGHS と GLPK はバイナリ選択変数で線形化します（配列要素に決定変数が含まれる場合は有限の上下限が必要です）。
 
 ---
 
 ## 求解後の数式評価 (`.value`)
 
-`LinExpr` と `QuadExpr` は `.value` ゲッター（`number | null`）を備えています。モデルの求解後、式に含まれるすべての変数に有限の解が格納されていれば、部分式の値を直接取得できます：
+`LinExpr` と `QuadExpr` は、`number | null` を返す `.value` ゲッターを備えています。
+モデルの求解後、式に含まれるすべての変数に有限の解が格納されていれば、任意の部分式の値を直接評価できます。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -265,13 +294,13 @@ console.log("総売上:", revenue.value);         // 1100 (x = 20, y = 10)
 console.log("労働力使用量:", laborUsed.value); // 50
 ```
 
-未求解の場合（または式内のいずれかの変数が `value === null` の場合）は `null` を返します。
+未求解の場合、または式内のいずれかの変数が `value === null` の場合は `null` を返します。
 
 ---
 
 ## メソッドチェーンによる算術・比較メソッド
 
-`expr` タグに加えて、`Var`, `LinExpr`, `QuadExpr` は不変（イミュータブル）なメソッドを備えており、動的な式の組み立てに利用できます：
+`expr` タグに加えて、`Var`, `LinExpr`, `QuadExpr` は不変（イミュータブル）なメソッドを備えており、動的な式の組み立てに利用できます。
 
 | メソッド | 対象クラス | 戻り値 | 説明 |
 | :--- | :--- | :--- | :--- |

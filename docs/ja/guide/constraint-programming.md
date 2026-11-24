@@ -1,39 +1,53 @@
 # 制約プログラミング (CP) モデリング
 
-WaSHI では、数理最適化（LP / MIP / QP）と制約プログラミング（CP）の両方を同じ TypeScript API（`Model`, `expr`, `sum`, `dot`）で記述できます。
-同梱の **Pumpkin** ソルバー（`@ohtaman/washi/solvers/pumpkin`）を使うと、スケジュール調整・資源の上限管理・重複禁止・テーブル参照といった制約を、巨大な 0-1 変数行列に変換することなく直接解けます。
+WaSHI では、数理最適化（LP / MIP / QP）と制約プログラミング（CP）の両方を同じ TypeScript API で記述できます。
+同梱の **Pumpkin** ソルバー（`@ohtaman/washi/solvers/pumpkin`）を使うと、スケジュール調整・資源上限・重複禁止・テーブル参照を巨大な 0-1 行列へ展開せずに直接解けます。
 
 ---
 
 ## 1. MIP (`HiGHS`) と CP (`Pumpkin`) の使い分け
 
-**MIP (`HiGHS` / `GLPK`)** では、「時刻 $t$ に作業 $i$ を行うか」を 0-1 変数 $x_{i,t} \in \{0, 1\}$ で表すのが基本です。連続的な配分や線形予算には強い一方、時間軸や組合せが増えると変数数が爆発しやすくなります。
+両手法は、決定の表現方法と探索の絞り込み方が根本的に異なります。
 
-**CP (`Pumpkin`)** では、「各作業の開始時刻 `start[task]`」や「各ジョブの担当マシン `machine[job]`」を有限範囲の整数変数としてそのまま定義し、専用の制約でつなぎます。
+### 混合整数計画（MIP：`HiGHS` / `GLPK`）
+
+決定を連続変数や 0-1 変数の線形不等式で表し、LP 緩和と分枝限定法で解きます。
+連続フロー、線形予算、2次目的関数、LP の双対価格分析に強い一方、細かい時間軸や組合せ構造を 0-1 変数へ離散化するとモデル規模が急膨張します。
+
+### 制約プログラミング（CP：`Pumpkin`）
+
+CP では各決定に有限な整数ドメイン（取り得る値の集合）を直接与えます。
+変数間の構造的なルールは、複数変数の組合せ条件を1つにまとめた高水準な**グローバル制約**で結びます。
+探索中は、ある制約が狭まるたびに**ドメイン伝播**（他の変数の取り得ない値を自動で削る推論）が働くため、巨大な 0-1 行列を作らずにコンパクトに解けます。
+
+代表的なモデリングパターンの対比は次のとおりです。
 
 | やりたいこと | MIP (`HiGHS` / `GLPK`) | CP (`Pumpkin`) |
 | :--- | :--- | :--- |
 | **開始時刻の決定** | 作業×時刻ごとの 0-1 変数 | 作業ごとに 1 本の整数変数 `start[i]` |
 | **作業の重複禁止** | ペアごとの順序変数 + Big-M 制約 | `disjoint(tasks)` |
 | **人数・設備の同時利用上限** | 全時刻ごとに総和制約を生成 | `cumulative(tasks, capacity)` |
-| **1対1の割り当て** | 2次元の 0-1 割当行列 | `machine[i]` + `distinct(machine)` |
+| **1対1の割当** | 2次元の 0-1 割当行列 | `machine[i]` + `distinct(machine)` |
 | **選択肢ごとのコスト参照** | 0-1 選択変数を使った線形和 | `at(costs, indexVar)` |
 | **向いている問題** | 連続フロー、配合、2次目的関数、双対価格 | スケジューリング、資源上限、順列割当、組合せ表 |
 
 > [!TIP]
-> 連続変数（`Continuous`）・小数の係数・2次目的関数を使う場合は `HiGHS`（連続変数を含む論理条件なら `Z3`）を選んでください。有界な整数と真偽値だけでスケジュールや割り当てを組む場合は `Pumpkin` が適しています。
+> `Continuous` 変数・小数の係数・2次目的関数が必要な場合は `HiGHS`、連続変数を含む論理条件には `Z3` を選んでください。
+> 有界な整数と真偽値でスケジュール・経路・組合せ割当を組む場合は `Pumpkin` が適しています。
 
 ---
 
 ## 2. 作業スケジュールと共有資源 (`disjoint`, `cumulative`, `max`)
 
-MIP で 10,000 ステップのスケジュールを時刻ごとの 0-1 変数で表すと、変数と制約が数万行に膨らみます（WaSHI の MIP 変換は 5,000 ステップ超または 25,000 変数超でガードエラーを出し、`{ solver: "pumpkin" }` の利用を案内します）。
+長い時間軸を時刻ごとの 0-1 変数に離散化すると、MIP では変数と制約が数万本に膨らみます。
+WaSHI の MIP 変換は `cumulative` で 5,000 ステップ超または 25,000 変数超になるとエラーを出し、`{ solver: "pumpkin" }` を案内します。
 
-Pumpkin なら時間軸がどれだけ細かくても、各作業につき **1 本の整数変数（`start[task]`）** だけで済みます。
+Pumpkin なら時間軸の細かさに関係なく、各作業につき **1 本の整数変数（`start[task]`）** だけで済みます。
+区間スケジューリングの基本は次の 3 つのプリミティブです。
 
-- **`disjoint(tasks)`**: 同じ設備を使う作業同士が重ならないようにします。
-- **`cumulative(tasks, capacity)`**: どの時点でも、同時に使う人数や電力の合計が `capacity` を超えないようにします。
-- **`max(...)`**: 全作業の終了時刻の最大値（全体の完了時刻）を表し、目的関数で最小化できます。
+- **`disjoint(tasks)`**: `{ start, duration }` 形式のタスク配列を受け取り、単一設備を共有する区間 `[start, start + duration)` 同士の重複を禁止します。
+- **`cumulative(tasks, capacity)`**: `{ start, duration, demand }` 形式のタスク配列を受け取り、どの時点でも合計負荷が `capacity` 以下になるよう制限します。
+- **`max(...)`**: 全作業の完了時刻の最大値である**メイクスパン**（$\max_i (\text{start}_i + \text{duration}_i)$）を表し、目的関数で最小化できます。
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
@@ -71,19 +85,19 @@ m.constraint(
 
 m.objective(minimize(max(tasks.map((t) => expr`${start[t]} + ${duration[t]}`))));
 await m.solve();
-console.log("完了時刻:", m.objectiveValue);
+console.log("メイクスパン:", m.objectiveValue);
 ```
 
 より実践的な例は [資源制約付きプロジェクトスケジューリング (RCPSP)](../examples/project-scheduling.md) を参照してください。
 
 ---
 
-## 3. 割り当て・組合せルール・コスト参照 (`distinct`, `allowed`, `at`)
+## 3. 割当・組合せルール・コスト参照 (`distinct`, `allowed`, `at`)
 
-$N \times M$ の 0-1 変数行列を作る代わりに、各ジョブに「割り当てるマシン番号（`0` 〜 `M - 1`）」の整数変数 `machine[job]` を 1 つ持たせます。
+$N \times M$ の 0-1 割当行列を作る代わりに、各ジョブに担当マシン番号（`0` 〜 `M - 1`）を表す有限整数変数 `machine[job]` を 1 つ持たせます。
 
-- **`distinct(machine)`**: すべてのジョブを別々のマシンに割り当てます。
-- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**: 許可・禁止する値の組合せをそのまま指定します（Big-M 式は不要です）。
+- **`distinct(machine)`**: すべてのジョブに異なるマシンを割り当てるグローバル制約（AllDifferent）です。
+- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**: 許可・禁止する値の組合せをそのまま列挙するテーブル制約で、Big-M 式は不要です。
 - **`at(costs, indexVar)`**: `costs[indexVar]` の値を `expr` や目的関数の中で直接参照します。
 
 ```typescript
@@ -119,10 +133,17 @@ console.log("合計コスト:", m.objectiveValue);
 ## 4. Pumpkin でモデルを組むときのポイント
 
 ### 整数変数の範囲 (`lb`, `ub`) は有限かつ狭くする
-Pumpkin が扱えるのは $[-(2^{30} - 1),\, 2^{30} - 1]$ の範囲の整数のみです。`Continuous` 変数、小数、無限大（`-Infinity` / `Infinity`）はエラーになります。上下限を現実的な範囲に絞るほど探索が速くなります（詳しくは [Pumpkin の前提条件](../solvers/pumpkin.md#domain-api-preconditions)）。
+
+Pumpkin が扱えるのは $[-(2^{30} - 1),\, 2^{30} - 1]$ の範囲の有限整数のみです。
+`Continuous` 変数、小数、無限大（`-Infinity` / `Infinity`）はエラーになります。
+`[lb, ub]` を現実的な範囲に絞るほど初期ドメインが小さくなり、ドメイン伝播が効率よく働きます。
+詳しくは [Pumpkin の前提条件](../solvers/pumpkin.md#domain-api-preconditions) を参照してください。
 
 ### 対称性を `<` で崩して探索を減らす
-同じ条件の枠（`slot[0]`, ..., `slot[k-1]`）に $k$ 個の要素を選ぶ問題では、並び順が違うだけの同じ組合せが $k!$ 通り生じて探索が遅くなります。`slot[0] < slot[1] < ...` のように昇順制約を入れると、重複の禁止と並び順の固定を同時に行えます。
+
+同じ条件の枠（`slot[0]`, ..., `slot[k-1]`）に $k$ 個の要素を選ぶ問題では、並び順が違うだけの同じ組合せがすべて同じコストになります。
+対称性除去を入れないと、ソルバーは等価な $k!$ 通りの並び順を無駄に探索します。
+`slot[0] < slot[1] < ...` を加えると、重複禁止と標準順序への固定を同時に実現できます。
 
 ```typescript
 import { Model, expr, at, minimize } from "@ohtaman/washi";
@@ -148,5 +169,6 @@ console.log("最小レイテンシ合計:", m.objectiveValue);
 ```
 
 ### ウォームスタートと矛盾診断
-- **初期値ヒント（`initialValue`）**: `m.integer()` や `m.binary()` に `{ initialValue: val }` を渡すと、探索時の値選びのヒントとして使われます。
-- **矛盾診断（`m.check()`）**: モデルが `"Infeasible"` になったときは、`await m.check({ solver: "pumpkin" })` を呼ぶと矛盾している名前付き制約を特定できます（ブラウザでも `COOP` / `COEP` ヘッダー不要です。詳細は [矛盾診断 (`unsatCore`)](./unsat-core.md)）。
+
+- **初期値ヒント（`initialValue`）**: `m.integer()` や `m.binary()` に `{ initialValue: val }` を渡すと、探索時の値選択のヒントとして使われます。
+- **矛盾診断（`m.check()`）**: CP モデルが `"Infeasible"` になったときは、`await m.check({ solver: "pumpkin" })` で矛盾している名前付き制約を特定できます。詳細は [矛盾診断 (`unsatCore`)](./unsat-core.md) を参照してください。

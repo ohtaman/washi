@@ -1,25 +1,40 @@
 # Decomposition Methods (`solveColumnGeneration` & `solveBenders`)
 
-When a single MIP model has too many possible combinations to list up front, or splits naturally into two stages, WaSHI provides two decomposition helpers:
+When a single MIP model has too many columns to enumerate upfront, or splits naturally into two decision stages, WaSHI provides two decomposition helpers:
 
 | Method | WaSHI API | When to use |
 | :--- | :--- | :--- |
-| **Column Generation** | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) | Too many patterns, routes, or shifts to enumerate (e.g., Cutting Stock, Vehicle Routing, Crew Rostering). |
-| **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) | Two-stage decisions (e.g., Facility Location + Dispatch) or lazy constraints added only when violated (e.g., TSP Subtour Elimination). |
+| **Column Generation** | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) | Models with exponentially many patterns, routes, or shifts (Cutting Stock, VRP, Crew Rostering). |
+| **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) | Two-stage problems (Facility Location + Dispatch) or lazy constraints added on demand (TSP Subtour Elimination). |
 
 ---
 
 ## Column Generation (`solveColumnGeneration`)
 
-Instead of creating a variable for every possible cutting pattern or route up front, `solveColumnGeneration()` starts with a small set of initial patterns (the **master problem**) and asks your `pricing` callback to generate new, better patterns on demand:
+Column Generation solves large linear and integer models whose variables (columns) are too numerous to enumerate upfront.
+It splits the problem into two parts:
 
-1. Solves a continuous LP relaxation (`master.relax()`) of the current patterns to get each constraint's **dual value** (shadow price—how much relaxing that constraint improves the objective).
-2. Calls your `pricing` callback with those dual values (`duals`, `getDual`).
-3. Adds any returned pattern (`ColumnProposal`) whose cost is lower than its dual savings (negative **reduced cost**: $\bar{c} = \text{cost} - \sum_i \pi_i a_i < 0$ when minimizing).
-4. Repeats until `pricing` returns `null` / `[]` or no improving pattern remains.
-5. Solves the final master model as an integer program (`finalizeAsMIP: true`, the default).
+- **Restricted Master Problem (RMP)**: The master `Model`, initialized with a small feasible subset of columns.
+- **Pricing Subproblem**: A callback (`pricing`) that reads the RMP's LP dual values and searches for a new column that improves the objective.
+
+Each call to `master.solveColumnGeneration()` runs this loop:
+
+1. Solves the continuous LP relaxation of the RMP (`master.relax()`) to obtain each constraint's **dual value** (shadow price).
+2. Passes those duals (`duals`, `getDual`) to your `pricing` callback.
+3. Automatically evaluates the **reduced cost** ($\bar{c} = \text{cost} - \sum_i \pi_i a_i$) of every returned `ColumnProposal` against `reducedCostTolerance`.
+4. Adds any improving column ($\bar{c} < 0$ when minimizing, or $\bar{c} > 0$ when maximizing) and repeats until `pricing` returns `null` / `[]` or no improving column remains.
+5. Optionally solves the final RMP with all generated columns as an integer program (`finalizeAsMIP: true`, enabled by default).
+
+> [!IMPORTANT]
+> **Preconditions & Guarantees**:
+> - **Feasible initial RMP**: Starting columns (or artificial slacks) must make the initial LP relaxation feasible so valid duals exist.
+> - **LP-dual solver required**: Requires HiGHS or GLPK; Pumpkin and Z3 do not produce LP duals.
+> - **Price-and-Branch heuristic**: `finalizeAsMIP: true` solves one MIP over root-LP columns only—fast and practical, but not exact Branch-and-Price.
 
 ### Example: Pricing with a Subproblem `Model`
+
+In the Cutting Stock problem below, the RMP starts with three single-item patterns and the pricing subproblem solves a knapsack model to find better roll patterns.
+Because `solveColumnGeneration()` checks reduced cost automatically, `pricing` can simply return the best pattern found by the subproblem:
 
 ```typescript
 import { Model, expr, minimize, maximize } from "@ohtaman/washi";
@@ -74,7 +89,8 @@ console.log("Columns added:", result.columnsAdded);
 
 ### Example: Pricing with Plain TypeScript (`getDual`)
 
-You do not have to build a subproblem `Model` inside `pricing`. You can use any TypeScript algorithm (such as dynamic programming or a loop) with `getDual(constraintName)`:
+You do not need to build a subproblem `Model` inside `pricing`.
+You can run any TypeScript algorithm—such as dynamic programming or a search loop—using `getDual(constraintName)`:
 
 ```typescript
 const customResult = await master.solveColumnGeneration({
@@ -108,13 +124,16 @@ const customResult = await master.solveColumnGeneration({
 
 ## Benders Decomposition (`solveBenders`)
 
-`master.solveBenders(options)` splits a problem into:
-- **Master problem**: Holds high-level or integer decisions (e.g., which facilities to open).
-- **Subproblem**: Evaluates each master candidate solution and adds linear constraints (**cuts**) back to the master whenever the candidate is infeasible or its estimated operational cost is too low.
+`master.solveBenders(options)` splits a problem into a **master problem** for first-stage decisions and a **subproblem** for second-stage evaluation.
+On each iteration, the subproblem evaluates the master's candidate solution and adds linear constraints (**cuts**) back to the master:
+
+- **Optimality cut (`kind: "optimality"`)**: Tightens the master's estimate (`theta`) of the subproblem objective when the candidate is feasible but its true second-stage cost is higher than estimated.
+- **Feasibility cut (`kind: "feasibility"`)**: Rules out a master candidate when the subproblem is infeasible or violates a lazy structural rule (such as a disconnected TSP subtour).
 
 ### Automatic Cut Generation (`sub.link()`)
 
-Return a continuous LP subproblem `Model` from `subproblem` and connect it to master variables with `sub.link(...)`. WaSHI automatically tracks the estimated subproblem cost (`theta`), plugs in the master's current values, and adds cuts until the gap converges:
+Return a continuous LP subproblem `Model` from `subproblem` and connect it to master variables using `sub.link(...)`.
+WaSHI manages the cost estimator `theta`, substitutes current master values, extracts duals from the LP subproblem, and adds optimality cuts until the gap converges:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -163,12 +182,16 @@ console.log("Cuts added:", result.cutsAdded);
 console.log("Open facilities:", result.values);
 ```
 
-> [!NOTE]
-> **Negative subproblem objectives**: By default, WaSHI creates the internal cost estimator `theta` with `lb: 0`. If your subproblem objective can be negative (for example, net profit or rebates), declare `const theta = master.continuous("theta", { lb: -1e6 })`, include `+ ${theta}` in `master.objective(...)`, and pass `{ theta }` to `solveBenders()`.
+> [!IMPORTANT]
+> **Preconditions for Automatic `sub.link()` Mode**:
+> - **Optimality cuts only**: Throws if any master candidate makes the LP subproblem infeasible. Add master feasibility guards (like `total_capacity_floor`) or use manual `kind: "feasibility"` cuts.
+> - **Explicit `theta` required for `Maximize` or negative costs**: Auto-`theta` assumes a `Minimize` master with `lb: 0` and throws on `Maximize`. Declare `theta` on `master`, add it to `master.objective()`, and pass `{ theta }`.
+> - **LP-dual solver required**: Requires HiGHS or GLPK to solve the continuous LP subproblem.
 
 ### Manual Cut Generation (`BendersCut` / Lazy Constraints)
 
-For custom cuts or lazy constraints (such as TSP subtour elimination), return a `BendersCut` object, `BendersCut[]`, or `null` when no further cuts are needed:
+For custom cuts, feasibility cuts, or lazy constraints (such as TSP subtour elimination), return a `BendersCut`, a `BendersCut[]`, or `null` when converged.
+When returning an optimality cut, pass the **total** objective (`master + subproblem`) in `subproblemObjective` so WaSHI can compute the true optimality gap against the master's bound:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -208,6 +231,7 @@ console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
 If you want to build your own decomposition loop instead of using the helpers above, WaSHI exposes four building blocks:
 
 ### 1. Constraint Duals (`c.dual`)
+
 After solving a continuous LP, read each constraint's dual value (shadow price):
 
 ```typescript
@@ -226,6 +250,7 @@ console.log(m.solution?.duals.capacity); // Lookup by constraint name
 ```
 
 ### 2. Continuous LP Relaxation (`m.relax()`)
+
 `m.relax()` temporarily treats all `Integer` and `Binary` variables as continuous within `[lb, ub]` and solves the LP so dual values are available:
 
 ```typescript
@@ -234,6 +259,7 @@ console.log("LP relaxation bound:", m.objectiveValue);
 ```
 
 ### 3. Dynamic Column Injection (`m.column()`)
+
 Add a new variable, set its objective coefficient, and attach it to existing named constraints in one call:
 
 ```typescript
@@ -249,6 +275,7 @@ const col = m.column({
 ```
 
 ### 4. Dynamic Constraint Updates (`c.addTerm()` / `c.setTerm()`)
+
 Add to or overwrite a variable's coefficient inside an existing linear constraint:
 
 ```typescript

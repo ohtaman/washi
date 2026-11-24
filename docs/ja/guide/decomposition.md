@@ -1,25 +1,40 @@
 # 分解法 (`solveColumnGeneration` & `solveBenders`)
 
-単一の MIP モデルの候補組合せが膨大で最初にすべて列挙できない場合や、問題を「設備投資」と「日々の運用」のような 2 段階に分けられる場合、WaSHI では次の 2 つの分解ヘルパーを使えます。
+単一の MIP モデルでは候補列が多すぎて最初から列挙できない場合や、問題を2段階の意思決定に分割できる場合、WaSHI の2つの分解ヘルパーを使えます。
 
 | 手法 | WaSHI API | 向いている問題 |
 | :--- | :--- | :--- |
-| **列生成法** | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) | 切り出しパターン・配送ルート・シフト案が多すぎて列挙できない問題（カッティングストック、VRP、乗務員スケジューリングなど）。 |
-| **Benders 分解** | [`master.solveBenders()`](#benders-分解-solvebenders) | 2段階の意思決定（施設配置＋輸送計画など）や、違反が起きたときだけ制約を追加する問題（TSP 部分巡回路除去など）。 |
+| **列生成法** | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) | パターン・配送ルート・シフト案が多すぎて列挙できない問題（カッティングストック、VRP、乗務員スケジューリング）。 |
+| **Benders 分解** | [`master.solveBenders()`](#benders-分解-solvebenders) | 2段階の意思決定（施設配置＋輸送計画）や、違反が起きたときだけ追加する遅延制約（TSP 部分巡回路除去）。 |
 
 ---
 
 ## 列生成法 (`solveColumnGeneration`)
 
-最初にすべての切り出しパターンやルート用の変数を作るのではなく、少数の初期パターン（**主問題**）から始め、`pricing` コールバックで「より有利な新パターン」を必要な分だけ追加します。
+列生成法は、変数の数（列数）が膨大で最初からすべて列挙できない線形計画・整数計画を解く手法です。
+問題を次の2つに分けます。
 
-1. 現在のパターンだけで連続 LP 緩和（`master.relax()`）を解き、各制約の **双対値（シャドウプライス）**——その制約を 1 単位緩めると目的関数がどれだけ改善するか——を取得します。
-2. その双対値（`duals`, `getDual`）を `pricing` コールバックに渡します。
-3. コストより双対価値の節約分が大きいパターン（最小化では **被約費用** $\bar{c} = \text{cost} - \sum_i \pi_i a_i < 0$）が返されたら、主問題へ変数として追加します。
-4. `pricing` が `null` / `[]` を返すか、改善するパターンがなくなるまで繰り返します。
-5. 最後に、集まった全パターンで整数計画（MIP）として解き直します（`finalizeAsMIP: true`、デフォルト有効）。
+- **制限主問題（RMP）**: 少数の初期列だけで構成した主問題 `Model`。
+- **価格付け子問題（pricing subproblem）**: RMP の LP 双対値を受け取り、目的関数を改善する新しい列を探索するコールバック（`pricing`）。
+
+`master.solveColumnGeneration()` は次の手順を繰り返します。
+
+1. RMP の連続 LP 緩和（`master.relax()`）を解き、各制約の**双対値（潜在価格）**を取得します。
+2. 取得した双対値（`duals`, `getDual`）を `pricing` コールバックに渡します。
+3. 返された各 `ColumnProposal` の**被約費用**（$\bar{c} = \text{cost} - \sum_i \pi_i a_i$）を、`reducedCostTolerance` に照らして自動で判定します。
+4. 改善する列（最小化では $\bar{c} < 0$、最大化では $\bar{c} > 0$）があれば RMP に追加し、`pricing` が `null` / `[]` を返すか改善列がなくなるまで反復します。
+5. 最後に、集まった全列に対して整数計画（MIP）として解き直します（`finalizeAsMIP: true`、デフォルト有効）。
+
+> [!IMPORTANT]
+> **前提条件と性質**:
+> - **初期 RMP の実行可能性**: 最初の LP 緩和で有限の最適解と双対値が得られるよう、実行可能な初期列を用意してください。
+> - **LP 双対を返せるソルバーが必須**: HiGHS または GLPK が必要です（Pumpkin・Z3 は非対応）。
+> - **Price-and-Branch ヒューリスティック**: `finalizeAsMIP: true` はルート LP の列プールだけで MIP を解きます。実用上高速ですが、厳密な Branch-and-Price ではありません。
 
 ### 例: 子問題 `Model` で `pricing` を書く
+
+以下のカッティングストック問題では、RMP を3つの単純パターンで初期化し、価格付け子問題でナップサック問題を解いて有利な切り出しパターンを探します。
+被約費用の判定は `solveColumnGeneration()` が自動で行うため、`pricing` 側は子問題の最適パターンをそのまま返すだけで構いません。
 
 ```typescript
 import { Model, expr, minimize, maximize } from "@ohtaman/washi";
@@ -74,7 +89,8 @@ console.log("追加された列数:", result.columnsAdded);
 
 ### 例: TypeScript の独自ロジックで `pricing` を書く (`getDual`)
 
-`pricing` の中で必ずしも子問題 `Model` を作る必要はありません。`getDual(制約名)` を使って、動的計画法やループなど任意の TypeScript アルゴリズムで探索できます。
+`pricing` の中で必ずしも子問題 `Model` を組む必要はありません。
+`getDual(制約名)` を使って、動的計画法やループなど任意の TypeScript アルゴリズムで探索できます。
 
 ```typescript
 const customResult = await master.solveColumnGeneration({
@@ -108,13 +124,16 @@ const customResult = await master.solveColumnGeneration({
 
 ## Benders 分解 (`solveBenders`)
 
-`master.solveBenders(options)` は問題を次の 2 つに分けて解きます。
-- **主問題**: 全体の意思決定や整数変数（例: どの工場を開くか）を担当。
-- **子問題**: 主問題が出した候補解を評価し、実行不能だったり運用コストの見積もりが甘かったりすると、主問題に線形制約（**カット**）を追加してやり直させます。
+`master.solveBenders(options)` は、第1段階の整数決定を担う**主問題**と、第2段階の評価を担う**子問題**に分割します。
+各反復で子問題が主問題の候補解を評価し、必要に応じて線形制約（**カット**）を主問題へ追加します。
+
+- **最適性カット（`kind: "optimality"`）**: 子問題は実行可能だが、実際の第2段階コストが主問題の見積もり変数 `theta` を上回る場合に `theta` の下界を引き締めます。
+- **実行可能性カット（`kind: "feasibility"`）**: 子問題が実行不能になる候補解や、部分巡回路などの遅延制約違反を主問題から除外します。
 
 ### 自動カット生成 (`sub.link()`)
 
-`subproblem` から連続 LP の `Model` を返し、`sub.link(...)` で主問題の変数とつなぐだけで使えます。WaSHI が運用コストの見積もり変数（`theta`）の管理・値の代入・カット追加を自動で行い、収束するまで繰り返します。
+`subproblem` から連続 LP の `Model` を返し、`sub.link(...)` で主問題の変数と接続します。
+WaSHI が見積もり変数 `theta` の管理・主問題変数の代入・双対値からの最適性カット生成を自動で行い、ギャップが収束するまで繰り返します。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -163,12 +182,16 @@ console.log("追加カット数:", result.cutsAdded);
 console.log("開く工場:", result.values);
 ```
 
-> [!NOTE]
-> **子問題の目的関数が負になりうる場合**: 自動生成される `theta` の下限はデフォルトで `lb: 0` です。子問題で利益やリベートなど負の値をとりうる場合は、`const theta = master.continuous("theta", { lb: -1e6 })` を明示的に作り、`master.objective(...)` に `+ ${theta}` を含めて `{ theta }` を `solveBenders()` に渡してください。
+> [!IMPORTANT]
+> **自動 `sub.link()` モードの前提条件**:
+> - **最適性カットのみ対応**: 連続 LP 子問題が実行不能になるとエラーになります。`total_capacity_floor` のような主問題制約で実行可能性を保つか、手動の `kind: "feasibility"` を使ってください。
+> - **`Maximize` や負のコストでは `theta` を明示**: 自動 `theta` は `Minimize` かつ `lb: 0` 専用で、`Maximize` 主問題ではエラーになります。`theta` を宣言して目的関数に含め、`{ theta }` を渡してください。
+> - **LP 双対を返せるソルバーが必須**: 連続子問題の双対値取得には HiGHS または GLPK が必要です。
 
 ### 手動カット生成 (`BendersCut` / 遅延制約)
 
-TSP の部分巡回路除去のように、条件を満たさない解が見つかったときだけ制約を追加したい場合は、`BendersCut` オブジェクト（または配列）、収束時は `null` を返します。
+独自のカット、実行可能性カット、または遅延制約（TSP の部分巡回路除去など）を扱う場合は、`BendersCut` オブジェクトまたはその配列を返し、収束時は `null` を返します。
+最適性カットの `subproblemObjective` には子問題単体ではなく**合計目的関数値**（主問題＋子問題）を渡してください。WaSHI はその値を主問題の境界と比較して収束ギャップを判定します。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -208,7 +231,8 @@ console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
 独自の列生成ループやカット平面ループを組みたい場合は、次の 4 つの部品を直接使えます。
 
 ### 1. 制約の双対値 (`c.dual`)
-連続 LP を解いたあと、各制約の双対値（シャドウプライス）を取得します。
+
+連続 LP を解いたあと、各制約の双対値（潜在価格）を取得します。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -221,11 +245,12 @@ m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
 const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
-console.log(c.dual);                     // 双対値 / シャドウプライス
+console.log(c.dual);                     // 双対値 / 潜在価格
 console.log(m.solution?.duals.capacity); // 制約名での参照
 ```
 
 ### 2. 連続 LP 緩和 (`m.relax()`)
+
 すべての `Integer` / `Binary` 変数を一時的に `[lb, ub]` の連続変数として解き、双対値を取得できるようにします。
 
 ```typescript
@@ -234,6 +259,7 @@ console.log("LP 緩和値:", m.objectiveValue);
 ```
 
 ### 3. 変数の動的な追加 (`m.column()`)
+
 新しい変数を作成し、目的関数の係数と既存の名前付き制約への係数を 1 回の呼び出しで登録します。
 
 ```typescript
@@ -249,6 +275,7 @@ const col = m.column({
 ```
 
 ### 4. 既存制約の係数更新 (`c.addTerm()` / `c.setTerm()`)
+
 既存の線形制約に含まれる変数の係数を加算または上書きします。
 
 ```typescript

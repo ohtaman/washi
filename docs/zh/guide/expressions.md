@@ -1,8 +1,8 @@
 # 代数表达式 (`expr`, `sum`, `dot`)
 
 数学表达式是决策变量与数值系数的线性或二次组合。
-
-在不支持运算符重载的 JavaScript 与 TypeScript 中，WaSHI 提供了**统一标签模板字面量 (`expr`)**、求和函数 **`sum()`** 以及向量/矩阵点积函数 **`dot()`**，让您在保持静态类型安全的前提下编写代数公式。
+由于 JavaScript 与 TypeScript 不支持运算符重载，WaSHI 提供了 `expr` 标签模板字面量以及 `sum()`、`dot()` 函数。
+这让您能在保持完整静态类型安全的前提下编写清晰易读的代数公式。
 
 | 方式 | 示例 | 中缀可读性 | 类型安全与 IDE 重命名 | 多维索引变量 (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -14,9 +14,11 @@
 
 ## 标签模板字面量 (`expr`)
 
-类似于参数化的 `sql` 标签模板，`expr` 将静态运算符文本（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）与插值 `${...}` 中的值（`Var`、`LinExpr`、`QuadExpr` 或有限 `number`）分开接收。变量通过对象引用直接绑定，而非按字符串名称解析，从而避免命名冲突，并完整保留 TypeScript 类型检查与 IDE 符号重命名能力。
+与参数化的 `sql` 模板类似，`expr` 将静态运算符文本（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）与 `${...}` 中的插值分开接收。
+您可以直接插值 `Var`、`LinExpr`、`QuadExpr` 或有限 `number`。
+变量通过对象引用直接绑定，而非按字符串查找，因此既能避免命名冲突，也能完整保留 IDE 重命名等重构功能。
 
-算术表达式（`LinExpr | QuadExpr`）和关系比较约束（`Constraint`）均可使用 `expr` 构建：
+算术表达式（`LinExpr | QuadExpr`）和比较约束（`Constraint`）均可使用 `expr` 构建：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -31,21 +33,20 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. 二次表达式：x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. 关系比较约束：
+// 3. 比较约束：
 const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### `expr` 支持的语法
+
 - **加法与减法**：`${x} + ${y} - 5`
 - **标量乘法与除法**：`4 * ${x}`、`${x} / 2`
-- **变量相乘（二次项）**：`${x} * ${y}`、`2 * ${x} * ${x}`
-- **幂运算与平方**：`${x}^2`、`${x}**2`
-- **一元正负号**：`-${x} + 10`、`+${x}`
-- **圆括号分组**：`2 * (${x} + ${y})`
-- **聚合函数 (`sum` & `dot`)**：`sum(${xVec}) <= 100`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
-- **分段线性与下标索引 (`max`, `min`, `abs`, `at`)**：`max(${xVec}) <= 15`、`sum(abs(${w} - ${target}))`、`at(${costs}, ${idx})`（见 [分段线性与下标索引表达式](#分段线性与下标索引表达式-max-min-abs-at)）
+- **二次项与幂运算**：`${x} * ${y}`、`2 * ${x} * ${x}`、`${x}^2`、`${x}**2`
+- **一元正负号与圆括号**：`-${x} + 10`、`+${x}`、`2 * (${x} + ${y})`
+- **聚合函数**：`sum(${xVec}) <= 100`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
+- **分段线性与下标索引**：`max(${xVec}) <= 15`、`sum(abs(${w} - ${target}))`、`at(${costs}, ${idx})`（见 [分段线性与下标索引表达式](#分段线性与下标索引表达式-max-min-abs-at)）
 - **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${xVec} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
-- **嵌套表达式**：`expr` 可插值变量、数字、`Array` / `Record` 容器（在 `sum` 或 `dot` 内部）以及嵌套的 `LinExpr` / `QuadExpr` 对象。
+- **嵌套表达式**：支持插值变量、数字、嵌套的 `LinExpr` 或 `QuadExpr`，以及 `sum` / `dot` 内的容器。
 
 > [!NOTE]
 > - **比较表达式（`<=`, `>=`, `==`）** 返回 `Constraint` 对象。
@@ -56,7 +57,8 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 
 ## 高性能求和 (`sum`)
 
-在对一维或二维 `Array`、`Iterable` 或 `Record`（字典）容器求和时，既可以在 `` expr`sum(...)` `` 内部直接书写，也可以调用独立的 `sum()` 辅助函数：
+`sum()` 可直接对一维或二维 `Array`、`Iterable`、`Record` 容器求和。
+它既可在 `` expr`sum(...)` `` 内部使用，也可作为独立函数调用，以 $O(N)$ 线性时间运行且无重复拷贝开销：
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -78,16 +80,17 @@ const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 const count = sum(x);
 ```
 
-`sum()` 在无 AST 解析开销的情况下以 $O(N)$ 线性时间运行。
-
 > [!TIP]
-> **避免在循环中用 `expr` 逐项累加（$O(N^2)$）**：由于 `LinExpr` 与 `expr` 的返回值是不可变的，在循环中编写 ``total = expr`${total} + ${x[i]}` `` 会在每次迭代时复制已有的全部项，导致 $O(N^2)$ 的时间与内存开销。汇总大量变量时，请使用 `sum(x)` 或 `dot(coeffs, x)` 以保持 $O(N)$ 线性复杂度。
+> **避免在循环中用 `expr` 逐项累加（$O(N^2)$）**：`LinExpr` 对象是不可变的。
+> 在循环中反复执行 ``total = expr`${total} + ${x[i]}` `` 会在每次迭代时复制全部已有项，带来 $O(N^2)$ 的时间与内存开销。
+> 汇总大量变量时，请使用 `sum()` 或 `dot()` 以保持 $O(N)$ 复杂度。
 
 ---
 
 ## 向量与矩阵点积 (`dot`)
 
-`dot(a, b)`（既可在 `` expr`dot(${a}, ${b})` `` 内部使用，也可作为独立函数 `dot(a, b)` 调用）用于计算数值系数（`number`）与变量或线性表达式（`Var | LinExpr`）的线性组合，支持任意操作数顺序（`dot(coeffs, vars)` 或 `dot(vars, coeffs)`）。
+`dot(a, b)` 用于计算数值系数（`number`）与变量或线性表达式（`Var | LinExpr`）的加权线性组合。
+它既可在 `` expr`dot(${a}, ${b})` `` 内使用，也可独立调用，且不限制两个操作数的顺序（`dot(coeffs, vars)` 或 `dot(vars, coeffs)`）。
 
 支持的一维和二维容器结构：
 - **一维数组**：`number[]` $\times$ `(Var | LinExpr)[]`
@@ -96,21 +99,21 @@ const count = sum(x);
 - **二维字典**：`Record<R, Record<C, number>>` $\times$ `Record<R, Record<C, Var | LinExpr>>`
 - **二维混合容器**：`Array<Record<C, ...>>` 或 `Record<R, Array<...>>`
 
-当数组长度不匹配、字典键缺失或叶节点包含非有限数值/非线性项时，`dot()` 会抛出指明具体出错路径（例如 `at '[0].StoreB'`）的错误。
+若数组长度不匹配、字典键缺失或元素无效，`dot()` 会抛出包含精确路径的错误（例如 `at '[0].StoreB'`）。
 
 ### 一维向量点积
+
 ```typescript
 import { expr, dot } from "@ohtaman/washi";
 
 const profits = { desk: 30, chair: 50 };
 const vars = m.integer(["desk", "chair"] as const);
 
-// 在 expr 内计算 30 * vars.desk + 50 * vars.chair（等同于 dot(profits, vars)）
+// 在 expr 内计算 30 * vars.desk + 50 * vars.chair
 const totalProfit = expr`dot(${profits}, ${vars})`;
 ```
 
 ### 二维矩阵内积（Frobenius 内积）
-直接支持二维数组（`m.continuous(rows, cols)`）、嵌套字典（`m.continuous(rowKeys, colKeys)`）或混合二维容器：
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;
@@ -123,18 +126,19 @@ const costs = {
 
 const ship = m.continuous(factories, stores, { lb: 0 });
 
-// 一行代码表达所有路线的总运输成本（等同于 expr`sum(${costs} * ${ship})`）：
+// 一行代码表达所有路线的总运输成本：
 const totalShippingCost = expr`dot(${costs}, ${ship})`;
 ```
 
 > [!NOTE]
-> **二维 `dot(A, B)` 是 Frobenius 内积（Frobenius Inner Product）**：对于二维矩阵或嵌套字典，`dot(A, B)` 计算的是标量 **Frobenius 内积** $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$（即所有行列对应元素乘积之和，等同于 `` expr`sum(${A} * ${B})` ``），而**不是**矩阵乘法 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$。
+> **二维 `dot(A, B)` 是 Frobenius 内积**：对于二维矩阵或嵌套字典，`dot(A, B)` 计算的是所有对应元素乘积之和 $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$。
+> 它**不是**矩阵乘法 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$。
 
 ---
 
 ## `expr` 聚合与批量书写方式
 
-建议直接在模板字符串内部书写 `sum(...)`、`dot(..., ...)` 与比较符号，并通过 `${...}` 传入变量与容器（无需嵌套独立调用或 `Object.values()`）：
+建议将 `sum(...)`、`dot(..., ...)` 与比较符号直接写在 `expr` 模板内，避免多余的独立函数嵌套或 `Object.values()`：
 
 ```typescript
 // 嵌套模板调用与 Object.values()（较繁琐）
@@ -160,9 +164,11 @@ const cap2 = expr`sum(${vars}) <= 100`;
 
 ## 二次表达式 (`QuadExpr` 与 `expr`)
 
-WaSHI 通过 HiGHS 求解器支持凸二次规划（Convex QP）目标函数。二次表达式既可以使用 `expr` 模板字面量编写，也可以使用 `QuadExpr` 与 `.mul()` 编程构建。
+WaSHI 通过 HiGHS 支持凸二次规划（Convex QP）目标函数。
+二次表达式既可以用 `expr` 模板编写，也可以通过 `QuadExpr` 和 `.mul()` 编程构建。
 
 ### 1. 使用 `expr`（推荐）
+
 使用 `*`、`^2` 或 `**2` 书写二次项：
 
 ```typescript
@@ -180,6 +186,7 @@ m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. 使用 `.mul()` 或 `QuadExpr` 方法链
+
 也可以通过编程方式构建二次表达式：
 
 ```typescript
@@ -205,13 +212,18 @@ m.objective(minimize(risk));
 ```
 
 > [!NOTE]
-> **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：包括 HiGHS 在内的 QP 求解器要求最小化目标中的二次型矩阵 $\mathbf{Q}$ 必须为**半正定（PSD）**（最大化时为半负定）。平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然满足半正定性；而连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。（*关于在 MILP 中线性化两个二元变量乘积 $x_A \cdot x_B$ 的方法，请参见 [建模模式与优化技巧](./formulation-tips.md#binary-product)。*）
+> **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：最小化二次目标时，HiGHS 要求二次型矩阵 $\mathbf{Q}$ 为**半正定（PSD）**。
+> 最大化时，则要求 $\mathbf{Q}$ 为半负定。
+> 平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然半正定。
+> 连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。
+> 若要在 MILP 中线性化两个二元变量的乘积 $x_A \cdot x_B$，请参见 [建模模式与优化技巧](./formulation-tips.md#binary-product)。
 
 ---
 
 ## 分段线性与下标索引表达式 (`max`, `min`, `abs`, `at`)
 
-WaSHI 提供后端无关的分段线性函数（`max`, `min`, `abs`）及基于 0 下标的变量索引查找（`at`），可在 `` expr`...` `` 模板字面量中直接使用，也可作为从 `@ohtaman/washi` 导出的独立辅助函数调用：
+WaSHI 提供后端无关的分段线性函数（`max`, `min`, `abs`）与基于 0 下标的变量索引查找（`at`）。
+它们既可在 `` expr`...` `` 内直接使用，也可作为从 `@ohtaman/washi` 导出的独立函数调用：
 
 ```typescript
 import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
@@ -222,7 +234,7 @@ const target = [4, 7, 10];
 const route = m.integer("route", { lb: 0, ub: 2 });
 const routeCost = [18, 12, 25];
 
-// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯 LP 上镜图（epigraph）：
+// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯线性规划：
 m.objective(
   minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
 );
@@ -233,17 +245,34 @@ const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
 m.constraint(expr`${maxErr} <= 3`);
 ```
 
-- **逐元素容器算术组合**：在 `expr` 中，`abs(${arr} - ${target})` 会自动在匹配的 1D/2D `Array`、`Iterable` 或 `Record` 容器上逐元素展开，因此可直接编写 `` expr`sum(abs(${w} - ${target}))` `` 与 `` expr`max(abs(${pred} - ${actual}))` ``。
-- **极性感知的 MIP 化简与原生 CP/SMT 降级**：
-  - 在凸方向上（最小化或 `<=` 中的 `max`/`abs`，最大化或 `>=` 中的 `min`），HiGHS 与 GLPK 会降级为**零二元变量**的纯连续 LP 上镜图形式（支持无界 `Continuous` 变量）。
-  - 在非凸或等式上下文中（如 `minimize(min(...))`、`maximize(abs(...))`、`max(...) >= rhs`、`abs(...) == rhs`），HiGHS 与 GLPK 要求变量有有限边界并采用精确有界 MIP 线性化，Pumpkin 通过原生 `maximum`/`minimum`/`absolute` 传播器求解，Z3 则使用原生 `If`（ITE）。
-- **基于 0 下标的元素查找 (`at(array, index)`)**：对应约束规划中的 `Element` 约束（`array[index]`），要求 `index` 为整数值表达式，并在全部求解器上自动约束 $0 \le \text{index} < \text{array.length}$（Pumpkin 原生 `element` 传播器，Z3 嵌套 `If` 与越界守卫，HiGHS / GLPK 凸包二元变量 + McCormick 线性化）。
+### 容器逐元素展开
+
+在 `expr` 中，`abs(${arr} - ${target})` 会自动在匹配的 1D 或 2D `Array`、`Iterable`、`Record` 容器上逐元素展开。
+因此可以直接编写 `` expr`sum(abs(${w} - ${target}))` `` 与 `` expr`max(abs(${pred} - ${actual}))` ``。
+
+### 各求解器如何处理 `max`、`min` 与 `abs`
+
+在**凸方向**（最小化或 `<=` 约束 `max` / `abs`，以及最大化或 `>=` 约束 `min`）上，HiGHS 与 GLPK 仅引入单个连续辅助变量和简单线性不等式。
+这种上镜图（epigraph）形式**不需要任何二元变量**，且支持无界连续变量。
+
+在**非凸或等式上下文**（`minimize(min(...))`、`maximize(abs(...))`、`max(...) >= rhs`、`abs(...) == rhs`）中，各求解器的处理方式如下：
+
+- **HiGHS 与 GLPK**：采用精确的离散 MIP 编码，因此所有参与变量都必须具备有限上下界。
+- **Pumpkin**：在有界整数变量上以原生约束求解。
+- **Z3**：使用原生条件表达式（`If`）表示。
+
+### 基于 0 下标的元素查找 (`at(array, index)`)
+
+`at(array, index)` 对应约束规划中的 `Element` 约束，允许数组下标本身作为决策变量（`array[index]`）。
+`index` 必须为整数值表达式，所有求解器都会自动强制 $0 \le \text{index} < \text{array.length}$。
+Pumpkin 与 Z3 原生支持 `at()`，而 HiGHS 与 GLPK 会使用二元选择变量进行线性化（当数组元素包含变量时，需具备有限上下界）。
 
 ---
 
 ## 求解后求值表达式 (`.value`)
 
-`LinExpr` 与 `QuadExpr` 均提供 `.value` 访问器（`number | null`）。当模型完成求解且表达式引用的所有变量均具有有限原问题解时，可以直接读取子表达式的值：
+`LinExpr` 与 `QuadExpr` 均提供返回 `number | null` 的 `.value` 访问器。
+当模型完成求解且表达式引用的所有变量都有有限解时，可以直接计算任意子表达式的值：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -265,7 +294,7 @@ console.log("Total Revenue:", revenue.value);   // 1100 (x = 20, y = 10)
 console.log("Labor Used:", laborUsed.value);    // 50
 ```
 
-若模型尚未求解（或表达式中任意变量的 `value === null`），`.value` 将返回 `null`。
+若模型尚未求解，或表达式中任意变量的 `value === null`，`.value` 将返回 `null`。
 
 ---
 

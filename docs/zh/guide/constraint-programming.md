@@ -1,15 +1,25 @@
 # 约束规划 (CP) 建模
 
-WaSHI 支持用同一套 TypeScript API（`Model`, `expr`, `sum`, `dot`）编写**数学规划（LP / MIP / QP）**和**约束规划（CP）**模型。
-使用内置的 **Pumpkin** 求解器（`@ohtaman/washi/solvers/pumpkin`）时，排班调度、资源容量限制、互不相同（`distinct`）和查表约束会直接求解，无需转换成庞大的 0-1 矩阵。
+WaSHI 支持用同一套 TypeScript API 编写数学规划（LP / MIP / QP）与约束规划（CP）模型。
+借助内置的 **Pumpkin** 求解器（`@ohtaman/washi/solvers/pumpkin`），您可以直接表达调度、资源容量、互不相同与查表规则，无需把模型展开成庞大的 0-1 矩阵。
 
 ---
 
 ## 1. 何时使用 CP (`Pumpkin`) 与 MIP (`HiGHS`)
 
-在 **MIP (`HiGHS` / `GLPK`)** 中，通常需要为每个任务和每个时间槽创建 0-1 变量 $x_{i,t} \in \{0, 1\}$。这种方式适合连续流和线性预算，但时间粒度变细或组合增多时变量数会急剧膨胀。
+两种范式在表示决策与剪枝搜索空间的方式上截然不同。
 
-在 **CP (`Pumpkin`)** 中，您可以直接用有界整数变量表示“选哪个时刻”或“选哪台机器”（例如 `start[task]` 取值 `[0, 20]`），并用高层约束把它们连接起来：
+### 混合整数规划（MIP：`HiGHS` / `GLPK`）
+
+MIP 用连续变量和 0-1 变量的线性不等式表达决策，依靠线性规划松弛与分支定界求解。
+它非常适合连续流、线性预算、二次目标与 LP 对偶分析，但一旦需要将细粒度时间轴或组合结构离散化为 0-1 变量，模型规模就会急剧膨胀。
+
+### 约束规划（CP：`Pumpkin`）
+
+CP 直接为每个决策赋予有限整数定义域，并用**全局约束**（把一组变量间的结构化组合规则封装在一起的高层谓词）将它们连接起来。
+在搜索过程中，**域传播**（每当某条约束收紧时，自动从其他变量的定义域中剔除不可能的取值）会持续缩小搜索空间，使模型保持紧凑。
+
+下表对比了常见建模需求在 MIP 与 CP 中的对应方式：
 
 | 建模需求 | MIP (`HiGHS` / `GLPK`) | CP (`Pumpkin`) |
 | :--- | :--- | :--- |
@@ -21,19 +31,22 @@ WaSHI 支持用同一套 TypeScript API（`Model`, `expr`, `sum`, `dot`）编写
 | **最适合的问题** | 连续流、配比、二次目标、对偶价格 | 排程调度、资源上限、排列分配、兼容表 |
 
 > [!TIP]
-> 如果模型包含 `Continuous` 变量、小数系数或二次目标函数，请使用 `HiGHS`（含连续变量的逻辑规则请用 `Z3`）。如果问题只涉及有界整数和布尔值（如调度、分配），优先尝试 `Pumpkin`。
+> 如果模型需要 `Continuous` 变量、小数系数或二次目标函数，请使用 `HiGHS`；含连续变量的逻辑规则请使用 `Z3`。
+> 如果模型仅使用有界整数和布尔值处理调度、路径或组合分配，优先尝试 `Pumpkin`。
 
 ---
 
 ## 2. 任务调度与共享资源 (`disjoint`, `cumulative`, `max`)
 
-在 MIP 中把 10,000 个时间步拆成 0-1 变量会产生数万个变量和约束（WaSHI 的 MIP 转换器会在超过 5,000 步或 25,000 个变量时报错，并建议使用 `{ solver: "pumpkin" }`）。
+在 MIP 中把较长的时间轴离散化为 0-1 时间槽变量，会迅速产生数万个变量与约束。
+WaSHI 的 MIP 转换器会在 `cumulative` 超过 5,000 个时间步或 25,000 个槽位变量时报错，并建议使用 `{ solver: "pumpkin" }`。
 
-使用 Pumpkin 时，无论时间刻度有多细，每个任务只需要**一个整数变量**（`start[task]`）：
+使用 Pumpkin 时，无论时间刻度有多细，每个任务只需**一个整数变量**（`start[task]`）。
+绝大多数区间调度模型都可由以下三个原语组成：
 
-- **`disjoint(tasks)`**：确保列表中的任务不会同时运行（例如共享同一台设备）。
-- **`cumulative(tasks, capacity)`**：确保任意时刻的总资源需求（人数、电力等）不超过 `capacity`。
-- **`max(...)`**：计算所有任务中的最晚结束时间（总工期），以便在目标函数中最小化。
+- **`disjoint(tasks)`**：接收 `{ start, duration }` 形式的任务数组，禁止共享单台设备的区间 `[start, start + duration)` 彼此重叠。
+- **`cumulative(tasks, capacity)`**：接收 `{ start, duration, demand }` 形式的任务数组，确保任意时刻的资源总需求不超过 `capacity`。
+- **`max(...)`**：计算所有任务中的最晚结束时间，即**总完工时间（Makespan）** $\max_i (\text{start}_i + \text{duration}_i)$，以便在目标函数中最小化。
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
@@ -71,7 +84,7 @@ m.constraint(
 
 m.objective(minimize(max(tasks.map((t) => expr`${start[t]} + ${duration[t]}`))));
 await m.solve();
-console.log("总工期:", m.objectiveValue);
+console.log("总完工时间 (Makespan):", m.objectiveValue);
 ```
 
 完整示例见 [资源受限项目调度 (RCPSP)](../examples/project-scheduling.md)。
@@ -80,11 +93,11 @@ console.log("总工期:", m.objectiveValue);
 
 ## 3. 分配、兼容表与索引查表 (`distinct`, `allowed`, `at`)
 
-无需构造 $N \times M$ 的 0-1 变量矩阵，只需为每个任务定义一个表示机器编号（`0` 到 `M - 1`）的整数变量 `machine[job]`：
+无需构造 $N \times M$ 的 0-1 分配矩阵，只需为每个任务定义一个表示机器编号（`0` 到 `M - 1`）的有限整数变量 `machine[job]`：
 
-- **`distinct(machine)`**：强制每个任务分配到不同的机器上。
-- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**：直接允许或禁止特定的组合，无需手写 Big-M 公式。
-- **`at(costs, indexVar)`**：在 `expr` 或目标函数中直接读取 `costs[indexVar]`。
+- **`distinct(machine)`**：全局互异约束（AllDifferent），强制每个任务分配到不同的机器。
+- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**：全局表约束，直接允许或禁止指定取值组合，无需 Big-M 公式。
+- **`at(costs, indexVar)`**：变量索引查表，可在 `expr` 或目标函数中直接读取 `costs[indexVar]`。
 
 ```typescript
 import { Model, expr, distinct, allowed, not, at, minimize } from "@ohtaman/washi";
@@ -119,10 +132,17 @@ console.log("总成本:", m.objectiveValue);
 ## 4. 使用 Pumpkin 时的实用技巧
 
 ### 保持整数上下界有限且紧凑
-Pumpkin 仅支持 $[-(2^{30} - 1),\, 2^{30} - 1]$ 范围内的有限整数，不接受 `Continuous` 变量、小数或无穷边界（`-Infinity` / `Infinity`）。将 `[lb, ub]` 收紧到合理范围可以显著加快求解速度（详见 [Pumpkin 定义域前置条件](../solvers/pumpkin.md#domain-api-preconditions)）。
+
+Pumpkin 仅支持 $[-(2^{30} - 1),\, 2^{30} - 1]$ 范围内的有限整数。
+它不接受 `Continuous` 变量、小数或无穷边界（`-Infinity` / `Infinity`）。
+将 `[lb, ub]` 收紧到合理范围可以缩小初始定义域并提升域传播效率。
+详见 [Pumpkin 定义域前置条件](../solvers/pumpkin.md#domain-api-preconditions)。
 
 ### 用严格递增 (`<`) 消除排列对称性
-从候选项中挑选 $k$ 个填入可互换的位置（`slot[0]`, ..., `slot[k-1]`）时，同一组选项的不同排列成本完全相同，求解器会白白搜索 $k!$ 个等价解。添加 `slot[0] < slot[1] < ...` 可以同时保证互不相同并消除重复排列：
+
+从候选项中挑选 $k$ 个填入可互换的位置（`slot[0]`, ..., `slot[k-1]`）时，同一组选项的任意排列目标值都完全相同。
+若不打破对称性，求解器会白白遍历 $k!$ 种等价排列。
+添加 `slot[0] < slot[1] < ...` 可以同时强制互不相同并固定唯一标准顺序：
 
 ```typescript
 import { Model, expr, at, minimize } from "@ohtaman/washi";
@@ -148,5 +168,6 @@ console.log("最低 3 项延迟总和:", m.objectiveValue);
 ```
 
 ### 热启动与冲突诊断
+
 - **热启动（`initialValue`）**：在 `m.integer()` 或 `m.binary()` 中传入 `{ initialValue: val }`，为 Pumpkin 提供搜索初值提示。
-- **冲突诊断（`m.check()`）**：如果 CP 模型返回 `"Infeasible"`，调用 `await m.check({ solver: "pumpkin" })` 即可定位冲突的命名约束（浏览器中无需配置 `COOP` / `COEP` 响应头，详见 [冲突诊断 (`unsatCore`)](./unsat-core.md)）。
+- **冲突诊断（`m.check()`）**：如果 CP 模型返回 `"Infeasible"`，调用 `await m.check({ solver: "pumpkin" })` 即可定位冲突的命名约束。详见 [冲突诊断 (`unsatCore`)](./unsat-core.md)。

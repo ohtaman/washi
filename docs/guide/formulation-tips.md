@@ -1,6 +1,8 @@
 # Formulation Patterns & Optimization Tips
 
-While the preceding Modeling Guide pages cover WaSHI's APIs (`Model`, `expr`, `m.constraint`, `m.solve`, etc.), this page collects standard mathematical optimization formulation patterns and solver tuning techniques frequently used in linear and mixed-integer programming (LP/MIP). *(For Constraint Programming idioms such as `disjoint`, `cumulative`, `distinct`, `allowed`, and `at` with Pumpkin, see the [Constraint Programming (CP) Modeling Guide](./constraint-programming.md).)*
+The preceding guide pages cover WaSHI's core APIs (`Model`, `expr`, `m.constraint`, `m.solve`).
+This page collects reusable mathematical formulation patterns and solver tuning techniques for Linear Programming (LP) and Mixed-Integer Linear Programming (MILP).
+For Constraint Programming idioms with Pumpkin (`disjoint`, `cumulative`, `distinct`, `allowed`, `at`), see the [Constraint Programming (CP) Modeling Guide](./constraint-programming.md).
 
 ---
 
@@ -8,9 +10,10 @@ While the preceding Modeling Guide pages cover WaSHI's APIs (`Model`, `expr`, `m
 
 ### Semi-Continuous Decisions ($\{0\} \cup [L, U]$)
 
-A semi-continuous quantity must be either `0` (inactive) or within a positive interval `[L, U]` (e.g., a production batch with a minimum run size $L = 10$ and capacity $U = 100$).
+A semi-continuous quantity must be either `0` when inactive, or lie inside a positive interval `[L, U]` when active.
+For example, a production batch might require a minimum run size $L = 10$ and capacity $U = 100$.
 
-Combine a continuous variable `x` with a binary activation variable `isActive` and linking constraints $L \cdot b \le x \le U \cdot b$:
+Combine a continuous variable `x` with a binary activation variable `isActive` using linking inequalities $L \cdot b \le x \le U \cdot b$:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -26,9 +29,10 @@ m.constraint(expr`${batch} <= 100 * ${isActive}`, "max_batch_run");
 
 ### Minimal-Perturbation Rescheduling vs. Warm Starting
 
-When re-optimizing an existing schedule after a disruption, passing yesterday's assignment via [`initialValue`](./variables.md#primal-initial-values-warm-start-hints) only gives the MIP solver a starting search point—it does **not** prevent the solver from changing every assignment for a tiny objective gain.
+When re-optimizing a schedule after a disruption, passing the previous plan via [`initialValue`](./variables.md#primal-initial-values-warm-start-hints) only gives the solver a starting hint.
+It does **not** prevent the solver from rewriting the entire schedule for a tiny objective gain.
 
-To keep a revised binary plan $x_i \in \{0, 1\}$ close to a baseline assignment $x_i^{\text{prev}} \in \{0, 1\}$, penalize the **Hamming distance** (number of flipped decisions) in the objective:
+To keep a revised binary plan $x_i \in \{0, 1\}$ close to a baseline $x_i^{\text{prev}} \in \{0, 1\}$, penalize the **Hamming distance** (total number of flipped decisions) in the objective:
 
 $$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
 
@@ -55,7 +59,8 @@ m.objective(minimize(expr`5 * sum(${flipTerms})`));
 
 ### Product of Two Binary Variables ($x_A \cdot x_B$)
 
-In integer programming, if an interaction cost or synergy bonus applies only when two binary decisions $x_A, x_B \in \{0, 1\}$ are **both** equal to `1`, avoid introducing a quadratic term. Instead, introduce an auxiliary variable $z_{AB} \in [0, 1]$ and add the three standard McCormick / Fortet linear inequalities so the model remains a pure MILP:
+Suppose a synergy bonus or interaction cost applies only when two binary decisions $x_A, x_B \in \{0, 1\}$ are **both** equal to `1`.
+Rather than writing a quadratic product, introduce an auxiliary variable $z_{AB} \in [0, 1]$ with three linear inequalities (standard Fortet / McCormick linearization) so the model remains a pure MILP:
 
 $$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
 
@@ -77,9 +82,11 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 
 ### Min-Max & Max-Min Objectives (Load Balancing)
 
-WaSHI's built-in `max(...)` and `min(...)` primitives (see [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at)) already automate convex LP epigraph lowering on HiGHS/GLPK and map directly to native propagators on Pumpkin.
+WaSHI's built-in `max(...)` and `min(...)` helpers already convert convex load-balancing objectives into pure linear inequalities on HiGHS and GLPK, and native constraints on Pumpkin.
+See [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at).
 
-When you need explicit access to the auxiliary ceiling/floor variable $z$—for example, to reuse it inside a second-stage constraint for lexicographic optimization (Section 4)—you can write the epigraph reformulation directly by constraining every individual load $\text{load}_i \le z$ and minimizing $z$ (or $\text{u}_i \ge z$ and maximizing $z$ for Max-Min):
+When you need explicit access to the shared ceiling variable $z$—for instance, to reuse it in a second-stage lexicographic constraint—write the **epigraph** reformulation directly.
+Constrain every load $\text{load}_i \le z$ and minimize $z$ (or constrain $u_i \ge z$ and maximize $z$ for Max-Min):
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -105,7 +112,8 @@ m.objective(minimize(maxHours));
 
 ### Hard vs. Soft Constraints (Elastic Slack Variables)
 
-Treating every business target as a strict **hard constraint** makes a model `"Infeasible"` as soon as demand exceeds capacity. Keep physical and legal invariants as hard constraints, and model non-rigid targets as **soft constraints** by adding non-negative slack variables ($s \ge 0$) with penalty weights $W$ in the objective:
+Treating every business target as a strict **hard constraint** makes the model `"Infeasible"` as soon as demand exceeds capacity.
+Keep physical and legal limits as hard constraints, and convert flexible targets into **soft constraints** by adding non-negative slack variables ($s \ge 0$) penalized by weight $W$ in the objective:
 
 | Target Type | Hard Constraint | Soft Constraint ($s \ge 0$) | Objective Penalty Term (Minimize) |
 | :--- | :--- | :--- | :--- |
@@ -131,13 +139,15 @@ await m.solve();
 ```
 
 > [!TIP]
-> **Scaling Penalty Weights ($W$)**: Choose $W$ larger than normal operational marginal costs (typically $10\times$ to $1{,}000\times$ unit cost), and avoid extreme constants such as $10^{12}$. Keeping the ratio between the largest and smallest coefficients within $10^5\text{–}10^6$ preserves floating-point numerical stability in LP/MIP solvers.
+> **Scaling Penalty Weights ($W$)**: Set $W$ larger than normal marginal costs (typically $10\times$ to $1{,}000\times$ unit cost), and avoid extreme constants like $10^{12}$.
+> Keeping the ratio between the largest and smallest coefficients within $10^5\text{–}10^6$ preserves floating-point accuracy in LP and MIP solvers.
 
 ### Symmetry Breaking for Identical Resources
 
-When a model contains $K$ interchangeable resources—such as identical trucks, bins, or parallel machines—any feasible assignment has up to $K!$ equivalent permutations with the exact same objective value. Without symmetry breaking, a MIP solver explores redundant mirror-image subtrees before proving optimality.
+When a model contains $K$ interchangeable resources—such as identical trucks, bins, or machines—every feasible assignment has up to $K!$ equivalent permutations with the same objective value.
+Without symmetry breaking, a MIP solver explores redundant mirror-image subtrees before proving optimality.
 
-Impose a canonical ordering ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) so identical resources are activated in index order:
+Impose a canonical ordering ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) so identical resources activate in index order:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -161,10 +171,10 @@ for (let k = 0; k < numTrucks - 1; k++) {
 
 ### Weighted Sum vs. Lexicographic Two-Stage Optimization
 
-When balancing competing goals—such as minimizing total cost ($f_1$) while also minimizing peak workload ($f_2$)—two approaches are standard:
+When balancing competing goals—such as minimizing total cost $f_1$ and peak workload $f_2$—two strategies are standard:
 
-- **Weighted Sum (Single Solve)**: Combine normalized terms into one objective, e.g., ``minimize(expr`${totalCost} + 50 * ${maxHours}`)``.
-- **Lexicographic (Hierarchical) Two-Stage Solve**: When the primary objective has strict priority, solve for $f_1$ first, add a constraint locking $f_1$ within an acceptable tolerance of its optimum $f_1^*$, and re-solve for $f_2$:
+- **Weighted sum (single solve)**: Normalize terms onto a comparable scale and combine them into one objective, such as ``minimize(expr`${totalCost} + 50 * ${maxHours}`)``.
+- **Lexicographic two-stage solve**: Solve for the primary objective $f_1$ first, lock $f_1$ within a tolerance of its optimum $f_1^*$, and then re-solve for $f_2$.
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -192,21 +202,30 @@ await m.solve();
 
 ### MIP Tail-Off & Optimality Gap Tolerances
 
-In combinatorial MIP problems, solvers often find a near-optimal feasible solution within seconds, then spend most of the remaining runtime closing the final fraction of a percent in the branch-and-bound tree (**tail-off**).
+In combinatorial MIP problems, solvers often find a strong incumbent solution within seconds, then spend most of their runtime proving the last fraction of a percent (**tail-off**).
 
-In interactive UIs and batch pipelines, combine `timeLimit` with business-meaningful tolerances in [`m.solve(options)`](./objectives.md#solve-options-solveoptions):
-- **`relativeGap: 0.01`**: Stop immediately once the incumbent is proven within **1%** of the theoretical dual bound.
-- **`absoluteGap: 100`**: Stop immediately once `|objectiveValue - objectiveBound| <= 100` in the objective's native units.
+In interactive apps and batch pipelines, pair `timeLimit` with practical tolerances in [`m.solve(options)`](./objectives.md#solve-options-solveoptions):
+
+- **`relativeGap: 0.01`**: Stops once the incumbent is proven within **1%** of the dual bound.
+- **`absoluteGap: 100`**: Stops once `|objectiveValue - objectiveBound| <= 100` in objective units.
 
 ---
 
 ## 5. Decomposition Formulation Tips
 
-When using [`solveColumnGeneration` or `solveBenders`](./decomposition.md):
+When using [`solveColumnGeneration` or `solveBenders`](./decomposition.md), three modeling practices improve convergence and solution quality.
 
-1. **Set Covering (`>= 1`) vs. Set Partitioning (`== 1`) in Column Generation**:
-   Formulating coverage constraints as inequalities (`>= 1`) rather than equalities (`== 1`) restricts dual shadow prices to $\pi_i \ge 0$, reducing dual oscillations and accelerating convergence whenever over-coverage can be pruned at no extra cost (e.g., Euclidean routing under the triangle inequality).
-2. **Price-and-Branch (`finalizeAsMIP: true`) vs. Exact Branch-and-Price**:
-   Solving the final Restricted Master Problem as a MIP over columns generated at the root LP relaxation (`finalizeAsMIP: true`) implements the **Price-and-Branch** heuristic—avoiding complex branching inside the pricing subproblem while producing high-quality integer solutions in practice.
-3. **Multi-Cut Separation in Benders / Lazy Constraints**:
-   When a separation callback detects multiple disconnected subtours or violated components in a candidate solution, returning cuts for **all** violated components in one batch reduces the number of master MIP re-solves (see [Traveling Salesperson (`examples/traveling-salesperson`)](../examples/traveling-salesperson.md)).
+### Set Covering (`>= 1`) vs. Set Partitioning (`== 1`) in Column Generation
+
+Writing demand coverage as inequalities (`>= 1`) rather than equalities (`== 1`) restricts dual shadow prices to $\pi_i \ge 0$.
+This reduces dual oscillations and speeds up convergence whenever over-coverage can be removed without increasing cost (such as Euclidean routing under the triangle inequality).
+
+### Price-and-Branch (`finalizeAsMIP: true`) vs. Exact Branch-and-Price
+
+Solving one final MIP over the columns generated at the root LP relaxation (`finalizeAsMIP: true`) is called the **Price-and-Branch** heuristic.
+Unlike exact **Branch-and-Price**—which re-runs column generation inside every branch-and-bound node—Price-and-Branch avoids embedding branching constraints into the pricing subproblem while producing strong integer solutions quickly.
+
+### Multi-Cut Separation in Benders & Lazy Constraints
+
+When a separation callback detects multiple disconnected subtours or violated components in a candidate solution, return cuts for **all** violated components in one batch.
+Adding multiple cuts per iteration significantly reduces the number of master MIP re-solves (see [Traveling Salesperson](../examples/traveling-salesperson.md)).

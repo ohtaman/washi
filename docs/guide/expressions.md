@@ -1,8 +1,8 @@
 # Expressions (`expr`, `sum`, `dot`)
 
 Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
-
-In JavaScript and TypeScript—which do not support operator overloading—WaSHI provides the **unified tagged template literal (`expr`)**, **`sum()`**, and matrix/vector **`dot()`** to construct algebraic expressions with full static type safety.
+Because JavaScript and TypeScript lack operator overloading, WaSHI provides the `expr` tagged template literal together with `sum()` and `dot()`.
+This lets you write readable algebraic formulas while preserving full static type safety.
 
 | Approach | Example | Infix readability | Type safety & IDE rename | Indexed variables (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -14,9 +14,11 @@ In JavaScript and TypeScript—which do not support operator overloading—WaSHI
 
 ## Tagged Template Literal (`expr`)
 
-Similar to parameterized `sql` tagged templates, `expr` receives static operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) separately from interpolated `${...}` values (`Var`, `LinExpr`, `QuadExpr`, or finite `number`). Variables are bound by object reference rather than resolved by string name, avoiding naming collisions and preserving TypeScript type checking and IDE refactoring.
+Similar to parameterized `sql` templates, `expr` separates operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) from interpolated `${...}` values.
+You can interpolate `Var`, `LinExpr`, `QuadExpr`, or finite `number` values directly.
+Because variables bind by object reference rather than string lookup, you avoid name collisions and keep IDE refactoring intact.
 
-Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and relational constraints (`Constraint`):
+Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and comparison constraints (`Constraint`):
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -31,32 +33,32 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. Quadratic expression: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. Relational constraint:
+// 3. Comparison constraint:
 const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### Supported Syntax in `expr`
-- **Addition & Subtraction**: `${x} + ${y} - 5`
-- **Scalar Multiplication & Division**: `4 * ${x}`, `${x} / 2`
-- **Variable Multiplication (Quadratic terms)**: `${x} * ${y}`, `2 * ${x} * ${x}`
-- **Powers & Exponentiation**: `${x}^2`, `${x}**2`
-- **Unary Plus & Negation**: `-${x} + 10`, `+${x}`
-- **Parentheses**: `2 * (${x} + ${y})`
-- **Aggregations (`sum` & `dot`)**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
-- **Piecewise-Linear & Element Functions (`max`, `min`, `abs`, `at`)**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})` (see [Piecewise-Linear & Element Expressions](#piecewise-linear-element-expressions-max-min-abs-at))
-- **Element-Wise Container Arithmetic**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
-- **Nested Expressions**: `expr` interpolates variables, numbers, `Array` / `Record` containers (inside `sum` or `dot`), and nested `LinExpr` / `QuadExpr` objects.
+
+- **Addition & subtraction**: `${x} + ${y} - 5`
+- **Scalar multiplication & division**: `4 * ${x}`, `${x} / 2`
+- **Quadratic terms & powers**: `${x} * ${y}`, `2 * ${x} * ${x}`, `${x}^2`, `${x}**2`
+- **Unary signs & parentheses**: `-${x} + 10`, `+${x}`, `2 * (${x} + ${y})`
+- **Aggregations**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
+- **Piecewise-linear & element lookup**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})` (see [Piecewise-Linear & Element Expressions](#piecewise-linear-element-expressions-max-min-abs-at))
+- **Element-wise container arithmetic**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
+- **Nested expressions**: Interpolates variables, numbers, nested `LinExpr` or `QuadExpr` objects, and containers inside `sum` or `dot`.
 
 > [!NOTE]
 > - **Comparisons (`<=`, `>=`, `==`)** return a `Constraint` object.
-> - **Arithmetic expressions** return a `LinExpr` (linear) or `QuadExpr` (degree 2). Embedded arrays or records must be reduced with `sum(...)` or `dot(..., ...)`.
-> - **Unsupported nonlinearities**: Degree $> 2$ terms (e.g., `${x}^3`) and nonlinear constraints (e.g., `${x} * ${y} <= 10`) throw an error.
+> - **Arithmetic expressions** return a `LinExpr` (degree 1) or `QuadExpr` (degree 2). Embedded containers must be reduced to a scalar via `sum(...)` or `dot(..., ...)`.
+> - **Unsupported nonlinearities**: Degree $> 2$ terms (such as `${x}^3`) and nonlinear constraints (such as `${x} * ${y} <= 10`) throw an error.
 
 ---
 
 ## High-Performance Summation (`sum`)
 
-Sum 1D or 2D `Array`, `Iterable`, or `Record` containers directly inside `` expr`sum(...)` `` or via the standalone `sum()` helper:
+Use `sum()` to sum 1D or 2D `Array`, `Iterable`, or `Record` containers directly, either inside `` expr`sum(...)` `` or as a standalone helper.
+`sum()` runs in $O(N)$ linear time without repeated expression copying:
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -78,16 +80,17 @@ const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 const count = sum(x);
 ```
 
-`sum()` runs in $O(N)$ linear time without AST parsing overhead.
-
 > [!TIP]
-> **Avoid $O(N^2)$ `expr` Re-Assignment Inside Loops**: Because `LinExpr` and `expr` results are immutable, accumulating terms one by one via ``total = expr`${total} + ${x[i]}` `` inside a loop copies all previously accumulated terms on every iteration ($O(N^2)$ time and memory). Pass arrays or records to `sum(x)` or `dot(coeffs, x)` for $O(N)$ construction.
+> **Avoid $O(N^2)$ `expr` Re-Assignment Inside Loops**: `LinExpr` objects are immutable.
+> Writing ``total = expr`${total} + ${x[i]}` `` inside a loop copies every existing term on each iteration, costing $O(N^2)$ time and memory.
+> Pass containers to `sum()` or `dot()` for $O(N)$ construction instead.
 
 ---
 
 ## Dot Product (`dot`)
 
-The `dot(a, b)` helper (usable both inside `` expr`dot(${a}, ${b})` `` and as a standalone function `dot(a, b)`) computes linear combinations of numeric coefficients (`number`) and variables or linear expressions (`Var | LinExpr`) in either operand order (`dot(coeffs, vars)` or `dot(vars, coeffs)`).
+`dot(a, b)` computes a weighted linear combination of numeric coefficients (`number`) and variables or linear expressions (`Var | LinExpr`).
+It works both inside `` expr`dot(${a}, ${b})` `` and as a standalone function, in either operand order (`dot(coeffs, vars)` or `dot(vars, coeffs)`).
 
 Supported 1D and 2D container shapes:
 - **1D Arrays**: `number[]` $\times$ `(Var | LinExpr)[]`
@@ -96,21 +99,21 @@ Supported 1D and 2D container shapes:
 - **2D Records**: `Record<R, Record<C, number>>` $\times$ `Record<R, Record<C, Var | LinExpr>>`
 - **2D Mixed**: `Array<Record<C, ...>>` or `Record<R, Array<...>>`
 
-Mismatched array lengths, missing dictionary keys, or non-finite/non-linear leaves throw an explicit error indicating the offending path (e.g., `at '[0].StoreB'`).
+Mismatched array lengths, missing keys, or invalid leaves throw an error identifying the exact path (for example, `at '[0].StoreB'`).
 
 ### 1D Vector Dot Product
+
 ```typescript
 import { expr, dot } from "@ohtaman/washi";
 
 const profits = { desk: 30, chair: 50 };
 const vars = m.integer(["desk", "chair"] as const);
 
-// Computes 30 * vars.desk + 50 * vars.chair inside expr (or via standalone dot(profits, vars))
+// Computes 30 * vars.desk + 50 * vars.chair inside expr
 const totalProfit = expr`dot(${profits}, ${vars})`;
 ```
 
 ### 2D Matrix Inner Product (Frobenius Inner Product)
-Works directly with 2D arrays (`m.continuous(rows, cols)`), nested dictionaries (`m.continuous(rowKeys, colKeys)`), or mixed 2D containers:
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;
@@ -123,18 +126,19 @@ const costs = {
 
 const ship = m.continuous(factories, stores, { lb: 0 });
 
-// Total shipping cost across all routes (equivalent to expr`sum(${costs} * ${ship})`):
+// Total shipping cost across all routes:
 const totalShippingCost = expr`dot(${costs}, ${ship})`;
 ```
 
 > [!NOTE]
-> **2D `dot(A, B)` is the Frobenius Inner Product**: For 2D matrices or nested records, `dot(A, B)` computes the scalar **Frobenius inner product** $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$ (the sum of element-wise products across all rows and columns, equivalent to `` expr`sum(${A} * ${B})` ``), **not** the matrix-matrix product $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$.
+> **2D `dot(A, B)` is the Frobenius Inner Product**: For 2D matrices or nested records, `dot(A, B)` returns the scalar sum of element-wise products $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$.
+> It does **not** compute matrix multiplication $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$.
 
 ---
 
 ## Composing Aggregations in `expr`
 
-Keep operators, `sum(...)`, `dot(..., ...)`, and comparisons (`<=`, `>=`, `==`) in the template string, and interpolate containers directly via `${...}` rather than pre-evaluating standalone `sum()`/`dot()` or `Object.values()`:
+Keep `sum(...)`, `dot(..., ...)`, and comparisons inside the `expr` template string rather than pre-evaluating standalone calls or `Object.values()`:
 
 ```typescript
 // Verbose: nested standalone calls and Object.values()
@@ -160,9 +164,11 @@ const cap2 = expr`sum(${vars}) <= 100`;
 
 ## Quadratic Expressions (`QuadExpr` & `expr`)
 
-WaSHI supports Convex Quadratic Programming (QP) objectives via the HiGHS solver. Quadratic expressions can be written using the `expr` template literal or constructed programmatically with `QuadExpr` and `.mul()`.
+WaSHI supports Convex Quadratic Programming (QP) objectives via HiGHS.
+You can write quadratic terms with `expr` or assemble them programmatically using `QuadExpr` and `.mul()`.
 
 ### 1. Using `expr` (Recommended)
+
 Write quadratic terms with `*`, `^2`, or `**2`:
 
 ```typescript
@@ -180,6 +186,7 @@ m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. Method Chaining with `.mul()` or `QuadExpr`
+
 You can also construct quadratic expressions programmatically:
 
 ```typescript
@@ -205,13 +212,18 @@ m.objective(minimize(risk));
 ```
 
 > [!NOTE]
-> **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: QP solvers (including HiGHS) require the quadratic objective matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)** when minimizing (or negative semi-definite when maximizing). Sum-of-squares terms ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD, whereas indefinite products over continuous variables (such as minimizing $x \cdot y$) are non-convex and rejected by the solver. *(To linearize the product of two binary variables $x_A \cdot x_B$ in MILP, see [Formulation Patterns & Tips](./formulation-tips.md#product-of-two-binary-variables).)*
+> **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: When minimizing a quadratic objective, HiGHS requires the quadratic matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)**.
+> When maximizing, $\mathbf{Q}$ must be negative semi-definite.
+> Sums of squares ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD.
+> Indefinite products of continuous variables (such as minimizing $x \cdot y$) are non-convex and rejected by the solver.
+> To linearize the product of two binary variables $x_A \cdot x_B$ in MILP, see [Formulation Patterns & Tips](./formulation-tips.md#product-of-two-binary-variables).
 
 ---
 
 ## Piecewise-Linear & Element Expressions (`max`, `min`, `abs`, `at`)
 
-WaSHI provides backend-agnostic scalar piecewise-linear (`max`, `min`, `abs`) and 0-based variable-indexed lookup (`at`) primitives that work directly inside `` expr`...` `` or as standalone helpers imported from `@ohtaman/washi`:
+WaSHI provides backend-agnostic piecewise-linear functions (`max`, `min`, `abs`) and 0-based variable indexing (`at`).
+They work both inside `` expr`...` `` and as standalone helpers imported from `@ohtaman/washi`:
 
 ```typescript
 import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
@@ -222,7 +234,7 @@ const target = [4, 7, 10];
 const route = m.integer("route", { lb: 0, ub: 2 });
 const routeCost = [18, 12, 25];
 
-// Convex LP epigraph (zero binary variables on HiGHS / GLPK):
+// Convex directions (minimizing max/abs) lower to pure LP with zero binary variables:
 m.objective(
   minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
 );
@@ -233,17 +245,34 @@ const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
 m.constraint(expr`${maxErr} <= 3`);
 ```
 
-- **Element-wise container support**: Inside `expr`, `abs(${arr} - ${target})` evaluates element-wise across matching 1D/2D `Array`, `Iterable`, or `Record` containers so patterns like `` expr`sum(abs(${w} - ${target}))` `` and `` expr`max(abs(${pred} - ${actual}))` `` work naturally.
-- **Polarity-aware MIP lowering vs native CP/SMT**:
-  - In convex directions on HiGHS and GLPK (`minimize` or `<=` on `max`/`abs`, `maximize` or `>=` on `min`), WaSHI emits pure continuous LP epigraph constraints with **zero binary variables** (even on unbounded `Continuous` variables).
-  - In non-convex or equality contexts (`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs`), HiGHS and GLPK emit bounded MIP formulations (requiring finite variable bounds), Pumpkin lowers via native `maximum`/`minimum`/`absolute` propagators over bounded integers, and Z3 uses native `If` (`ITE`).
-- **0-based element lookup (`at(array, index)`)**: Models the classic CP `Element` constraint (`array[index]`). Requires an integer-valued `index` expression and automatically enforces $0 \le \text{index} < \text{array.length}$ across all solvers (native `element` propagator on Pumpkin, nested `If` + bounds guards on Z3, and binary convex-hull linearization on HiGHS/GLPK).
+### Element-Wise Container Support
+
+Inside `expr`, `abs(${arr} - ${target})` expands element-wise over matching 1D or 2D `Array`, `Iterable`, and `Record` containers.
+This lets you write expressions such as `` expr`sum(abs(${w} - ${target}))` `` and `` expr`max(abs(${pred} - ${actual}))` `` directly.
+
+### How Each Solver Handles `max`, `min`, and `abs`
+
+In **convex directions**—minimizing or upper-bounding (`<=`) `max` and `abs`, or maximizing or lower-bounding (`>=`) `min`—HiGHS and GLPK use a continuous auxiliary variable with simple linear inequalities.
+This *epigraph* formulation requires **zero binary variables** and works even on unbounded continuous variables.
+
+In **non-convex or equality contexts** (`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs`), solvers differ as follows:
+
+- **HiGHS & GLPK**: Use an exact discrete MIP encoding, so every participating variable must have finite bounds.
+- **Pumpkin**: Solves these natively over bounded integer variables.
+- **Z3**: Represents them with native conditional (`If`) expressions.
+
+### 0-Based Element Lookup (`at(array, index)`)
+
+`at(array, index)` models the classic Constraint Programming `Element` constraint, where the array index itself is a decision variable (`array[index]`).
+The `index` expression must be integer-valued, and all backends automatically enforce $0 \le \text{index} < \text{array.length}$.
+Pumpkin and Z3 handle `at()` natively, while HiGHS and GLPK encode it with binary selector variables (requiring finite bounds on any variable entries in `array`).
 
 ---
 
 ## Evaluating Expressions After Solving (`.value`)
 
-Both `LinExpr` and `QuadExpr` expose a `.value` getter (`number | null`). Once a model has been solved and all referenced variables have finite primal values, you can evaluate any sub-expression directly:
+Both `LinExpr` and `QuadExpr` expose a `.value` getter returning `number | null`.
+Once a model has been solved and every referenced variable has a finite value, you can evaluate any sub-expression directly:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -265,7 +294,7 @@ console.log("Total Revenue:", revenue.value);   // 1100 (x = 20, y = 10)
 console.log("Labor Used:", laborUsed.value);    // 50
 ```
 
-If the model has not been solved (or any variable in the expression has `value === null`), `.value` returns `null`.
+If the model has not been solved, or if any referenced variable has `value === null`, `.value` returns `null`.
 
 ---
 

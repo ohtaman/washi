@@ -1,15 +1,26 @@
 # Constraint Programming (CP) Modeling
 
-WaSHI lets you write both **Mathematical Optimization (LP / MIP / QP)** and **Constraint Programming (CP)** models using the same TypeScript API (`Model`, `expr`, `sum`, `dot`).
-When you use the bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`), scheduling, resource-capacity, all-different, and table-lookup constraints are solved directly without converting everything into large 0-1 MIP matrices.
+WaSHI lets you write both Mathematical Optimization (LP / MIP / QP) and Constraint Programming (CP) models with the same TypeScript API.
+Using the bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`), you can model scheduling, resource limits, all-different rules, and table lookups directly without expanding them into large 0-1 matrices.
 
 ---
 
 ## 1. When to Use CP (Pumpkin) vs. MIP (HiGHS)
 
-In **MIP (`HiGHS` / `GLPK`)**, you typically model choices with 0-1 binary variables (such as $x_{i,t} \in \{0, 1\}$ for every task and time slot). That works well for continuous flows and linear budgets, but grows huge when time horizons or combinations expand.
+The two paradigms differ in how they represent decisions and prune the search space.
 
-In **CP (`Pumpkin`)**, you model *what* each item chooses directly as a bounded integer (for example, `start[task]` in `[0, 20]` or `machine[job]` in `[0, 2]`), and connect them with high-level constraints:
+### Mixed-Integer Programming (`HiGHS` / `GLPK`)
+
+MIP encodes decisions as linear inequalities over continuous and 0-1 variables, then solves them with LP relaxation and branch-and-bound.
+This excels at continuous flows, linear budgets, quadratic objectives, and LP dual analysis.
+However, discretizing fine-grained timelines or combinatorial structures into 0-1 variables can make the model grow huge.
+
+### Constraint Programming (`Pumpkin`)
+
+CP assigns each decision a finite integer domain and connects variables with **global constraints**—high-level predicates that express structured combinatorial rules across groups of variables.
+During search, **domain propagation** automatically prunes impossible values from each variable's domain whenever constraints tighten, keeping models compact.
+
+The table below shows how common modeling patterns map between MIP and CP:
 
 | Task / Pattern | MIP (`HiGHS` / `GLPK`) | CP (`Pumpkin`) |
 | :--- | :--- | :--- |
@@ -21,19 +32,22 @@ In **CP (`Pumpkin`)**, you model *what* each item chooses directly as a bounded 
 | **Best suited for** | Continuous flows, blending, quadratic objectives, dual prices | Scheduling, resource limits, permutations, compatibility tables |
 
 > [!TIP]
-> If your model uses `Continuous` variables, fractional coefficients, or quadratic objectives, use `HiGHS` (or `Z3` for continuous logical rules). If your model uses bounded integers and booleans for scheduling, routing, or assignment, try `Pumpkin`.
+> Use `HiGHS` when your model requires `Continuous` variables, decimal coefficients, or quadratic objectives, or `Z3` for continuous logical rules.
+> Try `Pumpkin` when your model uses bounded integers and Booleans for scheduling, routing, or combinatorial assignment.
 
 ---
 
 ## 2. Scheduling Tasks & Shared Resources (`disjoint`, `cumulative`, `max`)
 
-With MIP, splitting a 10,000-step horizon into 0-1 time-slot variables creates tens of thousands of variables and rows (WaSHI's MIP converter rejects horizons over 5,000 steps or 25,000 slot variables and recommends `{ solver: "pumpkin" }`).
+Discretizing a long timeline into 0-1 time-slot variables creates tens of thousands of MIP variables.
+WaSHI's MIP converter rejects `cumulative` horizons above 5,000 steps or 25,000 slot variables and recommends `{ solver: "pumpkin" }`.
 
-With Pumpkin, each task only needs **one integer variable** (`start[task]`), regardless of how fine-grained the timeline is:
+With Pumpkin, each task needs only **one integer variable** (`start[task]`), regardless of horizon granularity.
+Three primitives cover most interval-scheduling models:
 
-- **`disjoint(tasks)`**: Ensures no two tasks in the list run at the same time (e.g., sharing a single machine).
-- **`cumulative(tasks, capacity)`**: Ensures total resource demand (e.g., workers or power) never exceeds `capacity` at any moment.
-- **`max(...)`**: Computes the makespan (the latest finish time across all tasks) so you can minimize total duration.
+- **`disjoint(tasks)`**: Takes task objects `{ start, duration }` and forbids any two intervals `[start, start + duration)` from overlapping on a shared single machine.
+- **`cumulative(tasks, capacity)`**: Takes task objects `{ start, duration, demand }` and enforces that total active resource demand never exceeds `capacity` at any moment.
+- **`max(...)`**: Computes the **makespan**—the latest completion time across all tasks, $\max_i (\text{start}_i + \text{duration}_i)$—so you can minimize total schedule length.
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
@@ -80,11 +94,11 @@ See the full walkthrough in [Resource-Constrained Project Scheduling (RCPSP)](..
 
 ## 3. Assignment, Compatibility Tables & Cost Lookup (`distinct`, `allowed`, `at`)
 
-Instead of an $N \times M$ matrix of 0-1 variables, give each job one integer variable `machine[job]` with values `0` through `M - 1`:
+Instead of an $N \times M$ matrix of 0-1 assignment variables, give each job a single bounded integer variable `machine[job]` ranging from `0` to `M - 1`:
 
-- **`distinct(machine)`**: Forces every job onto a different machine.
-- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**: Allows or forbids specific value combinations without manual Big-M formulas.
-- **`at(costs, indexVar)`**: Looks up `costs[indexVar]` directly inside an `expr` or objective.
+- **`distinct(machine)`**: Global all-different constraint forcing every job onto a distinct machine.
+- **`allowed(vars, tuples)` / `not(allowed(vars, tuples))`**: Global table constraint permitting or forbidding explicit value tuples without Big-M inequalities.
+- **`at(costs, indexVar)`**: Variable-indexed lookup returning `costs[indexVar]` directly inside an `expr` or objective.
 
 ```typescript
 import { Model, expr, distinct, allowed, not, at, minimize } from "@ohtaman/washi";
@@ -119,10 +133,17 @@ console.log("Total cost:", m.objectiveValue);
 ## 4. Practical Tips for Pumpkin Models
 
 ### Keep Integer Bounds Finite and Tight
-Pumpkin only supports finite integers within $[-(2^{30} - 1),\, 2^{30} - 1]$. It rejects `Continuous` variables, fractional values, and unbounded variables (`-Infinity` / `Infinity`). Tighter `[lb, ub]` ranges shrink the search space and speed up solving. See [Pumpkin Domain Preconditions](../solvers/pumpkin.md#domain-api-preconditions).
+
+Pumpkin supports only finite integers within $[-(2^{30} - 1),\, 2^{30} - 1]$.
+It rejects `Continuous` variables, decimal values, and infinite bounds (`-Infinity` / `Infinity`).
+Tighter `[lb, ub]` intervals shrink domains upfront and make domain propagation more effective.
+See [Pumpkin Domain Preconditions](../solvers/pumpkin.md#domain-api-preconditions).
 
 ### Break Symmetry with Strict Ordering (`<`)
-When picking $k$ items into $k$ interchangeable slots (`slot[0]`, ..., `slot[k-1]`), any reordering of the same $k$ items has the exact same cost, which forces the solver to check $k!$ duplicate solutions. Adding `slot[0] < slot[1] < ...` enforces uniqueness and eliminates those duplicate permutations at once:
+
+When picking $k$ distinct items into $k$ interchangeable slots (`slot[0]`, ..., `slot[k-1]`), every permutation of the same items has the same objective value.
+Without symmetry breaking, the solver wastes time checking $k!$ equivalent orderings.
+Adding `slot[0] < slot[1] < ...` enforces both uniqueness and a single canonical order:
 
 ```typescript
 import { Model, expr, at, minimize } from "@ohtaman/washi";
@@ -148,5 +169,6 @@ console.log("Best 3 latencies total:", m.objectiveValue);
 ```
 
 ### Warm Starts & Conflict Diagnosis
-- **Warm starts (`initialValue`)**: Pass `{ initialValue: val }` to `m.integer()` or `m.binary()` to give Pumpkin a starting hint for value selection.
-- **Conflict diagnosis (`m.check()`)**: If a CP model returns `"Infeasible"`, call `await m.check({ solver: "pumpkin" })` to find which named rules conflict (works in browsers without `COOP`/`COEP` headers). See [Conflict Diagnosis (`unsatCore`)](./unsat-core.md).
+
+- **Warm starts (`initialValue`)**: Pass `{ initialValue: val }` to `m.integer()` or `m.binary()` to guide Pumpkin's initial value selection.
+- **Conflict diagnosis (`m.check()`)**: If a CP model returns `"Infeasible"`, call `await m.check({ solver: "pumpkin" })` to pinpoint conflicting named constraints. See [Conflict Diagnosis (`unsatCore`)](./unsat-core.md).
