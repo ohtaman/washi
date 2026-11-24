@@ -9,7 +9,7 @@ aside: false
 # 案例展示
 
 <p class="washi-showcase-lead">
-体验基于浏览器端 WebAssembly 本地运行的交互式 Playground、实际业务决策应用与数理优化益智游戏。
+体验基于浏览器端 WebAssembly 本地运行的交互式 Playground、决策支持应用与数理优化益智游戏。
 </p>
 
 <div class="washi-showcase-section">
@@ -31,7 +31,7 @@ aside: false
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          在浏览器中使用 TypeScript / JavaScript 构建 LP、MIP、凸 QP、CP 与 SMT 模型，并通过 HiGHS、Pumpkin、Z3 和 GLPK 即时求解。内置丰富预设案例、LP 导出检查、灵敏度分析与 Pumpkin / Z3 <code>unsatCore</code> 冲突诊断。
+          在浏览器中用 TypeScript / JavaScript 编写 LP、MIP、凸 QP、CP 与 SMT 模型并通过 WebAssembly 本地求解。内置预设案例、LP 导出检查、灵敏度分析与 <code>unsatCore</code> 冲突诊断。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -54,7 +54,7 @@ aside: false
           <a href="/exercises/?lang=zh" target="_self" class="washi-showcase-title-link">数理优化百题训练</a>
         </div>
         <p class="washi-showcase-desc">
-          浏览器本地运行的交互式数理优化百题训练，支持 WaSHI（TypeScript）与 PuLP（Python，基于 Pyodide 上的 HiGHS / <code>highspy</code> 后端）双标签即时评测、解题思路与本地进度持久化。
+          在浏览器本地运行的交互式数理优化百题训练。支持并排对比 TypeScript 版 WaSHI 与 Python 版 PuLP（Pyodide 上的 <code>highspy</code>），并提供自动评测与建模说明。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -79,13 +79,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏥</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">护士排班 AI 助手</a>
         </div>
         <p class="washi-showcase-desc">
-          结合浏览器内置 AI（Gemini Nano）自然语言排班规则提取与 WaSHI × HiGHS 混合整数规划，在本地秒级完成 30 人 × 1 个月三班倒排班优化与冲突诊断。
+          通过 WaSHI 与 HiGHS MIP 本地求解 30 人 × 1 个月三班倒排班并诊断冲突。自然语言规则输入需在支持 Chrome Built-in AI（Gemini Nano）的 Chrome 浏览器中运行。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -96,19 +96,19 @@ aside: false
 
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-ai-timetable.png" alt="大学排课 AI Copilot (UCTP)" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-ai-timetable.png" alt="大学排课 AI Copilot" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🎓</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学排课 AI Copilot (UCTP)</a>
+          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学排课 AI Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          同时协调大一至大四4张年级课表、10位专任/外聘教师出勤表与7间专业教室。支持通过 Gemini Nano 自然语言添加复杂排课约束，并由 WaSHI (HiGHS) 秒级求解与诊断冲突。
+          使用 WaSHI 与 HiGHS MIP 求解涵盖 4 个年级、10 位教师与 7 间教室的大学课程排课问题（UCTP）并诊断冲突。自然语言规则添加需要 Chrome Built-in AI（Gemini Nano）。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -134,13 +134,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏰</span>
-          <span class="washi-showcase-badge">据点防卫排班益智游戏</span>
+          <span class="washi-showcase-badge">排班调度 MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/demon-castle-shift/" target="_self" class="washi-showcase-title-link">魔王城24小时警备排班</a>
         </div>
         <p class="washi-showcase-desc">
-          与参谋莉莉丝一起，从昼夜不停进军的勇者军手中守卫魔王城的排班解谜游戏。兼顾每位成员擅长的时段与休息规则，在不让任何人过度劳累的前提下守住城门。
+          与参谋莉莉丝一起，昼夜抵御勇者军进攻的排班解谜游戏。兼顾每位守卫擅长的时段与休息规则，合理安排班表守住城门。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -158,13 +158,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🐑</span>
-          <span class="washi-showcase-badge">牧场围栏益智游戏</span>
+          <span class="washi-showcase-badge">图割与牧场围栏 MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">毛茸茸绵羊的牧场围栏</a>
         </div>
         <p class="washi-showcase-desc">
-          仅用有限数量的木栅栏阻断饥饿野狼的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓并填平或避开坑洞。
+          用有限数量的木栅栏阻断野狼入侵路线的围栏解谜游戏。在填平或避开坑洞的同时，让小羊莫可的安全牧场包含尽可能多的野草莓。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -175,19 +175,19 @@ aside: false
   </div>
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — 精密钛合金板金解谜" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">二维装箱 MILP</span>
+          <span class="washi-showcase-badge">二维装箱 MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — 精密钛合金板金解谜</a>
+          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
         </div>
         <p class="washi-showcase-desc">
-          在最尖端钛合金加工车间，与质检无人机UNIT-74一起将订单零件严丝合缝地填满母材平板。达成零边角料废料与零通断层的一刀切完美切割。
+          与质检无人机 UNIT-74 一起将订单零件严丝合缝排入钛合金母材平板。以实时二维切割 MIP 体验零废料与零通断层的完美方案。
         </p>
       </div>
       <div class="washi-showcase-actions">

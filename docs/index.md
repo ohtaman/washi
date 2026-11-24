@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: "Mathematical Optimization Modeler in TypeScript"
-  tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, CP, and SMT models with intuitive infix expressions and solve in Node.js and browsers via WebAssembly (HiGHS, Pumpkin, Z3, GLPK) with zero Python or native C++ dependencies."
+  tagline: "A TypeScript alternative to Python's PuLP. Write LP, MIP, Convex QP, CP, and SMT models with infix expressions, then solve via WebAssembly using bundled HiGHS and Pumpkin or optional Z3 and GLPK."
   actions:
     - theme: brand
       text: Getting Started
@@ -22,28 +22,28 @@ features:
     link: /getting-started/runtimes
     linkText: Runtime Environments
   - icon: ✍️
-    title: Algebraic Modeling (expr)
-    details: Write LP, MIP, Convex QP, CP, and SMT models using natural infix math expressions instead of hand-assembling matrices or LP text.
+    title: Algebraic Modeling
+    details: Write LP, MIP, Convex QP, CP, and SMT models using natural infix expressions instead of assembling matrices or LP text by hand.
     link: /guide/expressions
-    linkText: Modeling Expressions
+    linkText: Expressions
   - icon: 🧩
     title: Type-Safe Modeling in TypeScript
-    details: Bind decision variables directly to your application's data types to catch key typos, index mismatches, and type mix-ups at compile time.
+    details: Bind decision variables to your application's data types to catch key typos, index mismatches, and type mix-ups at compile time.
     link: /guide/variables
     linkText: Variables & Domains
   - icon: 🔍
     title: Infeasibility & Conflict Diagnosis
-    details: When constraints conflict and no feasible solution exists, pinpoint which rules contradict each other using bundled HiGHS or Pumpkin, or optional Z3.
+    details: When constraints conflict and no feasible solution exists, pinpoint the contradicting rules with bundled HiGHS or Pumpkin, or optional Z3.
     link: /guide/unsat-core
-    linkText: Conflict Diagnosis
+    linkText: Conflict Diagnosis, Validation & Debugging
   - icon: ⚙️
     title: Pluggable Solver Backends
-    details: Formulate once and switch seamlessly between bundled HiGHS (LP/MIP/QP) and Pumpkin (CP/LCG), optional Z3 and GLPK plugins, or your own custom solver.
+    details: Formulate once and switch between bundled HiGHS and Pumpkin, optional Z3 and GLPK plugins, or your own custom solver.
     link: /solvers/
-    linkText: Solver Backends
+    linkText: Solvers Overview
   - icon: 🔀
     title: Large-Scale Decomposition
-    details: Built-in support for Column Generation, Benders Decomposition, LP relaxations, and dual values (shadow prices) for large-scale problems.
+    details: Built-in support for Column Generation, Benders Decomposition, LP relaxations, and dual values (shadow prices) for large-scale models.
     link: /guide/decomposition
     linkText: Decomposition Methods
 ---
@@ -67,13 +67,13 @@ Decision-support apps and optimization puzzles running locally in the browser vi
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">🎓</span>
-<span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+<span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">AI University Timetabling Copilot</a>
 </div>
 <p class="washi-showcase-desc">
-Coordinate 4 student cohorts, 10 faculty schedules, and 7 specialized rooms simultaneously from CSV data or natural-language rules.
+Coordinate 4 student cohorts, 10 faculty schedules, and 7 specialized rooms from CSV data or natural-language rules.
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">Open App →</span>
@@ -87,13 +87,13 @@ Coordinate 4 student cohorts, 10 faculty schedules, and 7 specialized rooms simu
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">⚡</span>
-<span class="washi-showcase-badge">2D Strip Packing MILP</span>
+<span class="washi-showcase-badge">2D Strip Packing MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
 </div>
 <p class="washi-showcase-desc">
-2D sheet-metal cutting puzzle powered by live MILP solving—pack parts with zero scrap void and zero guillotine fault lines.
+2D sheet-metal cutting puzzle powered by live MIP solving. Pack parts with zero scrap void and zero guillotine fault lines.
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">Play Game →</span>
@@ -107,13 +107,13 @@ Coordinate 4 student cohorts, 10 faculty schedules, and 7 specialized rooms simu
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">🐑</span>
-<span class="washi-showcase-badge">Network Cut &amp; Enclosure MILP</span>
+<span class="washi-showcase-badge">Network Cut &amp; Enclosure MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">Fluffy Sheep Pasture Enclosure</a>
 </div>
 <p class="washi-showcase-desc">
-Block wolf entry paths with limited wooden fences while maximizing safe pasture rewards using exact graph-cut optimization.
+Block wolf entry paths with limited wooden fences while maximizing safe pasture rewards using exact graph-cut MIP.
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">Play Game →</span>
@@ -129,10 +129,14 @@ Block wolf entry paths with limited wooden fences while maximizing safe pasture 
 <div class="tip custom-block" style="padding-top: 8px;">
 
 - **Getting Started**: [Introduction & Installation](/getting-started/) · [Coding with AI Agents](/getting-started/coding-agents) · [Runtime Environments](/getting-started/runtimes) · [Cross-Origin Isolation](/getting-started/cross-origin)
-- **Modeling Guide**: [Variables & Bounds](/guide/variables) · [Expressions (expr, dot, sum)](/guide/expressions) · [Constraints](/guide/constraints) · [Objective Functions](/guide/objectives) · [Diagnosis, Validation & Debugging](/guide/unsat-core) · [Constraint Programming (CP)](/guide/constraint-programming) · [Decomposition Methods](/guide/decomposition) · [Formulation Patterns & Tips](/guide/formulation-tips)
-- **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Pumpkin (CP/LCG)](/solvers/pumpkin) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
-- **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [Project Scheduling (CP)](/examples/project-scheduling) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)
-- **Interactive Playground & Showcase**: [Showcase Hub](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">Optimization 100</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
+- **Modeling Basics**: [Variables & Domains](/guide/variables) · [Expressions](/guide/expressions) (`expr`, `sum`, `dot`) · [Constraints](/guide/constraints) · [Objectives & Solving](/guide/objectives)
+- **Advanced Modeling**: [Conflict Diagnosis, Validation & Debugging](/guide/unsat-core) · [Constraint Programming (CP) Modeling](/guide/constraint-programming) · [Decomposition Methods](/guide/decomposition) · [Formulation Patterns & Tips](/guide/formulation-tips)
+- **Solver Backends**: [Solvers Overview](/solvers/) · [HiGHS](/solvers/highs) · [Pumpkin](/solvers/pumpkin) · [Z3](/solvers/z3) · [GLPK](/solvers/glpk) · [Custom Solvers](/solvers/custom-solver)
+- **Examples — LP, MIP & QP**: [Examples & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack Problem](/examples/knapsack) · [Transportation & Allocation Network](/examples/transportation) · [Diet Problem & Sensitivity Analysis](/examples/diet-sensitivity) · [Portfolio Optimization (QP)](/examples/portfolio-qp)
+- **Examples — Scheduling & CP**: [Staff Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Cart & Coupon Optimizer](/examples/ecommerce-coupons) · [Project Scheduling (CP)](/examples/project-scheduling)
+- **Examples — SMT, Diagnosis & Decomposition**: [SMT Security Policies](/examples/smt-security) · [Conflict Diagnosis (Unsat Core)](/examples/unsat-core) · [Vehicle Routing (CVRP)](/examples/vehicle-routing) · [Traveling Salesperson (TSP)](/examples/traveling-salesperson)
+- **Playground & Apps**: [Showcase](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">Optimization 100</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a>
+- **Optimization Games**: <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>
 

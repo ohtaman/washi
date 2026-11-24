@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: "TypeScript 数理最適化モデラー"
-  tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。WebAssembly（HiGHS・Pumpkin・Z3・GLPK）を搭載し、Pythonサーバーやネイティブビルド不要でLP・混合整数計画法（MIP）・凸QP・制約プログラミング（CP）・SMTをブラウザやNode.jsで高速に求解します。"
+  tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。同梱の HiGHS・Pumpkin やオプションの Z3・GLPK を使い、ブラウザと Node.js で LP・MIP・凸QP・CP・SMT を求解します。"
   actions:
     - theme: brand
       text: はじめに
@@ -18,34 +18,34 @@ hero:
 features:
   - icon: 🌐
     title: WebAssembly で環境構築不要
-    details: Python サーバーや C/C++ のネイティブビルドは不要。ブラウザ（Web Worker）や Node.js などの JS 環境でそのまま求解できます。
+    details: Python サーバーや C/C++ のネイティブビルドは不要です。ブラウザ（Web Worker）や Node.js でそのまま求解できます。
     link: /ja/getting-started/runtimes
     linkText: ランタイム環境設定
   - icon: ✍️
-    title: 直感的な代数モデリング (expr)
-    details: 行列や LP 文字列を手組みせず、PuLP に近い数式表現で線形・整数・凸二次・制約プログラミング・論理モデルをそのまま記述できます。
+    title: 直感的な代数モデリング
+    details: 行列や LP 文字列を手組みせず、PuLP に近い数式で線形・整数・凸二次・制約プログラミング・論理モデルを記述できます。
     link: /ja/guide/expressions
     linkText: 数式の記述
   - icon: 🧩
     title: TypeScript による型安全なモデリング
-    details: アプリ側のデータ構造と直結した変数辞書により、添字・キーの綴り間違いや数値・真偽値の取り違えをコンパイル時に防げます。
+    details: アプリ側のデータ構造に変数辞書を対応付け、添字やキーの綴り間違い、数値と真偽値の取り違えをコンパイル時に防ぎます。
     link: /ja/guide/variables
-    linkText: 変数と上下限
+    linkText: 決定変数とドメイン
   - icon: 🔍
     title: 「解なし」の原因を特定
-    details: 制約が衝突して解が見つからないとき、ただエラーで終わらず、どの条件同士が矛盾しているかを同梱の HiGHS や Pumpkin、または Z3 で特定できます。
+    details: 制約が衝突して解が見つからないとき、同梱の HiGHS・Pumpkin またはオプションの Z3 で矛盾するルールを特定できます。
     link: /ja/guide/unsat-core
-    linkText: 競合制約診断
+    linkText: 矛盾診断・解の検証・デバッグ
   - icon: ⚙️
     title: 切り替え可能なソルバー接続
-    details: モデルを書き直すことなく、同梱の HiGHS（LP/MIP/QP）や Pumpkin（CP/LCG）、オプションの Z3・GLPK や独自ソルバーへ用途に応じて切り替えられます。
+    details: モデルを書き直さず、同梱の HiGHS・Pumpkin、オプションの Z3・GLPK プラグイン、独自ソルバーを用途別に切り替えられます。
     link: /ja/solvers/
-    linkText: ソルバー比較と接続
+    linkText: ソルバー概要
   - icon: 🔀
     title: 大規模問題向けの分解法
-    details: 列生成法や Benders 分解、LP 緩和・双対値（シャドウプライス）の取得を備え、単一モデルでは解きにくい大規模問題にも対応します。
+    details: 列生成法や Benders 分解、LP 緩和、双対変数（潜在価格）の取得を備え、単一モデルでは解きにくい大規模問題にも対応します。
     link: /ja/guide/decomposition
-    linkText: 分解法ガイド
+    linkText: 分解法
 ---
 
 <div class="washi-home-sections">
@@ -67,13 +67,13 @@ features:
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">🎓</span>
-<span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+<span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学時間割編成 AI Copilot</a>
 </div>
 <p class="washi-showcase-desc">
-4学年×10教員×7教室の時間割を同時編成。非常勤講師の曜日制約や連続コマ指定を自然言語や CSV から取り込んで求解します。
+4 学年・10 教員・7 教室の時間割を同時編成します。非常勤講師の曜日制約や連続コマ指定を自然言語や CSV から取り込んで求解します。
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">アプリを開く →</span>
@@ -87,13 +87,13 @@ features:
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">⚡</span>
-<span class="washi-showcase-badge">2次元パッキング MILP</span>
+<span class="washi-showcase-badge">2次元パッキング MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
 </div>
 <p class="washi-showcase-desc">
-注文パーツを母材プレートに隙間なく配置し、端材ロス 0% と断層回避の条件を MILP ソルバーと競い合う2次元板金パズル。
+注文パーツを母材プレートに隙間なく配置し、端材ロス 0% と断層回避の条件を MIP ソルバーと競う 2 次元板金パズルです。
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">ゲームを開く →</span>
@@ -107,13 +107,13 @@ features:
 <div>
 <div class="washi-showcase-card-top">
 <span class="washi-showcase-icon" aria-hidden="true">🐑</span>
-<span class="washi-showcase-badge">領域分離・最小カット MILP</span>
+<span class="washi-showcase-badge">領域分離・最小カット MIP</span>
 </div>
 <div class="washi-showcase-title">
 <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">もふもふ羊の牧場囲い</a>
 </div>
 <p class="washi-showcase-desc">
-限られた木の柵でオオカミの侵入経路を遮断しつつ、安全な牧場内の野いちごを最大化するネットワーク分離パズル。
+限られた木の柵でオオカミの侵入経路を遮断しつつ、安全な牧場内の野いちごを最大化するネットワーク分離パズルです。
 </p>
 </div>
 <span class="washi-home-card-cta" aria-hidden="true">ゲームを開く →</span>
@@ -128,11 +128,15 @@ features:
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **はじめに**: [概要とインストール](/ja/getting-started/) · [AI コーディングエージェント](/ja/getting-started/coding-agents) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
-- **モデリングガイド**: [変数と境界値](/ja/guide/variables) · [数式の記述 (expr, dot, sum)](/ja/guide/expressions) · [制約条件](/ja/guide/constraints) · [目的関数と最適化](/ja/guide/objectives) · [競合診断・検証・デバッグ](/ja/guide/unsat-core) · [制約プログラミング (CP)](/ja/guide/constraint-programming) · [分解法 (列生成・Benders)](/ja/guide/decomposition) · [定式化パターン・Tips](/ja/guide/formulation-tips)
-- **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Pumpkin (CP/LCG)](/ja/solvers/pumpkin) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
-- **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [プロジェクトスケジューリング (CP)](/ja/examples/project-scheduling) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)
-- **インタラクティブ Playground・アプリ**: [ショーケース一覧](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理最適化100本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
+- **はじめに**: [インストールと入門](/ja/getting-started/) · [AI コーディングエージェント](/ja/getting-started/coding-agents) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
+- **モデリング基礎**: [決定変数とドメイン](/ja/guide/variables) · [数式の記述](/ja/guide/expressions)（`expr`, `sum`, `dot`） · [制約条件](/ja/guide/constraints) · [目的関数と求解](/ja/guide/objectives)
+- **応用モデリング**: [矛盾診断・解の検証・デバッグ](/ja/guide/unsat-core) · [制約プログラミング (CP) モデリング](/ja/guide/constraint-programming) · [分解法](/ja/guide/decomposition) · [定式化パターン・Tips](/ja/guide/formulation-tips)
+- **ソルバー接続**: [ソルバー概要](/ja/solvers/) · [HiGHS](/ja/solvers/highs) · [Pumpkin](/ja/solvers/pumpkin) · [Z3](/ja/solvers/z3) · [GLPK](/ja/solvers/glpk) · [カスタムソルバー開発](/ja/solvers/custom-solver)
+- **実践例 — LP・MIP・QP**: [実践例・サンプル集](/ja/examples/) · [生産計画問題](/ja/examples/production) · [0-1 ナップサック問題](/ja/examples/knapsack) · [輸送・物流ネットワーク問題](/ja/examples/transportation) · [栄養問題と感度分析](/ja/examples/diet-sensitivity) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp)
+- **実践例 — シフト・CP**: [スタッフのシフト作成](/ja/examples/shift-scheduling) · [ECカートのクーポン最適化](/ja/examples/ecommerce-coupons) · [プロジェクトスケジューリング (CP)](/ja/examples/project-scheduling)
+- **実践例 — SMT・診断・分解法**: [セキュリティポリシー検証 (SMT)](/ja/examples/smt-security) · [制約矛盾の診断 (Unsat Core)](/ja/examples/unsat-core) · [車両配送計画問題 (CVRP)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (TSP)](/ja/examples/traveling-salesperson)
+- **Playground・実務アプリ**: [ショーケース](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理最適化100本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a>
+- **パズルゲーム**: <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>
 

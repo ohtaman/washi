@@ -31,7 +31,7 @@ aside: false
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          LP・MIP・凸QP・CP・SMT モデルを TypeScript / JavaScript で記述し、ブラウザ内の HiGHS・Pumpkin・Z3・GLPK で即座に求解できる対話型オンライン環境。プリセット問題、LP 構文確認、感度分析、Pumpkin / Z3 <code>unsatCore</code> による矛盾診断に対応しています。
+          LP・MIP・凸QP・CP・SMT モデルを TypeScript / JavaScript で記述し、ブラウザ内の WebAssembly で求解できます。プリセット問題、LP 出力確認、感度分析、<code>unsatCore</code> による矛盾診断に対応しています。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -54,7 +54,7 @@ aside: false
           <a href="/exercises/?lang=ja" target="_self" class="washi-showcase-title-link">数理最適化100本ノック</a>
         </div>
         <p class="washi-showcase-desc">
-          WaSHI（TypeScript）と PuLP（Python / Pyodide 上の HiGHS・<code>highspy</code> バックエンド）の両方で書いて自動採点できる数理最適化の対話型100本ノック。各問の数式・解説とテストケース付きでブラウザ完結します。
+          ブラウザ内で完結する数理最適化の対話型 100 問演習です。TypeScript の WaSHI と Python の PuLP（Pyodide 上の <code>highspy</code>）を並べて自動採点でき、数式解説も確認できます。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -79,13 +79,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏥</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">ナーススケジューリング AI Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          自然な日本語チャット指示からブラウザ内蔵 AI（Gemini Nano）が勤務条件を抽出し、WaSHI × HiGHS が30名×1ヶ月の3交代シフト表をローカルで最適化・矛盾診断する実務コパイロット。
+          30 名・1 ヶ月の 3 交代シフト表を WaSHI と HiGHS MIP でローカル最適化・矛盾診断します。自然言語での条件入力には Chrome Built-in AI（Gemini Nano）対応の Chrome が必要です。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -96,19 +96,19 @@ aside: false
 
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-ai-timetable.png" alt="大学時間割編成 AI Copilot (UCTP)" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-ai-timetable.png" alt="大学時間割編成 AI Copilot" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🎓</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学時間割編成 AI Copilot (UCTP)</a>
+          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学時間割編成 AI Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          「非常勤の小林先生は火・木の午後しか来られない」「SW設計演習は同日連続時限で」などの複雑な教務条件を Gemini Nano で構造化し、WaSHI (HiGHS) で4学年×7教室×10教員の時間割を一発編成・矛盾診断。
+          4 学年・10 教員・7 教室の大学時間割編成問題（UCTP）を WaSHI と HiGHS MIP で求解・矛盾診断します。自然言語でのルール追加には Chrome Built-in AI（Gemini Nano）が必要です。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -134,13 +134,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏰</span>
-          <span class="washi-showcase-badge">拠点防衛シフトパズル</span>
+          <span class="washi-showcase-badge">シフト編成 MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/demon-castle-shift/" target="_self" class="washi-showcase-title-link">魔王城の24時間警備シフト</a>
         </div>
         <p class="washi-showcase-desc">
-          昼夜を問わず進軍してくる勇者軍から、参謀リリスと共に魔王城を守り抜くシフト編成パズル。各メンバーの得意な時間帯と休息を守りながらシフトを組んで城を守り抜きます。
+          参謀リリスと共に、昼夜進軍する勇者軍から魔王城を守るシフト編成パズルです。各メンバーの得意時間帯と休息ルールを守りながら城を防衛します。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -158,13 +158,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🐑</span>
-          <span class="washi-showcase-badge">まきばの柵パズル</span>
+          <span class="washi-showcase-badge">領域分離・最小カット MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">もふもふ羊の牧場囲い</a>
         </div>
         <p class="washi-showcase-desc">
-          限られた本数の木の柵だけで腹ペコオオカミの侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちごを最大化し、穴ぼこを埋めたり避けたりする囲い込みパズル。
+          限られた木の柵でオオカミの侵入ルートを遮断する囲い込みパズルです。穴ぼこを埋めたり避けたりしながら、モコたちが歩ける安全な牧場の野いちごを最大化します。
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -175,19 +175,19 @@ aside: false
   </div>
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — 精密チタン板金パズル" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">2次元パッキング MILP</span>
+          <span class="washi-showcase-badge">2次元パッキング MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — 精密チタン板金パズル</a>
+          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
         </div>
         <p class="washi-showcase-desc">
-          最先端チタン工場で、検査ドローン「チタノ助」と共に注文パーツを母材に隙間なく敷き詰める2次元パッキングパズル。断層（fault line）を一切残さず、端材ロス0%の完全一括切断を目指します。
+          検査ドローン「チタノ助」と共に、注文パーツをチタン母材へ隙間なく配置するパズルです。断層（fault line）を残さず端材ロス 0% を目指す 2 次元 MIP 最適化を体験できます。
         </p>
       </div>
       <div class="washi-showcase-actions">
