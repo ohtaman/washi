@@ -1,24 +1,24 @@
 {
-  "title": "#006. 0-1 Project Selection (Binary Variables)",
-  "subtitle": "Model all-or-nothing R&D investment choices using 0-1 binary decision variables.",
+  "title": "#006. Disaster-Prevention Equipment Selection (Binary Variables)",
+  "subtitle": "Model all-or-nothing disaster-prevention equipment choices using 0-1 binary decision variables.",
   "tags": [
     "MIP",
     "Binary Variables",
     "0-1 Knapsack"
   ],
   "caseNames": [
-    "Startup R&D roadmap (5 projects, budget 15)",
-    "Annual capital portfolio (6 projects, budget 20)",
-    "Quarterly engineering backlog (7 projects, budget 25)",
-    "Enterprise modernization wave (8 projects, budget 30)",
-    "Compact seed grant (4 projects, budget 10)"
+    "Neighborhood preparedness kit (5 items, budget 15)",
+    "Municipal shelter upgrade (6 items, budget 20)",
+    "District emergency stockpile (7 items, budget 25)",
+    "Citywide resilience package (8 items, budget 30)",
+    "Compact evacuation kit (4 items, budget 10)"
   ],
   "judge": {
     "m0": "Output must be an object { selected, totalValue }.",
     "m1": "selected[{p0}] must be binary 0 or 1 (received {p1}).",
-    "m2": "Total project cost ({p0}) exceeds budget ({p1}).",
-    "m3": "Reported totalValue ({p0}) does not match sum of selected project values ({p1}).",
-    "m4": "Valid portfolio within budget, but totalValue ({p0}) is below optimal ({p1}).",
-    "m5": "Optimal 0-1 project portfolio found (totalValue = {p0})!"
+    "m2": "Total equipment cost ({p0}) exceeds budget ({p1}).",
+    "m3": "Reported totalValue ({p0}) does not match sum of selected equipment scores ({p1}).",
+    "m4": "Valid selection within budget, but totalValue ({p0}) is below optimal ({p1}).",
+    "m5": "Optimal 0-1 equipment selection found (totalValue = {p0})!"
   }
 }

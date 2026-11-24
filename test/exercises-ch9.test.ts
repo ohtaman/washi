@@ -149,7 +149,7 @@ registerChapterExerciseSuite({
     {
       const p = getProblem(problems, "084");
       expect(p.meta.runtimes).toEqual(["washi"]);
-      expect(p.meta.paradigms).toEqual(["QP", "LP"]);
+      expect(p.meta.paradigms).toEqual(["QP"]);
       expect(p.highspyStarter).toBe("");
       expect(p.highspySolution).toBe("");
 

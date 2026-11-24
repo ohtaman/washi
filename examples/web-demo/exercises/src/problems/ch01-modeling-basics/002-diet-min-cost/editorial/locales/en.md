@@ -16,7 +16,7 @@ $$
 ## Key Points
 
 - **Upper bounds vs. lower bounds**: In **#001**, `<=` constraints kept `maximize` from growing profit without bound. Here, `minimize` tries to push cost down to 0, while the two `>=` constraints support it from below.
-- **Why a blend beats a single ingredient**: Oats are cheaper per unit of protein (15) while beans are cheaper per unit of fiber (about 16.7). Balancing both in a $3:2$ ratio therefore keeps total cost lower than relying on either ingredient alone.
+- **Why a blend beats a single ingredient**: Oats are cheaper per unit of protein (15) while beans are cheaper per unit of fiber (about 16.7). For the worked example (`minProtein = 8, minFiber = 9`), balancing both in a $3:2$ ratio keeps total cost lower than relying on either ingredient alone (the optimal ratio varies with the target minimums).
 - Related definitions: [Guide & Glossary — Objectives & Constraints](?view=guide&lang=en#building-blocks).
 
 ## Key Implementation

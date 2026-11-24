@@ -9,8 +9,7 @@
   "estimatedMinutes": 45,
   "paradigms": [
     "MIP",
-    "CP",
-    "SMT"
+    "CP"
   ],
   "runtimes": [
     "washi"

@@ -1,23 +1,23 @@
 {
   "title": "#008. Bipartite Transportation Planning",
-  "subtitle": "Route shipments from warehouses to stores respecting supply caps and meeting every store demand.",
+  "subtitle": "Route shipments from roasting plants to café stores respecting supply caps and meeting every store demand.",
   "tags": [
     "LP",
     "Transportation",
     "Supply & Demand"
   ],
   "caseNames": [
-    "2 warehouses to 3 stores",
-    "3 warehouses to 4 regional stores",
+    "2 plants to 3 café stores",
+    "3 plants to 4 regional stores",
     "3 × 3 balanced supply network",
-    "4 depots to 2 hubs",
+    "4 plants to 2 stores",
     "2 plants to 5 retail outlets"
   ],
   "judge": {
     "m0": "Output must be an object { shipments, totalCost }.",
-    "m1": "shipments must be an array with {p0} warehouse rows.",
+    "m1": "shipments must be an array with {p0} plant rows.",
     "m2": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
-    "m3": "Warehouse {p0} outbound shipment ({p1}) exceeds supply ({p2}).",
+    "m3": "Plant {p0} outbound shipment ({p1}) exceeds supply ({p2}).",
     "m4": "Store {p0} inbound shipment ({p1}) is below demand ({p2}).",
     "m5": "Reported totalCost ({p0}) does not match computed freight cost ({p1}).",
     "m6": "Valid shipping plan, but freight cost ({p0}) exceeds minimum ({p1}).",
