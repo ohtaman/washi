@@ -59,7 +59,7 @@ const status = await m.solve({
 | `absoluteGap` | `number` | `undefined` | 絶対 MIP ギャップ許容値（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 求解前の前処理（Presolve）の制御モード。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | ソルバーの反復ログを出力します（HiGHS は `outputFlag`、GLPK は `verbose`）。 |
-| `useWorker` | `boolean` | `true`（ブラウザ専用） | ブラウザ環境で HiGHS と Pumpkin を Web Worker 上で実行します（Node.js では無視）。メインスレッド実行時は `false`。 |
+| `useWorker` | `boolean` | `true`（ブラウザ） | ブラウザで HiGHS と Pumpkin を Web Worker 上で実行します。メインスレッド実行時は `false`。Node.js では省略するか `false` にしてください（明示的な `true` はエラーになります）。 |
 | `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` や `pumpkin.wasm` を読み込むカスタム URL。 |
 | `signal` | `AbortSignal` | `undefined` | キャンセル用の `AbortSignal`（`AbortController.signal`）。制約事項は後述を参照。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 求解中の進捗スナップショットを受け取るコールバック。 |
@@ -153,9 +153,10 @@ console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在す
 ```
 
 > [!NOTE]
-> **バックエンドごとの `AbortSignal` の制約**:
-> - **求解途中の即時中断**: ブラウザの Web Worker（`useWorker: true`）で HiGHS または Pumpkin を実行する場合のみ、Worker を即座に終了させて途中中断できます。
-> - **求解開始前・呼び出し境界のみの中断**: Node.js、ブラウザで `useWorker: false` を指定した場合、および GLPK・Z3 では、`AbortSignal` はネイティブ求解の開始前や呼び出し境界でのみ確認されます。
+> **バックエンドごとの `AbortSignal` の挙動**:
+> - **非同期の即時中断**: ブラウザの Web Worker（`useWorker: true`）で HiGHS または Pumpkin を実行している場合、中断すると Worker を即座に終了します。
+> - **協調的な途中中断**: Node.js やブラウザのメインスレッド（`useWorker: false`）でも、HiGHS は `onProgress` 経由、Pumpkin は探索チェックポイントと `onProgress` 経由で実行中の求解を中断できます。
+> - **開始前のみの中断**: GLPK と Z3 では、`AbortSignal` は求解の開始前にのみ確認されます。
 
 ### `SolveProgressEvent` のフィールド
 

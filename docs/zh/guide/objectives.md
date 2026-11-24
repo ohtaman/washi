@@ -59,7 +59,7 @@ const status = await m.solve({
 | `absoluteGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
-| `useWorker` | `boolean` | `true`（仅浏览器） | 在浏览器中将 HiGHS 与 Pumpkin 卸载到 Web Worker 运行（Node.js 中忽略）。设为 `false` 则在浏览器主线程执行。 |
+| `useWorker` | `boolean` | `true`（浏览器） | 在浏览器中于 Web Worker 内运行 HiGHS 与 Pumpkin。主线程运行请设为 `false`；在 Node.js 中请省略或设为 `false`（显式传 `true` 会报错）。 |
 | `wasmUrl` | `string` | 自动解析 | 浏览器部署时加载 `highs.wasm` 或 `pumpkin.wasm` 的自定义 URL。 |
 | `signal` | `AbortSignal` | `undefined` | 取消信号（`AbortController.signal`）；具体限制见下文。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 接收实时求解进度快照的回调函数。 |
@@ -154,9 +154,10 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 ```
 
 > [!NOTE]
-> **各求解器后端的 `AbortSignal` 限制**：
-> - **求解中途抢占式取消**：仅当在浏览器 Web Worker（`useWorker: true`）中运行 HiGHS 或 Pumpkin 时，触发取消会立即终止 Worker。
-> - **仅支持求解前或调用边界检查**：在 Node.js、浏览器中指定 `useWorker: false` 时，以及 GLPK 与 Z3 中，`AbortSignal` 仅在原生求解调用前或调用间隙检查。
+> **各求解器后端的 `AbortSignal` 行为**：
+> - **异步抢占式取消**：在浏览器 Web Worker（`useWorker: true`）中运行 HiGHS 或 Pumpkin 时，触发取消会立即终止 Worker。
+> - **协作式中途取消**：在 Node.js 或浏览器主线程（`useWorker: false`）中，HiGHS 会在 `onProgress` 回调中、Pumpkin 会在搜索检查点与 `onProgress` 中检测取消并停止当前求解。
+> - **仅求解前检查**：在 GLPK 与 Z3 中，`AbortSignal` 仅在求解开始前检查。
 
 ### `SolveProgressEvent` 字段说明
 

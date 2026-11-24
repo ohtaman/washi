@@ -59,7 +59,7 @@ const status = await m.solve({
 | `absoluteGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
 | `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
-| `useWorker` | `boolean` | `true` (browser only) | Offloads HiGHS and Pumpkin to Web Workers in browsers; ignored in Node.js. Set `false` for main-thread browser execution. |
+| `useWorker` | `boolean` | `true` (browser) | Runs HiGHS and Pumpkin in a browser Web Worker. Set `false` for main-thread browser runs; omit or set `false` in Node.js (explicit `true` fails). |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` or `pumpkin.wasm` in browser deployments. |
 | `signal` | `AbortSignal` | `undefined` | Cancellation signal (`AbortController.signal`); see cancellation limitations below. |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | Callback receiving live solver progress snapshots. |
@@ -154,9 +154,10 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 ```
 
 > [!NOTE]
-> **`AbortSignal` Limitations Across Backends**:
-> - **Mid-solve preemptive cancellation**: Available when running HiGHS or Pumpkin in a browser Web Worker (`useWorker: true`), where aborting terminates the worker immediately.
-> - **Pre-solve cancellation only**: On Node.js, on browser main-thread runs with `useWorker: false`, and on GLPK or Z3, `AbortSignal` is only checked before or between native solver calls.
+> **`AbortSignal` Behavior Across Backends**:
+> - **Asynchronous preemptive cancellation**: On HiGHS and Pumpkin inside a browser Web Worker (`useWorker: true`), aborting terminates the worker immediately.
+> - **Cooperative mid-solve cancellation**: On HiGHS and Pumpkin in Node.js or on the browser main thread (`useWorker: false`), aborting inside `onProgress` (and during Pumpkin search checkpoints) stops the active solve cleanly.
+> - **Pre-solve cancellation only**: On GLPK and Z3, `AbortSignal` is checked only before starting a solve.
 
 ### `SolveProgressEvent` Fields
 
