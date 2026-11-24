@@ -1,9 +1,14 @@
 # #018. University Degree & Prerequisite Course Planner
 
 <!-- section:scenario -->
-A university student is planning which courses to take next semester. Each candidate course offers an interest score and consumes amounts of two or more limited workload categories, such as weekly study hours, lab slots, and credit limits.
+A university student is planning which courses to take next semester. Each candidate course offers an interest score and requires a specific amount of multiple limited items (such as weekly study hours, lab slots, and credit limits).
 
-Degree rules also impose prerequisite pairs where taking an advanced course requires taking its prerequisite course, as well as time-conflict pairs whose schedules overlap and cannot be taken together. Choose a subset of courses to **maximize total interest** while respecting every category cap, prerequisite, and schedule conflict.
+Your course plan must satisfy all of the following rules:
+- **Item caps**: Total usage of each item (study hours, lab slots, credits, etc.) cannot exceed its cap.
+- **Prerequisites**: Taking a course that has a prerequisite requires taking its prerequisite course as well.
+- **Time conflicts**: Courses whose schedules overlap cannot both be taken.
+
+Choose a subset of courses to **maximize total interest** while satisfying all rules.
 
 <!-- section:io -->
 ### Input
@@ -11,8 +16,8 @@ Degree rules also impose prerequisite pairs where taking an advanced course requ
 | Field | Type | Description |
 | --- | --- | --- |
 | `interest` | `number[]` | Interest score of each candidate course |
-| `requirements` | `number[][]` | Workload matrix where `requirements[k][j]` is category $k$ load of course $j$ |
-| `caps` | `number[]` | Maximum allowed total for each workload category $k$ |
+| `requirements` | `number[][]` | Requirement matrix where `requirements[k][j]` is the amount of item $k$ used by course $j$ |
+| `caps` | `number[]` | Maximum allowed total for each item $k$ |
 | `prerequisites` | `number[][]` | Pairs `[prereq, course]` requiring `prereq` whenever `course` is taken |
 | `timeConflicts` | `number[][]` | Pairs `[a, b]` of courses that cannot both be taken due to overlapping schedules |
 

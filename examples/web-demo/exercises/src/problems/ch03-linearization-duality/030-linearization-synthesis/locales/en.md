@@ -1,9 +1,15 @@
 # #030. Linearization Synthesis — Service Fleet & Load Balancing
 
 <!-- section:scenario -->
-A platform infrastructure team is selecting a subset of candidate microservices to deploy so that their total delivered value meets at least a minimum requirement. Each service incurs a base cost and adds load to each zone, while deploying certain pairs of services simultaneously triggers either synergistic cost savings (negative coefficient) or interference overhead (positive coefficient).
+A platform infrastructure team is selecting a subset of candidate microservices to deploy.
 
-Total operational cost is defined as the sum of four terms: base costs, pairwise interaction costs, a weighted cost on the peak load across all zones, and weighted L1 deviations from each zone's target load. Decide which services to deploy, the pairwise simultaneous-deployment indicators, and the peak load to **minimize total operational cost**.
+The deployment plan is governed by the following rules and cost terms:
+- **Minimum value**: Total delivered value of deployed services must meet at least the minimum requirement.
+- **Base costs and zone loads**: Each service has a base cost and adds load to each zone.
+- **Pairwise interactions**: Deploying certain pairs simultaneously triggers either synergistic cost savings (negative coefficient) or interference cost (positive coefficient).
+- **Total operational cost**: The sum of four terms—base costs, pairwise interaction costs, a weighted cost on the peak load across all zones, and weighted L1 deviations from each zone's target load.
+
+Decide which services to deploy, the pairwise simultaneous-deployment indicators, and the peak load to **minimize total operational cost**.
 
 <!-- section:io -->
 ### Input

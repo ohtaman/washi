@@ -3,7 +3,10 @@
 <!-- section:scenario -->
 A logistics warehouse shipping planner packs weighted parcels such as parts boxes (in kg) into identical shipping containers (bins) of fixed weight capacity (in kg), minimizing the number of containers used. Because containers are interchangeable, a naive MIP formulation suffers from massive symmetry and a weak fractional LP lower bound equal to total weight divided by container capacity.
 
-Introduce symmetry-breaking constraints that fill containers in prefix order from index 0 and restrict each item to container indices no greater than its own item index (fixing the first item to container 0). Also add a rounded global capacity lower-bound cut (total weight divided by container capacity, rounded up) and extended minimal cover inequalities—minimal sets of items exceeding capacity augmented with any items at least as heavy—to strengthen the LP relaxation, and return the assignment, number of containers used, and strengthened LP relaxation objective value.
+Introduce the following constraints and strengthening cuts, and return the assignment, number of containers used, and strengthened LP relaxation objective value:
+- **Symmetry breaking**: Fill containers in prefix order from index 0, and restrict each item to container indices no greater than its own item index (fixing item 0 to container 0).
+- **Total capacity cut**: Add the rounded-up lower bound on the number of containers (total weight divided by container capacity, rounded up).
+- **Extended minimal cover inequalities**: Strengthen the LP relaxation using minimal item sets exceeding capacity augmented with any items at least as heavy.
 
 <!-- section:io -->
 ### Input

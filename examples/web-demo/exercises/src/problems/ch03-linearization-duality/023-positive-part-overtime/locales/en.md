@@ -1,9 +1,14 @@
 # #023. Positive-Part Overtime Staffing
 
 <!-- section:scenario -->
-A service center operations manager is planning regular working hours (in person-hours) across multiple periods to cover forecasted demand (in person-hours). Each period enforces a contractual minimum working hours floor and an equipment capacity limit, while total regular hours across the entire horizon cannot exceed an aggregate cap.
+A service center operations manager is planning regular working hours (in person-hours) across multiple periods to cover forecasted demand (in person-hours).
 
-Whenever regular hours fall short of a period's demand, the shortfall incurs an overtime/subcontracting penalty (in JPY) per person-hour; conversely, exceeding demand receives no refund or positive credit. Using positive-part linearization—representing the maximum of 0 and the difference via linear inequalities—find the schedule that satisfies all constraints while **minimizing the sum of regular operating cost and overtime penalties (in JPY)**.
+The schedule must satisfy all of the following conditions:
+- **Per-period bounds**: Each period enforces a contractual minimum working hours floor and an equipment capacity limit.
+- **Aggregate cap**: Total regular hours across the entire horizon cannot exceed an overall cap.
+- **Shortfall-only penalty**: Whenever regular hours fall short of a period's demand, the shortfall incurs an overtime/subcontracting penalty (in JPY) per person-hour (exceeding demand receives no refund or positive credit).
+
+Representing the shortfall $\max(0, \text{demand} - \text{regular})$ via linear inequalities, find the schedule that satisfies all conditions while **minimizing the sum of regular operating cost and overtime penalties (in JPY)**.
 
 <!-- section:io -->
 ### Input

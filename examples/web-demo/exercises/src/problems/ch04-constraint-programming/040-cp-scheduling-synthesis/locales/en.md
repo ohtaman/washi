@@ -3,7 +3,14 @@
 <!-- section:scenario -->
 A manufacturing cell scheduler is planning a schedule for multiple machining jobs. Each job has a fixed assigned machine, processing duration (in minutes), and operating power (in kW), and you must decide both its start time (in minutes) and its operating mode. Each operating mode trades off off-machine pre-staging setup time (in minutes) against post-processing cooldown time (in minutes).
 
-Every job can only start after its pre-staging setup completes, and the schedule must simultaneously satisfy non-overlap on each machine, the factory's total power limit (in kW), precedence constraints waiting for post-processing completion, and mode compatibility tables for specified job pairs. Minimize the overall completion time (makespan, in minutes).
+The schedule must satisfy all of the following conditions:
+- **Pre-staging setup**: Every job can start only after its pre-staging setup completes.
+- **Machine non-overlap**: Jobs assigned to the same machine cannot overlap in time.
+- **Power cap**: Total simultaneous power across running jobs cannot exceed the factory limit (in kW).
+- **Precedence**: Preceding jobs must finish post-processing before dependent jobs can start.
+- **Allowed mode pairs**: Specified job pairs must use one of their allowed mode combinations.
+
+Minimize the overall completion time (makespan, in minutes).
 
 <!-- section:io -->
 ### Input
