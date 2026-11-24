@@ -28,7 +28,7 @@ npm install @ohtaman/washi
   ```bash
   npx skills add ohtaman/washi
   ```
-  该命令会安装 `skills/washi/SKILL.md`（也随 npm 包提供于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`），引导助手完成求解器选型（HiGHS / Pumpkin / Z3 / GLPK）、`expr` 代数建模、`m.toLpString()` 公式检查、`m.verify()` 解的独立校验，以及 `m.check()` 冲突诊断。
+  该命令会安装 `skills/washi/SKILL.md`（也随包附带在 `node_modules/@ohtaman/washi/skills/washi/SKILL.md` 中）。它能帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试验证。
 - **IDE 文档索引（Cursor、Windsurf 等中的 `@Docs`）**：
   - 文档索引概览：`https://washi.ohtaman.dev/llms.txt`
   - 单文件完整 API 与示例参考：`https://washi.ohtaman.dev/llms-full.txt`

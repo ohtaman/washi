@@ -54,12 +54,14 @@ async function diagnoseConflicts() {
   // Run diagnosis
   const res = await m.check({ solver: "z3" });
 
-  console.log(`Status: ${res.status}`);
+  console.log(`Status: ${res.status}`); // Status: Unsat
   console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
-  // Built-in HiGHS can also diagnose conflicts via single-solve L1 elastic slack relaxation:
+  // Built-in HiGHS can also diagnose conflicts by finding constraints to relax:
   const highsDiag = await m.check({ solver: "highs" });
   console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
+  // ["rush_required"]
 }
 
 diagnoseConflicts();
@@ -70,6 +72,6 @@ diagnoseConflicts();
 ## Practical Notes
 
 - **Choosing Between Pumpkin, Z3, and HiGHS for Conflict Diagnosis**:
-  - **Pumpkin (`m.check({ solver: "pumpkin" })`)** is bundled with `@ohtaman/washi/solvers/pumpkin` (zero external dependencies, no `COOP` / `COEP` headers) and extracts scale-invariant `unsatCore` subsets for discrete models where all variables are bounded `Integer`, `Binary`, or `BoolVar` (for example, when `budget` above is modeled with `m.integer("budget", ...)`).
-  - **Z3 (`m.check({ solver: "z3" })`)** supports `Continuous` variables (like `budget` above) and fractional arithmetic, returning all four rules that jointly form the contradiction (`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`), while excluding the innocent `minimum_one_employee` rule.
-  - **HiGHS (`m.check({ solver: "highs" })`)** solves a single $L_1$ elastic slack minimization problem ($\min \sum s_i$). Because relaxing `rush_staffing_rule` (or `rush_required`) requires a slack of only `1`–`2` units whereas relaxing `strict_board_budget_cap` requires a slack of `14,000` dollars, unweighted $L_1$ minimization naturally highlights the smallest-magnitude repair (`rush_required`) needed to restore feasibility.
+  - **Pumpkin (`m.check({ solver: "pumpkin" })`)**: Bundled (`@ohtaman/washi/solvers/pumpkin`) with no `COOP` / `COEP` headers required. Works on discrete models where all variables are bounded integers or booleans (e.g., if `budget` is `m.integer(...)`), and ignores unit-scale differences.
+  - **Z3 (`m.check({ solver: "z3" })`)**: Supports `Continuous` variables (like `budget` above) and decimals. Returns all four conflicting rules while excluding `minimum_one_employee`, regardless of unit scale.
+  - **HiGHS (`m.check({ solver: "highs" })`)**: Minimizes the total numeric amount by which constraints must be relaxed. Because relaxing `rush_required` takes `1` unit whereas relaxing the budget cap takes `14,000` dollars, HiGHS flags `rush_required`.

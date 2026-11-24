@@ -28,7 +28,7 @@ Choose the setup method that matches your tool:
   ```bash
   npx skills add ohtaman/washi
   ```
-  This installs `skills/washi/SKILL.md` (also included at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`), which guides the agent through solver selection across HiGHS / Pumpkin / Z3 / GLPK, algebraic `expr` modeling, `m.toLpString()` formulation checks, `m.verify()` solution verification, and `m.check()` conflict diagnosis.
+  This installs `skills/washi/SKILL.md` (also included in `node_modules/@ohtaman/washi/skills/washi/SKILL.md`). It teaches the agent solver selection, `expr` modeling, and debugging with `m.toLpString()`, `m.verify()`, and `m.check()`.
 - **IDE Documentation Indexing (`@Docs` in Cursor, Windsurf, etc.)**:
   - Documentation index: `https://washi.ohtaman.dev/llms.txt`
   - Complete single-file API & example reference: `https://washi.ohtaman.dev/llms-full.txt`

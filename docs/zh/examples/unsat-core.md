@@ -54,12 +54,14 @@ async function diagnoseConflicts() {
   // 运行冲突诊断
   const res = await m.check({ solver: "z3" });
 
-  console.log(`Status: ${res.status}`);
+  console.log(`Status: ${res.status}`); // Status: Unsat
   console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
-  // 内置的 HiGHS 同样可通过单次求解 L1 弹性松弛定位冲突：
+  // 内置的 HiGHS 也可找出放宽后即可恢复可行的约束：
   const highsDiag = await m.check({ solver: "highs" });
   console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
+  // ["rush_required"]
 }
 
 diagnoseConflicts();
@@ -69,7 +71,7 @@ diagnoseConflicts();
 
 ## 实战要点
 
-- **在 Pumpkin、Z3 与 HiGHS 之间选择诊断引擎**：
-  - **Pumpkin（`m.check({ solver: "pumpkin" })`）** 内置打包于 `@ohtaman/washi/solvers/pumpkin`（零外部依赖，免 `COOP` / `COEP` 响应头），适用于所有变量均为有界 `Integer`、`Binary` 或 `BoolVar` 的离散与命题模型（例如将上例中的 `budget` 设为 `m.integer("budget", ...)`），可提取尺度无关的 `unsatCore`。
-  - **Z3（`m.check({ solver: "z3" })`）** 支持 `Continuous` 连续变量（如上例中的 `budget`）与小数算术，排除无辜的 `minimum_one_employee` 规则，并不受量纲影响地完整返回共同构成矛盾的 4 条规则（`budget_limit`、`rush_required`、`rush_staffing_rule`、`strict_board_budget_cap`）。
-  - **HiGHS（`m.check({ solver: "highs" })`）** 求解单次 $L_1$ 弹性松弛最小化问题（$\min \sum s_i$）。由于放宽预算需要 `14,000` 单位松弛量，而放宽加急或人数要求仅需 `1`–`2` 单位松弛量，无权重 $L_1$ 最小化会优先指出总变动量最小的修复点（`rush_required`）。
+- **Pumpkin、Z3 与 HiGHS 的选择**：
+  - **Pumpkin（`m.check({ solver: "pumpkin" })`）**：内置在 `@ohtaman/washi/solvers/pumpkin` 中，无需 `COOP` / `COEP` 响应头。如果将上例的 `budget` 改为 `m.integer(...)` 等有界整数与布尔模型，即可提取不受数值尺度影响的矛盾约束。
+  - **Z3（`m.check({ solver: "z3" })`）**：支持 `Continuous` 变量与小数，可排除无关的 `minimum_one_employee` 并完整返回构成矛盾的 4 条规则，不受量纲影响。
+  - **HiGHS（`m.check({ solver: "highs" })`）**：寻找使总放宽量最小的约束。相比放宽预算 `$14,000`，放宽加急要求只需 `1` 个单位，因此 HiGHS 会优先标记 `rush_required`。

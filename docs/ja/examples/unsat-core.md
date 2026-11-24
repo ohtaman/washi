@@ -52,12 +52,14 @@ async function diagnoseConflicts() {
   // 競合診断を実行
   const res = await m.check({ solver: "z3" });
 
-  console.log(`Status: ${res.status}`);
+  console.log(`Status: ${res.status}`); // Status: Unsat
   console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
-  // 標準搭載の HiGHS でも単一 solve の L1 弾性スラック緩和で競合診断が可能:
+  // 標準搭載の HiGHS でも、緩めると解ける制約を特定できます:
   const highsDiag = await m.check({ solver: "highs" });
   console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
+  // ["rush_required"]
 }
 
 diagnoseConflicts();
@@ -67,7 +69,7 @@ diagnoseConflicts();
 
 ## 実務上のポイント
 
-- **Pumpkin・Z3・HiGHS の診断手法の使い分け**:
-  - **Pumpkin（`m.check({ solver: "pumpkin" })`）** は `@ohtaman/washi/solvers/pumpkin` に同梱されており（追加依存なし・`COOP` / `COEP` ヘッダー不要）、上記の `budget` を `m.integer("budget", ...)` のような有界整数で表現する離散・命題論理モデルに対してスケール不変な `unsatCore` を抽出できます。
-  - **Z3（`m.check({ solver: "z3" })`）** は上記の `budget` のような `Continuous` 変数や実数演算にも対応し、無関係な `minimum_one_employee` を除外したうえで矛盾を構成する4つのルール（`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`）を単位スケールに依存せず抽出します。
-  - **HiGHS（`m.check({ solver: "highs" })`）** は単一 solve の $L_1$ 弾性スラック最小化（$\min \sum s_i$）を解きます。予算上限を $14,000 緩和するよりも特急要件・人数要件を 1〜2 単位緩和する方がスラック総和が小さいため、重みなし $L_1$ 最小化では「最小の数値変更で実行可能に戻せる修復箇所（`rush_required`）」が優先して提示されます。
+- **Pumpkin・Z3・HiGHS の使い分け**:
+  - **Pumpkin（`m.check({ solver: "pumpkin" })`）**: `@ohtaman/washi/solvers/pumpkin` に同梱されており、`COOP` / `COEP` ヘッダー不要です。`budget` を `m.integer(...)` にするなど有界整数と真偽値だけのモデルであれば、数値の桁数に左右されず矛盾制約を抽出できます。
+  - **Z3（`m.check({ solver: "z3" })`）**: `Continuous` 変数や小数にも対応し、無関係な `minimum_one_employee` を除いた 4 つの矛盾ルールを桁数に関係なく抽出します。
+  - **HiGHS（`m.check({ solver: "highs" })`）**: 制約を緩める合計量が最小になる箇所を探します。予算を `$14,000` 緩めるより特急要件を `1` 単位緩める方が数値が小さいため、`rush_required` が選ばれます。

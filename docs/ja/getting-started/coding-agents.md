@@ -28,7 +28,7 @@ npm install @ohtaman/washi
   ```bash
   npx skills add ohtaman/washi
   ```
-  `skills/washi/SKILL.md`（`node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）がインストールされ、問題クラスに応じたソルバー選択（HiGHS / Pumpkin / Z3 / GLPK）、`expr` による定式化、`m.toLpString()` による式確認、`m.verify()` による解の検証、`m.check()` による競合診断の一連の手順がエージェントに共有されます。
+  `skills/washi/SKILL.md`（`node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）がインストールされます。これにより、ソルバーの選び方や `expr` による定式化、`m.toLpString()`・`m.verify()`・`m.check()` を使った検証手順がエージェントに共有されます。
 - **IDE ドキュメントインデックス（Cursor, Windsurf 等の `@Docs`）**:
   - ドキュメント目次: `https://washi.ohtaman.dev/llms.txt`
   - 単一ファイルの全リファレンス・例題集: `https://washi.ohtaman.dev/llms-full.txt`
