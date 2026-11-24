@@ -11,7 +11,7 @@
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `costs` | `number[]` | プロセス $j$ の単位コスト $c_j$ |
-| `yields` | `number[][]` | プロセス $j$ の成分寄与行列 $A$（$A_{kj}$） |
+| `yields` | `number[][]` | プロセス $j$ を 1 単位稼働したときの各要求 $k$ への産出量行列 $A$（$A_{kj}$） |
 | `minRequirements` | `number[]` | 各要求 $k$ の最低必要量 $r_k$（$\sum_j A_{kj} x_j \ge r_k$） |
 
 ### 出力
