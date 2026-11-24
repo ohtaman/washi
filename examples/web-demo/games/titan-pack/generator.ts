@@ -399,49 +399,9 @@ export function generateStagePuzzle(stageNum: number): PuzzleResult {
     return buildPuzzleResult(stageNum, spec, cols, rows, bestBlocks, rng);
   }
 
-  // Guaranteed fallback layout with exact targetPieces
-  let fallbackBlocks: PlacedBlock[] = [
-    { col: 0, row: 0, w: cols - 2, h: 2 },
-    { col: cols - 2, row: 0, w: 2, h: rows - 2 },
-    { col: 2, row: rows - 2, w: cols - 2, h: 2 },
-    { col: 0, row: 2, w: 2, h: rows - 2 },
-    { col: 2, row: 2, w: cols - 4, h: rows - 4 },
-  ];
-  while (fallbackBlocks.length < targetPieces) {
-    fallbackBlocks.sort((a, b) => b.w * b.h - a.w * a.h);
-    let splitApplied = false;
-    for (let i = 0; i < fallbackBlocks.length; i++) {
-      const b = fallbackBlocks[i];
-      if (b.w >= 2) {
-        for (let s = Math.floor(b.w / 2); s >= 1; s--) {
-          const b1: PlacedBlock = { col: b.col, row: b.row, w: s, h: b.h };
-          const b2: PlacedBlock = { col: b.col + s, row: b.row, w: b.w - s, h: b.h };
-          const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
-          if (!hasFaultLines(cols, rows, test)) {
-            fallbackBlocks = test;
-            splitApplied = true;
-            break;
-          }
-        }
-        if (splitApplied) break;
-      }
-      if (b.h >= 2) {
-        for (let s = Math.floor(b.h / 2); s >= 1; s--) {
-          const b1: PlacedBlock = { col: b.col, row: b.row, w: b.w, h: s };
-          const b2: PlacedBlock = { col: b.col, row: b.row + s, w: b.w, h: b.h - s };
-          const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
-          if (!hasFaultLines(cols, rows, test)) {
-            fallbackBlocks = test;
-            splitApplied = true;
-            break;
-          }
-        }
-        if (splitApplied) break;
-      }
-    }
-    if (!splitApplied) break;
-  }
-  return buildPuzzleResult(stageNum, spec, cols, rows, fallbackBlocks, rng);
+  throw new Error(
+    `Failed to generate a fault-line-free TITAN PACK puzzle for stage ${stageNum} (${cols}x${rows}, targetPieces=${targetPieces}).`
+  );
 }
 
 function shuffleInPlace<T>(arr: T[], rng: () => number): void {

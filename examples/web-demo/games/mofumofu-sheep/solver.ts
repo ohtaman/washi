@@ -339,7 +339,7 @@ export async function solveOptimalPasture(
 
   model.objective(maximize(sum(objectiveTerms)));
 
-  const status = await model.solve({ presolve: "off" });
+  const status = await model.solve();
   const solveTimeMs = Math.max(1, Math.round(performance.now() - startTime));
 
   if (status !== "Optimal" && !model.hasPrimalSolution) {
@@ -513,23 +513,20 @@ export async function diagnoseAndSuggestFenceHint(
     }
   }
 
+  if (!baseOpt.verified) {
+    throw new Error("Cannot diagnose fence hint: optimal pasture solution could not be verified.");
+  }
+
   // Case 1: Over budget — tell the player to remove a fence that isn't in the optimal solution
   if (placedCells.length > stage.maxFences) {
-    const extraCell = baseOpt.verified
-      ? (placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]) ?? placedCells[0])
-      : placedCells[0];
+    const extraCell = placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]);
+    if (!extraCell) {
+      throw new Error("Cannot diagnose over-budget fence: no non-optimal placed fence found.");
+    }
     return {
       status: "bad_fence_placed",
       targetCell: extraCell,
       action: "remove",
-    };
-  }
-
-  if (!baseOpt.verified) {
-    return {
-      status: "can_achieve_optimal",
-      targetCell: null,
-      action: "place",
     };
   }
 
@@ -561,8 +558,7 @@ export async function diagnoseAndSuggestFenceHint(
   }
 
   // Otherwise, at least one currently placed fence prevents reaching the ★3 optimal score (or makes it infeasible)
-  const culprit =
-    placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]) ?? placedCells[0] ?? null;
+  const culprit = placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]) ?? null;
 
   if (culprit) {
     return {

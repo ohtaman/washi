@@ -330,8 +330,10 @@ function createSeededRng(seed: number): () => number {
 
 function pickFromPool<T>(pool: readonly T[], rng: () => number, exclude: Set<T> = new Set()): T {
   const candidates = pool.filter((item) => !exclude.has(item));
-  const source = candidates.length > 0 ? candidates : pool;
-  return source[Math.floor(rng() * source.length)];
+  if (candidates.length === 0) {
+    throw new Error("pickFromPool: no remaining candidates after applying exclusions.");
+  }
+  return candidates[Math.floor(rng() * candidates.length)];
 }
 
 export function getDifficultyLabel(tier: DifficultyTier): string {

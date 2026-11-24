@@ -401,4 +401,19 @@ describe("Puzzle Framework - Engine & Lifecycle", () => {
 
     app.destroy();
   });
+
+  it("throws RangeError for out-of-range stageNum when generateStage is undefined", async () => {
+    const base = createTestDefinition();
+    const { generateStage: _omit, ...withoutGenerator } = base;
+    const definition: PuzzleDefinition<TestStage, TestState, TestMove> = withoutGenerator;
+
+    const app = createPuzzleApp(definition);
+    app.mount(rootElement as unknown as HTMLElement);
+    await new Promise((r) => setTimeout(r, 10));
+
+    await expect(app.jumpToStage(0)).rejects.toThrow(RangeError);
+    await expect(app.jumpToStage(definition.campaignStages.length + 1)).rejects.toThrow(RangeError);
+
+    app.destroy();
+  });
 });

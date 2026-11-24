@@ -61,8 +61,9 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
       return generated;
     }
 
-    // Fallback to last campaign stage if endless generator not supplied
-    return definition.campaignStages[campaignTotal - 1];
+    throw new RangeError(
+      `Stage number ${stageNum} is out of range (1..${campaignTotal}) and no stage generator is defined.`
+    );
   };
 
   const getEvaluation = (state: TState, stage: TStageSpec): StageEvaluation => {

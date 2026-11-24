@@ -805,7 +805,7 @@ export async function solveOptimalSchedule(stage: StageScenario): Promise<Optima
   // Export LP formulation (validates model integrity automatically)
   const lpString = model.toLpString();
 
-  // Solve with HiGHS (use presolve: "off" to avoid HiGHS WASM MIP presolver false-infeasible bug on small binary models)
+  // Solve with HiGHS (keep presolve: "off": verified on HiGHS 1.15.1 that campaign week-4 still triggers false-infeasible with presolve enabled)
   const status = await model.solve({ presolve: "off" });
   const solveTimeMs = Math.max(1, Math.round(performance.now() - startTime));
 
@@ -825,7 +825,7 @@ export async function solveOptimalSchedule(stage: StageScenario): Promise<Optima
 
   return {
     status,
-    optimalScore: Math.round(model.objectiveValue ?? BASE_MORALE_SCORE),
+    optimalScore: model.objectiveValue != null ? Math.round(model.objectiveValue) : null,
     optimalSchedule,
     lpString,
     solveTimeMs,
@@ -915,12 +915,10 @@ export async function generateVerifiedStageWithHighs(
   candidateFactory: (attempt: number) => StageScenario,
   maxAttempts = 8
 ): Promise<{ stage: StageScenario; optimalResult: OptimalSolveResult }> {
-  let lastStage: StageScenario | null = null;
   let lastResult: OptimalSolveResult | null = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const candidate = candidateFactory(attempt);
-    lastStage = candidate;
     const res = await solveOptimalSchedule(candidate);
     lastResult = res;
     const evalCheck = evaluateSchedule(candidate, res.optimalSchedule);
@@ -929,9 +927,8 @@ export async function generateVerifiedStageWithHighs(
     }
   }
 
-  return {
-    stage: lastStage!,
-    optimalResult: lastResult!,
-  };
+  throw new Error(
+    `Failed to generate a verified Demon Castle Shift stage after ${maxAttempts} attempts (last status: ${lastResult?.status ?? "none"}, verified: ${lastResult?.verified ?? false}).`
+  );
 }
 

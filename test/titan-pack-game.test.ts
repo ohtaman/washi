@@ -12,6 +12,7 @@ import {
   removeCollidingBlocks,
   type PlacedBlock,
 } from "../examples/web-demo/games/titan-pack/generator.ts";
+import { solveTitanPack } from "../examples/web-demo/games/titan-pack/solver.ts";
 
 describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
   it("generates deterministic pseudo-random sequences for mulberry32", () => {
@@ -333,6 +334,54 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       for (const m of sheetMetalMatches) {
         expect(m[1]).toContain("padding: 0");
       }
+    });
+  });
+
+  describe("WaSHI HiGHS MILP Solver (solver.ts)", () => {
+    it("solves stages 1..10 with 90-degree rotation and model.verify()", async () => {
+      for (let s = 1; s <= 10; s++) {
+        const puzzle = generateStagePuzzle(s);
+        const result = await solveTitanPack(puzzle);
+        expect(result.status).toBe("Optimal");
+        expect(result.verified).toBe(true);
+        expect(result.placements).toHaveLength(puzzle.parts.length);
+
+        const coverage = checkBoardCoverage(puzzle.cols, puzzle.rows, result.placements);
+        expect(coverage.hasOverlap).toBe(false);
+        expect(coverage.isComplete).toBe(true);
+
+        for (const p of result.placements) {
+          const part = puzzle.parts.find((item) => item.id === p.partId);
+          expect(part).toBeDefined();
+          const validDims =
+            (p.w === part!.origW && p.h === part!.origH) ||
+            (p.w === part!.origH && p.h === part!.origW);
+          expect(validDims).toBe(true);
+        }
+      }
+    });
+
+    it("supports partial locked placements and detects infeasible locked placements", async () => {
+      const puzzle = generateStagePuzzle(2);
+      const locked = [puzzle.solution[0], puzzle.solution[1]];
+      const result = await solveTitanPack(puzzle, locked);
+      expect(result.status).toBe("Optimal");
+      expect(result.verified).toBe(true);
+      for (const l of locked) {
+        expect(result.placements).toContainEqual(l);
+      }
+      const coverage = checkBoardCoverage(puzzle.cols, puzzle.rows, result.placements);
+      expect(coverage.hasOverlap).toBe(false);
+      expect(coverage.isComplete).toBe(true);
+
+      // Overlapping locked placements must be Infeasible
+      const conflicting = [
+        { partId: puzzle.parts[0].id, col: 0, row: 0, w: puzzle.parts[0].origW, h: puzzle.parts[0].origH },
+        { partId: puzzle.parts[1].id, col: 0, row: 0, w: puzzle.parts[1].origW, h: puzzle.parts[1].origH },
+      ];
+      const badResult = await solveTitanPack(puzzle, conflicting);
+      expect(badResult.status).toBe("Infeasible");
+      expect(badResult.verified).toBe(false);
     });
   });
 });

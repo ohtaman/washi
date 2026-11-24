@@ -163,20 +163,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(nonCornerWolfCount).toBeGreaterThanOrEqual(5);
 
     // When all 36 candidate attempts are rejected (e.g., degenerate PRNG output filling the outer ring with water),
-    // fallback stage + verified optimal solution are still cached so revisiting does not re-run generation.
+    // generateVerifiedPastureStage throws explicitly instead of cloning a campaign stage.
     const imulSpy = vi.spyOn(Math, "imul").mockReturnValue(0);
     try {
-      const exhaustedStage = await generateVerifiedPastureStage(99);
-      expect(exhaustedStage.id).toBe("stage-99");
-      expect(exhaustedStage.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
+      await expect(generateVerifiedPastureStage(99)).rejects.toThrow();
     } finally {
       imulSpy.mockRestore();
     }
-    const { stage: cachedFallback, precomputedOptimal: cachedFallbackOpt } =
-      await getStageByNumber(99);
-    expect(cachedFallback.id).toBe("stage-99");
-    expect(cachedFallback.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
-    expect(cachedFallbackOpt?.verified).toBe(true);
   });
 
   it("localizes Mofumofu Sheep stage text and static UI controls across en, ja, and zh", () => {
@@ -419,6 +412,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(hint.status).toBe("can_achieve_optimal");
     expect(hint.action).toBe("place");
     expect(hint.targetCell).toEqual({ row: 0, col: 1 });
+
+    // When the stage itself is impossible so baseOpt is unverified, diagnoseAndSuggestFenceHint throws
+    const impossibleStage = {
+      ...stage4,
+      maxFences: 0,
+    };
+    await expect(diagnoseAndSuggestFenceHint(impossibleStage, empty)).rejects.toThrow();
   });
 
   it("scales cell size to fit narrow 375px mobile viewports for 7x7 and 10x10 boards without overflowing", () => {
