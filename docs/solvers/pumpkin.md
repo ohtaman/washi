@@ -47,7 +47,7 @@ model.objective(minimize(expr`${s1} + ${s2}`));
 await model.solve();
 
 console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
-// Status: Optimal, s1=0, s2=6 (or s1=4, s2=0)
+// Status: Optimal, s1=4, s2=0
 ```
 
 ### 2. Conflict Diagnosis (`model.check()`)
