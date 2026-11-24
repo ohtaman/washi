@@ -15,7 +15,7 @@
       },
       {
         "label": "同时提供 PuLP（Python）环境",
-        "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上一并集成了 PuLP + HiGHS。"
+        "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上为 LP 与 MIP 习题集成了 PuLP + HiGHS（CP、SMT、凸 QP 与分解算法习题仅支持 WaSHI (TypeScript)）。"
       },
       {
         "label": "由生成式 AI 编写并持续人工审阅",
