@@ -14,6 +14,8 @@
 | `allowedRules` | `TableRule[]` | 正表约束，要求指定组件列 `vars` 的取值匹配 `tuples` 中的某一项 |
 | `forbiddenRules` | `TableRule[]` | 负表约束，禁止指定组件列 `vars` 的取值匹配 `tuples` 中的组合 |
 
+每个 `TableRule` 对象为 `{ vars: number[], tuples: number[][] }`，其中 `vars` 为从 0 开始的组件索引列表，`tuples` 中的每个元组长度与 `vars` 相同，按顺序对应各组件的选项编号。
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

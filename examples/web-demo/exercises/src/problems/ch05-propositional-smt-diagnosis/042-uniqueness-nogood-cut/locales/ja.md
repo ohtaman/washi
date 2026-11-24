@@ -13,6 +13,17 @@
 | `vars` | `string[]` | 真偽値変数名の一覧 |
 | `rules` | `PropFormula[]` | 命題論理ルールのリスト |
 
+`PropFormula` は再帰的な直和型です:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

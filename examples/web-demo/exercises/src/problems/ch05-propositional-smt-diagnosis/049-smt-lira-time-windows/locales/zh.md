@@ -14,6 +14,8 @@
 | `blackout` | `[number, number]` | 泊位检修禁停时段 `[bStart, bEnd]` |
 | `maxExpress` | `number` | 允许选用加急模式的货物整数上限 |
 
+每个 `ShipmentSpec` 对象为 `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }`。
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

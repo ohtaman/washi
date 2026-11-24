@@ -14,6 +14,8 @@
 | `givens` | `number[][]` | 初期固定ヒント `[row, col, value]`（`row`, `col` は 0 始まり） |
 | `cages` | `CageClue[]` | 重複なしで和が `targetSum` になるべきケージ領域 `{ cells, targetSum }` |
 
+各 `CageClue` は `{ cells: [number, number][], targetSum: number }` の形式で、`cells` はケージ内の 0 始まり `[row, col]` 座標の配列です。
+
 ### 出力
 
 | フィールド | 型 | 説明 |

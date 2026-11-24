@@ -15,6 +15,19 @@
 | `rules` | `SmtFormula[]` | 现行防火墙/安全策略规则 |
 | `safeInvariant` | `SmtFormula` | 待证明或证伪的安全不变量 |
 
+`SmtFormula` 是由布尔变量名（`string`）、线性整数比较（`SmtCmp`）及逻辑连接词组成的递归联合类型：
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

@@ -14,6 +14,8 @@ In addition, compatibility rules require specified groups of components to match
 | `allowedRules` | `TableRule[]` | Positive table constraints requiring the values of specified components `vars` to match one of `tuples` |
 | `forbiddenRules` | `TableRule[]` | Negative table constraints forbidding the values of specified components `vars` from matching any of `tuples` |
 
+Each `TableRule` object has `{ vars: number[], tuples: number[][] }`, where `vars` lists 0-based component indices and each entry in `tuples` has length `vars.length` with option indices aligned to `vars`.
+
 ### Output
 
 | Field | Type | Description |

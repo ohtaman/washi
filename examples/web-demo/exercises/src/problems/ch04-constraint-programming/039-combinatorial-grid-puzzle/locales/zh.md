@@ -14,6 +14,8 @@
 | `givens` | `number[][]` | 已知提示格 `[row, col, value]`（行列索引从 `0` 开始） |
 | `cages` | `CageClue[]` | 区域和线索 `{ cells, targetSum }`（区域内数字互异且求和等于 `targetSum`） |
 
+每个 `CageClue` 对象为 `{ cells: [number, number][], targetSum: number }`，其中 `cells` 为区域内从 0 开始的 `[row, col]` 坐标列表。
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

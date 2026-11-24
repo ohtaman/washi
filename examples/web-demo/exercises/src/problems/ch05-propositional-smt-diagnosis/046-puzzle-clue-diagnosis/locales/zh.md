@@ -13,6 +13,16 @@
 | `cells` | `string[]` | 命名格子列表（每个格子为安全 0 或地雷 1） |
 | `clues` | `PuzzleClue[]` | 命名线索列表（`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`） |
 
+每条 `PuzzleClue` 带有 `id: string` 及以下 `type` 变体之一：
+- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }`（`sum(cells) === count`）
+- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }`（`sum(cells) >= count`）
+- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }`（`sum(cells) <= count`）
+- `"safe"`: `{ id, type: "safe", cell: string }`（`cell === 0`）
+- `"mine"`: `{ id, type: "mine", cell: string }`（`cell === 1`）
+- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }`（`ifMine <= thenMine`）
+- `"same"`: `{ id, type: "same", a: string, b: string }`（`a === b`）
+- `"different"`: `{ id, type: "different", a: string, b: string }`（`a + b === 1`）
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

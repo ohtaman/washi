@@ -14,6 +14,14 @@
 | `categories` | `Record<string, string[]>` | カテゴリ名から `n` 個の相異なる属性値配列へのマップ |
 | `clues` | `ZebraClue[]` | 構造化ヒント（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
 
+`CategoryValue` を `[category: string, value: string]` として、各 `ZebraClue` は以下のいずれかです:
+- `{ type: "at", position: number, category: string, value: string }`（`position` は 0 始まり）
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` なら `pos(right) === pos(left) + 1`、それ以外は `pos(left) < pos(right)`）
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }`（`|pos(a) - pos(b)| === 1`）
+
 ### 出力
 
 | フィールド | 型 | 説明 |

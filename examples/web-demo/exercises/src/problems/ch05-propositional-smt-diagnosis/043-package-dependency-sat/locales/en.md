@@ -15,6 +15,8 @@ Installing a specific package version can require one of several candidate depen
 | `requires` | `DependencyRule[]` | Rules `{ pkg, ver, depPkg, depVersions }` |
 | `conflicts` | `Array<[[string, string], [string, string]]>` | Mutually incompatible `[pkg, ver]` pairs |
 
+Each `DependencyRule` has `{ pkg: string, ver: string, depPkg: string, depVersions: string[] }`, meaning if `pkg` is installed at version `ver`, then `depPkg` must be installed with one of the versions in `depVersions`.
+
 ### Output
 
 | Field | Type | Description |

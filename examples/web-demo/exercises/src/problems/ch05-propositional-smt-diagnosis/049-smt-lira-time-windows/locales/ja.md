@@ -14,6 +14,8 @@
 | `blackout` | `[number, number]` | ドックの保守休止時間帯 `[bStart, bEnd]` |
 | `maxExpress` | `number` | エクスプレスを選択できる便数の整数上限 |
 
+各 `ShipmentSpec` は `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }` の形式です。
+
 ### 出力
 
 | フィールド | 型 | 説明 |

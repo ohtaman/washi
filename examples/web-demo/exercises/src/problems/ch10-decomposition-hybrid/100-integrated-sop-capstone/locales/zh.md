@@ -19,6 +19,12 @@
 | `hardRules` | `PolicyRule[]` | 必须严格执行的硬性业务规则 |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | 带有松弛惩罚权重的软性策略规则 |
 
+每个 `PolicyRule` 为带有 `id: string` 及以下 `type` 变体之一的标签对象（`line`、`lines`、`ifLine`、`thenLine` 均为从 0 开始的产线索引）：
+- `"must_run"`: `{ id, type: "must_run", line: number }` — 要求 `active[line] === 1`
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — 要求 `active[line] === 0`
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — 要求 `lines` 中至少有一条产线满足 `active[idx] === 1`
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — 要求若 `active[ifLine] === 1` 则 `active[thenLine] === (thenActive ? 1 : 0)`
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

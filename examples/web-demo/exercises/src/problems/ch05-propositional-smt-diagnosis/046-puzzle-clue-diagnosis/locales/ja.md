@@ -13,6 +13,16 @@
 | `cells` | `string[]` | 名前付きマス一覧（各マスは安全 0 または地雷 1） |
 | `clues` | `PuzzleClue[]` | 名前付きヒント集合（`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`） |
 
+各 `PuzzleClue` は `id: string` と以下のいずれかの `type` バリアントを持ちます:
+- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }`（`sum(cells) === count`）
+- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }`（`sum(cells) >= count`）
+- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }`（`sum(cells) <= count`）
+- `"safe"`: `{ id, type: "safe", cell: string }`（`cell === 0`）
+- `"mine"`: `{ id, type: "mine", cell: string }`（`cell === 1`）
+- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }`（`ifMine <= thenMine`）
+- `"same"`: `{ id, type: "same", a: string, b: string }`（`a === b`）
+- `"different"`: `{ id, type: "different", a: string, b: string }`（`a + b === 1`）
+
 ### 出力
 
 | フィールド | 型 | 説明 |

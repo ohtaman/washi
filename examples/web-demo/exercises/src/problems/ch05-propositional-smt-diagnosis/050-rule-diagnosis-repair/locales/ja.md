@@ -15,6 +15,19 @@
 | `hardRules` | `Array<{ id: string; expr: SmtFormula }>` | 緩和不可の必須ハードルール一覧 |
 | `softRules` | `Array<{ id: string; weight: number; expr: SmtFormula }>` | 緩和コスト `weight` 付きのソフトルール一覧 |
 
+`SmtFormula` は真偽値変数名（`string`）、線形整数比較（`SmtCmp`）、論理結合子からなる再帰的な直和型です:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

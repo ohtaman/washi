@@ -15,6 +15,10 @@ Every job can only start after its pre-staging setup completes, and the schedule
 | `precedences` | `number[][]` | Precedence pairs `[u, v]` requiring `starts[u] + duration[u] + postTimes[u][modes[u]] <= starts[v]` |
 | `modeRules` | `ModeRule[]` | Allowed mode pair tables `{ jobs: [u, v], allowedPairs }` |
 
+Type definitions:
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }` (times in minutes, `power` in kW, `machine` 0-based; `setupTimes[m]` and `postTimes[m]` give pre-staging setup and post-processing cooldown for mode `m`).
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: [number, number][] }`, where `jobs` is a pair `[u, v]` of 0-based job indices and `allowedPairs` lists permitted `[modes[u], modes[v]]` pairs.
+
 ### Output
 
 | Field | Type | Description |
