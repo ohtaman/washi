@@ -610,22 +610,9 @@ export async function generateVerifiedPastureStage(
       }
     }
 
-    const fallback: StagePuzzle = {
-      ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
-      id: `stage-${stageNumber}`,
-      stageNumber,
-      title: themeName,
-    };
-    const fallbackSolved = await solveOptimalPasture(fallback);
-    const verifiedFallbackOpt =
-      fallbackSolved.status === "Optimal" && fallbackSolved.verified
-        ? fallbackSolved
-        : null;
-    generatedStageCache.set(stageNumber, {
-      stage: fallback,
-      optimal: verifiedFallbackOpt,
-    });
-    return fallback;
+    throw new Error(
+      `Failed to generate a verified Mofumofu Sheep stage for stage ${stageNumber} after 36 attempts.`
+    );
   })();
 
   inFlightStagePromises.set(stageNumber, generationPromise);

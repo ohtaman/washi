@@ -59,7 +59,6 @@ import {
 } from "./i18n-data.js";
 import {
   createEmptySchedule,
-  diagnoseScheduleWithHighs,
   evaluateSchedule,
   generateVerifiedStageWithHighs,
   getStageDays,
@@ -757,6 +756,16 @@ async function loadStage(
       }
     } catch (err) {
       console.error("Background solver error:", err);
+      if (hasDom && loadGen === stageLoadGeneration && currentStage.id === stage.id) {
+        const lilith = getLilithProfileLocalized(currentLang);
+        speakInDock({
+          speaker: lilith.name,
+          tag: t("ui.statusCheck"),
+          portrait: lilith.portrait,
+          text: err instanceof Error ? err.message : String(err),
+        });
+      }
+      throw err;
     }
   }
 }
@@ -1882,37 +1891,6 @@ async function giveOneCellHint(): Promise<void> {
     portrait: lilith.portrait,
     text: t("ui.yourScheduleAlreadyMatchesThe"),
   });
-}
-
-async function runLilithDiagnosis(): Promise<void> {
-  const activeGen = stageLoadGeneration;
-  const activeStageId = currentStage.id;
-  const lilith = getLilithProfileLocalized(currentLang);
-  const statusTag = t("ui.statusCheck");
-  try {
-    const diag = await diagnoseScheduleWithHighs(currentStage, currentSchedule);
-    if (activeGen !== stageLoadGeneration || currentStage.id !== activeStageId) return;
-    if (diag.status === "Feasible") {
-      soundEngine.playSolveSuccess();
-      speakInDock({
-        speaker: lilith.name,
-        tag: statusTag,
-        portrait: lilith.portrait,
-        text: t("ui.yourCurrentlyPlacedShiftsHave"),
-      });
-    } else {
-      soundEngine.playError();
-      const reasonText = t("ui.someGuardsCurrentAssignmentsAr") || t("ui.defaultDiagMessage");
-      speakInDock({
-        speaker: lilith.name,
-        tag: statusTag,
-        portrait: lilith.portrait,
-        text: t("ui.tryResettingAFewShifts", { reasonText }),
-      });
-    }
-  } catch (err) {
-    console.error("Diagnosis failed:", err);
-  }
 }
 
 function formatShiftChipText(shift: ShiftType): string {

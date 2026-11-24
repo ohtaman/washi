@@ -259,7 +259,7 @@ export interface ScheduleEvaluation {
 
 export interface OptimalSolveResult {
   status: string;
-  optimalScore: number;
+  optimalScore: number | null;
   optimalSchedule: ScheduleGrid;
   lpString: string;
   solveTimeMs: number;
