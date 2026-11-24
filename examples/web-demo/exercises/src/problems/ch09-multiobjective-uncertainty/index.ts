@@ -9,8 +9,8 @@ import p081Ja from "./081-elastic-soft-penalties/locales/ja.json";
 import p081Zh from "./081-elastic-soft-penalties/locales/zh.json";
 import p081WashiStarter from "./081-elastic-soft-penalties/washi/starter.ts?raw";
 import p081WashiSolution from "./081-elastic-soft-penalties/washi/solution.ts?raw";
-import p081HighspyStarter from "./081-elastic-soft-penalties/highspy/starter.py?raw";
-import p081HighspySolution from "./081-elastic-soft-penalties/highspy/solution.py?raw";
+import p081PulpStarter from "./081-elastic-soft-penalties/pulp/starter.py?raw";
+import p081PulpSolution from "./081-elastic-soft-penalties/pulp/solution.py?raw";
 import { judge as p081Judge } from "./081-elastic-soft-penalties/judge.js";
 
 // #082
@@ -21,8 +21,8 @@ import p082Ja from "./082-sharehouse-rent-division/locales/ja.json";
 import p082Zh from "./082-sharehouse-rent-division/locales/zh.json";
 import p082WashiStarter from "./082-sharehouse-rent-division/washi/starter.ts?raw";
 import p082WashiSolution from "./082-sharehouse-rent-division/washi/solution.ts?raw";
-import p082HighspyStarter from "./082-sharehouse-rent-division/highspy/starter.py?raw";
-import p082HighspySolution from "./082-sharehouse-rent-division/highspy/solution.py?raw";
+import p082PulpStarter from "./082-sharehouse-rent-division/pulp/starter.py?raw";
+import p082PulpSolution from "./082-sharehouse-rent-division/pulp/solution.py?raw";
 import { judge as p082Judge } from "./082-sharehouse-rent-division/judge.js";
 
 // #083
@@ -33,8 +33,8 @@ import p083Ja from "./083-epsilon-constraint-pareto/locales/ja.json";
 import p083Zh from "./083-epsilon-constraint-pareto/locales/zh.json";
 import p083WashiStarter from "./083-epsilon-constraint-pareto/washi/starter.ts?raw";
 import p083WashiSolution from "./083-epsilon-constraint-pareto/washi/solution.ts?raw";
-import p083HighspyStarter from "./083-epsilon-constraint-pareto/highspy/starter.py?raw";
-import p083HighspySolution from "./083-epsilon-constraint-pareto/highspy/solution.py?raw";
+import p083PulpStarter from "./083-epsilon-constraint-pareto/pulp/starter.py?raw";
+import p083PulpSolution from "./083-epsilon-constraint-pareto/pulp/solution.py?raw";
 import { judge as p083Judge } from "./083-epsilon-constraint-pareto/judge.js";
 
 // #084 (WaSHI-only Convex QP)
@@ -55,8 +55,8 @@ import p085Ja from "./085-min-disruption-rescheduling/locales/ja.json";
 import p085Zh from "./085-min-disruption-rescheduling/locales/zh.json";
 import p085WashiStarter from "./085-min-disruption-rescheduling/washi/starter.ts?raw";
 import p085WashiSolution from "./085-min-disruption-rescheduling/washi/solution.ts?raw";
-import p085HighspyStarter from "./085-min-disruption-rescheduling/highspy/starter.py?raw";
-import p085HighspySolution from "./085-min-disruption-rescheduling/highspy/solution.py?raw";
+import p085PulpStarter from "./085-min-disruption-rescheduling/pulp/starter.py?raw";
+import p085PulpSolution from "./085-min-disruption-rescheduling/pulp/solution.py?raw";
 import { judge as p085Judge } from "./085-min-disruption-rescheduling/judge.js";
 
 // #086
@@ -67,8 +67,8 @@ import p086Ja from "./086-rolling-horizon-planning/locales/ja.json";
 import p086Zh from "./086-rolling-horizon-planning/locales/zh.json";
 import p086WashiStarter from "./086-rolling-horizon-planning/washi/starter.ts?raw";
 import p086WashiSolution from "./086-rolling-horizon-planning/washi/solution.ts?raw";
-import p086HighspyStarter from "./086-rolling-horizon-planning/highspy/starter.py?raw";
-import p086HighspySolution from "./086-rolling-horizon-planning/highspy/solution.py?raw";
+import p086PulpStarter from "./086-rolling-horizon-planning/pulp/starter.py?raw";
+import p086PulpSolution from "./086-rolling-horizon-planning/pulp/solution.py?raw";
 import { judge as p086Judge } from "./086-rolling-horizon-planning/judge.js";
 
 // #087
@@ -79,8 +79,8 @@ import p087Ja from "./087-two-stage-stochastic/locales/ja.json";
 import p087Zh from "./087-two-stage-stochastic/locales/zh.json";
 import p087WashiStarter from "./087-two-stage-stochastic/washi/starter.ts?raw";
 import p087WashiSolution from "./087-two-stage-stochastic/washi/solution.ts?raw";
-import p087HighspyStarter from "./087-two-stage-stochastic/highspy/starter.py?raw";
-import p087HighspySolution from "./087-two-stage-stochastic/highspy/solution.py?raw";
+import p087PulpStarter from "./087-two-stage-stochastic/pulp/starter.py?raw";
+import p087PulpSolution from "./087-two-stage-stochastic/pulp/solution.py?raw";
 import { judge as p087Judge } from "./087-two-stage-stochastic/judge.js";
 
 // #088
@@ -91,8 +91,8 @@ import p088Ja from "./088-linearized-cvar/locales/ja.json";
 import p088Zh from "./088-linearized-cvar/locales/zh.json";
 import p088WashiStarter from "./088-linearized-cvar/washi/starter.ts?raw";
 import p088WashiSolution from "./088-linearized-cvar/washi/solution.ts?raw";
-import p088HighspyStarter from "./088-linearized-cvar/highspy/starter.py?raw";
-import p088HighspySolution from "./088-linearized-cvar/highspy/solution.py?raw";
+import p088PulpStarter from "./088-linearized-cvar/pulp/starter.py?raw";
+import p088PulpSolution from "./088-linearized-cvar/pulp/solution.py?raw";
 import { judge as p088Judge } from "./088-linearized-cvar/judge.js";
 
 // #089
@@ -103,8 +103,8 @@ import p089Ja from "./089-bertsimas-sim-robust/locales/ja.json";
 import p089Zh from "./089-bertsimas-sim-robust/locales/zh.json";
 import p089WashiStarter from "./089-bertsimas-sim-robust/washi/starter.ts?raw";
 import p089WashiSolution from "./089-bertsimas-sim-robust/washi/solution.ts?raw";
-import p089HighspyStarter from "./089-bertsimas-sim-robust/highspy/starter.py?raw";
-import p089HighspySolution from "./089-bertsimas-sim-robust/highspy/solution.py?raw";
+import p089PulpStarter from "./089-bertsimas-sim-robust/pulp/starter.py?raw";
+import p089PulpSolution from "./089-bertsimas-sim-robust/pulp/solution.py?raw";
 import { judge as p089Judge } from "./089-bertsimas-sim-robust/judge.js";
 
 // #090
@@ -115,8 +115,8 @@ import p090Ja from "./090-resilient-planning-synthesis/locales/ja.json";
 import p090Zh from "./090-resilient-planning-synthesis/locales/zh.json";
 import p090WashiStarter from "./090-resilient-planning-synthesis/washi/starter.ts?raw";
 import p090WashiSolution from "./090-resilient-planning-synthesis/washi/solution.ts?raw";
-import p090HighspyStarter from "./090-resilient-planning-synthesis/highspy/starter.py?raw";
-import p090HighspySolution from "./090-resilient-planning-synthesis/highspy/solution.py?raw";
+import p090PulpStarter from "./090-resilient-planning-synthesis/pulp/starter.py?raw";
+import p090PulpSolution from "./090-resilient-planning-synthesis/pulp/solution.py?raw";
 import { judge as p090Judge } from "./090-resilient-planning-synthesis/judge.js";
 
 export const CH09_PROBLEMS: ProblemDefinition[] = [
@@ -136,8 +136,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p081WashiStarter,
     washiSolution: p081WashiSolution,
-    highspyStarter: p081HighspyStarter,
-    highspySolution: p081HighspySolution,
+    pulpStarter: p081PulpStarter,
+    pulpSolution: p081PulpSolution,
     judge: p081Judge,
   }),
   hydrateProblem({
@@ -156,8 +156,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p082WashiStarter,
     washiSolution: p082WashiSolution,
-    highspyStarter: p082HighspyStarter,
-    highspySolution: p082HighspySolution,
+    pulpStarter: p082PulpStarter,
+    pulpSolution: p082PulpSolution,
     judge: p082Judge,
   }),
   hydrateProblem({
@@ -176,8 +176,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p083WashiStarter,
     washiSolution: p083WashiSolution,
-    highspyStarter: p083HighspyStarter,
-    highspySolution: p083HighspySolution,
+    pulpStarter: p083PulpStarter,
+    pulpSolution: p083PulpSolution,
     judge: p083Judge,
   }),
   hydrateProblem({
@@ -214,8 +214,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p085WashiStarter,
     washiSolution: p085WashiSolution,
-    highspyStarter: p085HighspyStarter,
-    highspySolution: p085HighspySolution,
+    pulpStarter: p085PulpStarter,
+    pulpSolution: p085PulpSolution,
     judge: p085Judge,
   }),
   hydrateProblem({
@@ -234,8 +234,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p086WashiStarter,
     washiSolution: p086WashiSolution,
-    highspyStarter: p086HighspyStarter,
-    highspySolution: p086HighspySolution,
+    pulpStarter: p086PulpStarter,
+    pulpSolution: p086PulpSolution,
     judge: p086Judge,
   }),
   hydrateProblem({
@@ -254,8 +254,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p087WashiStarter,
     washiSolution: p087WashiSolution,
-    highspyStarter: p087HighspyStarter,
-    highspySolution: p087HighspySolution,
+    pulpStarter: p087PulpStarter,
+    pulpSolution: p087PulpSolution,
     judge: p087Judge,
   }),
   hydrateProblem({
@@ -274,8 +274,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p088WashiStarter,
     washiSolution: p088WashiSolution,
-    highspyStarter: p088HighspyStarter,
-    highspySolution: p088HighspySolution,
+    pulpStarter: p088PulpStarter,
+    pulpSolution: p088PulpSolution,
     judge: p088Judge,
   }),
   hydrateProblem({
@@ -294,8 +294,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p089WashiStarter,
     washiSolution: p089WashiSolution,
-    highspyStarter: p089HighspyStarter,
-    highspySolution: p089HighspySolution,
+    pulpStarter: p089PulpStarter,
+    pulpSolution: p089PulpSolution,
     judge: p089Judge,
   }),
   hydrateProblem({
@@ -314,8 +314,8 @@ export const CH09_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p090WashiStarter,
     washiSolution: p090WashiSolution,
-    highspyStarter: p090HighspyStarter,
-    highspySolution: p090HighspySolution,
+    pulpStarter: p090PulpStarter,
+    pulpSolution: p090PulpSolution,
     judge: p090Judge,
   }),
 ];

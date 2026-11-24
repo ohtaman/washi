@@ -9,8 +9,8 @@ import p000Ja from "./000-welcome-sum/locales/ja.json";
 import p000Zh from "./000-welcome-sum/locales/zh.json";
 import p000WashiStarter from "./000-welcome-sum/washi/starter.ts?raw";
 import p000WashiSolution from "./000-welcome-sum/washi/solution.ts?raw";
-import p000HighspyStarter from "./000-welcome-sum/highspy/starter.py?raw";
-import p000HighspySolution from "./000-welcome-sum/highspy/solution.py?raw";
+import p000PulpStarter from "./000-welcome-sum/pulp/starter.py?raw";
+import p000PulpSolution from "./000-welcome-sum/pulp/solution.py?raw";
 import { judge as p000Judge } from "./000-welcome-sum/judge.js";
 
 export const CH00_PROBLEMS: ProblemDefinition[] = [
@@ -30,8 +30,8 @@ export const CH00_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p000WashiStarter,
     washiSolution: p000WashiSolution,
-    highspyStarter: p000HighspyStarter,
-    highspySolution: p000HighspySolution,
+    pulpStarter: p000PulpStarter,
+    pulpSolution: p000PulpSolution,
     judge: p000Judge,
   }),
 ];

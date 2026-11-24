@@ -18,17 +18,17 @@ const EXPECTED_IDS = [
   "080",
 ] as const;
 
-const EXPECTED_RUNTIMES: Record<string, readonly ("washi" | "highspy")[]> = {
-  "071": ["washi", "highspy"],
-  "072": ["washi", "highspy"],
+const EXPECTED_RUNTIMES: Record<string, readonly ("washi" | "pulp")[]> = {
+  "071": ["washi", "pulp"],
+  "072": ["washi", "pulp"],
   "073": ["washi"],
   "074": ["washi"],
-  "075": ["washi", "highspy"],
-  "076": ["washi", "highspy"],
-  "077": ["washi", "highspy"],
-  "078": ["washi", "highspy"],
-  "079": ["washi", "highspy"],
-  "080": ["washi", "highspy"],
+  "075": ["washi", "pulp"],
+  "076": ["washi", "pulp"],
+  "077": ["washi", "pulp"],
+  "078": ["washi", "pulp"],
+  "079": ["washi", "pulp"],
+  "080": ["washi", "pulp"],
 };
 
 function extractObjective(_id: string, output: unknown): number | null {
@@ -55,13 +55,13 @@ async function verifyAdversarialChecks(problems: ProblemDefinition[]): Promise<v
     "../examples/web-demo/exercises/src/problems/ch08-scheduling-rostering"
   );
 
-  // Verify WaSHI-only CP exercises (#073, #074) omit highspy/ directory, use pumpkin, and solve fast (< 300ms/case)
+  // Verify WaSHI-only CP exercises (#073, #074) omit pulp/ directory, use pumpkin, and solve fast (< 300ms/case)
   for (const cpId of ["073", "074"] as const) {
     const p = byId.get(cpId)!;
     expect(p.meta.solvers).toEqual(["pumpkin"]);
     expect(p.meta.paradigms).toEqual(["CP"]);
     const slugDir = cpId === "073" ? "073-job-shop-jssp" : "074-rcpsp-project";
-    expect(fs.existsSync(path.join(ch8Root, slugDir, "highspy"))).toBe(false);
+    expect(fs.existsSync(path.join(ch8Root, slugDir, "pulp"))).toBe(false);
 
     const cpRun = await runWashiExerciseCode(
       p.washiSolution,

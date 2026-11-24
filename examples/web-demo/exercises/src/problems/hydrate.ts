@@ -46,8 +46,8 @@ export function hydrateProblem<TInput, TOutput>(params: {
   editorialLoaders?: Record<Locale, () => Promise<string>>;
   washiStarter: string;
   washiSolution: string;
-  highspyStarter?: string;
-  highspySolution?: string;
+  pulpStarter?: string;
+  pulpSolution?: string;
   judge: (input: TInput, output: TOutput, expectedOptimal: number, locale: Locale) => JudgeResult;
 }): ProblemDefinition<TInput, TOutput> {
   const { rawMeta, rawCases, locales } = params;
@@ -90,8 +90,8 @@ export function hydrateProblem<TInput, TOutput>(params: {
     cases,
     washiStarter: params.washiStarter,
     washiSolution: params.washiSolution,
-    highspyStarter: params.highspyStarter ?? "",
-    highspySolution: params.highspySolution ?? "",
+    pulpStarter: params.pulpStarter ?? "",
+    pulpSolution: params.pulpSolution ?? "",
     judge: params.judge,
   };
 }

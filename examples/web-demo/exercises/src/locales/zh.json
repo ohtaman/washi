@@ -69,7 +69,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "PuLP (Python)",
+      "pulp": "PuLP (Python)",
       "tablistLabel": "切换求解运行时",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) 仅在首次运行 Python 代码时于后台 Worker 按需加载。"
     },

@@ -69,7 +69,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "PuLP (Python)",
+      "pulp": "PuLP (Python)",
       "tablistLabel": "Solver runtime tabs",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) loads in a background Web Worker on your first Python run."
     },

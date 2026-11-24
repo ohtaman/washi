@@ -12,7 +12,7 @@
   ],
   "runtimes": [
     "washi",
-    "highspy"
+    "pulp"
   ],
   "solvers": [
     "highs"

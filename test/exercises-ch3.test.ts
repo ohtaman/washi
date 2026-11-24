@@ -24,7 +24,7 @@ const EXPECTED_IDS = [
 ] as const;
 
 const EXPECTED_RUNTIMES = Object.fromEntries(
-  EXPECTED_IDS.map((id) => [id, ["washi", "highspy"] as const])
+  EXPECTED_IDS.map((id) => [id, ["washi", "pulp"] as const])
 );
 
 function extractCh3Objective(id: string, output: unknown): number | null {
@@ -392,8 +392,8 @@ describe("Exercises Chapter 3 Python parity (#027, #028)", () => {
     expect(w028.ok).toBe(true);
 
     const pyBatch = runHighspyBatch([
-      { id: "027", code: p027.highspySolution, inputs: p027.cases.map((c) => c.input) },
-      { id: "028", code: p028.highspySolution, inputs: p028.cases.map((c) => c.input) },
+      { id: "027", code: p027.pulpSolution, inputs: p027.cases.map((c) => c.input) },
+      { id: "028", code: p028.pulpSolution, inputs: p028.cases.map((c) => c.input) },
     ]);
     expect(pyBatch["027"].ok).toBe(true);
     expect(pyBatch["028"].ok).toBe(true);

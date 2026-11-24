@@ -47,7 +47,7 @@ export interface ExercisesUiStrings {
   };
   tabs: {
     washi: string;
-    highspy: string;
+    pulp: string;
     tablistLabel: string;
     pythonLazyNote: string;
   };

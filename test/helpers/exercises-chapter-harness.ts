@@ -187,7 +187,7 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
               chapter,
               scaffold: prob.meta.scaffold,
               washiStarter: prob.washiStarter,
-              highspyStarter: prob.highspyStarter,
+              pulpStarter: prob.pulpStarter,
               sections,
             })
           );
@@ -223,7 +223,7 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
       for (let idx = 0; idx < chProblems.length; idx++) {
         const prob = chProblems[idx];
         const expectedRt = [...(expectedRuntimes[prob.meta.id] ?? ["washi"])];
-        const isDual = expectedRt.includes("highspy");
+        const isDual = expectedRt.includes("pulp");
 
         expect(prob.meta.order).toBe(idx + 1);
         expect(validRoles).toContain(prob.meta.role);
@@ -250,15 +250,15 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
           const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>).map(
             toSnakeCase
           );
-          expect(prob.highspyStarter).toContain("import pulp");
-          expect(extractPySolveParams(prob.highspyStarter)).toEqual(expectedPyParams);
-          expect(prob.highspyStarter).toContain('"""Return {');
-          expect(prob.highspySolution).toContain("import pulp");
-          expect(extractPySolveParams(prob.highspySolution)).toEqual(expectedPyParams);
-          expect(prob.highspySolution).toContain('"""Return {');
+          expect(prob.pulpStarter).toContain("import pulp");
+          expect(extractPySolveParams(prob.pulpStarter)).toEqual(expectedPyParams);
+          expect(prob.pulpStarter).toContain('"""Return {');
+          expect(prob.pulpSolution).toContain("import pulp");
+          expect(extractPySolveParams(prob.pulpSolution)).toEqual(expectedPyParams);
+          expect(prob.pulpSolution).toContain('"""Return {');
         } else {
-          expect(prob.highspyStarter).toBe("");
-          expect(prob.highspySolution).toBe("");
+          expect(prob.pulpStarter).toBe("");
+          expect(prob.pulpSolution).toBe("");
         }
 
         for (const locale of ["en", "ja", "zh"] as const) {
@@ -404,13 +404,13 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
       "cross-verifies every dual-runtime PuLP solution.py against identical cases.json and judge()",
       () => {
         const chProblems = PROBLEMS.filter((p) => p.meta.chapter === chapter);
-        const dualProblems = chProblems.filter((p) => p.meta.runtimes.includes("highspy"));
+        const dualProblems = chProblems.filter((p) => p.meta.runtimes.includes("pulp"));
         if (dualProblems.length === 0) return;
 
         const batch = runHighspyBatch(
           dualProblems.map((p) => ({
             id: p.meta.id,
-            code: p.highspySolution,
+            code: p.pulpSolution,
             inputs: p.cases.map((c) => c.input),
           }))
         );
@@ -449,7 +449,7 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
         const starterBatch = runHighspyBatch(
           dualProblems.map((p) => ({
             id: p.meta.id,
-            code: p.highspyStarter,
+            code: p.pulpStarter,
             inputs: [p.cases[0].input],
           }))
         );

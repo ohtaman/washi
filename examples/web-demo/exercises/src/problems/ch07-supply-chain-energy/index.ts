@@ -9,8 +9,8 @@ import p061Ja from "./061-single-item-lot-sizing/locales/ja.json";
 import p061Zh from "./061-single-item-lot-sizing/locales/zh.json";
 import p061WashiStarter from "./061-single-item-lot-sizing/washi/starter.ts?raw";
 import p061WashiSolution from "./061-single-item-lot-sizing/washi/solution.ts?raw";
-import p061HighspyStarter from "./061-single-item-lot-sizing/highspy/starter.py?raw";
-import p061HighspySolution from "./061-single-item-lot-sizing/highspy/solution.py?raw";
+import p061PulpStarter from "./061-single-item-lot-sizing/pulp/starter.py?raw";
+import p061PulpSolution from "./061-single-item-lot-sizing/pulp/solution.py?raw";
 import { judge as p061Judge } from "./061-single-item-lot-sizing/judge.js";
 
 // #062
@@ -21,8 +21,8 @@ import p062Ja from "./062-multi-item-clsp/locales/ja.json";
 import p062Zh from "./062-multi-item-clsp/locales/zh.json";
 import p062WashiStarter from "./062-multi-item-clsp/washi/starter.ts?raw";
 import p062WashiSolution from "./062-multi-item-clsp/washi/solution.ts?raw";
-import p062HighspyStarter from "./062-multi-item-clsp/highspy/starter.py?raw";
-import p062HighspySolution from "./062-multi-item-clsp/highspy/solution.py?raw";
+import p062PulpStarter from "./062-multi-item-clsp/pulp/starter.py?raw";
+import p062PulpSolution from "./062-multi-item-clsp/pulp/solution.py?raw";
 import { judge as p062Judge } from "./062-multi-item-clsp/judge.js";
 
 // #063
@@ -33,8 +33,8 @@ import p063Ja from "./063-backorders-lost-sales/locales/ja.json";
 import p063Zh from "./063-backorders-lost-sales/locales/zh.json";
 import p063WashiStarter from "./063-backorders-lost-sales/washi/starter.ts?raw";
 import p063WashiSolution from "./063-backorders-lost-sales/washi/solution.ts?raw";
-import p063HighspyStarter from "./063-backorders-lost-sales/highspy/starter.py?raw";
-import p063HighspySolution from "./063-backorders-lost-sales/highspy/solution.py?raw";
+import p063PulpStarter from "./063-backorders-lost-sales/pulp/starter.py?raw";
+import p063PulpSolution from "./063-backorders-lost-sales/pulp/solution.py?raw";
 import { judge as p063Judge } from "./063-backorders-lost-sales/judge.js";
 
 // #064
@@ -45,8 +45,8 @@ import p064Ja from "./064-multilevel-bom-mrp/locales/ja.json";
 import p064Zh from "./064-multilevel-bom-mrp/locales/zh.json";
 import p064WashiStarter from "./064-multilevel-bom-mrp/washi/starter.ts?raw";
 import p064WashiSolution from "./064-multilevel-bom-mrp/washi/solution.ts?raw";
-import p064HighspyStarter from "./064-multilevel-bom-mrp/highspy/starter.py?raw";
-import p064HighspySolution from "./064-multilevel-bom-mrp/highspy/solution.py?raw";
+import p064PulpStarter from "./064-multilevel-bom-mrp/pulp/starter.py?raw";
+import p064PulpSolution from "./064-multilevel-bom-mrp/pulp/solution.py?raw";
 import { judge as p064Judge } from "./064-multilevel-bom-mrp/judge.js";
 
 // #065
@@ -57,8 +57,8 @@ import p065Ja from "./065-multi-echelon-scm/locales/ja.json";
 import p065Zh from "./065-multi-echelon-scm/locales/zh.json";
 import p065WashiStarter from "./065-multi-echelon-scm/washi/starter.ts?raw";
 import p065WashiSolution from "./065-multi-echelon-scm/washi/solution.ts?raw";
-import p065HighspyStarter from "./065-multi-echelon-scm/highspy/starter.py?raw";
-import p065HighspySolution from "./065-multi-echelon-scm/highspy/solution.py?raw";
+import p065PulpStarter from "./065-multi-echelon-scm/pulp/starter.py?raw";
+import p065PulpSolution from "./065-multi-echelon-scm/pulp/solution.py?raw";
 import { judge as p065Judge } from "./065-multi-echelon-scm/judge.js";
 
 // #066
@@ -69,8 +69,8 @@ import p066Ja from "./066-cross-docking-sync/locales/ja.json";
 import p066Zh from "./066-cross-docking-sync/locales/zh.json";
 import p066WashiStarter from "./066-cross-docking-sync/washi/starter.ts?raw";
 import p066WashiSolution from "./066-cross-docking-sync/washi/solution.ts?raw";
-import p066HighspyStarter from "./066-cross-docking-sync/highspy/starter.py?raw";
-import p066HighspySolution from "./066-cross-docking-sync/highspy/solution.py?raw";
+import p066PulpStarter from "./066-cross-docking-sync/pulp/starter.py?raw";
+import p066PulpSolution from "./066-cross-docking-sync/pulp/solution.py?raw";
 import { judge as p066Judge } from "./066-cross-docking-sync/judge.js";
 
 // #067
@@ -81,8 +81,8 @@ import p067Ja from "./067-supplier-allocation-caps/locales/ja.json";
 import p067Zh from "./067-supplier-allocation-caps/locales/zh.json";
 import p067WashiStarter from "./067-supplier-allocation-caps/washi/starter.ts?raw";
 import p067WashiSolution from "./067-supplier-allocation-caps/washi/solution.ts?raw";
-import p067HighspyStarter from "./067-supplier-allocation-caps/highspy/starter.py?raw";
-import p067HighspySolution from "./067-supplier-allocation-caps/highspy/solution.py?raw";
+import p067PulpStarter from "./067-supplier-allocation-caps/pulp/starter.py?raw";
+import p067PulpSolution from "./067-supplier-allocation-caps/pulp/solution.py?raw";
 import { judge as p067Judge } from "./067-supplier-allocation-caps/judge.js";
 
 // #068
@@ -93,8 +93,8 @@ import p068Ja from "./068-unit-commitment/locales/ja.json";
 import p068Zh from "./068-unit-commitment/locales/zh.json";
 import p068WashiStarter from "./068-unit-commitment/washi/starter.ts?raw";
 import p068WashiSolution from "./068-unit-commitment/washi/solution.ts?raw";
-import p068HighspyStarter from "./068-unit-commitment/highspy/starter.py?raw";
-import p068HighspySolution from "./068-unit-commitment/highspy/solution.py?raw";
+import p068PulpStarter from "./068-unit-commitment/pulp/starter.py?raw";
+import p068PulpSolution from "./068-unit-commitment/pulp/solution.py?raw";
 import { judge as p068Judge } from "./068-unit-commitment/judge.js";
 
 // #069
@@ -105,8 +105,8 @@ import p069Ja from "./069-battery-peak-shaving/locales/ja.json";
 import p069Zh from "./069-battery-peak-shaving/locales/zh.json";
 import p069WashiStarter from "./069-battery-peak-shaving/washi/starter.ts?raw";
 import p069WashiSolution from "./069-battery-peak-shaving/washi/solution.ts?raw";
-import p069HighspyStarter from "./069-battery-peak-shaving/highspy/starter.py?raw";
-import p069HighspySolution from "./069-battery-peak-shaving/highspy/solution.py?raw";
+import p069PulpStarter from "./069-battery-peak-shaving/pulp/starter.py?raw";
+import p069PulpSolution from "./069-battery-peak-shaving/pulp/solution.py?raw";
 import { judge as p069Judge } from "./069-battery-peak-shaving/judge.js";
 
 // #070
@@ -117,8 +117,8 @@ import p070Ja from "./070-energy-coupled-scm/locales/ja.json";
 import p070Zh from "./070-energy-coupled-scm/locales/zh.json";
 import p070WashiStarter from "./070-energy-coupled-scm/washi/starter.ts?raw";
 import p070WashiSolution from "./070-energy-coupled-scm/washi/solution.ts?raw";
-import p070HighspyStarter from "./070-energy-coupled-scm/highspy/starter.py?raw";
-import p070HighspySolution from "./070-energy-coupled-scm/highspy/solution.py?raw";
+import p070PulpStarter from "./070-energy-coupled-scm/pulp/starter.py?raw";
+import p070PulpSolution from "./070-energy-coupled-scm/pulp/solution.py?raw";
 import { judge as p070Judge } from "./070-energy-coupled-scm/judge.js";
 
 export const CH07_PROBLEMS: ProblemDefinition[] = [
@@ -138,8 +138,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p061WashiStarter,
     washiSolution: p061WashiSolution,
-    highspyStarter: p061HighspyStarter,
-    highspySolution: p061HighspySolution,
+    pulpStarter: p061PulpStarter,
+    pulpSolution: p061PulpSolution,
     judge: p061Judge,
   }),
   hydrateProblem({
@@ -158,8 +158,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p062WashiStarter,
     washiSolution: p062WashiSolution,
-    highspyStarter: p062HighspyStarter,
-    highspySolution: p062HighspySolution,
+    pulpStarter: p062PulpStarter,
+    pulpSolution: p062PulpSolution,
     judge: p062Judge,
   }),
   hydrateProblem({
@@ -178,8 +178,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p063WashiStarter,
     washiSolution: p063WashiSolution,
-    highspyStarter: p063HighspyStarter,
-    highspySolution: p063HighspySolution,
+    pulpStarter: p063PulpStarter,
+    pulpSolution: p063PulpSolution,
     judge: p063Judge,
   }),
   hydrateProblem({
@@ -198,8 +198,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p064WashiStarter,
     washiSolution: p064WashiSolution,
-    highspyStarter: p064HighspyStarter,
-    highspySolution: p064HighspySolution,
+    pulpStarter: p064PulpStarter,
+    pulpSolution: p064PulpSolution,
     judge: p064Judge,
   }),
   hydrateProblem({
@@ -218,8 +218,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p065WashiStarter,
     washiSolution: p065WashiSolution,
-    highspyStarter: p065HighspyStarter,
-    highspySolution: p065HighspySolution,
+    pulpStarter: p065PulpStarter,
+    pulpSolution: p065PulpSolution,
     judge: p065Judge,
   }),
   hydrateProblem({
@@ -238,8 +238,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p066WashiStarter,
     washiSolution: p066WashiSolution,
-    highspyStarter: p066HighspyStarter,
-    highspySolution: p066HighspySolution,
+    pulpStarter: p066PulpStarter,
+    pulpSolution: p066PulpSolution,
     judge: p066Judge,
   }),
   hydrateProblem({
@@ -258,8 +258,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p067WashiStarter,
     washiSolution: p067WashiSolution,
-    highspyStarter: p067HighspyStarter,
-    highspySolution: p067HighspySolution,
+    pulpStarter: p067PulpStarter,
+    pulpSolution: p067PulpSolution,
     judge: p067Judge,
   }),
   hydrateProblem({
@@ -278,8 +278,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p068WashiStarter,
     washiSolution: p068WashiSolution,
-    highspyStarter: p068HighspyStarter,
-    highspySolution: p068HighspySolution,
+    pulpStarter: p068PulpStarter,
+    pulpSolution: p068PulpSolution,
     judge: p068Judge,
   }),
   hydrateProblem({
@@ -298,8 +298,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p069WashiStarter,
     washiSolution: p069WashiSolution,
-    highspyStarter: p069HighspyStarter,
-    highspySolution: p069HighspySolution,
+    pulpStarter: p069PulpStarter,
+    pulpSolution: p069PulpSolution,
     judge: p069Judge,
   }),
   hydrateProblem({
@@ -318,8 +318,8 @@ export const CH07_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p070WashiStarter,
     washiSolution: p070WashiSolution,
-    highspyStarter: p070HighspyStarter,
-    highspySolution: p070HighspySolution,
+    pulpStarter: p070PulpStarter,
+    pulpSolution: p070PulpSolution,
     judge: p070Judge,
   }),
 ];
