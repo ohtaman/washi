@@ -173,7 +173,7 @@
     },
     "10": {
       "title": "建模加强、大规模分解算法与混合求解架构",
-      "description": "紧致 Big-M 与数值缩放、覆盖割、迭代子环消除、列生成、Dantzig-Wolfe、经典与逻辑 Benders 分解、LNS 及 S&OP 综合实战。"
+      "description": "紧致 Big-M 与数值缩放、覆盖割、迭代子环消除、列生成、Dantzig-Wolfe、经典与逻辑 Benders 分解、Fix-and-Optimize 及 S&OP 综合实战。"
     }
   },
   "judgeHelpers": {

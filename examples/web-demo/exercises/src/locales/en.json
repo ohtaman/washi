@@ -173,7 +173,7 @@
     },
     "10": {
       "title": "Strengthening, Decomposition & Hybrid Solver Architecture",
-      "description": "Tighter Big-M & scaling, cover/symmetry cuts, iterative subtour cuts, cutting-stock & routing column generation, Dantzig-Wolfe, classical & logic-based Benders, LNS, and S&OP synthesis."
+      "description": "Tighter Big-M & scaling, cover/symmetry cuts, iterative subtour cuts, cutting-stock & routing column generation, Dantzig-Wolfe, classical & logic-based Benders, Fix-and-Optimize, and S&OP synthesis."
     }
   },
   "judgeHelpers": {

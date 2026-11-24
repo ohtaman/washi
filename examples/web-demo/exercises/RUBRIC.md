@@ -31,6 +31,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **-5** | Unit inconsistency | Mixes different unit notations across the scenario, I/O table, and editorial (e.g., mixing "liter" and "unit"). |
 | **-5** | Misplaced variable modifiers | Attaches variable properties (e.g., "non-negative continuous") to physical objects rather than the decision quantities (e.g., "blending amounts"). |
 | **-5** | Physical/domain contradiction | Combines concrete objects and attributes in a physically unrealistic way (e.g., assigning alloy composition percentages to pure elemental metals without clarifying they are alloy ingots). |
+| **-5** | Algorithm / terminology conflation | Equates or conflates distinct algorithms/concepts in titles, subtitles, tags, or chapter descriptions (e.g., labeling Fix-and-Optimize as "Large Neighborhood Search (Fix-and-Optimize)"), or mistranslates OR terms across locales (e.g., translating "2-matching" as "quadratic matching" instead of "2-matching"). |
 | **-10** | Defect spoiler | Reveals which variable or constraint is broken in starter-fix exercises (excluding intentional onboarding guidance such as `#001`). |
 
 ---

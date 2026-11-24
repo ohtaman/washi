@@ -1,9 +1,9 @@
-# #099. Large Neighborhood Search (Fix-and-Optimize)
+# #099. Fix-and-Optimize Matheuristic (Rolling-Window MIP)
 
 <!-- section:scenario -->
 At an injection-molding parts manufacturer's plant, plan multi-period production of plastic parts (in cases). Each period has a demand (in cases), a 0-1 setup decision (such as mold changeover) that unlocks production capacity while incurring a fixed setup cost, a unit production cost (JPY/case), and an end-of-period inventory holding cost (JPY/case). Over long horizons, a single monolithic MIP can stall in branch-and-bound.
 
-Starting from the given initial setup plan and window width, run Fix-and-Optimize Large Neighborhood Search to iteratively improve the lot-sizing plan until a full sweep yields no cost reduction, and return the final setups, production quantities, inventory levels, and total cost.
+Starting from the given initial setup plan and window width, run rolling-window Fix-and-Optimize to iteratively improve the lot-sizing plan until a full sweep yields no cost reduction, and return the final setups, production quantities, inventory levels, and total cost.
 
 <!-- section:io -->
 ### Input
@@ -16,7 +16,7 @@ Starting from the given initial setup plan and window width, run Fix-and-Optimiz
 | `holdCost` | `number` | Inventory holding cost per case of ending inventory (JPY) |
 | `capacities` | `number[]` | Maximum production capacity in period $t$ when setup is active (cases) |
 | `initialPlan` | `number[]` | Feasible initial 0/1 setup vector |
-| `windowSize` | `number` | Number of consecutive periods unfixed in each LNS subproblem |
+| `windowSize` | `number` | Number of consecutive periods unfixed in each Fix-and-Optimize subproblem |
 
 ### Output
 

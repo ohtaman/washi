@@ -173,7 +173,7 @@
     },
     "10": {
       "title": "定式化改善・大規模分解法・反復ハイブリッド解法",
-      "description": "Big-M タイト化、妥当不等式、反復カット TSP、列生成法、Dantzig-Wolfe、古典・論理 Benders 分解、LNS、S&OP 総合演習。"
+      "description": "Big-M タイト化、妥当不等式、反復カット TSP、列生成法、Dantzig-Wolfe、古典・論理 Benders 分解、Fix-and-Optimize、S&OP 総合演習。"
     }
   },
   "judgeHelpers": {
