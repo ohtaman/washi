@@ -40,8 +40,10 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 
 | Weight | Criterion | Evaluation Standard |
 | :---: | --- | --- |
+| **+5** | Self-contained I/O schema | Explicitly defines every custom, recursive, or union type referenced in `section:io` (including all allowed object variants, field names, and value domains) so the problem is solvable without inspecting `starter.ts`. |
 | **+5** | Objective calculation check | Includes an explicit arithmetic formula showing how the example output yields the objective value. |
 | **+1** | Data-first field descriptions | Describes input fields by their real-world data meaning (e.g., "available stock", "maximum count on hand") rather than modeling roles (e.g., "upper-bound constraint"). |
+| **-10** | Undocumented custom I/O types | References a custom or recursive type (e.g., `PropFormula`, `SmtFormula`, `PolicyRule`) in `section:io` without specifying all allowed variants and shapes in the problem statement. |
 | **-10** | Optimality claims in examples | Claims or explains optimality (e.g., "achieves the minimum/maximum") inside `section:example`. |
 
 ---
