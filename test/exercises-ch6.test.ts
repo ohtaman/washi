@@ -28,16 +28,16 @@ registerChapterExerciseSuite({
   enforceScaffoldPolicy: true,
   expectedIds: ["051", "052", "053", "054", "055", "056", "057", "058", "059", "060"],
   expectedRuntimes: {
-    "051": ["washi", "highspy"],
-    "052": ["washi", "highspy"],
-    "053": ["washi", "highspy"],
-    "054": ["washi", "highspy"],
-    "055": ["washi", "highspy"],
-    "056": ["washi", "highspy"],
-    "057": ["washi", "highspy"],
-    "058": ["washi", "highspy"],
-    "059": ["washi", "highspy"],
-    "060": ["washi", "highspy"],
+    "051": ["washi", "pulp"],
+    "052": ["washi", "pulp"],
+    "053": ["washi", "pulp"],
+    "054": ["washi", "pulp"],
+    "055": ["washi", "pulp"],
+    "056": ["washi", "pulp"],
+    "057": ["washi", "pulp"],
+    "058": ["washi", "pulp"],
+    "059": ["washi", "pulp"],
+    "060": ["washi", "pulp"],
   },
   extractObjective: (_id, output) => {
     const rec = output as Record<string, unknown>;
@@ -338,7 +338,7 @@ describe("Exercises Chapter 6 Python parity (#057 zero-time)", () => {
 
   itHighspy("eliminates zero-time attraction subtours in PuLP solution.py", () => {
     const batch = runHighspyBatch([
-      { id: "057_zero", code: p057.highspySolution, inputs: [ZERO_TIME_ITINERARY_INPUT] },
+      { id: "057_zero", code: p057.pulpSolution, inputs: [ZERO_TIME_ITINERARY_INPUT] },
     ]);
     expect(batch["057_zero"].ok).toBe(true);
     const out = batch["057_zero"].outputs![0] as { itineraries: number[][]; totalCost: number };

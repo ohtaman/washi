@@ -69,7 +69,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "PuLP (Python)",
+      "pulp": "PuLP (Python)",
       "tablistLabel": "実行ランタイム切り替え",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) は Python タブで初回実行するときだけバックグラウンド読込されます。"
     },

@@ -26,16 +26,16 @@ registerChapterExerciseSuite({
   dirName: "ch02-mip-formulation-idioms",
   expectedIds: ["011", "012", "013", "014", "015", "016", "017", "018", "019", "020"],
   expectedRuntimes: {
-    "011": ["washi", "highspy"],
-    "012": ["washi", "highspy"],
-    "013": ["washi", "highspy"],
-    "014": ["washi", "highspy"],
-    "015": ["washi", "highspy"],
-    "016": ["washi", "highspy"],
-    "017": ["washi", "highspy"],
-    "018": ["washi", "highspy"],
-    "019": ["washi", "highspy"],
-    "020": ["washi", "highspy"],
+    "011": ["washi", "pulp"],
+    "012": ["washi", "pulp"],
+    "013": ["washi", "pulp"],
+    "014": ["washi", "pulp"],
+    "015": ["washi", "pulp"],
+    "016": ["washi", "pulp"],
+    "017": ["washi", "pulp"],
+    "018": ["washi", "pulp"],
+    "019": ["washi", "pulp"],
+    "020": ["washi", "pulp"],
   },
   extractObjective: extractCh2Objective,
   enforceScaffoldPolicy: true,
@@ -52,7 +52,7 @@ registerChapterExerciseSuite({
 
       if (process.env.REQUIRE_HIGHSPY_PYTHON === "1") {
         const pyRes = runHighspyBatch([
-          { id: "011_starter", code: p.highspyStarter, inputs: [c0.input] },
+          { id: "011_starter", code: p.pulpStarter, inputs: [c0.input] },
         ])["011_starter"];
         expect(pyRes.ok).toBe(false);
         expect(pyRes.error).toContain("NotImplementedError");

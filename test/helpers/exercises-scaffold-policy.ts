@@ -114,20 +114,20 @@ export interface ScaffoldPolicyInput {
   scaffold: string;
   washiStarter: string;
   /** Empty string for WaSHI-only exercises. */
-  highspyStarter: string;
+  pulpStarter: string;
   /** Parsed problem-tab sections per locale. */
   sections: Record<string, { hint1: string; hint2: string; formulation: string }>;
 }
 
 export function checkScaffoldPolicy(input: ScaffoldPolicyInput): string[] {
-  const { id, chapter, scaffold, washiStarter, highspyStarter, sections } = input;
+  const { id, chapter, scaffold, washiStarter, pulpStarter, sections } = input;
   const tier = scaffoldTierForChapter(chapter);
   const errors: string[] = [];
   const starters: Array<{ label: string; source: string; lang: "ts" | "py" }> = [
     { label: "washi/starter.ts", source: washiStarter, lang: "ts" },
   ];
-  if (highspyStarter.trim().length > 0) {
-    starters.push({ label: "highspy/starter.py", source: highspyStarter, lang: "py" });
+  if (pulpStarter.trim().length > 0) {
+    starters.push({ label: "pulp/starter.py", source: pulpStarter, lang: "py" });
   }
 
   if (tier === "scratch" && scaffold !== "scratch") {

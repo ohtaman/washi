@@ -596,7 +596,7 @@ export function renderWorkspaceHtml(params: {
   progress: ProgressState;
   activeRuntime: RuntimeId;
   washiCode: string;
-  highspyCode: string;
+  pulpCode: string;
 }): string {
   const {
     locale,
@@ -612,15 +612,15 @@ export function renderWorkspaceHtml(params: {
     progress,
     activeRuntime,
     washiCode,
-    highspyCode,
+    pulpCode,
   } = params;
   const { meta } = problem;
   const sections = parseProblemMarkdown(problemMarkdown);
   const solvedRuntimes = progress.solved[meta.id]?.runtimes ?? [];
   const solvedAny = isProblemSolved(progress, meta.id);
   const washiSolved = solvedRuntimes.includes("washi");
-  const highspySolved = solvedRuntimes.includes("highspy");
-  const supportsHighspy = meta.runtimes.includes("highspy");
+  const pulpSolved = solvedRuntimes.includes("pulp");
+  const supportsPulp = meta.runtimes.includes("pulp");
   const discussionUrl = getProblemDiscussionUrl(meta);
   const effectiveRuntime: RuntimeId = meta.runtimes.includes(activeRuntime)
     ? activeRuntime
@@ -667,7 +667,7 @@ export function renderWorkspaceHtml(params: {
     return `
       <div class="tab-panel-inner">
         ${
-          runtime === "highspy"
+          runtime === "pulp"
             ? `<p class="python-lazy-note">${escapeHtml(strings.tabs.pythonLazyNote)}</p>`
             : ""
         }
@@ -875,7 +875,7 @@ export function renderWorkspaceHtml(params: {
                 <div>
                   <h2 class="answer-workbench-title">${escapeHtml(strings.editor.workbenchTitle)}</h2>
                   <p class="answer-workbench-hint">${escapeHtml(
-                    supportsHighspy ? strings.editor.eitherRuntimeHint : strings.editor.washiOnlyHint
+                    supportsPulp ? strings.editor.eitherRuntimeHint : strings.editor.washiOnlyHint
                   )}</p>
                 </div>
               </div>
@@ -899,18 +899,18 @@ export function renderWorkspaceHtml(params: {
                   <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
                 </button>
                 ${
-                  supportsHighspy
+                  supportsPulp
                     ? `<button
                   type="button"
                   role="tab"
-                  id="tab-highspy"
+                  id="tab-pulp"
                   class="runtime-tab"
-                  data-runtime="highspy"
-                  aria-selected="${effectiveRuntime === "highspy" ? "true" : "false"}"
-                  tabindex="${effectiveRuntime === "highspy" ? "0" : "-1"}"
+                  data-runtime="pulp"
+                  aria-selected="${effectiveRuntime === "pulp" ? "true" : "false"}"
+                  tabindex="${effectiveRuntime === "pulp" ? "0" : "-1"}"
                 >
-                  <span>${escapeHtml(strings.tabs.highspy)}</span>
-                  <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
+                  <span>${escapeHtml(strings.tabs.pulp)}</span>
+                  <span class="runtime-tab-check">${pulpSolved ? "✓" : ""}</span>
                 </button>`
                     : ""
                 }
@@ -924,13 +924,13 @@ export function renderWorkspaceHtml(params: {
               >${renderToolbarAndEditor("washi", washiCode)}</div>
 
               ${
-                supportsHighspy
+                supportsPulp
                   ? `<div
                 role="tabpanel"
-                id="panel-highspy"
-                aria-labelledby="tab-highspy"
-                ${effectiveRuntime !== "highspy" ? "hidden" : ""}
-              >${renderToolbarAndEditor("highspy", highspyCode)}</div>`
+                id="panel-pulp"
+                aria-labelledby="tab-pulp"
+                ${effectiveRuntime !== "pulp" ? "hidden" : ""}
+              >${renderToolbarAndEditor("pulp", pulpCode)}</div>`
                   : ""
               }
 

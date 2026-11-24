@@ -53,10 +53,10 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 ## 3. Code & TypeScript / Python Idioms
 
-- **Reference Solution Comments (`washi/solution.ts`, `highspy/solution.py`)**: Unlike starters (which forbid modeling recipes), reference solutions should include concise English comments explaining what decision variables represent, what each constraint/objective block models, and why non-obvious formulations, linearizations, or multi-phase steps are needed.
+- **Reference Solution Comments (`washi/solution.ts`, `pulp/solution.py`)**: Unlike starters (which forbid modeling recipes), reference solutions should include concise English comments explaining what decision variables represent, what each constraint/objective block models, and why non-obvious formulations, linearizations, or multi-phase steps are needed.
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
-  - Python (`highspy/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
+  - Python (`pulp/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
 - **Idiomatic WaSHI (TypeScript)**:
   - **Prefer `.map()` + batch `m.constraint([...])` over C-style `for (let i = 0; ...)` loops**:
     ```ts
@@ -84,7 +84,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 - **Honest Verdict Classification (`judge.ts`)**: Never return `VIOLATION` for missing/non-finite fields or malformed output shapes — use `runtimeError(...)` (`RUNTIME_ERROR`). Reserve `VIOLATION` for broken constraints/bounds and `SUBOPTIMAL` for feasible non-optimal objectives (`sense`-aware).
 - **Source Language Purity**: Keep all `.ts`, `.py`, `cases.json`, `meta.json`, and root/docs English `.md` files free of Japanese Kana; localized content belongs exclusively under `/locales/{en,ja,zh}.{json,md}` (including `editorial/locales/` and `src/guide/locales/`).
 - **Per-Exercise Discussions**: Link finalized exercises in `meta.json` to a dedicated GitHub Discussions thread via `"discussionNumber"` (`#281`+ under `https://github.com/ohtaman/washi/discussions/<number>`). Omit `"discussionNumber"` until the problem is reviewed and finalized (the workspace omits the Discussions footer cleanly when `discussionNumber` is absent).
-- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "highspy"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); omit the `highspy/` directory when `runtimes` is `["washi"]`, and the workbench UI hides `#tab-highspy` and displays `washiOnlyHint`.
+- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "pulp"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); omit the `pulp/` directory when `runtimes` is `["washi"]`, and the workbench UI hides `#tab-pulp` and displays `washiOnlyHint`.
 - **Pre-PR Verification**:
   - `REQUIRE_HIGHSPY_PYTHON=1 npx vitest run test/exercises-ch1.test.ts test/exercises-platform.test.ts test/source-language-purity.test.ts`
   - `npm test`

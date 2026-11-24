@@ -32,7 +32,7 @@ const hasUv = spawnSync("uv", ["--version"], { encoding: "utf-8" }).status === 0
 if (process.env.REQUIRE_HIGHSPY_PYTHON === "1" && !hasUv) {
   throw new Error("REQUIRE_HIGHSPY_PYTHON=1 is set but `uv` is not installed on PATH.");
 }
-const itHighspy = hasUv ? it : it.skip;
+const itPulp = hasUv ? it : it.skip;
 
 function extractObjectiveValue(output: unknown): number {
   const rec = output as Record<string, unknown>;
@@ -44,7 +44,7 @@ function extractObjectiveValue(output: unknown): number {
   throw new Error(`No numeric objective field found in output: ${JSON.stringify(output)}`);
 }
 
-function runHighspyBatch(
+function runPulpBatch(
   jobs: Array<{ id: string; code: string; inputs: unknown[] }>
 ): Record<string, { ok: boolean; outputs?: unknown[]; error?: string }> {
   const script = `
@@ -147,8 +147,8 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
         expect(["intro", "core", "applied", "capstone"]).toContain(prob.meta.role);
         expect(prob.washiStarter).toContain("import ");
         expect(prob.washiStarter).toContain("new Model(");
-        expect(prob.highspyStarter).toContain("import pulp");
-        expect(prob.highspyStarter).toContain("pulp.LpProblem(");
+        expect(prob.pulpStarter).toContain("import pulp");
+        expect(prob.pulpStarter).toContain("pulp.LpProblem(");
       }
       expect(prob.washiStarter).not.toContain("ReducedCostBoss");
       expect(prob.washiSolution).not.toContain("ReducedCostBoss");
@@ -160,11 +160,11 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       const expectedPyParams = Object.keys(prob.cases[0].input as Record<string, unknown>).map(
         toSnakeCase
       );
-      expect(extractPySolveParams(prob.highspyStarter)).toEqual(expectedPyParams);
-      expect(extractPySolveParams(prob.highspySolution)).toEqual(expectedPyParams);
-      expect(prob.highspyStarter).toContain('"""Return {');
-      expect(prob.highspySolution).toContain('"""Return {');
-      expect(prob.meta.runtimes).toEqual(["washi", "highspy"]);
+      expect(extractPySolveParams(prob.pulpStarter)).toEqual(expectedPyParams);
+      expect(extractPySolveParams(prob.pulpSolution)).toEqual(expectedPyParams);
+      expect(prob.pulpStarter).toContain('"""Return {');
+      expect(prob.pulpSolution).toContain('"""Return {');
+      expect(prob.meta.runtimes).toEqual(["washi", "pulp"]);
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
       expect(prob.meta.provenance.reviewedBy).toEqual([]);
@@ -397,18 +397,18 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     expect(unboundedVerdict.message).toContain("Unbounded");
   }, 60_000);
 
-  itHighspy("cross-verifies every PuLP Python solution.py against identical cases.json and shared judge()", () => {
+  itPulp("cross-verifies every PuLP Python solution.py against identical cases.json and shared judge()", () => {
     const ch1Problems = PROBLEMS.filter((p) => p.meta.chapter <= 1);
     const jobs = ch1Problems.map((p) => ({
       id: p.meta.id,
-      code: p.highspySolution,
+      code: p.pulpSolution,
       inputs: p.cases.map((c) => c.input),
     }));
 
-    const batch = runHighspyBatch(jobs);
+    const batch = runPulpBatch(jobs);
     for (const prob of ch1Problems) {
       const res = batch[prob.meta.id];
-      expect(res?.ok, `${prob.meta.id} highspy error: ${res?.error}`).toBe(true);
+      expect(res?.ok, `${prob.meta.id} pulp error: ${res?.error}`).toBe(true);
       expect(res.outputs).toHaveLength(prob.cases.length);
       for (let i = 0; i < prob.cases.length; i++) {
         for (const locale of ["en", "ja", "zh"] as const) {
@@ -418,23 +418,23 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
             prob.cases[i].expectedOptimal,
             locale
           );
-          expect(verdict.ok, `${prob.meta.id} highspy (${locale}) case[${i}]: ${verdict.message}`).toBe(true);
+          expect(verdict.ok, `${prob.meta.id} pulp (${locale}) case[${i}]: ${verdict.message}`).toBe(true);
           expect(verdict.status).toBe("AC");
         }
         expect(
           Math.abs(extractObjectiveValue(res.outputs![i]) - prob.cases[i].expectedOptimal),
-          `${prob.meta.id} highspy case[${i}] objective mismatch`
+          `${prob.meta.id} pulp case[${i}] objective mismatch`
         ).toBeLessThanOrEqual(1e-2);
       }
     }
 
-    // Verify #000-#003 highspy starters reproduce intentional VIOLATION states
-    const starterBatch = runHighspyBatch(
+    // Verify #000-#003 pulp starters reproduce intentional VIOLATION states
+    const starterBatch = runPulpBatch(
       ["000", "001", "002", "003"].map((id) => {
         const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
         return {
           id: p.meta.id,
-          code: p.highspyStarter,
+          code: p.pulpStarter,
           inputs: [p.cases[0].input],
         };
       })
@@ -447,12 +447,12 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
     }
 
     // Verify #004-#010 PuLP starters explicitly raise NotImplementedError
-    const unimplBatch = runHighspyBatch(
+    const unimplBatch = runPulpBatch(
       ["004", "005", "006", "007", "008", "009", "010"].map((id) => {
         const p = PROBLEMS.find((prob) => prob.meta.id === id)!;
         return {
           id: p.meta.id,
-          code: p.highspyStarter,
+          code: p.pulpStarter,
           inputs: [p.cases[0].input],
         };
       })

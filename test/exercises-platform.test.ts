@@ -869,13 +869,13 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     expect(getSolvedRuntimeCount(state, "001")).toBe(1);
     expect(getNextRecommendedProblemId(state, sampleProblems)).toBe("002");
 
-    // Solving the second problem only in highspy also increments main count
-    state = recordSolvedProblem(state, "002", "highspy", 45, "2026-11-19T00:03:00Z");
+    // Solving the second problem only in pulp also increments main count
+    state = recordSolvedProblem(state, "002", "pulp", 45, "2026-11-19T00:03:00Z");
     expect(isProblemSolved(state, "002")).toBe(true);
     expect(countMainSolved(state, sampleProblems)).toBe(2);
 
     // Passing #001 in both runtimes preserves bestMs and keeps problem count at 2 (never double-counted)
-    state = recordSolvedProblem(state, "001", "highspy", 10, "2026-11-19T00:04:00Z");
+    state = recordSolvedProblem(state, "001", "pulp", 10, "2026-11-19T00:04:00Z");
     expect(countMainSolved(state, sampleProblems)).toBe(2);
     expect(getSolvedRuntimeCount(state, "001")).toBe(2);
     expect(state.solved["001"].bestMs).toBe(10);
@@ -906,7 +906,7 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
 
     let state = createEmptyProgress();
     state = recordSolvedProblem(state, "001", "washi", 22, "2026-11-19T00:00:00Z");
-    state = saveDraft(state, "002", "highspy", "import highspy\n# draft");
+    state = saveDraft(state, "002", "pulp", "import pulp\n# draft");
     saveProgress(state, storage);
 
     expect(map.has(PROGRESS_STORAGE_KEY)).toBe(true);
@@ -989,6 +989,44 @@ describe("Exercises Platform — Progress Store (localStorage v1)", () => {
     expect(importedV2.solved["003"]).toBeUndefined();
     expect(importedV2.drafts["003"]).toBeUndefined();
     expect(importedV2.solved["001"]?.runtimes).toEqual(["washi"]);
+  });
+
+  it("migrates legacy 'highspy' runtimes and drafts to 'pulp' on load and import", () => {
+    const map = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        map.set(k, v);
+      },
+    };
+    const legacyRaw = JSON.stringify({
+      version: 3,
+      solved: {
+        "004": { runtimes: ["washi", "highspy"], bestMs: 14, solvedAt: "2026-11-20T00:00:00Z" },
+        "005": { runtimes: ["highspy", "pulp"], solvedAt: "2026-11-20T00:00:00Z" },
+      },
+      drafts: {
+        "004": { highspy: "# legacy highspy draft" },
+        "005": { highspy: "# old highspy", pulp: "# newer pulp" },
+      },
+    });
+    map.set(PROGRESS_STORAGE_KEY, legacyRaw);
+
+    const loaded = loadProgress(storage);
+    expect(loaded.solved["004"]?.runtimes).toEqual(["washi", "pulp"]);
+    expect(loaded.solved["005"]?.runtimes).toEqual(["pulp"]);
+    expect(loaded.drafts["004"]).toEqual({ pulp: "# legacy highspy draft" });
+    expect(loaded.drafts["005"]).toEqual({ pulp: "# newer pulp" });
+
+    // Persisted storage should be migrated to "pulp" with no "highspy" keys left
+    const persisted = JSON.parse(map.get(PROGRESS_STORAGE_KEY)!);
+    expect(persisted.solved["004"].runtimes).toEqual(["washi", "pulp"]);
+    expect(persisted.drafts["004"]).toEqual({ pulp: "# legacy highspy draft" });
+    expect((persisted.drafts["005"] as Record<string, unknown>).highspy).toBeUndefined();
+
+    const imported = importProgressJson(legacyRaw);
+    expect(imported.solved["004"]?.runtimes).toEqual(["washi", "pulp"]);
+    expect(imported.drafts["004"]).toEqual({ pulp: "# legacy highspy draft" });
   });
 
   it("handles SecurityError thrown by window.localStorage property getter without crashing", () => {
@@ -1149,7 +1187,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
 
     let state = createEmptyProgress();
     state = recordSolvedProblem(state, "001", "washi", 12, "2026-11-19T00:00:00Z");
-    state = recordSolvedProblem(state, "002", "highspy", 40, "2026-11-19T00:02:00Z");
+    state = recordSolvedProblem(state, "002", "pulp", 40, "2026-11-19T00:02:00Z");
 
     for (const locale of ["en", "ja", "zh"] as const) {
       const headerHtml = renderHeaderHtml(locale, UI_STRINGS[locale], "Switch theme", "🌙");
@@ -1223,7 +1261,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         progress: state,
         activeRuntime: "washi",
         washiCode: p010.washiStarter,
-        highspyCode: p010.highspyStarter,
+        pulpCode: p010.pulpStarter,
       });
 
       expect(wsHtml, `workspace (${locale})`).not.toMatch(GAMEY_UI_RE);
@@ -1262,8 +1300,8 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       expect(decodeHtmlEntities(p010WsHtml)).toContain(UI_STRINGS[locale].workspace.discussionBtn);
       expect(p010WsHtml).toContain(`${p010.meta.difficulty}/5`);
       expect(p010WsHtml).toContain(UI_STRINGS[locale].solvedBadge);
-      expect(p010WsHtml).toContain('id="tab-highspy"');
-      expect(p010WsHtml).toContain('id="panel-highspy"');
+      expect(p010WsHtml).toContain('id="tab-pulp"');
+      expect(p010WsHtml).toContain('id="panel-pulp"');
 
       // WaSHI-only problem (runtimes: ["washi"]) must omit Python tab/panel and fall back active tab to WaSHI
       const washiOnlyProb = {
@@ -1280,14 +1318,14 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         prevProblem: PROBLEMS.find((p) => p.meta.id === "009") ?? null,
         nextProblem: null,
         progress: state,
-        activeRuntime: "highspy",
+        activeRuntime: "pulp",
         washiCode: p010.washiStarter,
-        highspyCode: "",
+        pulpCode: "",
       });
       expect(washiOnlyHtml).toContain('id="tab-washi"');
       expect(washiOnlyHtml).toContain('id="panel-washi"');
-      expect(washiOnlyHtml).not.toContain('id="tab-highspy"');
-      expect(washiOnlyHtml).not.toContain('id="panel-highspy"');
+      expect(washiOnlyHtml).not.toContain('id="tab-pulp"');
+      expect(washiOnlyHtml).not.toContain('id="panel-pulp"');
       expect(washiOnlyHtml).not.toMatch(/id="panel-washi"[^>]*\bhidden\b/);
       expect(decodeHtmlEntities(washiOnlyHtml)).toContain(UI_STRINGS[locale].editor.washiOnlyHint);
 
@@ -1305,7 +1343,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         progress: state,
         activeRuntime: "washi",
         washiCode: p010.washiStarter,
-        highspyCode: p010.highspyStarter,
+        pulpCode: p010.pulpStarter,
       });
       expect(noDiscussionHtml).not.toContain('class="ws-discussion-footer"');
       expect(noDiscussionHtml).not.toContain('id="ws-discussion-link"');
@@ -1500,7 +1538,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
 
   it("maps RuntimeId to analytics runtime and routes events through gtag, dataLayer fallback, or clean no-op", () => {
     expect(toAnalyticsRuntime("washi")).toBe("washi");
-    expect(toAnalyticsRuntime("highspy")).toBe("pulp");
+    expect(toAnalyticsRuntime("pulp")).toBe("pulp");
 
     // 1. Clean no-op when window is undefined (Node / SSR)
     const prevWindow = (globalThis as { window?: unknown }).window;
@@ -1592,7 +1630,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
   function setupExercisesHarness(options: {
     initialUrl: string;
     analyticsMode: "gtag" | "dataLayer" | "none";
-    runHighspyImpl?: ExercisesAppDeps["runHighspy"];
+    runPulpImpl?: ExercisesAppDeps["runPulp"];
   }) {
     class FakeElement {
       tagName: string;
@@ -1668,7 +1706,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       readOnly = false;
       selectionStart = 0;
       selectionEnd = 0;
-      constructor(runtime: "washi" | "highspy") {
+      constructor(runtime: "washi" | "pulp") {
         super("textarea", (sel) => sel === "textarea.code-editor");
         this.id = `editor-${runtime}`;
         this.dataset.runtime = runtime;
@@ -1685,7 +1723,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         .replace(/&amp;/g, "&");
 
     const editorWashi = new FakeTextArea("washi");
-    const editorHighspy = new FakeTextArea("highspy");
+    const editorPulp = new FakeTextArea("pulp");
     const tabWashi = new FakeElement(
       "button",
       (sel) => sel === '[role="tab"][data-runtime]' || sel === "#tab-washi"
@@ -1693,17 +1731,17 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     tabWashi.id = "tab-washi";
     tabWashi.dataset.runtime = "washi";
 
-    const tabHighspy = new FakeElement(
+    const tabPulp = new FakeElement(
       "button",
-      (sel) => sel === '[role="tab"][data-runtime]' || sel === "#tab-highspy"
+      (sel) => sel === '[role="tab"][data-runtime]' || sel === "#tab-pulp"
     );
-    tabHighspy.id = "tab-highspy";
-    tabHighspy.dataset.runtime = "highspy";
+    tabPulp.id = "tab-pulp";
+    tabPulp.dataset.runtime = "pulp";
 
     const panelWashi = new FakeElement("div");
     panelWashi.id = "panel-washi";
-    const panelHighspy = new FakeElement("div");
-    panelHighspy.id = "panel-highspy";
+    const panelPulp = new FakeElement("div");
+    panelPulp.id = "panel-pulp";
 
     const stmtTabProblem = new FakeElement(
       "button",
@@ -1733,12 +1771,12 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     solWashiBtn.dataset.action = "solution";
     solWashiBtn.dataset.runtime = "washi";
 
-    const solHighspyBtn = new FakeElement(
+    const solPulpBtn = new FakeElement(
       "button",
       (sel) => sel === "button[data-action][data-runtime]"
     );
-    solHighspyBtn.dataset.action = "solution";
-    solHighspyBtn.dataset.runtime = "highspy";
+    solPulpBtn.dataset.action = "solution";
+    solPulpBtn.dataset.runtime = "pulp";
 
     const runWashiBtn = new FakeElement(
       "button",
@@ -1747,12 +1785,12 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     runWashiBtn.dataset.action = "run";
     runWashiBtn.dataset.runtime = "washi";
 
-    const runHighspyBtn = new FakeElement(
+    const runPulpBtn = new FakeElement(
       "button",
       (sel) => sel === "button[data-action][data-runtime]"
     );
-    runHighspyBtn.dataset.action = "run";
-    runHighspyBtn.dataset.runtime = "highspy";
+    runPulpBtn.dataset.action = "run";
+    runPulpBtn.dataset.runtime = "pulp";
 
     const judgeResults = new FakeElement("section");
     judgeResults.id = "judge-results";
@@ -1769,14 +1807,14 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
         wsSplit.removeAttribute("inert");
         wsSplit.removeAttribute("aria-busy");
         editorWashi.readOnly = false;
-        editorHighspy.readOnly = false;
+        editorPulp.readOnly = false;
         const washiMatch = val.match(/<textarea[^>]*id="editor-washi"[^>]*>([\s\S]*?)<\/textarea>/);
         if (washiMatch) {
           editorWashi.value = decodeTextareaHtml(washiMatch[1]);
         }
-        const pyMatch = val.match(/<textarea[^>]*id="editor-highspy"[^>]*>([\s\S]*?)<\/textarea>/);
+        const pyMatch = val.match(/<textarea[^>]*id="editor-pulp"[^>]*>([\s\S]*?)<\/textarea>/);
         if (pyMatch) {
-          editorHighspy.value = decodeTextareaHtml(pyMatch[1]);
+          editorPulp.value = decodeTextareaHtml(pyMatch[1]);
         }
       },
       addEventListener: (type: string, cb: (e: unknown) => unknown) => {
@@ -1786,28 +1824,28 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       },
       querySelector: (sel: string): unknown => {
         if (sel === "#editor-washi") return editorWashi;
-        if (sel === "#editor-highspy") return editorHighspy;
+        if (sel === "#editor-pulp") return editorPulp;
         if (sel === "#tab-washi") return tabWashi;
-        if (sel === "#tab-highspy") return tabHighspy;
+        if (sel === "#tab-pulp") return tabPulp;
         if (sel === "#panel-washi") return panelWashi;
-        if (sel === "#panel-highspy") return panelHighspy;
+        if (sel === "#panel-pulp") return panelPulp;
         if (sel === "#stmt-tab-problem") return stmtTabProblem;
         if (sel === "#stmt-tab-editorial") return stmtTabEditorial;
         if (sel === "#stmt-panel-problem") return stmtPanelProblem;
         if (sel === "#stmt-panel-editorial") return stmtPanelEditorial;
         if (sel === "#editorial-content") return editorialContent;
         if (sel === 'button[data-action="run"][data-runtime="washi"]') return runWashiBtn;
-        if (sel === 'button[data-action="run"][data-runtime="highspy"]') return runHighspyBtn;
+        if (sel === 'button[data-action="run"][data-runtime="pulp"]') return runPulpBtn;
         if (sel === 'button[data-action="solution"][data-runtime="washi"]') return solWashiBtn;
-        if (sel === 'button[data-action="solution"][data-runtime="highspy"]') return solHighspyBtn;
+        if (sel === 'button[data-action="solution"][data-runtime="pulp"]') return solPulpBtn;
         if (sel === "#judge-results") return judgeResults;
         if (sel === ".ws-split") return rootHtml.includes('class="ws-split"') ? wsSplit : null;
         if (sel === ".ws-split[inert]") return wsSplit.hasAttribute("inert") ? wsSplit : null;
         return null;
       },
       querySelectorAll: (sel: string): unknown[] => {
-        if (sel === 'button[data-action="solution"]') return [solWashiBtn, solHighspyBtn];
-        if (sel === "textarea.code-editor") return [editorWashi, editorHighspy];
+        if (sel === 'button[data-action="solution"]') return [solWashiBtn, solPulpBtn];
+        if (sel === "textarea.code-editor") return [editorWashi, editorPulp];
         return [];
       },
     };
@@ -1946,15 +1984,15 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       root: root as unknown as HTMLElement,
       attachApp,
       editorWashi,
-      editorHighspy,
+      editorPulp,
       tabWashi,
-      tabHighspy,
+      tabPulp,
       stmtTabProblem,
       stmtTabEditorial,
       solWashiBtn,
-      solHighspyBtn,
+      solPulpBtn,
       runWashiBtn,
-      runHighspyBtn,
+      runPulpBtn,
       gtagEvents,
       dataLayerEvents,
       clickTarget,
@@ -1975,7 +2013,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     let pyMode: "ac" | "violation" | "error" = "ac";
     const app = h.attachApp(
       new ExercisesApp(h.root, {
-        runHighspy: async (_code, inputs) => {
+        runPulp: async (_code, inputs) => {
         if (pyMode === "error") {
           return {
             ok: false,
@@ -2065,10 +2103,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     // 3. Runtime tab switches ("pulp" <-> "washi"):
     //    exercise_runtime_view("pulp") fires once on first PuLP inspection in this #001 visit
     //    (viewing Python without running it is directly observable, and toggling back-and-forth does not inflate runtime_view)
-    await h.clickTarget(h.tabHighspy);
-    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabPulp);
+    await h.clickTarget(h.tabPulp);
     await h.clickTarget(h.tabWashi);
-    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabPulp);
     await h.clickTarget(h.tabWashi);
     expect(h.gtagEvents).toEqual([
       {
@@ -2204,28 +2242,28 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     expect(serializedWashiEvents).not.toContain(secretErrMarker);
     h.gtagEvents.length = 0;
 
-    // 5. Switch to PuLP ("highspy") tab on #000: test code_edit, RUNTIME_ERROR, VIOLATION, solution reveal, and AC
+    // 5. Switch to PuLP ("pulp") tab on #000: test code_edit, RUNTIME_ERROR, VIOLATION, solution reveal, and AC
     await h.clickTarget(h.makeNavLink("000"));
     await app.whenIdle();
-    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabPulp);
 
     const secretPyMarker = "# SECRET_USER_PYTHON_SOURCE_54321";
-    await h.inputTarget(h.editorHighspy, `${p001.highspyStarter}\n${secretPyMarker}`);
+    await h.inputTarget(h.editorPulp, `${p001.pulpStarter}\n${secretPyMarker}`);
     pyMode = "error";
-    await h.clickTarget(h.runHighspyBtn);
+    await h.clickTarget(h.runPulpBtn);
 
     pyMode = "violation";
-    await h.clickTarget(h.runHighspyBtn);
+    await h.clickTarget(h.runPulpBtn);
 
-    await h.clickTarget(h.solHighspyBtn);
-    await h.clickTarget(h.solHighspyBtn);
+    await h.clickTarget(h.solPulpBtn);
+    await h.clickTarget(h.solPulpBtn);
 
     pyMode = "ac";
     await h.inputTarget(
-      h.editorHighspy,
+      h.editorPulp,
       `def solve(a, b):\n    ${secretPyMarker}\n    return {"sum": a + b}`
     );
-    await h.clickTarget(h.runHighspyBtn);
+    await h.clickTarget(h.runPulpBtn);
 
     // Navigating to another problem while PuLP tab is active records exercise_runtime: "pulp" for both view events
     await h.clickTarget(h.makeNavLink("002"));
@@ -2321,7 +2359,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     let resolvePyodide: (() => void) | null = null;
     const app = h.attachApp(
       new ExercisesApp(h.root, {
-        runHighspy: (_code, inputs) =>
+        runPulp: (_code, inputs) =>
           new Promise((resolve) => {
             resolvePyodide = () =>
               resolve({
@@ -2340,11 +2378,11 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
       })
     );
     await app.whenIdle();
-    await h.clickTarget(h.tabHighspy);
+    await h.clickTarget(h.tabPulp);
     h.gtagEvents.length = 0;
 
     // Trigger click without awaiting completion yet: exercise_run_start must already be recorded!
-    const pendingClick = h.clickTarget(h.runHighspyBtn);
+    const pendingClick = h.clickTarget(h.runPulpBtn);
     expect(h.gtagEvents).toEqual([
       {
         name: "exercise_run_start",
@@ -2372,7 +2410,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     h.gtagEvents.length = 0;
 
     // If the user abandons #000 (navigates away) before slow Pyodide finishes, only exercise_run_start is recorded for #000
-    const abandonedClick = h.clickTarget(h.runHighspyBtn);
+    const abandonedClick = h.clickTarget(h.runPulpBtn);
     expect(h.gtagEvents).toEqual([
       {
         name: "exercise_run_start",
@@ -2431,7 +2469,7 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     });
     const appNone = hNone.attachApp(
       new ExercisesApp(hNone.root, {
-        runHighspy: async () => ({
+        runPulp: async () => ({
           ok: true,
           logs: [],
           outputs: [{ sum: 0 }],
@@ -2444,10 +2482,10 @@ describe("Exercises Platform — Analytics Telemetry (WaSHI vs PuLP)", () => {
     );
     await appNone.whenIdle();
     await expect(hNone.clickTarget(hNone.stmtTabEditorial)).resolves.toBeUndefined();
-    await expect(hNone.clickTarget(hNone.tabHighspy)).resolves.toBeUndefined();
-    await expect(hNone.clickTarget(hNone.solHighspyBtn)).resolves.toBeUndefined();
-    await expect(hNone.clickTarget(hNone.solHighspyBtn)).resolves.toBeUndefined();
-    await expect(hNone.clickTarget(hNone.runHighspyBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.tabPulp)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solPulpBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.solPulpBtn)).resolves.toBeUndefined();
+    await expect(hNone.clickTarget(hNone.runPulpBtn)).resolves.toBeUndefined();
     await expect(hNone.clickTarget(hNone.tabWashi)).resolves.toBeUndefined();
     await expect(hNone.clickTarget(hNone.solWashiBtn)).resolves.toBeUndefined();
     await expect(hNone.clickTarget(hNone.solWashiBtn)).resolves.toBeUndefined();

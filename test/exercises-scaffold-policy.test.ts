@@ -43,7 +43,7 @@ function base(overrides: Partial<ScaffoldPolicyInput>): ScaffoldPolicyInput {
     chapter: 7,
     scaffold: "scratch",
     washiStarter: scratchTs,
-    highspyStarter: scratchPy,
+    pulpStarter: scratchPy,
     sections: goodSections,
     ...overrides,
   };
@@ -81,9 +81,9 @@ describe("exercise scaffolding & hint-ladder policy", () => {
       "# TODO: Build and solve the model, then return the output.",
       "# TODO: pulp.lpSum(x) <= cap"
     );
-    const errors = checkScaffoldPolicy(base({ washiStarter: ts, highspyStarter: py }));
+    const errors = checkScaffoldPolicy(base({ washiStarter: ts, pulpStarter: py }));
     expect(errors.some((e) => e.includes("washi/starter.ts") && e.includes("reveals a formula"))).toBe(true);
-    expect(errors.some((e) => e.includes("highspy/starter.py") && e.includes("reveals a formula"))).toBe(true);
+    expect(errors.some((e) => e.includes("pulp/starter.py") && e.includes("reveals a formula"))).toBe(true);
   });
 
   it(`rejects more than ${MAX_STARTER_COMMENT_LINES} comment lines`, () => {
@@ -91,7 +91,7 @@ describe("exercise scaffolding & hint-ladder policy", () => {
       "// TODO: Build and solve the model, then return the output.",
       "// TODO:\n  // 1. Declare variables\n  // 2. Add constraints\n  // 3. Optimize"
     );
-    const errors = checkScaffoldPolicy(base({ washiStarter: ts, highspyStarter: "" }));
+    const errors = checkScaffoldPolicy(base({ washiStarter: ts, pulpStarter: "" }));
     expect(errors).toEqual([expect.stringContaining("at most 3 comment lines allowed (found 4)")]);
   });
 
@@ -114,13 +114,13 @@ def solve(input_data: dict) -> dict:
     pick = [pulp.LpVariable(f"p_{i}", cat=pulp.LpBinary) for i in range(3)]
     raise NotImplementedError
 `;
-    expect(checkScaffoldPolicy(base({ chapter: 2, scaffold: "fill-in", washiStarter: ts, highspyStarter: py }))).toEqual(
+    expect(checkScaffoldPolicy(base({ chapter: 2, scaffold: "fill-in", washiStarter: ts, pulpStarter: py }))).toEqual(
       []
     );
-    const ch3 = checkScaffoldPolicy(base({ chapter: 3, scaffold: "fill-in", washiStarter: ts, highspyStarter: py }));
+    const ch3 = checkScaffoldPolicy(base({ chapter: 3, scaffold: "fill-in", washiStarter: ts, pulpStarter: py }));
     expect(ch3).toEqual([
       expect.stringContaining("washi/starter.ts: Chapter 3 starters must not predeclare decision variables"),
-      expect.stringContaining("highspy/starter.py: Chapter 3 starters must not predeclare decision variables"),
+      expect.stringContaining("pulp/starter.py: Chapter 3 starters must not predeclare decision variables"),
     ]);
   });
 
@@ -129,10 +129,10 @@ def solve(input_data: dict) -> dict:
       "  // TODO: Build and solve the model, then return the output.",
       '  const m = new Model("x");\n  // TODO: Build and solve the model.'
     );
-    const errors = checkScaffoldPolicy(base({ chapter: 6, scaffold: "fill-in", washiStarter: fillInTs, highspyStarter: "" }));
+    const errors = checkScaffoldPolicy(base({ chapter: 6, scaffold: "fill-in", washiStarter: fillInTs, pulpStarter: "" }));
     expect(errors).toContain('#061: Chapter 6 exercises must use meta.scaffold "scratch" (received "fill-in").');
 
-    const scratchErrors = checkScaffoldPolicy(base({ washiStarter: fillInTs, highspyStarter: "" }));
+    const scratchErrors = checkScaffoldPolicy(base({ washiStarter: fillInTs, pulpStarter: "" }));
     expect(scratchErrors).toEqual([
       "#061 washi/starter.ts: scratch starters must not construct a model.",
       "#061 washi/starter.ts: scratch solve() body must contain only TODO comments and a not-implemented throw.",
