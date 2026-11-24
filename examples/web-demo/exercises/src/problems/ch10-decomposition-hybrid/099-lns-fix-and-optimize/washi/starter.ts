@@ -18,6 +18,6 @@ export interface P099Output {
 }
 
 export async function solve(input: P099Input): Promise<P099Output> {
-  // TODO: Improve the initial lot-sizing plan via Fix-and-Optimize LNS and return the schedule.
+  // TODO: Improve the initial lot-sizing plan via rolling-window Fix-and-Optimize and return the schedule.
   throw new Error("Not implemented");
 }
