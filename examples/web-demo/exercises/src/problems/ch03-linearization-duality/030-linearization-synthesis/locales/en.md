@@ -16,22 +16,22 @@ Decide which services to deploy, the pairwise simultaneous-deployment indicators
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `baseCosts` | `number[]` | Base deployment cost $c_i$ of service $i$ |
-| `values` | `number[]` | Capability value $v_i$ of service $i$ |
-| `minValue` | `number` | Lower bound required on total delivered value ($\sum_i v_i x_i$, where $x_i \in \{0, 1\}$) |
-| `loads` | `number[][]` | Non-negative load `loads[r][i]` added to zone $r$ when service $i$ runs; zone $r$'s total load is $L_r = \sum_i \text{loads}[r][i]\, x_i$ |
-| `targets` | `number[]` | Target load $\tau_r$ for zone $r$ |
-| `devWeights` | `number[]` | Non-negative penalty weight $\beta_r$ per unit L1 deviation $\lvert L_r - \tau_r \rvert$ in zone $r$ |
-| `peakWeight` | `number` | Positive cost weight $\alpha > 0$ on peak zone load $\max_r L_r$ |
-| `pairs` | `number[][]` | Interaction list `[i, j, s]` (0-based service indices `i, j`) added to cost when both $i$ and $j$ deploy |
+| `baseCosts` | `number[]` | Base deployment cost of service `i` |
+| `values` | `number[]` | Delivered capability value of service `i` |
+| `minValue` | `number` | Minimum required total delivered value |
+| `loads` | `number[][]` | Non-negative load `loads[r][i]` added to zone `r` when service `i` runs |
+| `targets` | `number[]` | Target load for zone `r` |
+| `devWeights` | `number[]` | Non-negative penalty weight per unit of absolute deviation (L1) from target load in zone `r` |
+| `peakWeight` | `number` | Positive cost weight per unit of peak load across all zones |
+| `pairs` | `number[][]` | Interaction list `[i, j, s]` (0-based service indices `i, j`) adding cost `s` when both services deploy |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary (`0` or `1`) service choices $x_i$ |
-| `pairProducts` | `number[]` | Binary pair products $w_k = x_i x_j$ for each entry in `pairs` |
-| `peakLoad` | `number` | Maximum load $\max_r L_r$ across all zones |
+| `selected` | `number[]` | Binary (`0` or `1`) deployment choice for each service |
+| `pairProducts` | `number[]` | Binary indicator (`1` if both services in `pairs[k]` deploy, `0` otherwise) |
+| `peakLoad` | `number` | Maximum load across all zones |
 | `totalCost` | `number` | Minimized total operational cost |
 
 <!-- section:example -->
@@ -75,4 +75,4 @@ Deploying services 0 and 3 ([1, 0, 0, 1]) delivers value $30 + 30 = 60 \ge 60$, 
 Combine three linearization patterns in one MIP: binary variables for service selection, continuous $[0, 1]$ variables for pairwise interaction products, a scalar continuous epigraph variable for the peak zone load, and non-negative positive/negative deviation variable pairs for each zone's L1 target tracking.
 
 <!-- section:hint2 -->
-Each zone's load $L_r = \sum_i \text{loads}_{r,i} x_i$ feeds into both the epigraph cap ($L_r \le \text{peakLoad}$) and the L1 split ($L_r - \tau_r = d_r^+ - d_r^-$). For every pair `[i, j, s]`, enforce all three McCormick inequalities ($w_k \le x_i$, $w_k \le x_j$, $w_k \ge x_i + x_j - 1$) because interaction costs $s$ can be either negative (synergistic cost savings, needing the upper bounds) or positive (interference cost, needing the lower bound). Remember the minimum delivered capability constraint, and round `selected` and `pairProducts` cleanly in the output.
+Each zone's load $L_r = \sum_i \text{loads}_{r,i} x_i$ (where $x_i \in \{0, 1\}$ indicates service selection) feeds into both the epigraph cap ($L_r \le \text{peakLoad}$) and the L1 split ($L_r - \text{targets}[r] = d_r^+ - d_r^-$). For every pair `[i, j, s]`, enforce all three McCormick inequalities on the pair product variable $w_k$ ($w_k \le x_i$, $w_k \le x_j$, $w_k \ge x_i + x_j - 1$) because interaction costs $s$ can be either negative (synergistic cost savings, needing the upper bounds) or positive (interference cost, needing the lower bound). Remember the minimum delivered capability constraint, and round `selected` and `pairProducts` cleanly in the output.

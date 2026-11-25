@@ -16,22 +16,22 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `baseCosts` | `number[]` | サービス $i$ の基本コスト $c_i$ |
-| `values` | `number[]` | サービス $i$ の提供価値 $v_i$ |
-| `minValue` | `number` | 合計提供価値（$\sum_i v_i x_i$、$x_i \in \{0, 1\}$ はサービス $i$ の配備選択）に課す下限 |
-| `loads` | `number[][]` | サービス $i$ 稼働時にゾーン $r$ へ加わる非負の負荷 `loads[r][i]`（ゾーン $r$ の総負荷は $L_r = \sum_i \text{loads}[r][i]\, x_i$） |
-| `targets` | `number[]` | ゾーン $r$ の目標負荷 $\tau_r$ |
-| `devWeights` | `number[]` | ゾーン $r$ の L1 偏差 $\lvert L_r - \tau_r \rvert$ に対する非負のペナルティ重み $\beta_r$ |
-| `peakWeight` | `number` | 最大ゾーン負荷 $\max_r L_r$ にかかる正のコスト重み $\alpha > 0$ |
-| `pairs` | `number[][]` | 0 始まりのサービス番号 `i, j` による `[i, j, s]` のリスト（両方配備時にコスト $s$ を加算） |
+| `baseCosts` | `number[]` | サービス `i` の基本コスト |
+| `values` | `number[]` | サービス `i` の提供価値 |
+| `minValue` | `number` | 必要な最低提供価値 |
+| `loads` | `number[][]` | サービス `i` 配備時にゾーン `r` へ加わる非負の負荷 `loads[r][i]` |
+| `targets` | `number[]` | ゾーン `r` の目標負荷 |
+| `devWeights` | `number[]` | ゾーン `r` の目標負荷からの差の絶対値（L1 偏差）1 単位あたりの非負のペナルティ重み |
+| `peakWeight` | `number` | 全ゾーン中の最大負荷 1 単位あたりの正のコスト重み |
+| `pairs` | `number[][]` | 0 始まりのサービス番号 `i, j` による `[i, j, s]` のリスト（両方配備時にコスト `s` を加算） |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `selected` | `number[]` | 各サービスの 0-1 配備選択 $x_i$ |
-| `pairProducts` | `number[]` | 各ペアを両方とも配備するかどうかを表す積 $w_k = x_i x_j$ |
-| `peakLoad` | `number` | 全ゾーンの最大負荷 $\max_r L_r$ |
+| `selected` | `number[]` | 各サービスの 0-1 配備選択（配備するなら 1、しないなら 0） |
+| `pairProducts` | `number[]` | `pairs` の各ペアを両方とも配備するなら 1、そうでなければ 0 |
+| `peakLoad` | `number` | 全ゾーン中の最大負荷 |
 | `totalCost` | `number` | 最小化された総運用コスト |
 
 <!-- section:example -->
@@ -75,4 +75,4 @@
 1 つの MIP に 3 つの線形化パターンを組み合わせます。サービス選択のバイナリ変数、ペア相互作用積の $[0, 1]$ 連続変数、ピークゾーン負荷のスカラー連続エピグラフ変数、および各ゾーンの L1 目標追従のための非負の正負偏差変数ペアを用意します。
 
 <!-- section:hint2 -->
-各ゾーンの負荷 $L_r = \sum_i \text{loads}_{r,i} x_i$ は、エピグラフ上限（$L_r \le \text{peakLoad}$）と L1 分解（$L_r - \tau_r = d_r^+ - d_r^-$）の双方に入ります。各ペア `[i, j, s]` については、相互作用コスト $s$ が負（相乗効果によるコスト削減：上界が必要）にも正（競合による追加コスト：下界が必要）にもなり得るため、McCormick の 3 本の不等式（$w_k \le x_i$、$w_k \le x_j$、$w_k \ge x_i + x_j - 1$）すべてを課してください。提供価値の合計の下限制約を忘れずに加え、`selected` と `pairProducts` は整数に丸めて返してください。
+各ゾーンの負荷 $L_r = \sum_i \text{loads}_{r,i} x_i$（$x_i \in \{0, 1\}$ はサービス選択）は、エピグラフ上限（$L_r \le \text{peakLoad}$）と L1 分解（$L_r - \text{targets}[r] = d_r^+ - d_r^-$）の双方に入ります。各ペア `[i, j, s]` については、相互作用コスト $s$ が負（相乗効果によるコスト削減：上界が必要）にも正（競合による追加コスト：下界が必要）にもなり得るため、ペア同時稼働変数 $w_k$ に対して McCormick の 3 本の不等式（$w_k \le x_i$、$w_k \le x_j$、$w_k \ge x_i + x_j - 1$）すべてを課してください。提供価値の合計の下限制約を忘れずに加え、`selected` と `pairProducts` は整数に丸めて返してください。
