@@ -1,6 +1,6 @@
 ## アプローチ
 
-2段階の順次モデルで解きます。第1段階ではバイナリ割当 MIP により総評価額 $\sum_i v_{i,\sigma(i)}$ を最大化する部屋割り $\sigma$ を求め、第2段階ではその割り当てを固定したうえで非負の連続家賃 $p_r \ge 0$（合計 $R_{\text{total}}$）に関する LP を解き、無羨望性を満たしつつ最小余剰 $z$ を最大化します。
+2段階の順次モデルで解きます。第1段階ではバイナリ割当 MIP により総評価額 $\sum_i v_{i,\sigma(i)}$ を最大化する部屋割り $\sigma$ を求め、第2段階ではその割当を固定したうえで非負の連続家賃 $p_r \ge 0$（合計 $R_{\text{total}}$）に関する LP を解き、無羨望性を満たしつつ最小余剰 $z$ を最大化します。
 
 ## 数理モデル
 
@@ -17,14 +17,14 @@ $$
 
 ## ポイント
 
-- **なぜ第1段階を先に解くのか**: LP 双対性（巡回単調性）により、符号制約のない実数家賃ベクトルに対して無羨望な家賃が存在するための必要十分条件は、$\sigma$ が総評価額 $\sum_i v_{i,\sigma(i)}$ を最大化することです（最適でない割り当てでは第2段階が無解になります）。本問のように非負制約 $p_r \ge 0$ と合計家賃固定 $\sum_r p_r = R_{\text{total}}$ がある場合でも総評価最大化は必要条件であり（突出して人気の部屋の評価差が $R_{\text{total}}$ を超えるような極端な例を除き）各テストケースでは非負の無羨望家賃が存在します。
-- **無羨望性が均等余剰を制限する場合**: 平均余剰 $(V^* - R_{\text{total}}) / n$ は一定ですが、人気部屋への嫉妬を防ぐためにその部屋の家賃を高く設定せざるを得ず、最大最小余剰 $z^*$ が平均余剰を厳密に下回ることがあります。
+- **なぜ第1段階を先に解くのか**: LP 双対性（巡回単調性）により、符号制約のない実数家賃ベクトルに対して無羨望な家賃が存在するための必要十分条件は、$\sigma$ が総評価額 $\sum_i v_{i,\sigma(i)}$ を最大化することです（最適でない割当では第2段階が無解になります）。本問のように非負制約 $p_r \ge 0$ と合計家賃固定 $\sum_r p_r = R_{\text{total}}$ がある場合でも総評価最大化は必要条件であり（突出して人気の部屋の評価差が $R_{\text{total}}$ を超えるような極端な例を除き）各テストケースでは非負の無羨望家賃が存在します。
+- **無羨望性が均等余剰を制限する場合**: 平均余剰 $(V^* - R_{\text{total}}) / n$ は一定ですが、人気部屋への羨望を防ぐためにその部屋の家賃を高く設定せざるを得ず、最大最小余剰 $z^*$ が平均余剰を厳密に下回ることがあります。
 - **最小余剰変数の下限**: 合計家賃が総評価額を上回り余剰が負になる場合にも対応できるよう、`minSurplus` は非負制約なし（WaSHI では `lb: -Infinity`、PuLP では `lowBound=None`）で宣言します。
-- 関連用語: [ガイド＆用語集 — 問題ファミリー](?view=guide&lang=ja#paradigms) / [判定ステータス](?view=guide&lang=ja#verdicts)。
+- 関連用語: [ガイド・用語集 — 代表的な問題クラス](?view=guide&lang=ja#paradigms) / [採点ステータス](?view=guide&lang=ja#verdicts)
 
 ## 実装の勘所
 
-第1段階の割当モデル `m1` を解いて部屋割り $\sigma$ を確定させた後、第2段階のモデル `m2` を新規に構築し、`rents` の下限を 0、`minSurplus` を符号制約なしの自由変数として定義します。
+第1段階の割当モデル `m1` を解いて部屋割り $\sigma$ を確定させた後、第2段階のモデル `m2` を新規に構築し、`rents` の下限を 0、`minSurplus` を符号制約なしの自由変数として定義し、合計家賃・余剰下界・無羨望制約を加えて `minSurplus` を最大化します。
 
 **WaSHI (TypeScript)**
 
@@ -34,11 +34,22 @@ m1.constraint(x.map((row) => expr`${sum(row)} == 1`));
 m1.constraint(Array.from({ length: n }, (_, r) => expr`${sum(x.map((row) => row[r]))} == 1`));
 m1.objective(maximize(sum(x.flatMap((row, i) => row.map((v, r) => expr`${input.valuations[i][r]} * ${v}`)))));
 await m1.solve();
+const assignment = x.map((row) => row.findIndex((v) => Math.round(v.value!) === 1));
 
 // 第2段階: 無羨望・最小余剰最大化 LP
 const rents = m2.continuous(n, { lb: 0, prefix: "rent" });
 const minSurplus = m2.continuous("minSurplus", { lb: -Infinity, ub: Infinity });
 m2.constraint(expr`${sum(rents)} == ${input.totalRent}`, "total_rent");
+assignment.forEach((ri, i) => {
+  m2.constraint(expr`${input.valuations[i][ri]} - ${rents[ri]} >= ${minSurplus}`, `surplus_${i}`);
+  input.valuations[i].forEach((val, r) => {
+    if (r !== ri) {
+      m2.constraint(expr`${input.valuations[i][ri]} - ${rents[ri]} >= ${val} - ${rents[r]}`, `ef_${i}_${r}`);
+    }
+  });
+});
+m2.objective(maximize(minSurplus));
+await m2.solve();
 ```
 
 **PuLP (Python)**
@@ -51,9 +62,18 @@ for r in range(n):
     prob1 += pulp.lpSum(x[i][r] for i in range(n)) == 1
 prob1 += pulp.lpSum(valuations[i][r] * x[i][r] for i in range(n) for r in range(n))
 prob1.solve(pulp.HiGHS(msg=False))
+assignment = [next(r for r in range(n) if round(pulp.value(x[i][r])) == 1) for i in range(n)]
 
 # 第2段階: 無羨望・最小余剰最大化 LP
 rents = [pulp.LpVariable(f"rent_{r}", lowBound=0) for r in range(n)]
 min_surplus = pulp.LpVariable("min_surplus", lowBound=None)
 prob2 += pulp.lpSum(rents) == total_rent
+for i in range(n):
+    ri = assignment[i]
+    prob2 += valuations[i][ri] - rents[ri] >= min_surplus
+    for r in range(n):
+        if r != ri:
+            prob2 += valuations[i][ri] - rents[ri] >= valuations[i][r] - rents[r]
+prob2 += min_surplus
+prob2.solve(pulp.HiGHS(msg=False))
 ```

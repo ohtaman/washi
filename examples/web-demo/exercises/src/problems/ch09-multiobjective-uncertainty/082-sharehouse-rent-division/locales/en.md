@@ -3,7 +3,12 @@
 <!-- section:scenario -->
 Several roommates are moving into a share-house with an equal number of private rooms and a fixed total monthly rent. Each roommate has a personal valuation for each room, and their surplus is their valuation of the room they receive minus the rent they pay for it.
 
-In Stage 1, assign each roommate to a distinct room to **maximize the total roommate valuation**. In Stage 2, keeping that optimal room assignment, set non-negative room rents that sum to the total monthly rent, guarantee that no roommate prefers another roommate's room at its assigned rent (envy-freeness), and **maximize the minimum roommate surplus** so the rent split is as fair as possible. All problem instances are guaranteed to admit a non-negative envy-free rent split at an optimal Stage-1 assignment.
+Determine the room assignment and rent split in two stages:
+
+- **Stage 1**: Assign each roommate to a distinct room to **maximize the total roommate valuation**.
+- **Stage 2**: Keeping that optimal room assignment, set non-negative room rents that sum to the total monthly rent, guarantee that no roommate prefers another roommate's room at its assigned rent (envy-freeness), and **maximize the minimum roommate surplus** so the rent split is as fair as possible.
+
+All problem instances are guaranteed to admit a non-negative envy-free rent split at an optimal Stage-1 assignment.
 
 <!-- section:io -->
 ### Input
@@ -17,8 +22,8 @@ In Stage 1, assign each roommate to a distinct room to **maximize the total room
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignment` | `number[]` | Assigned 0-based room index for each roommate |
-| `rents` | `number[]` | Non-negative rent assigned to each room |
+| `assignment` | `number[]` | Assigned 0-based room index for each roommate `i` |
+| `rents` | `number[]` | Non-negative rent assigned to each room `r` (indexed by room) |
 | `totalValuation` | `number` | Total Stage-1 valuation of the chosen room assignment |
 | `minSurplus` | `number` | Maximized minimum surplus across all roommates |
 
@@ -47,7 +52,7 @@ In Stage 1, assign each roommate to a distinct room to **maximize the total room
 }
 ```
 
-Assigning roommate $i$ to room $i$ achieves total valuation $800 + 700 + 600 = 2100$, and setting rents $[600, 500, 400]$ sums to $1500$ while giving every roommate an envy-free surplus of **200**.
+Assigning roommate $i$ to room $i$ gives total valuation $800 + 700 + 600 = 2100$, and rents `[600, 500, 400]` sum to $600 + 500 + 400 = 1500$ while giving every roommate an envy-free surplus of **200**.
 
 <!-- section:hint1 -->
 Split the problem into two sequential models. The first stage is a binary one-to-one assignment problem choosing which roommate gets which room to maximize total valuation. The second stage takes that room assignment as fixed and solves a continuous linear program over room rents and an auxiliary minimum-surplus variable.

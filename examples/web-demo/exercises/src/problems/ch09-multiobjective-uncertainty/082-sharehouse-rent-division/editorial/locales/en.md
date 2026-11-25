@@ -24,7 +24,7 @@ $$
 
 ## Key Implementation
 
-After solving the Stage 1 assignment model `m1` to fix the room assignment $\sigma$, construct a fresh Stage 2 model `m2` with `rents` bounded below by 0 and `minSurplus` declared as an unrestricted free variable.
+After solving the Stage 1 assignment model `m1` to fix the room assignment $\sigma$, construct a fresh Stage 2 model `m2` with `rents` bounded below by 0 and `minSurplus` declared as an unrestricted free variable, enforce total rent, surplus lower bounds, and envy-freeness, and maximize `minSurplus`.
 
 **WaSHI (TypeScript)**
 
@@ -34,11 +34,22 @@ m1.constraint(x.map((row) => expr`${sum(row)} == 1`));
 m1.constraint(Array.from({ length: n }, (_, r) => expr`${sum(x.map((row) => row[r]))} == 1`));
 m1.objective(maximize(sum(x.flatMap((row, i) => row.map((v, r) => expr`${input.valuations[i][r]} * ${v}`)))));
 await m1.solve();
+const assignment = x.map((row) => row.findIndex((v) => Math.round(v.value!) === 1));
 
 // Stage 2: envy-free max-min surplus LP
 const rents = m2.continuous(n, { lb: 0, prefix: "rent" });
 const minSurplus = m2.continuous("minSurplus", { lb: -Infinity, ub: Infinity });
 m2.constraint(expr`${sum(rents)} == ${input.totalRent}`, "total_rent");
+assignment.forEach((ri, i) => {
+  m2.constraint(expr`${input.valuations[i][ri]} - ${rents[ri]} >= ${minSurplus}`, `surplus_${i}`);
+  input.valuations[i].forEach((val, r) => {
+    if (r !== ri) {
+      m2.constraint(expr`${input.valuations[i][ri]} - ${rents[ri]} >= ${val} - ${rents[r]}`, `ef_${i}_${r}`);
+    }
+  });
+});
+m2.objective(maximize(minSurplus));
+await m2.solve();
 ```
 
 **PuLP (Python)**
@@ -51,9 +62,18 @@ for r in range(n):
     prob1 += pulp.lpSum(x[i][r] for i in range(n)) == 1
 prob1 += pulp.lpSum(valuations[i][r] * x[i][r] for i in range(n) for r in range(n))
 prob1.solve(pulp.HiGHS(msg=False))
+assignment = [next(r for r in range(n) if round(pulp.value(x[i][r])) == 1) for i in range(n)]
 
 # Stage 2: envy-free max-min surplus LP
 rents = [pulp.LpVariable(f"rent_{r}", lowBound=0) for r in range(n)]
 min_surplus = pulp.LpVariable("min_surplus", lowBound=None)
 prob2 += pulp.lpSum(rents) == total_rent
+for i in range(n):
+    ri = assignment[i]
+    prob2 += valuations[i][ri] - rents[ri] >= min_surplus
+    for r in range(n):
+        if r != ri:
+            prob2 += valuations[i][ri] - rents[ri] >= valuations[i][r] - rents[r]
+prob2 += min_surplus
+prob2.solve(pulp.HiGHS(msg=False))
 ```

@@ -14,9 +14,9 @@ $$
 
 ## ポイント
 
-- **重みづけ和法では拾えない非凸フロンティア点の発見**: 0-1 変数を伴う MIP のパレートフロンティアは非凸になるため、$\max p^\top x - w\, e^\top x$ のような線形重みづけ和法では凸包の頂点しか得られず、内側に凹んだパレート解（Case 1 の `(e=7, p=54)` など）を見落とします。ε-制約法なら非凸点も漏れなく厳密に取得できます。
+- **重みづけ和法では拾えない非支持パレート点の取得**: 0-1 変数を伴う離散 MIP のパレートフロンティアは非凸になり得るため、$\max p^\top x - w\, e^\top x$ のような線形重みづけ和法では上側凸包の頂点しか得られず、内側に凹んだ非支持パレート解（たとえば入力例の $(e=6, p=45)$ は $(0, 0)$ と $(11, 85)$ を結ぶ線分より下にあります）を見落とします。$\varepsilon$-制約法で各 $\varepsilon_k$ をスイープすれば凸性に関わらず各しきい値の厳密な最大利益 $z(\varepsilon_k)$ を取得できます（なお、同一利益のタイがある場合に厳密な非支配解を選ぶには、微小な排出量ペナルティを加える拡張 $\varepsilon$-制約法を用います）。
 - **単位系に依存しない直観的パラメータ化**: 重みのチューニングなしで「排出量 $\varepsilon_k$ 以下という物理上限の下での最大利益」を直接制御できます。
-- 用語の確認: [ガイド・用語集 — 問題の分類](?view=guide&lang=ja#paradigms) / [基本要素](?view=guide&lang=ja#building-blocks)
+- 用語の確認: [ガイド・用語集 — 代表的な問題クラス](?view=guide&lang=ja#paradigms) / [モデルの基本構成要素](?view=guide&lang=ja#building-blocks)
 
 ## 実装の勘所
 
@@ -25,11 +25,11 @@ $$
 **WaSHI (TypeScript)**
 
 ```ts
-for (let k = 0; k < input.epsilons.length; k++) {
+for (const [k, eps] of input.epsilons.entries()) {
   const m = new Model(`EpsilonPareto_${k}`);
   const x = m.binary(n, { prefix: "x" });
   m.constraint(expr`dot(${input.budgets}, ${x}) <= ${input.budgetCap}`);
-  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${input.epsilons[k]}`);
+  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${eps}`);
   m.objective(maximize(expr`dot(${input.profits}, ${x})`));
   await m.solve();
   selections.push(x.map((v) => Math.round(v.value!) || 0));
@@ -47,4 +47,6 @@ for k, eps in enumerate(epsilons):
     prob += pulp.lpDot(emissions, x) <= eps
     prob += pulp.lpDot(profits, x)
     prob.solve(pulp.HiGHS(msg=False))
+    selections.append([round(pulp.value(v)) for v in x])
+    frontier_profits.append(float(pulp.value(prob.objective)))
 ```

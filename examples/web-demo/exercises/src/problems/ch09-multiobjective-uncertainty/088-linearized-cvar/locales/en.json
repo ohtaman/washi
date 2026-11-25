@@ -9,7 +9,7 @@
   ],
   "caseNames": [
     "3-asset 4-scenario tail crash",
-    "3-asset strictly positive returns (negative VaR)",
+    "3-asset strictly positive returns",
     "4-asset low risk-aversion allocation",
     "4-asset 8-scenario systematic shock",
     "5-asset 10-scenario non-uniform tail"

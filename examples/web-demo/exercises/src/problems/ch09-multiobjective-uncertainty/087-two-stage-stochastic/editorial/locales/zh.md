@@ -1,6 +1,6 @@
 ## 解题思路
 
-建立确定性等价线性规划：以全情景共享的第一阶段变量 `orders` ($x_j \ge 0$) 配对按情景索引的第二阶段追索变量 `shortage` ($u_{s,j} \ge 0$) 和 `leftover` ($v_{s,j} \ge 0$)，通过平衡方程 $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ 与概率权重 $p_s$ 最小化期望总成本。
+建立确定性等价线性规划：以全情景共享的第一阶段变量 `orders`（$x_j \ge 0$）配对按情景索引的第二阶段追索变量 `shortage`（$u_{s,j} \ge 0$）和 `leftover`（$v_{s,j} \ge 0$）。用 $c_j, q_j, r_j, W_{\text{cap}}$ 分别表示 `orderCosts`、`shortageCosts`、`salvageValues` 和 `warehouseCap`，通过平衡方程 $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ 与概率权重 $p_s$ 最小化期望总成本。
 
 ## 数学模型
 

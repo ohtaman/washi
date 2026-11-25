@@ -14,9 +14,9 @@ $$
 
 ## 核心要点
 
-- **捕捉加权和法遗漏的非支撑帕累托点**：含二进制变量的离散 MIP 前沿往往是非凸的，线性加权和 $\max p^\top x - w\, e^\top x$ 只能求出上凸包顶点而跳过凹陷处的非支撑帕累托解（例如用例 1 中的 `(e=7, p=54)`）；ε-约束法则能无遗漏地找到全部精确前沿点。
-- **无需量纲缩放调参**：将碳排放直接写成显式物理约束，避免主观设定权重比例，并直接回答“排放不超过 $\varepsilon_k$ 时的最大利润是多少”的业务问题。
-- 概念参考：[指南与术语表 — 常见模型分类](?view=guide&lang=zh#paradigms) / [核心建模要素](?view=guide&lang=zh#building-blocks)
+- **捕捉加权和法遗漏的非支撑帕累托点**：含二进制变量的离散 MIP 帕累托前沿可能是非凸的，线性加权和 $\max p^\top x - w\, e^\top x$ 只能求出上凸包上的点而跳过凹陷处的非支撑解（例如题面示例中的 $(e=6, p=45)$ 严格位于 $(0, 0)$ 与 $(11, 85)$ 连线下方）。通过扫描各阈值 $\varepsilon_k$，无论前沿是否凸都能求得对应阈值的精确最大利润 $z(\varepsilon_k)$（若同利润下存在并列解且需要严格非支配点，可在目标中加入微小排放惩罚项，即增广 $\varepsilon$-约束法）。
+- **无需量纲缩放调参**：将排放直接写成显式物理约束，避免主观设定权重比例，并直接回答“排放不超过 $\varepsilon_k$ 时的最大利润是多少”的业务问题。
+- 概念参考：[指南与术语表 — 常见优化问题类型](?view=guide&lang=zh#paradigms) / [模型基本要素](?view=guide&lang=zh#building-blocks)
 
 ## 实现要点
 
@@ -25,11 +25,11 @@ $$
 **WaSHI (TypeScript)**
 
 ```ts
-for (let k = 0; k < input.epsilons.length; k++) {
+for (const [k, eps] of input.epsilons.entries()) {
   const m = new Model(`EpsilonPareto_${k}`);
   const x = m.binary(n, { prefix: "x" });
   m.constraint(expr`dot(${input.budgets}, ${x}) <= ${input.budgetCap}`);
-  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${input.epsilons[k]}`);
+  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${eps}`);
   m.objective(maximize(expr`dot(${input.profits}, ${x})`));
   await m.solve();
   selections.push(x.map((v) => Math.round(v.value!) || 0));
@@ -47,4 +47,6 @@ for k, eps in enumerate(epsilons):
     prob += pulp.lpDot(emissions, x) <= eps
     prob += pulp.lpDot(profits, x)
     prob.solve(pulp.HiGHS(msg=False))
+    selections.append([round(pulp.value(v)) for v in x])
+    frontier_profits.append(float(pulp.value(prob.objective)))
 ```
