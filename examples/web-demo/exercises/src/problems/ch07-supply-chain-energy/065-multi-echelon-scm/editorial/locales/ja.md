@@ -1,6 +1,6 @@
 ## アプローチ
 
-工場の開設 0-1 変数 $u_p$・DC の開設 0-1 変数 $w_d$ と 2 段階の連続フロー行列 $f_{p,d}, g_{d,c}$ を組み合わせ、各拠点の稼働・容量連結制約と DC ごとの流入出保存則を連立させて総コストを最小化します。
+工場の開設 0-1 変数 $u_p$ と DC の開設 0-1 変数 $w_d$、および工場 $\to$ DC と DC $\to$ 顧客の非負連続フロー行列 $f_{p,d}, g_{d,c}$ を導入します。各工場・DC の能力連結制約、各 DC の流入出保存則、および各顧客の需要充足制約を連立させ、固定開設費と 2 段階の輸送費の合計を最小化します。
 
 ## 数理モデル
 
@@ -13,6 +13,8 @@ $$
 & \sum_{d} g_{d,c} \ge D_c && \forall c
 \end{aligned}
 $$
+
+ここで $F^P_p = \text{plantFixedCosts}[p]$、$C^P_p = \text{plantCaps}[p]$、$F^D_d = \text{dcFixedCosts}[d]$、$C^D_d = \text{dcCaps}[d]$、$D_c = \text{demands}[c]$、$c_{p,d} = \text{plantDcCosts}[p][d]$、$c'_{d,c} = \text{dcCustomerCosts}[d][c]$ とします。
 
 ## ポイント
 
@@ -45,7 +47,7 @@ for p in range(n_plants):
     prob += pulp.lpSum(plant_to_dc[p]) <= plant_caps[p] * open_plants[p]
 for d in range(n_dcs):
     inflow = pulp.lpSum(plant_to_dc[p][d] for p in range(n_plants))
-    outflow = pulp.lpSum(dc_to_cust[d])
+    outflow = pulp.lpSum(dc_to_customer[d])
     prob += inflow <= dc_caps[d] * open_dcs[d]
     prob += inflow == outflow
 ```

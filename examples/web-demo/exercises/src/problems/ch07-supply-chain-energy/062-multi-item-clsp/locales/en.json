@@ -1,6 +1,6 @@
 {
   "title": "#062. Multi-Item Capacitated Lot Sizing (CLSP)",
-  "subtitle": "Coordinate production batches and setups for multiple items sharing scarce machine hours across periods.",
+  "subtitle": "Coordinate production batches and setups for multiple items sharing scarce oven hours across periods.",
   "tags": [
     "MIP",
     "CLSP",
@@ -22,7 +22,7 @@
     "m4": "Item {p0} produced {p2} units in period {p1} without an active setup (setups[{p0}][{p1}] = 0).",
     "m5": "inventory[{p0}][{p1}] cannot be negative (received {p2}).",
     "m6": "Inventory balance mismatch for item {p0} in period {p1}: expected {p2}, got {p3}.",
-    "m7": "Machine hours used in period {p0} ({p1}) exceed capacity ({p2}).",
+    "m7": "Oven hours used in period {p0} ({p1}) exceed capacity ({p2}).",
     "m8": "Reported totalCost ({p0}) does not match recomputed cost ({p1}).",
     "m9": "Valid CLSP schedule, but totalCost ({p0}) exceeds minimum ({p1}).",
     "m10": "Optimal multi-item CLSP schedule found (totalCost = {p0})!"

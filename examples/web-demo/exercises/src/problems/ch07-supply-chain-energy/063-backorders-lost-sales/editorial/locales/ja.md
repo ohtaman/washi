@@ -1,6 +1,6 @@
 ## アプローチ
 
-各期の状態を「実在庫 $I_t \ge 0$ の保存式」と「バックオーダー $b_t \ge 0$・出荷販売 $s_t$・機会損失 $l_t$ の保存式」の 2 本の線形等式に分解し、最終期の $b_{T-1} = 0$ を変数上界で課して純利益を最大化する LP を組みます。
+$T$ 期間にわたる顧客需要 $d_t$、生産能力上限 $C_t$、単位生産コスト $c_t$、販売単価 $r$、保管費 $h$、バックオーダー遅延ペナルティ $p_b$、機会損失ペナルティ $p_l$、期首在庫 $I_{\text{init}}$ のもとで、各期の生産量 $x_t$・出荷販売量 $s_t$・期末実在庫 $I_t$・期末バックオーダー $b_t$・機会損失 $l_t$ を非負の連続変数として導入します。各期の状態を実在庫の保存式とバックオーダーの保存式の 2 本の線形等式で結び付け、生産能力上限・機会損失の需要上限および最終期の $b_{T-1} = 0$ を課します。出荷売上から生産費・保管費・遅延ペナルティ・機会損失ペナルティを差し引いた純利益を最大化する純粋な線形計画（LP）として定式化できます。
 
 ## 数理モデル
 
@@ -44,7 +44,7 @@ m.constraint(
 
 ```python
 for t in range(T):
-    prev_inv = init_inv if t == 0 else inventory[t - 1]
+    prev_inv = initial_inventory if t == 0 else inventory[t - 1]
     prev_back = 0 if t == 0 else backlog[t - 1]
     prob += prev_inv + production[t] - sales[t] == inventory[t]
     prob += prev_back + demands[t] - sales[t] - lost_sales[t] == backlog[t]

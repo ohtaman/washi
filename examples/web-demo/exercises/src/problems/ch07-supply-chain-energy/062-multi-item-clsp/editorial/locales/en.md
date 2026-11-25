@@ -1,6 +1,6 @@
 ## Approach
 
-Couple item-period binary setup indicators $y_{i,t}$, continuous production $x_{i,t}$, and inventory $I_{i,t}$ via per-item flow conservation, remaining-demand setup linking, and a single shared machine-hour inequality per period $t$ that charges both unit processing time and setup time.
+Consider $I$ items planned over $T$ periods with demands $d_{i,t}$, fixed setup costs $F_i$, unit holding costs $h_i$, unit processing times $a_i$, setup times $s_i$, and available oven hours $H_t$. For each item $i$ and period $t$, we introduce binary setup indicators $y_{i,t}$, continuous production quantities $x_{i,t} \ge 0$, and ending inventories $I_{i,t} \ge 0$. Coupling these variables through per-item inventory balance, remaining-demand setup-linking bounds, and a shared per-period oven-hour constraint (charging both processing and setup times) minimizes total setup and holding cost.
 
 ## Mathematical Model
 
@@ -15,8 +15,8 @@ $$
 
 ## Key Points
 
-- **Tight remaining-demand Big-M**: Bounding $x_{i,t}$ by $\sum_{k=t}^{T-1} d_{i,k}$ instead of an arbitrary large constant keeps the LP relaxation tight without ever cutting off a valid lot.
-- **Setup time consumes machine capacity**: Because $s_i y_{i,t}$ enters the capacity constraint directly, consolidating batches not only saves fixed setup cost $F_i$ but also frees scarce machine hours $s_i$ in bottleneck periods.
+- **Tight remaining-demand Big-M**: Bounding $x_{i,t}$ by $\sum_{k=t}^{T-1} d_{i,k}$ instead of an arbitrary large constant keeps the LP relaxation tight without cutting off any optimal solution.
+- **Setup time consumes oven capacity**: Because $s_i y_{i,t}$ enters the capacity constraint directly, consolidating batches not only saves fixed setup cost $F_i$ but also frees scarce oven hours $s_i$ in bottleneck periods.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

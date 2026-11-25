@@ -1,6 +1,6 @@
 ## Approach
 
-Combine binary facility-opening indicators for plants ($u_p$) and DCs ($w_d$) with continuous two-echelon flow matrices ($f_{p,d}$ and $g_{d,c}$), coupling capacity gates at each opened facility with exact transshipment conservation at every DC.
+Introduce binary facility-opening indicators $u_p$ for plants and $w_d$ for DCs, together with non-negative continuous two-echelon flow matrices $f_{p,d}$ (plant to DC) and $g_{d,c}$ (DC to customer). Enforce capacity gates at every plant and DC, exact inflow–outflow conservation at every DC, and demand satisfaction at every customer to minimize total fixed opening plus two-echelon shipping costs.
 
 ## Mathematical Model
 
@@ -13,6 +13,8 @@ $$
 & \sum_{d} g_{d,c} \ge D_c && \forall c
 \end{aligned}
 $$
+
+Here $F^P_p = \text{plantFixedCosts}[p]$, $C^P_p = \text{plantCaps}[p]$, $F^D_d = \text{dcFixedCosts}[d]$, $C^D_d = \text{dcCaps}[d]$, $D_c = \text{demands}[c]$, $c_{p,d} = \text{plantDcCosts}[p][d]$, and $c'_{d,c} = \text{dcCustomerCosts}[d][c]$.
 
 ## Key Points
 
@@ -45,7 +47,7 @@ for p in range(n_plants):
     prob += pulp.lpSum(plant_to_dc[p]) <= plant_caps[p] * open_plants[p]
 for d in range(n_dcs):
     inflow = pulp.lpSum(plant_to_dc[p][d] for p in range(n_plants))
-    outflow = pulp.lpSum(dc_to_cust[d])
+    outflow = pulp.lpSum(dc_to_customer[d])
     prob += inflow <= dc_caps[d] * open_dcs[d]
     prob += inflow == outflow
 ```

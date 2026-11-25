@@ -14,6 +14,8 @@ $$
 \end{aligned}
 $$
 
+其中 $F_s$（`fixedCosts[s]`）、$c_{s,p}$（`unitCosts[s][p]`）、$L_s$（`minOrders[s]`）、$U_s$（`maxOrders[s]`）、$D_p$（`demands[p]`）、$\alpha$（`maxShare`）与 $K_{\min}, K_{\max}$（`minSuppliers`, `maxSuppliers`）分别对应各输入字段。
+
 ## 核心要点
 
 - **用变量上界直接刻画份额分散**：把 $q_{s,p} \le \alpha D_p$ 直接写进变量上界，无需增加 $S \times P$ 行额外约束，即可强制每家工厂至少由 $\lceil 1/\alpha \rceil$ 家供应商共同供货。
@@ -44,6 +46,13 @@ allocations.forEach((row, s) => {
 **PuLP (Python)**
 
 ```python
+allocations = [
+    [
+        pulp.LpVariable(f"q_{s}_{p}", lowBound=0, upBound=max_share * demands[p])
+        for p in range(n_plants)
+    ]
+    for s in range(n_sup)
+]
 prob += pulp.lpSum(active) >= min_suppliers
 prob += pulp.lpSum(active) <= max_suppliers
 for s in range(n_sup):

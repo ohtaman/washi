@@ -1,41 +1,45 @@
 # #070. Energy-Coupled Production & Battery Scheduling
 
 <!-- section:scenario -->
-A manufacturing plant couples multi-period single-item production lot sizing with factory electricity management under time-of-use (TOU) prices, a peak-demand charge, and an on-site battery. Starting from zero product inventory, setting up production in a period incurs a fixed setup cost, adds a fixed standby power draw, and unlocks continuous production up to the line capacity, with each unit consuming additional process power and surplus product carried in inventory incurring a holding cost.
+A manufacturing plant co-optimizes multi-period single-item production lot sizing and factory electricity management over 1-hour periods (so power in kW equals energy in kWh per period) under time-of-use (TOU) prices, a peak-demand charge, and an on-site battery.
 
-Total factory electricity demand equals base load plus setup standby power plus process power. An on-site battery starting at an initial state of charge (SOC) can either charge or discharge (not both simultaneously) within its power limit subject to charging/discharging efficiencies, bounded between zero and battery capacity, and returning to at least its initial SOC by the end of the horizon without exporting power to the grid. Co-optimize production setups, batches, inventory, and battery dispatch to **minimize total setup, holding, electricity, and peak-demand cost**.
+- **Production & inventory**: Starting from zero inventory, activating the production line in a period incurs a fixed setup cost and allows continuous production up to line capacity; surplus product carried to the next period incurs a per-unit holding cost while all period demands must be met.
+- **Power coupling & grid import**: Total factory electricity demand equals non-production base load plus fixed setup standby power (when active) plus variable process power per unit produced; net grid import equals factory demand plus battery charging minus battery discharging and must remain non-negative (no grid export), with a peak-demand charge on the maximum net grid import.
+- **Battery operation**: Starting from its initial state of charge (SOC), the battery may either charge or discharge (never both simultaneously) up to its power limit subject to charging and discharging efficiencies, keeping SOC between 0 and battery capacity and returning to at least its initial SOC by the end of the horizon.
+
+Co-optimize production setups, batches, inventory, and battery dispatch to **minimize total setup, holding, electricity, and peak-demand cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `demands` | `number[]` | Product demand $d_t$ in period $t$ |
-| `setupCost` | `number` | Fixed setup cost $F$ per active production period |
-| `holdCost` | `number` | Product inventory holding cost $h$ per unit per period |
-| `prodCap` | `number` | Maximum production capacity $C_{\text{prod}}$ per period |
-| `setupPower` | `number` | Fixed electrical power draw $p_{\text{idle}}$ when line is active |
-| `unitPower` | `number` | Variable electrical power $p_{\text{unit}}$ per unit produced |
-| `baseLoads` | `number[]` | Non-production facility base electrical load $L_t$ |
-| `prices` | `number[]` | Grid TOU electricity price $\pi_t$ in period $t$ |
-| `demandCharge` | `number` | Peak-demand ratchet charge $\gamma$ per kW of $\max_t g_t$ |
-| `batteryCap` | `number` | Maximum battery SOC $E_{\max}$ (minimum SOC is 0) |
-| `initSoc` | `number` | Initial SOC $E_{\text{init}}$ (also required lower bound at $T-1$) |
-| `maxPower` | `number` | Charge and discharge power limit $P_{\max}$ |
-| `etaCharge` | `number` | Charging efficiency $\eta_c \in (0, 1]$ |
-| `etaDischarge` | `number` | Discharging efficiency $\eta_d \in (0, 1]$ |
+| `demands` | `number[]` | Product demand in each period (units) |
+| `setupCost` | `number` | Fixed setup cost per active production period |
+| `holdCost` | `number` | Product inventory holding cost per unit per period |
+| `prodCap` | `number` | Maximum production capacity per period (units) |
+| `setupPower` | `number` | Fixed standby electrical power draw when the line is active (kW) |
+| `unitPower` | `number` | Variable electrical process power per unit produced (kW per unit) |
+| `baseLoads` | `number[]` | Non-production facility base electrical load in each 1-hour period (kW) |
+| `prices` | `number[]` | Grid TOU electricity price per kWh in each period |
+| `demandCharge` | `number` | Peak-demand charge per kW of maximum net grid import across the horizon |
+| `batteryCap` | `number` | Maximum battery energy capacity (kWh; minimum SOC is 0) |
+| `initSoc` | `number` | Initial battery SOC before period 0 and required lower bound at the final period (kWh) |
+| `maxPower` | `number` | Charge and discharge power limit per period (kW) |
+| `etaCharge` | `number` | Charging efficiency in (0, 1] |
+| `etaDischarge` | `number` | Discharging efficiency in (0, 1] |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `setups` | `number[]` | Binary (0 or 1) production setup indicators |
-| `production` | `number[]` | Non-negative production quantities |
-| `inventory` | `number[]` | Non-negative ending product inventories |
-| `charge` | `number[]` | Battery charging power per period |
-| `discharge` | `number[]` | Battery discharging power per period |
-| `soc` | `number[]` | End-of-period battery SOC (`soc[T-1] >= initSoc`) |
-| `peakLoad` | `number` | Peak net grid load $\max_t g_t$ |
+| `production` | `number[]` | Non-negative continuous production quantities (units) |
+| `inventory` | `number[]` | Non-negative ending product inventories (units) |
+| `charge` | `number[]` | Battery charging power per period (kW) |
+| `discharge` | `number[]` | Battery discharging power per period (kW) |
+| `soc` | `number[]` | End-of-period battery SOC (kWh, ending at least at `initSoc`) |
+| `peakLoad` | `number` | Peak net grid import across all periods (kW) |
 | `totalCost` | `number` | Minimized total production and energy cost |
 
 <!-- section:example -->
@@ -75,11 +79,11 @@ Total factory electricity demand equals base load plus setup standby power plus 
 }
 ```
 
-Producing ahead in off-peak periods 0 and 2 (`production = [55, 0, 55, 0]`) while charging off-peak and discharging on-peak flattens net grid imports across all four periods to 83.597561, yielding total cost $240 + 97.5 + 443.067073 + 668.780488 \approx$ **1,449.35**.
+Producing ahead in off-peak periods 0 and 2 (`production = [55, 0, 55, 0]`) while charging off-peak and discharging on-peak flattens net grid imports across all four periods to 83.597561, yielding setup 240 + holding 97.5 + TOU energy 443.067073 + peak-demand 668.780488 for total cost $240 + 97.5 + 443.067073 + 668.780488 \approx$ **1,449.35**.
 
 
 <!-- section:hint1 -->
 Combine the single-item lot-sizing variables (binary setups, continuous production, and product inventory) with the battery-dispatch variables (charging, discharging, binary charge/discharge mode, battery SOC, net grid load, and scalar peak load) over the same period horizon.
 
 <!-- section:hint2 -->
-Couple the two subsystems through the hourly grid power balance: `gridLoad[t] = baseLoads[t] + setupPower * setups[t] + unitPower * production[t] + charge[t] - discharge[t] >= 0`. Enforce `charge` and `discharge` mutual exclusion via the binary mode variable, scale battery SOC changes by $\eta_c$ and $1 / \eta_d$, require `soc[T - 1] >= initSoc`, and capture the demand ratchet with `peakLoad >= gridLoad[t]`.
+Couple the two subsystems through an auxiliary non-negative `gridLoad[t]` variable representing hourly net grid import: `gridLoad[t] = baseLoads[t] + setupPower * setups[t] + unitPower * production[t] + charge[t] - discharge[t] >= 0`. Introduce an auxiliary binary `mode[t]` variable to enforce `charge` and `discharge` mutual exclusion, scale battery SOC changes by `etaCharge` and `1 / etaDischarge`, require `soc[T - 1] >= initSoc`, and capture the peak-demand charge with `peakLoad >= gridLoad[t]`.

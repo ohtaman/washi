@@ -3,29 +3,29 @@
 <!-- section:scenario -->
 某饮料企业需要规划一个包含候选装瓶工厂、候选区域配送中心（DC）和零售区域（客户）的两级供应链分销网络。启用任意工厂或 DC 均需支付一次性固定开设成本，并解锁至其产能上限的流通能力；未启用的设施不允许有任何物流经过。
 
-每个 DC 严格作为中转节点，来自工厂的总入库量必须等于发往客户的总出库量，且所有客户需求都必须得到满足。请决策各设施的开闭状态以及两级运输流量，以 **最小化固定成本与运输成本总和**。
+每个 DC 严格作为中转节点，来自工厂的总入库量必须等于发往客户的总出库量，且所有客户需求都必须得到满足。请决策各设施的开闭状态以及两级非负连续运输量，以 **最小化固定成本与运输成本总和**。
 
 <!-- section:io -->
 ### 输入
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `plantFixedCosts` | `number[]` | 工厂 $p$ 的固定开设成本 $F^P_p$ |
-| `plantCaps` | `number[]` | 工厂 $p$ 的最大供应产能 $C^P_p$ |
-| `dcFixedCosts` | `number[]` | DC $d$ 的固定开设成本 $F^D_d$ |
-| `dcCaps` | `number[]` | DC $d$ 的最大中转吞吐能力 $C^D_d$ |
-| `demands` | `number[]` | 客户 $c$ 的需求量 $D_c$ |
-| `plantDcCosts` | `number[][]` | 工厂 $p$ 到 DC $d$ 的单位运费 $c_{p,d}$ |
-| `dcCustomerCosts` | `number[][]` | DC $d$ 到客户 $c$ 的单位运费 $c'_{d,c}$ |
+| `plantFixedCosts` | `number[]` | 各候选工厂的固定开设成本（长度 $P$） |
+| `plantCaps` | `number[]` | 各候选工厂的最大供应产能（长度 $P$） |
+| `dcFixedCosts` | `number[]` | 各候选 DC 的固定开设成本（长度 $D$） |
+| `dcCaps` | `number[]` | 各候选 DC 的最大中转吞吐能力（长度 $D$） |
+| `demands` | `number[]` | 各客户的需求量（长度 $C$） |
+| `plantDcCosts` | `number[][]` | 工厂到 DC 的单位运费（$P \times D$） |
+| `dcCustomerCosts` | `number[][]` | DC 到客户的单位运费（$D \times C$） |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `openPlants` | `number[]` | 工厂启用决策（0 或 1） |
-| `openDcs` | `number[]` | DC 启用决策（0 或 1） |
-| `plantToDc` | `number[][]` | 工厂到 DC 的非负流量矩阵（$P \times D$） |
-| `dcToCustomer` | `number[][]` | DC 到客户的非负流量矩阵（$D \times C$） |
+| `openPlants` | `number[]` | 工厂启用决策（0 或 1，长度 $P$） |
+| `openDcs` | `number[]` | DC 启用决策（0 或 1，长度 $D$） |
+| `plantToDc` | `number[][]` | 工厂到 DC 的非负连续运输量矩阵（$P \times D$） |
+| `dcToCustomer` | `number[][]` | DC 到客户的非负连续运输量矩阵（$D \times C$） |
 | `totalCost` | `number` | 最小化后的固定与运输总成本 |
 
 <!-- section:example -->
@@ -69,7 +69,7 @@
 }
 ```
 
-开启两家工厂以及 DC 0 和 DC 2，满足全部能力与 DC 中转平衡（70 = 30 + 40、60 = 35 + 25），总成本为 $1450 + 460 + 445 =$ **2,355**。
+开启两家工厂以及 DC 0 和 DC 2，满足全部能力与 DC 中转平衡（70 = 30 + 40、60 = 35 + 25）及客户需求，总成本为 $1450 + 460 + 445 =$ **2,355**（固定成本 1450、工厂至 DC 运费 460、DC 至客户运费 445）。
 
 
 <!-- section:hint1 -->
