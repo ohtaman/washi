@@ -12,7 +12,8 @@ $$
 & x_i \implies \bigl(w^{\text{exp}}_{i,0} \le s_i,\; c_i = s_i + d_i^{\text{exp}},\; c_i \le w^{\text{exp}}_{i,1}\bigr) && \forall i \\
 & (c_i \le b_0) \lor (s_i \ge b_1) && \forall i \\
 & (c_i \le s_j) \lor (c_j \le s_i) && \forall i < j \\
-& \sum_{i=0}^{n-1} e_i \le K_{\max}, \quad \tau_i \ge c_i - D_i \\
+& \sum_{i=0}^{n-1} e_i \le K_{\max} \\
+& \tau_i \ge c_i - D_i && \forall i \\
 & x_i \in \{\text{false}, \text{true}\},\quad e_i \in \{0, 1\},\quad s_i, c_i, \tau_i \ge 0 && \forall i
 \end{aligned}
 $$

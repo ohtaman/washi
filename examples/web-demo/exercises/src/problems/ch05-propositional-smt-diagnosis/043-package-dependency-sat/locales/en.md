@@ -1,9 +1,13 @@
 # #043. Package Dependency Resolution (SAT)
 
 <!-- section:scenario -->
-A software package manager must choose which version (if any) of each package to install. Each package may have at most one installed version, while every required root package must have exactly one version selected.
+A software package manager must decide which version (if any) of each candidate package to install while satisfying all of the following rules:
+- **At most one version per package**: No package may have two or more versions installed simultaneously.
+- **Required root packages**: Every package listed in `roots` must have exactly one version installed.
+- **Dependency rules**: Installing a specific package version requires installing one of the candidate versions of its dependency package.
+- **Pairwise conflicts**: Mutually incompatible package-version pairs cannot be installed together.
 
-Installing a specific package version can require one of several candidate dependency versions and can conflict with incompatible package versions. Determine whether a valid installation exists and, if feasible, minimize the total number of installed packages.
+Determine whether a valid installation exists and, if feasible, minimize the total number of installed packages.
 
 <!-- section:io -->
 ### Input
@@ -21,9 +25,11 @@ Each `DependencyRule` has `{ pkg: string, ver: string, depPkg: string, depVersio
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `feasible` | `boolean` | `true` if a valid dependency resolution exists |
-| `selected` | `Record<string, string / null>` or `null` | Chosen version per package (`null` if omitted), or `null` overall if infeasible |
+| `feasible` | `boolean` | `true` if a valid dependency resolution exists, else `false` |
+| `selected` | `Record<string, string>` (values may be `null`) or `null` | Chosen version per package with every key in `packages` present (`null` if not installed), or `null` overall if infeasible |
 | `installedCount` | `number` or `null` | Minimized count of installed packages, or `null` if infeasible |
+
+In TypeScript, `selected` has type `Record<string, string | null> | null`.
 
 <!-- section:example -->
 **Input**
@@ -63,7 +69,7 @@ Each `DependencyRule` has `{ pkg: string, ver: string, depPkg: string, depVersio
 }
 ```
 
-Because `app@1.0` conflicts with `legacy@1.0`, `http@1.0` is ruled out, leaving `{ app@1.0, http@2.0, tls@1.2 }` with 3 installed packages.
+Selecting `{ app@1.0, http@2.0, tls@1.2 }` (with `legacy` not installed) satisfies the root requirement, all dependency rules, and the conflict between `app@1.0` and `legacy@1.0`, giving `installedCount` = 1 + 1 + 1 = 3.
 
 
 <!-- section:hint1 -->

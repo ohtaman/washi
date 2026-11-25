@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 在维护和审计访问控制或业务审批等规则库时，需要识别触发条件永远无法满足的死规则，以及其结论已由先前规则保证的冗余规则。
 
-请在基础规则与此前已激活规则构成的累积上下文中按顺序逐条检查规则：若触发条件不可满足，则归为死规则；否则若该蕴含式在累积上下文中恒成立，则归为冗余规则，并将两类规则 ID 列表按字典序返回。
+每条触发规则表示「`condition` 蕴含 `effect`」。请在基础规则与排在前面的所有规则构成的累积上下文中按顺序逐条检查规则：若触发条件不可满足，则归为死规则；否则若该蕴含式在累积上下文中恒成立，则归为冗余规则，并将两类规则 ID 列表按字典序返回。
 
 <!-- section:io -->
 ### 输入
@@ -24,6 +24,7 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+裸字符串（`string`）引用 `vars` 中的布尔变量，`{ implies: [p, q] }` 表示 $p \to q$，`{ xor: [...] }` 在奇数个操作数为真时成立。
 
 ### 输出
 
@@ -66,4 +67,4 @@ type PropFormula =
 按顺序处理 `input.rules`，维护由 `baseRules` 和此前所有触发规则的蕴含式组成的累积策略。对每条规则，先检验其触发条件在累积策略下是否可达；若可达，再检验当触发条件成立时其结论是否可能不成立。
 
 <!-- section:hint2 -->
-每次执行 Z3 检查（`await m.check({ solver: "z3" })`）时都创建一个带 `m.bool(input.vars)` 的新 `Model`。若 `prior` 加上 `r.condition` 返回 `"Unsat"` 则为死规则（dead）；否则若 `prior`、`r.condition` 与 `not(r.effect)` 联合返回 `"Unsat"` 则为冗余规则（redundant）。进入下一条规则前始终将 `implies(r.condition, r.effect)` 追加到 `prior`，并将两个输出数组按字典序排序返回。
+每次执行 Z3 检查（`await m.check({ solver: "z3" })`）时都创建一个带 `m.bool(input.vars)` 的新 `Model`，并通过 `compileFormula` 将待检列表中的每个 `PropFormula` 编译为约束。若 `prior` 加上 `r.condition` 返回 `"Unsat"` 则为死规则；否则若 `prior`、`r.condition` 与 `{ not: r.effect }` 联合返回 `"Unsat"` 则为冗余规则。进入下一条规则前始终将 `{ implies: [r.condition, r.effect] }` 追加到 `prior`，并将两个输出数组按字典序排序返回。

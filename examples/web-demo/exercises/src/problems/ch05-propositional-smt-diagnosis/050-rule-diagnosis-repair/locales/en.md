@@ -1,7 +1,7 @@
 # #050. Conflict Diagnosis & Minimum-Cost Repair Synthesis
 
 <!-- section:scenario -->
-An enterprise policy governance system enforces mandatory hard rules alongside weighted soft preferences over Boolean and bounded-integer state attributes.
+An enterprise policy governance system enforces mandatory hard rules alongside weighted soft preferences over Boolean and bounded-integer state attributes (such as production mode, MFA, legacy compatibility, audit logging, and service tier). The hard rules are guaranteed to be jointly satisfiable (so a soft-rule repair always exists), and all rule IDs are unique across `hardRules` and `softRules`.
 
 Diagnose and repair the rule set as follows:
 - **Consistency check**: First check whether all hard and soft rules are jointly satisfiable.
@@ -20,6 +20,7 @@ Diagnose and repair the rule set as follows:
 
 `SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
 ```ts
+type StateValue = boolean | number;
 type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
 type SmtFormula =
   | string
@@ -31,6 +32,8 @@ type SmtFormula =
   | SmtCmp;
 ```
 
+A bare `string` leaf refers to a Boolean variable in `boolVars`, `SmtCmp` evaluates $\sum_k c_k v_k \mathrel{\text{sense}} \text{rhs}$ over `intVars` (with `terms` mapping variable $v_k$ to coefficient $c_k$), `implies: [a, b]` means $a \implies b$, and `xor` holds iff an odd number of its operands are true.
+
 ### Output
 
 | Field | Type | Description |
@@ -39,7 +42,7 @@ type SmtFormula =
 | `minimalCore` | `string[]` | Sorted MUS rule IDs when inconsistent, or `[]` when consistent |
 | `relaxedRules` | `string[]` | Sorted relaxed soft rule IDs, or `[]` when consistent |
 | `repairCost` | `number` | Minimized total weight of relaxed soft rules |
-| `repairedAssignment` | `Record<string, boolean / number>` | Assignment satisfying all hard rules and unrelaxed soft rules |
+| `repairedAssignment` | `Record<string, StateValue>` | Assignment satisfying all hard rules and unrelaxed soft rules |
 
 <!-- section:example -->
 **Input**
@@ -79,11 +82,11 @@ type SmtFormula =
 }
 ```
 
-`{ H1, H2, S1, S2 }` forms the irreducible conflict (`prod => mfa`, `not(mfa && legacy)`, `prod`, `legacy`); relaxing `S2` (weight 2) restores full feasibility with `prod = mfa = audit = true, legacy = false, tier = 2`.
+`{ H1, H2, S1, S2 }` forms an irreducible conflict (`prod => mfa`, `not(mfa && legacy)`, `prod`, `legacy`); relaxing `S2` (weight 2) yields `repairCost = 2` and satisfies all hard rules and remaining soft rules with `prod = mfa = audit = true, legacy = false, tier = 2`.
 
 
 <!-- section:hint1 -->
-Structure the workflow in two stages over the same Boolean and bounded integer state variables: first check joint satisfiability of all hard and soft rules together; if unsatisfiable, extract an irreducible minimal core over all named rules and separately solve a weighted soft-rule relaxation problem.
+Structure the workflow in three stages over the same Boolean and bounded integer state variables: (1) check joint satisfiability of all hard and soft rules together; (2) if unsatisfiable, extract an irreducible minimal unsatisfiable core (MUS) over all named rules; and (3) solve a weighted soft-rule relaxation problem to compute the minimum-cost repair.
 
 <!-- section:hint2 -->
-For consistency and MUS extraction, register every hard and soft rule with its `id` as the constraint name and use `await m.check({ solver: "z3" })` plus `res.unsatCore` with deletion-based contraction. For minimum-weight repair, keep hard rules unconditional, pair each soft rule with a binary relaxation indicator `viol[k]` via `or(softExpr, expr\`${viol[k]} == 1\`)`, and minimize `dot(weights, viol)` with `await m.solve({ solver: "z3" })`.
+For consistency and MUS extraction, register every hard and soft rule with its `id` as the constraint name and use `await m.check({ solver: "z3" })` plus `res.unsatCore` with deletion-based contraction. For minimum-weight repair, keep hard rules unconditional, pair each soft rule with a binary relaxation indicator `viol[k]` via ``or(softExpr, expr`${viol[k]} == 1`)``, and minimize `dot(weights, viol)` with `await m.solve({ solver: "z3" })`.

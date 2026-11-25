@@ -1,20 +1,26 @@
 # #049. SMT-LIRA モード切替と時間枠スケジューリング
 
 <!-- section:scenario -->
-物流センターの単一荷降ろしドックに到着する各便について、通常配送モードかエクスプレス配送モードのどちらを採用するか、および各便の連続値の開始・完了時刻を決定します。エクスプレスを選ぶと追加料金がかかりますが、専用時間枠と短い所要時間（小数値を含む）が適用されます（ただし選択できる総本数には整数上限があります）。
+物流センターの単一荷降ろしドックに到着する各便について、配送モードと連続値の荷降ろし区間 `[start, end]` を以下の条件のもとで決定します。
 
-各便の処理区間はドックの保守休止時間帯と重なってはならず、単一ドック上でどの 2 便も時刻が重複できません。論理条件（モード切替・非重複）・整数上限・実数時刻を同時に扱う問題（SMT-LIRA：線形整数・実数算術を含む充足可能性判定）として、目標期限を過ぎた完了に対する遅延ペナルティとエクスプレス料金の総コストを最小化してください。
+- **モード選択と時間枠**: 各便は通常モード（追加料金なし）またはエクスプレスモード（追加料金 `expFee` が発生し、`expWindow` と `expDuration` が適用）のいずれかを選びます。荷降ろし区間 `[start, end]`（`end = start + duration`）全体が、選んだモードの時間枠 `[earliestStart, latestEnd]` に収まる必要があります。
+- **エクスプレス上限**: エクスプレスモードを選べる便数は最大 `maxExpress` 本までです。
+- **保守休止時間帯の回避**: 各便はドックの保守休止時間帯 `[bStart, bEnd]` を避け、`bStart` 以前（以下）に完了するか、`bEnd` 以降（以上）に開始する必要があります。
+- **単一ドック上の非重複**: どの 2 便もドック上で処理区間が重複してはなりません（一方が他方の開始時刻以前に完了する必要があります）。
+- **遅延ペナルティ**: 完了時刻が目標期限 `dueTime` を過ぎた場合、超過時間 1 単位あたり `tardinessPenalty` の連続線形ペナルティが発生します。
+
+エクスプレス料金と遅延ペナルティの総コストを最小化するモード選択と開始・完了時刻を求めてください。
 
 <!-- section:io -->
 ### 入力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `shipments` | `ShipmentSpec[]` | 各便の通常/エクスプレス時間枠・所要時間・追加料金・期限・遅延ペナルティ係数 |
+| `shipments` | `ShipmentSpec[]` | 各便の仕様（通常/エクスプレス時間枠 `stdWindow`・`expWindow`、所要時間 `stdDuration`・`expDuration`、追加料金 `expFee`、目標期限 `dueTime`、遅延ペナルティ係数 `tardinessPenalty`） |
 | `blackout` | `[number, number]` | ドックの保守休止時間帯 `[bStart, bEnd]` |
 | `maxExpress` | `number` | エクスプレスを選択できる便数の整数上限 |
 
-各 `ShipmentSpec` は `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }` の形式です。
+各 `ShipmentSpec` は `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }` の形式であり、`stdWindow` と `expWindow` はその便の荷降ろし区間全体が収まるべき `[earliestStart, latestEnd]` の範囲を表します。
 
 ### 出力
 
@@ -70,7 +76,7 @@
 
 
 <!-- section:hint1 -->
-各貨物について、モード選択（Express か Standard か）を表す真偽値変数と、連続値の開始時刻・終了時刻・非負の遅延時間変数を設けます。Express モードでは所要時間が短縮され専用の時間枠が有効になり、すべての貨物は休止時間帯を避けつつドック上で重ならないようにスケジュールする必要があります。
+各便について、モード選択（エクスプレスか通常か）を表す真偽値変数と、連続値の開始時刻・完了時刻・非負の遅延変数を設けます。エクスプレスモードでは所要時間が短縮され専用の時間枠が有効になり、すべての便は保守休止時間帯を避けつつドック上で重ならないようにスケジュールする必要があります。
 
 <!-- section:hint2 -->
-上限制約（`sum(expFlag) <= maxExpress`）や Express 料金などの算術式に使うため、各 `m.bool(...)` に `m.binary(...)` フラグを対応づけます。モード別の時間枠と所要時間は `implies(...)` と `not(...)` で表現し、休止時間帯回避（`end[i] <= blackout[0]` または `start[i] >= blackout[1]`）と貨物間の非重複（`end[i] <= start[j]` または `end[j] <= start[i]`）には `or(...)` を直接使って、`await m.solve({ solver: "z3" })` で解きます。
+上限制約（`sum(expFlag).le(input.maxExpress)`）やエクスプレス料金などの算術式に使うため、各 `m.bool(...)` に `m.binary(...)` フラグを対応づけます。モード別の時間枠と所要時間は `implies(...)` と `not(...)` で表現し、保守休止時間帯の回避（$\text{end}_i \le b_{\text{start}}$ または $\text{start}_i \ge b_{\text{end}}$）と便間の非重複（$\text{end}_i \le \text{start}_j$ または $\text{end}_j \le \text{start}_i$）には `or(...)` と `expr` 不等式を直接使って、`await m.solve({ solver: "z3" })` で解きます。

@@ -1,6 +1,6 @@
 {
   "title": "#049. SMT-LIRA Mode Selection & Time Windows",
-  "subtitle": "Couple Boolean courier-mode switches, integer express quotas, and continuous arrival times with disjunctive dock constraints in Z3.",
+  "subtitle": "Couple Boolean courier-mode switches, integer express quotas, and continuous unloading times with disjunctive dock constraints in Z3.",
   "tags": [
     "SMT",
     "SMT-LIRA",

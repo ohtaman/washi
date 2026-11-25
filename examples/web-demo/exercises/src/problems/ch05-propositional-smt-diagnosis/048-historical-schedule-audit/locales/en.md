@@ -1,7 +1,7 @@
 # #048. Historical Assignment Audit (m.verify)
 
 <!-- section:scenario -->
-Before deploying updated rules or investigating past incidents, compliance teams audit recorded historical assignments against formal Boolean and integer-arithmetic constraints without invoking a solver search.
+Before deploying updated rules or investigating past incidents, compliance teams audit recorded operational logs—such as night-shift staffing, crew counts, overtime hours, or deployment freeze records—against formal Boolean and integer-arithmetic constraints.
 
 Given the Boolean variables, bounded integer variables, named compliance rules, and a historical variable assignment, deterministically audit the assignment without invoking a solver search and report whether the record is valid along with every violated rule ID sorted lexicographically.
 
@@ -13,10 +13,11 @@ Given the Boolean variables, bounded integer variables, named compliance rules, 
 | `boolVars` | `string[]` | Boolean attribute names |
 | `intVars` | `Array<{ name: string; lb: number; ub: number }>` | Bounded integer variable definitions |
 | `rules` | `Array<{ id: string; expr: SmtFormula }>` | Named compliance rules |
-| `candidateValues` | `Record<string, boolean / number>` | Historical variable assignment to audit |
+| `candidateValues` | `Record<string, StateValue>` | Historical variable assignment to audit |
 
 `SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
 ```ts
+type StateValue = boolean | number;
 type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
 type SmtFormula =
   | string
@@ -27,6 +28,8 @@ type SmtFormula =
   | { xor: SmtFormula[] }
   | SmtCmp;
 ```
+
+A bare `string` leaf refers to a Boolean variable in `boolVars`, `SmtCmp` evaluates $\sum_k c_k v_k \mathrel{\text{sense}} \text{rhs}$ over `intVars` (with `terms` mapping variable $v_k$ to coefficient $c_k$), `implies: [a, b]` means $a \implies b$, and `xor` holds iff an odd number of its operands are true.
 
 ### Output
 

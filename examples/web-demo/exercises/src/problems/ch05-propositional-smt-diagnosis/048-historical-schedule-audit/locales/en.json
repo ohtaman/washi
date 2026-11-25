@@ -8,11 +8,11 @@
     "Compliance Audit"
   ],
   "caseNames": [
-    "Compliant night-shift operational log",
-    "Weekend overtime rule violations",
-    "Multi-violation deployment log",
-    "XOR mode and backup violation audit",
-    "Compliant 9-attribute GDPR compliance record"
+    "Night-shift staffing & overtime log",
+    "Weekend remote & overtime schedule",
+    "Production deployment freeze log",
+    "Active/standby cluster mode log",
+    "9-attribute GDPR retention record"
   ],
   "judge": {
     "m0": "Output must be an object { valid, violatedRules }.",
