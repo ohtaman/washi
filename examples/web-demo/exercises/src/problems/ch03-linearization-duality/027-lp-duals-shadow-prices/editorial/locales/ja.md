@@ -1,6 +1,6 @@
 ## アプローチ
 
-各ユニットの容量上限 `capacities[i]` を変数の上界（`ub`）として連続最小化 LP を組み、`>=` 要求制約と `<=` 資源上限制約の参照を保持したまま HiGHS で解き、WaSHI では `c.dual`、PuLP では `c.pi` を読み取ります。
+各発電機の発電量を連続決定変数 $x_i \in [0, u_i]$（`capacities[i]` を変数の上界 `ub` に設定）とし、最低需要制約（`>=`）と燃料・排出枠の上限制約（`<=`）のもとで総発電コスト $\sum_i c_i x_i$ を最小化する LP として定式化します。各制約の双対変数は右辺値に対する最小コストの限界変化率を表すため、最低需要制約と燃料・排出枠の上限制約への参照を保持したまま HiGHS で解き、WaSHI では `c.dual`、PuLP では `c.pi` を読み取ります。
 
 ## 数理モデル
 
@@ -15,13 +15,13 @@ $$
 
 ## ポイント
 
-- **最小化 LP における潜在価格の符号**: 潜在価格は $\partial z^* / \partial \text{rhs}$ を表します。タイトな `>=` 制約の右辺 $r_k$ を増やすと制約が厳しくなり最小コストが上がるため $y_k \ge 0$、タイトな `<=` 制約の右辺 $b_l$ を増やすと制約が緩んで最小コストが下がるため $\mu_l \le 0$ になります。最小化モデルでは WaSHI の `c.dual` と PuLP (`HiGHS`) の `c.pi` の符号が完全に一致します。
-- **相補性と変数上界の区別**: 余裕（スラック）がある制約の潜在価格は必ず $0$ になります。また `capacities[i]` を行制約ではなく変数の `ub` に置くことで、行の双対変数が `minRequirements` と `maxResources` に正確に対応します。
+- **最小化 LP における潜在価格の符号と局所性**: 非退化な最適解の近傍では、潜在価格は現在の最適基底内における局所的な変化率 $\partial z^* / \partial \text{rhs}$ を表します（主問題が退化している場合、双対最適解は一意とは限らず左右の片側変化率が一致しないこともあります）。タイトな `>=` 最低需要制約の右辺 $r_k$ を増やすと実行可能領域が狭まり最小コストは下がり得ないため $y_k \ge 0$、タイトな `<=` 燃料・排出枠の上限制約の右辺 $b_l$ を増やすと実行可能領域が広がり最小コストは上がり得ないため $\mu_l \le 0$ になります。`minimize` / `LpMinimize` では、WaSHI の `c.dual` と PuLP（HiGHS）の `c.pi` のいずれもこの $\partial z^* / \partial \text{rhs}$ の微分符号をそのまま返します。
+- **相補性と変数上界の区別**: 正の余裕（スラック）がある制約の潜在価格は必ず $0$ になります。また `capacities[i]` を行制約ではなく変数の `ub` に置くことで、行の双対変数が `minRequirements` と `maxResources` に正確に対応します。
 - 用語の確認: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
 
-最低需要制約と燃料・排出枠の上限制約それぞれの制約ハンドルを配列に保持したまま `m.solve()` を実行し、解法後に各制約の `.dual`（PuLP では `.pi`）を順番に読み取ります。
+最低需要制約と燃料・排出枠の上限制約それぞれの制約ハンドルを配列に保持したまま `m.solve()` を実行し、求解後に各制約の `.dual`（PuLP では `.pi`）を順番に読み取ります。
 
 **WaSHI (TypeScript)**
 
@@ -40,8 +40,8 @@ const duals = [...reqConstrs, ...capConstrs].map((c) => c.dual!);
 **PuLP (Python)**
 
 ```python
-req_constrs = [pulp.lpDot(yields[k], quantities) >= req for k, req in enumerate(min_reqs)]
-cap_constrs = [pulp.lpDot(usages[l], quantities) <= cap for l, cap in enumerate(max_res)]
+req_constrs = [pulp.lpDot(yields[k], quantities) >= req for k, req in enumerate(min_requirements)]
+cap_constrs = [pulp.lpDot(resource_usages[l], quantities) <= cap for l, cap in enumerate(max_resources)]
 for con in req_constrs + cap_constrs:
     prob += con
 prob += pulp.lpDot(costs, quantities)

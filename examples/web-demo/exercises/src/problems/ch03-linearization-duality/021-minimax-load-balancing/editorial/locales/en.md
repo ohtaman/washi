@@ -1,6 +1,6 @@
 ## Approach
 
-Model the routing fraction $x_{ij} \in [0, \text{compatible}_{ij}]$ for each job-server pair and add one auxiliary continuous variable $t$ (the epigraph variable) representing the peak load. Constrain every server's total load $\sum_i w_i x_{ij}$ to be at most $t$, and minimize $t$.
+For $n$ jobs with workloads $w_i$ and $m$ servers, model the routing fraction $x_{ij} \in [0, \text{compatible}_{ij}]$ for each job-server pair and add one auxiliary continuous variable $t$ (the epigraph variable) representing the peak load. Define server $j$'s total load as $L_j = \sum_{i=0}^{n-1} w_i x_{ij}$, constrain $L_j \le t$ for every server, and minimize $t$.
 
 ## Mathematical Model
 
@@ -16,13 +16,13 @@ $$
 
 ## Key Points
 
-- **Epigraph reformulation**: Nonlinear $\min \max_j L_j$ becomes a pure linear program by minimizing an upper bound $t$ coupled with $L_j \le t$ for every server $j$. Because we minimize $t$, at optimality $t$ is pushed down until it tightly equals the maximum server load $\max_j L_j$.
-- **Zero-cost compatibility gating**: Setting the variable upper bound `ub = compatible[i][j]` (`0` or `1`) automatically enforces $x_{ij} = 0$ on incompatible pairs without extra constraints.
+- **Epigraph reformulation**: Minimizing the nonlinear objective $\max_j L_j$ becomes a pure linear program by minimizing an upper bound $t$ coupled with $L_j \le t$ for every server $j$. Because we minimize $t$, at optimality $t$ is pushed down until it tightly equals the maximum server load $\max_j L_j$.
+- **Zero-cost compatibility gating**: Setting each variable's upper bound directly to `compatible[i][j]` (0 or 1) automatically enforces $x_{ij} = 0$ on incompatible pairs without extra constraints.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
 
-Register the constraints that each row of `assignments` sums to 1 and that each server's total load is at most the upper-bound variable `peak` in bulk via `m.constraint([...])`, then minimize `peak`.
+Enforce that each row of `assignments` sums to 1 and that each server's total load is at most the upper-bound variable `peak`, then minimize `peak`.
 
 **WaSHI (TypeScript)**
 
