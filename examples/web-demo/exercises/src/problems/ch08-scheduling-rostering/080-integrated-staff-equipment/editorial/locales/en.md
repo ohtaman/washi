@@ -19,7 +19,7 @@ $$
 ## Key Points
 
 - **Joint resource coupling beats sequential decomposition**: Assigning staff to procedures first without considering shared equipment $E_{\text{cap}}$ or slot preferences often creates slot bottlenecks that force expensive overtime or infeasible equipment peaks. Solving all three decisions on one coupled binary tensor $x_{j,i,t}$ captures every trade-off simultaneously.
-- **Overtime epigraph without extra binaries**: Because $o_i \ge 0$ and $o_i \ge \text{work}_i - R_i$ with positive penalty $c^{\text{ot}}_i > 0$, minimizing pushes $o_i$ cleanly to $\max(0, \text{work}_i - R_i)$.
+- **Overtime epigraph without extra binaries**: Letting $\text{work}_i = \sum_{j,t} x_{j,i,t}$, because $o_i \ge 0$ and $o_i \ge \text{work}_i - R_i$ with positive penalty $c^{\text{ot}}_i > 0$, minimizing pushes $o_i$ cleanly to $\max(0, \text{work}_i - R_i)$.
 - **Zeroing uncertified `(i, j)` pairs prunes search**: Enforcing $\text{cert}_{i,j} = 0 \implies \sum_t x_{j,i,t} = 0$ eliminates invalid staff-procedure combinations before branching.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 
@@ -62,7 +62,7 @@ for i in range(num_staff):
         prob += pulp.lpSum(x[j][i][t] for j in range(num_jobs)) <= 1
     staff_load = pulp.lpSum(x[j][i][t] for j in range(num_jobs) for t in range(num_slots))
     prob += staff_load <= max_limits[i]
-    prob += overtime[i] >= staff_load - reg_limits[i]
+    prob += overtime[i] >= staff_load - regular_limits[i]
 for t in range(num_slots):
     prob += pulp.lpSum(equip_needs[j] * x[j][i][t] for j in range(num_jobs) for i in range(num_staff)) <= equip_cap
 ```

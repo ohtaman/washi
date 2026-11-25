@@ -9,7 +9,7 @@ $$
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} = 0 && \forall i, \; d \in \text{Off}_i \\
 & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, \; d \notin \text{Off}_i \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s} && \forall d, s \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s} && \forall d, s \\
 & L_i \le \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} x_{i,d,s} \le U_i && \forall i \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
@@ -17,8 +17,8 @@ $$
 
 ## Key Points
 
-- **One-hot with Off option (`<= 1`)**: Allowing $\sum_s x_{i,d,s} \le 1$ naturally encodes "at most one shift or Off", and decoding with `findIndex(v === 1)` maps `Off` cleanly to `-1` and active shifts to `0..S-1`.
-- **Required days off eliminate infeasible choices early**: Setting the day sum to `== 0` (or upper bound `0`) removes unavailable staff-day slots before branching.
+- **One-hot with Off option ($\le 1$)**: Allowing $\sum_s x_{i,d,s} \le 1$ naturally encodes "at most one shift or Off", and decoding with `findIndex` maps Off cleanly to -1 and active shifts to 0 to $S-1$.
+- **Required days off eliminate infeasible choices early**: Fixing the day sum to zero (or setting each variable's upper bound to 0) removes unavailable staff-day slots before branching.
 - **Min-shift quotas can force higher-cost staff onto the schedule**: Even when one staff member has higher shift costs, `minShifts[i]` prevents starving them of hours and distributes workload fairly across the horizon.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 
@@ -58,4 +58,7 @@ for i in range(num_staff):
     total_i = pulp.lpSum(x[i][d][s] for d in range(num_days) for s in range(num_shifts))
     prob += total_i >= min_shifts[i]
     prob += total_i <= max_shifts[i]
+for d in range(num_days):
+    for s in range(num_shifts):
+        prob += pulp.lpSum(x[i][d][s] for i in range(num_staff)) >= demands[d][s]
 ```

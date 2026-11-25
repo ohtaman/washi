@@ -17,7 +17,7 @@ $$
 
 ## Key Points
 
-- **Clique constraints strengthen the LP relaxation**: Grouping all courses sharing teacher $p$ or cohort $g$ into one inequality $\sum_{c \in G} \sum_r x_{c,r,t} \le 1$ is strictly stronger in LP relaxation than writing pairwise constraints $x_{a,t} + x_{b,t} \le 1$, while enforcing the exact same integer feasibility.
+- **Clique constraints strengthen the LP relaxation**: Grouping all courses sharing teacher $p$ or cohort $g$ into one inequality $\sum_{c \in G} \sum_r x_{c,r,t} \le 1$ is strictly stronger in the LP relaxation for any group with $|G| \ge 3$ than writing pairwise constraints $\sum_r (x_{a,r,t} + x_{b,r,t}) \le 1$, while enforcing the exact same integer feasibility.
 - **Room compatibility filters out oversized enrollments upfront**: Setting $\sum_t x_{c,r,t} = 0$ whenever $s_c > K_r$ prevents small seminar rooms from ever hosting large lectures.
 - **Coupling between room capacity and time conflicts**: Even when two courses have different teachers, sharing a cohort forces them into separate timeslots, which can spill a course out of its top-ranked slot or room.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).

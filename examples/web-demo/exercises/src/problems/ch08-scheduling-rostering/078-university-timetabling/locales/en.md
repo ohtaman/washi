@@ -1,9 +1,12 @@
 # #078. University Course Timetabling
 
 <!-- section:scenario -->
-A university schedules $C$ courses into $R$ lecture rooms and $T$ weekly timeslots. Each course must be assigned to exactly one room large enough for its enrolled class size and one timeslot, with at most one course occupying any room in a given timeslot.
+A university schedules $C$ courses into $R$ lecture rooms and $T$ weekly timeslots to maximize the total preference score across all courses while satisfying the following rules:
 
-Courses taught by the same teacher or sharing any student cohort cannot be placed in the same timeslot. Assign rooms and timeslots to maximize the total preference score across all courses.
+- Each course is assigned to exactly one room and one timeslot, with the room's seating capacity large enough for the course's enrolled class size.
+- At most one course occupies any room in a given timeslot.
+- Courses taught by the same teacher cannot be placed in the same timeslot.
+- Courses sharing any student cohort cannot be placed in the same timeslot.
 
 <!-- section:io -->
 ### Input
@@ -12,7 +15,7 @@ Courses taught by the same teacher or sharing any student cohort cannot be place
 | --- | --- | --- |
 | `courseSizes` | `number[]` | Enrolled student count for each course $c$ |
 | `roomCapacities` | `number[]` | Seating capacity for each room $r$ |
-| `teachers` | `number[]` | Instructor ID assigned to each course $c$ |
+| `teachers` | `number[]` | Teacher ID assigned to each course $c$ |
 | `cohorts` | `number[][]` | List of student cohort IDs attending each course $c$ |
 | `slotScores` | `number[][]` | Preference score for placing course $c$ in timeslot $t$ ($C \times T$) |
 
@@ -58,4 +61,4 @@ Courses 1 and 2 run in slot 0 (rooms 0 and 1, teachers 0 and 1, cohorts 1 and 0)
 Use a three-dimensional binary decision variable indicating whether course $c$ is placed in room $r$ at timeslot $t$. Each course must choose one feasible `(room, slot)` pair, while rooms, teachers, and student cohorts each act as mutual-exclusion cliques within every timeslot.
 
 <!-- section:hint2 -->
-Filter out or fix to zero any `(c, r)` pair where `courseSizes[c] > roomCapacities[r]` so oversized classes never enter small rooms. For teachers and cohorts, group all courses sharing the same teacher or the same cohort ID and bound the sum of their assignments across all rooms in each slot $t$ by $1$ — clique-level sums are much tighter than pairwise inequalities.
+Filter out or fix to zero any `(c, r)` pair where `courseSizes[c] > roomCapacities[r]` so oversized classes never enter small rooms. For teachers and cohorts, group all courses sharing the same teacher or the same cohort ID and bound the sum of their assignments across all rooms in each slot $t$ by 1 — clique-level sums are much tighter than pairwise inequalities.

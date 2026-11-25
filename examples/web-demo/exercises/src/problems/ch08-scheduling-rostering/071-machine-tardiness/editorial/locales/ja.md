@@ -7,18 +7,20 @@
 $$
 \begin{aligned}
 \min \quad & \sum_{j=0}^{n-1} w_j T_j \\
-\text{s.t.} \quad & S_j \ge r_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
+\text{s.t.} \quad & r_j \le S_j \le H - p_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
 & S_i + p_i \le S_j + M(1 - y_{ij}) && \forall i < j \\
 & S_j + p_j \le S_i + M y_{ij} && \forall i < j \\
 & y_{ij} \in \{0, 1\} && \forall i < j
 \end{aligned}
 $$
 
+ここで $H = \max_k r_k + \sum_k p_k$、$M = H$ です。
+
 ## ポイント
 
 - **時間離散化不要の選言定式化**: $y_{ij}=1$ なら $i \to j$、$y_{ij}=0$ なら $j \to i$ の順で処理されます。時刻スロットに分割しないため、小数の到着時刻や処理時間にもそのまま対応できます。
-- **妥当でタイトな Big-M**: 無駄な空き時間を詰めた最適スケジュールは必ず $H = \max_k r_k + \sum_k p_k$ 以内に完了するため、$S_j \le H - p_j$ とすれば $M = H$ が厳密に妥当な最小限の上界になります。
-- **意図的な手待ち（Inserted Idle Time）**: 到着時刻がある問題では、機械が空いていても到着直前の高重みジョブを待った方が総遅れが小さくなるため、単純なノンディレイ貪欲則は最適解を逃します。
+- **妥当でタイトな Big-M**: 無駄な空き時間を詰めた最適スケジュールは必ず $H = \max_k r_k + \sum_k p_k$ 以内に完了します。$r_j \ge 0$ かつ $S_j \le H - p_j$ の下で $M = H$ とすれば、妥当な一様上界となり、恣意的な巨大定数を使う場合より LP 緩和をずっとタイトに保てます。
+- **意図的な手待ち（Inserted Idle Time）**: 到着時刻がある問題では、機械が空いていても到着直前の高重みジョブを待つ方が、すぐ開始するノンディレイ貪欲則より総遅れを抑えられる場合があります。たとえば入力例では、$t = 0$ から $t = 2$ まで待って重み $w_1 = 5$ のジョブ 1 を先に処理することで、重み付き納期遅れ和を大きく削減できます。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所

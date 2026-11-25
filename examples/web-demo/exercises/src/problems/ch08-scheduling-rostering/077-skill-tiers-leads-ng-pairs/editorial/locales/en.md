@@ -8,8 +8,8 @@ $$
 \begin{aligned}
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, d \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : D_{d,s} > 0 \\
-& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : D_{d,s} > 0, \; \forall k \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : r_{d,s} > 0 \\
+& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : r_{d,s} > 0, \; \forall k \\
 & x_{a,d,s} + x_{b,d,s} \le 1 && \forall (a, b) \in \text{NG}, \; \forall d, s \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
@@ -18,7 +18,7 @@ $$
 ## Key Points
 
 - **Multi-attribute covering over the same binary decision column**: Once $x_{i,d,s}$ is declared, headcount, senior-lead status ($L_i$), and multi-skill coverage ($A_{i,k}$) are all linear dot products over the exact same column vector `[x[0][d][s], ..., x[N-1][d][s]]`.
-- **Cross-skilled staff reduce team size, while NG pairs restrict pairings**: A worker with `[1, 1]` can simultaneously cover two skill requirements, unless an incompatible pair constraint blocks them from pairing with the cheapest senior lead.
+- **Cross-skilled staff reduce team size, while NG pairs restrict pairings**: A cross-skilled worker can simultaneously cover multiple skill requirements, unless an incompatible pair constraint blocks them from pairing with the cheapest senior lead.
 - **Avoid coupling distinct shift types in NG checks**: $x_{a,d,s} + x_{b,d,s} \le 1$ is indexed per `(d, s)` shift so incompatible staff may still work *different* shifts on the same day.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 

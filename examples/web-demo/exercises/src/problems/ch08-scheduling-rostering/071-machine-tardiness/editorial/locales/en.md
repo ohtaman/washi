@@ -7,18 +7,20 @@ Introduce continuous start-time variables $S_j \ge r_j$ and non-negative tardine
 $$
 \begin{aligned}
 \min \quad & \sum_{j=0}^{n-1} w_j T_j \\
-\text{s.t.} \quad & S_j \ge r_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
+\text{s.t.} \quad & r_j \le S_j \le H - p_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
 & S_i + p_i \le S_j + M(1 - y_{ij}) && \forall i < j \\
 & S_j + p_j \le S_i + M y_{ij} && \forall i < j \\
 & y_{ij} \in \{0, 1\} && \forall i < j
 \end{aligned}
 $$
 
+where $H = \max_k r_k + \sum_k p_k$ and $M = H$.
+
 ## Key Points
 
-- **Disjunctive precedence avoids time discretization**: Choosing $y_{ij} = 1$ forces $i$ before $j$, while $y_{ij} = 0$ forces $j$ before $i$. Unlike time-indexed binary variables, this works seamlessly with fractional release dates or durations.
-- **Tight valid Big-M**: Any compacted optimal schedule completes within $H = \max_k r_k + \sum_k p_k$. Bounding $S_j \le H - p_j$ ensures $M = H$ is always large enough to deactivate the unchosen inequality while keeping the LP relaxation as tight as possible.
-- **Inserted idle time beats greedy non-delay rules**: Because $w_1 = 5$ in the example, idling briefly from $t = 0$ to $t = 2$ to run job 1 first avoids a much larger weighted penalty.
+- **Disjunctive precedence avoids time discretization**: Choosing $y_{ij} = 1$ forces $i$ before $j$, while $y_{ij} = 0$ forces $j$ before $i$. Unlike time-indexed binary variables, this handles fractional release dates and processing times directly.
+- **Tight valid Big-M**: Any compacted optimal schedule completes within $H = \max_k r_k + \sum_k p_k$. With $r_j \ge 0$ and $S_j \le H - p_j$, setting $M = H$ is a valid uniform bound that keeps the LP relaxation much tighter than an arbitrary large constant.
+- **Inserted idle time beats greedy non-delay rules**: With release dates, waiting for an imminent high-weight job can beat greedy non-delay schedules that start an available job immediately. For instance, in the example, idling from $t = 0$ to $t = 2$ to run job 1 ($w_1 = 5$) first significantly reduces total weighted tardiness.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

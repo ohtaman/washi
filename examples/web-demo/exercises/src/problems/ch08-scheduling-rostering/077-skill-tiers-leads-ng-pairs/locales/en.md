@@ -1,9 +1,13 @@
 # #077. Skill Coverage, Senior Leads & Incompatible Staff Pairs
 
 <!-- section:scenario -->
-An emergency department's nursing and paramedic team rosters $N$ staff members across $D$ days and $S$ shift types, with at most one shift per staff-day. Every active shift slot must meet its total staffing demand, include at least one senior lead, and satisfy minimum skill counts across $K$ certified skills (such as triage and emergency care).
+An emergency department's nursing and paramedic team rosters $N$ staff members across $D$ days and $S$ shift types to minimize total shift cost while satisfying the following rules:
 
-Additionally, certain incompatible staff pairs cannot be assigned together to the same day and shift. Choose assignments minimizing total shift cost.
+- Each staff member works at most one shift per day.
+- Every active shift (one with positive staffing demand) meets its minimum total staffing demand.
+- Every active shift includes at least one senior lead.
+- Every active shift meets the minimum staff count for each of the $K$ certified skills (such as triage and emergency care).
+- Incompatible staff pairs cannot be assigned together to the same day and shift.
 
 <!-- section:io -->
 ### Input
@@ -11,7 +15,7 @@ Additionally, certain incompatible staff pairs cannot be assigned together to th
 | Field | Type | Description |
 | --- | --- | --- |
 | `demands` | `number[][]` | Minimum total staff needed on day $d$, shift $s$ ($D \times S$) |
-| `isSenior` | `number[]` | Binary (0/1) indicator of senior lead status per staff member |
+| `isSenior` | `number[]` | Binary (0/1) indicator of senior lead status per staff member (length $N$) |
 | `staffSkills` | `number[][]` | Binary $N \times K$ matrix indicating whether staff $i$ holds skill $k$ |
 | `skillDemands` | `number[][]` | Minimum staff with skill $k$ required on any active shift $s$ ($S \times K$) |
 | `ngPairs` | `number[][]` | Pairs `[a, b]` forbidden from working the same `(d, s)` shift |
