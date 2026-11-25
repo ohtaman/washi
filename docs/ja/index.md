@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: "TypeScript 数理最適化モデラー"
-  tagline: "Python の PuLP のように直感的な数式で定式化できる TypeScript 向け代数モデラー。同梱の HiGHS・Pumpkin やオプションの Z3・GLPK を使い、ブラウザと Node.js で LP・MIP・凸 QP・CP・SMT の各問題を解けます。"
+  tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。同梱の HiGHS・Pumpkin やオプションの Z3・GLPK を使い、ブラウザと Node.js で LP・MIP・凸 QP・CP・SMT の各問題を解けます。"
   actions:
     - theme: brand
       text: はじめに

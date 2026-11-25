@@ -900,10 +900,10 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(zhContent).toContain("Python PuLP 的 TypeScript 替代方案。");
 
     // Verify 1-hop crawlability links from EN/JA/ZH homepages to Playground, Apps, Games, and full doc suite
-    for (const [mdContent, prefix] of [
-      [enContent, ""],
-      [jaContent, "/ja"],
-      [zhContent, "/zh"],
+    for (const [mdContent, prefix, exercisesQuery] of [
+      [enContent, "", ""],
+      [jaContent, "/ja", "?lang=ja"],
+      [zhContent, "/zh", "?lang=zh"],
     ] as const) {
       expect(mdContent).toContain(`(${prefix}/getting-started/coding-agents)`);
       expect(mdContent).toContain(`(${prefix}/getting-started/runtimes)`);
@@ -922,7 +922,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(mdContent).toContain(`(${prefix}/examples/vehicle-routing)`);
       expect(mdContent).toContain(`(${prefix}/examples/traveling-salesperson)`);
       expect(mdContent).toContain('href="/demo/" target="_self"');
-      expect(mdContent).toContain('href="/exercises/" target="_self"');
+      expect(mdContent).toContain(`href="/exercises/${exercisesQuery}" target="_self"`);
       expect(mdContent).toContain('href="/apps/ai-shift/" target="_self"');
       expect(mdContent).toContain('href="/apps/ai-timetable/" target="_self"');
       expect(mdContent).toContain('href="/games/demon-castle-shift/" target="_self"');
