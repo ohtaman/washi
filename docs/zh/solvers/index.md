@@ -8,10 +8,10 @@ WaSHI 采用可插拔的求解器架构。使用统一的代数建模 API 编写
 
 | 求解器 | 引擎许可证 | 支持的问题类型 | 适用场景 | 提供方式与前提条件 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, 凸QP** | 生产规模优化、运筹规划、投资组合 QP | **内置默认**（零配置） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | **MIT** | **CP、命题逻辑、有界整数规划**（LCG 方法） | 非重叠调度、CP 全局约束、离散模型 `unsatCore` | **内置插件**（`@ohtaman/washi/solvers/pumpkin`）；仅支持有界整数与布尔变量（不支持 `Continuous` 变量） |
-| **[Z3](https://github.com/Z3Prover/z3)**（基于 `z3-solver`） | **MIT** | **SMT、SAT、LP/MIP**（含逻辑约束） | 含连续变量或小数系数的逻辑规则、连续/整数混合模型的冲突诊断（`unsatCore`） | **可选 peer 插件**（`@ohtaman/washi/solvers/z3`，需安装 `z3-solver`）；浏览器端需要 `COOP`/`COEP` 响应头 |
-| **[GLPK](https://www.gnu.org/software/glpk/)**（基于 `glpk.js`） | **GPL-3.0** | **LP, MIP** | 学术基准测试、既有 GLPK 模型兼容性验证 | **可选 peer 插件**（`@ohtaman/washi/solvers/glpk`，需安装 `glpk.js`，注意 GPL-3.0 协议） |
+| **[HiGHS](./highs.md)** | **MIT** | **LP, MIP, 凸 QP** | 生产环境优化、运筹规划、凸 QP 投资组合优化 | **内置默认**（零配置） |
+| **[Pumpkin](./pumpkin.md)** | **MIT** | **CP、命题逻辑、有界整数规划** | 非重叠调度、CP 全局约束、离散模型 `unsatCore` | **内置插件**（`@ohtaman/washi/solvers/pumpkin`）；仅支持有界整数与布尔变量（不支持 `Continuous` 变量） |
+| **[Z3](./z3.md)**（基于 `z3-solver`） | **MIT** | **SMT、SAT、LP/MIP**（含逻辑约束） | 含连续变量或小数系数的逻辑规则、连续/整数混合模型的冲突诊断（`unsatCore`） | **可选 peer 插件**（`@ohtaman/washi/solvers/z3`，需安装 `z3-solver`）；浏览器端需要安全上下文（`HTTPS`/`localhost`）和 `COOP`/`COEP` 响应头 |
+| **[GLPK](./glpk.md)**（基于 `glpk.js`） | **GPL-3.0** | **LP, MIP** | 学术基准测试、既有 GLPK 模型兼容性验证 | **可选 peer 插件**（`@ohtaman/washi/solvers/glpk`，需安装 `glpk.js`，注意 GPL-3.0 协议） |
 | **Mock**（`MockSolver`） | **MIT** | *任意*（固定响应桩） | 不加载 WebAssembly 的高速 CI 单元测试 | **内置**（`solver: "mock"` 或 `new MockSolver(...)`） |
 
 ---

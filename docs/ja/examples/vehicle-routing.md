@@ -8,7 +8,7 @@
 
 実行可能な全ルート候補を事前に列挙する定式化では、顧客数 $n$ の増加に伴い変数数が組合せ的に爆発します（顧客の部分集合だけでも一般には $O(2^n)$ 通り、訪問順序まで区別するとさらに増大します）。**列生成法（Dantzig-Wolfe 分解）** を使うと、必要なルートだけを反復的に追加できます。
 1. **制限主問題（RMP）**: 生成済みルート候補から、各顧客をちょうど 1 回訪問する集合分割問題の **LP 緩和**（最後に MIP）を解きます。
-2. **価格付け子問題**: 制限主問題の LP 緩和から双対変数（潜在価格）を取得し、最安挿入法（Cheapest Insertion）と 2-opt 探索で被約費用 $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$ のルート $r$ を生成します。
+2. **価格付け子問題**: 制限主問題の LP 緩和から各顧客の双対変数（潜在価格）$\pi_i$ を取得し、最安挿入法と 2-opt 探索で被約費用 $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$ のルート $r$ を生成します。
 
 ## 入力データと制約条件
 
@@ -213,16 +213,16 @@ async function runCVRP() {
 
   console.log("\n選定された車両フリートのルート例 (上位 5 便):");
   const activeRoutes: RouteMeta[] = [];
+  for (const c of result.generatedColumns) {
+    if (c.variable.value === 1 && c.proposal.meta) {
+      activeRoutes.push(c.proposal.meta);
+    }
+  }
   for (let i = 0; i < customers.length; i++) {
     if (initialRoutes[i].value === 1) {
       const tour = ["Depot", customers[i].id, "Depot"];
       const { travelTime, totalTime } = calcRouteTime(tour, dist, serviceTimes);
       activeRoutes.push({ tour, travelTime, totalTime });
-    }
-  }
-  for (const c of result.generatedColumns) {
-    if (c.variable.value === 1 && c.proposal.meta) {
-      activeRoutes.push(c.proposal.meta);
     }
   }
   for (const r of activeRoutes.slice(0, 5)) {
@@ -237,13 +237,15 @@ runCVRP();
 
 ## 解の読み解きとポイント
 
+`50` 台の 1 顧客往復便から開始し、ヒューリスティック価格付けによって `63` 本のルート列が追加され、LP 緩和値は約 `12.65` まで下がります。この列プールをルートノードで MIP として解く（Price-and-Branch）と、`11` 本の複数顧客ルートと `8` 本の 1 顧客ルートからなる計 `19` 台のフリートが得られます。
+
 ### 制限主問題・価格付け子問題とルート情報（`meta`）の保持
 
 制限主問題では LP 緩和と最終的な集合分割 MIP を解きます。`pricing` コールバックでは `visitConstrs[i].dual` から双対変数（潜在価格）を読み取り、その値が大きい顧客を優先してルートを組みます。`meta` に `{ tour, travelTime, totalTime }` を保存しておけば、求解後に `result.generatedColumns` から訪問順と所要時間を確認できます。
 
 ### 集合分割（`== 1`）と集合被覆（`>= 1`）の違い
 
-本例では重複訪問を防ぐため `== 1` の集合分割制約を使っています。大規模な列生成では `>= 1` の集合被覆制約を使うと双対変数が $\pi_i \ge 0$ に保たれ、LP 収束が安定します。距離が三角不等式を満たす場合は、重複訪問された顧客を後処理で取り除いても各ルートの移動時間（および積載量・訪問件数・車両数）は増えません（なお本例のように `Math.round` で距離を整数丸めする場合は丸め誤差によるわずかな違反に注意が必要です）。
+本例では重複訪問を防ぐため `== 1` の集合分割制約を使っています。大規模な列生成では `>= 1` の集合被覆制約を使うと双対変数が $\pi_i \ge 0$ に保たれ、LP 収束が安定します。距離が三角不等式を満たせば、重複訪問を後処理で除いても移動時間・積載量・訪問件数・車両数は増えません。ただし本例のように `Math.round` で整数丸めする場合は、丸め誤差による三角不等式のわずかな違反に注意が必要です。
 
 ### ヒューリスティック価格付けと厳密解法（ESPPRC）
 

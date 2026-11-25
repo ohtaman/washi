@@ -58,6 +58,7 @@ const status = await m.solve({
 | `relativeGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
 | `absoluteGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
+| `relax` | `boolean` | `false` | 将整数和二元变量松弛为连续变量并求解 LP 松弛（等同于 `m.relax()`）；支持 HiGHS 与 GLPK。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
 | `useWorker` | `boolean` | `true`（浏览器）/ `false`（Node.js） | 在浏览器中于 Web Worker 内运行 HiGHS 与 Pumpkin。主线程运行请设为 `false`；在 Node.js 中请省略或设为 `false`（显式传 `true` 会报错）。 |
 | `wasmUrl` | `string` | 自动解析 | 浏览器部署时加载 `highs.wasm` 或 `pumpkin.wasm` 的自定义 URL。 |
@@ -65,6 +66,7 @@ const status = await m.solve({
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 接收实时求解进度快照的回调函数。 |
 
 也可以将求解器名称直接作为第一个参数传入：`await m.solve("glpk", { timeLimit: 5 })`。
+若传入某求解器不支持的选项，求解器会抛出错误而不会静默忽略；各后端的支持情况请参见 [求解器概览](../solvers/index.md)。
 
 ---
 
@@ -89,6 +91,8 @@ console.log("Absolute Gap:", m.absoluteGap);              // |objectiveValue - o
 console.log("x =", x.value, "y =", y.value);
 console.log("x by name:", m.values.get("x"));
 ```
+
+未启用 `relax: true` 时，WaSHI 会自动将距离整数在 `1e-5` 以内的 `Integer` 与 `Binary` 变量 `.value` 规整为精确整数，而 `m.objectiveValue` 会保留求解器返回的原始浮点值。
 
 > [!TIP]
 > 如需在容差范围内独立校验返回解是否满足所有变量边界、整数性与约束，请调用 `m.verify()`。
@@ -192,5 +196,5 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 - **原子化批量编辑**：若 `m.constraint([...])` 等批量操作包含无效项，模型会整体回滚，不会残留部分修改，也不会清空已有有效解。
 
 > [!NOTE]
-> 不支持重命名已注册的变量或约束，也不支持直接修改内部底层映射或 AST（如 `c.lhs.terms`、`BoolOp.children`）。
-> 此类修改会在下一次调用求解、检查或导出时被模型完整性校验拒绝。
+> `Var.name` 为只读属性，重命名已注册的约束（`c.name = ...`）会在下一次求解、检查或导出时被完整性校验拒绝。
+> 直接修改 `c.lhs.terms` 或 `BoolOp.children` 等内部映射与 AST 数组会绕过变更跟踪并可能残留过期解状态，请改用 `c.addTerm()`、`c.setTerm()` 或属性设置器。

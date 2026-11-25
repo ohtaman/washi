@@ -550,7 +550,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# GLPK Solver Engine");
     expect(llmsFullTxt).toContain("# WaSHI Custom Solver Developer Guide");
     expect(llmsFullTxt).toContain("# Examples & API Finder");
-    expect(llmsFullTxt).toContain("# Production Planning (LP / MIP)");
+    expect(llmsFullTxt).toContain("# Production Planning (Integer Programming / MIP)");
     expect(llmsFullTxt).toContain("# 0-1 Knapsack Problem (Binary MIP)");
     expect(llmsFullTxt).toContain("# Transportation & Allocation Network (LP)");
     expect(llmsFullTxt).toContain("# Diet Problem & Sensitivity Analysis (LP Duals & Slacks)");

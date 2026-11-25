@@ -38,7 +38,7 @@ features:
     linkText: Conflict Diagnosis, Validation & Debugging
   - icon: ⚙️
     title: Pluggable Solver Backends
-    details: Formulate once and switch between bundled HiGHS and Pumpkin, optional Z3 and GLPK plugins, or your own custom solver.
+    details: Formulate once and switch among compatible backends—bundled HiGHS and Pumpkin, optional Z3 and GLPK plugins, or a custom solver.
     link: /solvers/
     linkText: Solvers Overview
   - icon: 🔀

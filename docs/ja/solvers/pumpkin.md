@@ -1,6 +1,6 @@
 # Pumpkin 制約プログラミングソルバー
 
-**Pumpkin** は ConSol-Lab が Rust で開発しているオープンソースの制約プログラミング（CP）ソルバーです（[ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)）。WaSHI は Pumpkin（`v0.5.0`）を WebAssembly として `@ohtaman/washi/solvers/pumpkin` に同梱しており、追加パッケージは不要です。
+**Pumpkin** は ConSol-Lab が Rust で開発しているオープンソースの制約プログラミング（CP）ソルバーです（[ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)）。WaSHI は Pumpkin（`v0.5.0`、`pumpkin.wasm`、約 2.1 MB）を MIT ライセンスで `@ohtaman/washi/solvers/pumpkin` に同梱しており、追加パッケージは不要です。
 
 シングルスレッドで動作するため、ブラウザでも `SharedArrayBuffer` や `COOP`/`COEP` ヘッダー（[Cross-Origin Isolation 設定](../getting-started/cross-origin.md)）の設定は不要です。
 
@@ -17,13 +17,11 @@
 
 ---
 
-## 主な特徴
+## 対応するモデリング機能
 
-- **パッケージ同梱・追加依存なし**: `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に含まれ、MIT 互換ライセンスで利用できます。
-- **Web Worker バックグラウンド実行**: ブラウザでは `SharedArrayBuffer` を使わずに専用 Web Worker で実行し、UI の応答性を保ちます。
-- **ネイティブ CP 制約**: `disjoint()`・`cumulative()`・`distinct()`・`allowed()`・`at()`・`max()`・`min()`・`abs()`・離散変数間の `!=`（不等値制約）・`m.indicator()` に対応します。
-- **矛盾診断（`unsatCore`）**: `await model.check({ solver: "pumpkin" })` で、有界整数・真偽値モデル内の互いに矛盾する名前付き制約（の部分集合）を特定できます。
-- **ウォームスタート（`initialValue`）**: `model.integer()` や `model.binary()` の変数定義時に探索の初期値ヒント（`initialValue`）を指定できます。
+- **ネイティブ CP・グローバル制約**: `disjoint()`・`cumulative()`・`distinct()`・`allowed()`・`at()`・`max()`・`min()`・`abs()`・離散変数間の `!=`（不等値制約）・`m.indicator()`。
+- **ネイティブ命題論理**: `model.bool()`・`and()`・`or()`・`not()`・`implies()`・`xor()`。
+- **ウォームスタート（`initialValue`）**: `model.integer()` や `model.binary()` の変数定義時に探索の初期値ヒントを指定可能。
 
 ---
 
@@ -86,7 +84,18 @@ if (result.status === "Unsat") {
 
 ## ソルバーオプション
 
-`model.solve()`、`model.check()`、または `new PumpkinSolver(options)` に実行オプションを渡せます。対応オプションは `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal`、`onProgress`（`solve()` のみ）です。
+`model.solve()`、`model.check()`、または `new PumpkinSolver(options)` に実行オプションを渡せます。
+
+| オプション | 型 | 説明 |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | 最大実行時間（秒）。 |
+| `useWorker` | `boolean` | ブラウザ環境で Web Worker を使用（ブラウザでの既定は `true`。`file:` URL やオリジンを持たない環境では `false` へフォールバック）。Node.js で `useWorker: true` を指定すると `Error` を投げる。 |
+| `wasmUrl` | `string \| null` | 使用する `pumpkin.wasm` の URL を上書き（`null` で同梱バイナリを使用。グローバル設定は `setPumpkinWasmUrl()`）。 |
+| `signal` | `AbortSignal` | 実行中の処理や探索を中断。ブラウザの Web Worker では強制終了し、取得済みの暫定解があればそれを保持。メインスレッドや Node.js ではチェックポイントで協調的に中断。 |
+| `onProgress` | `(ev) => void` | 経過時間と暫定目的関数値を逐次受け取る進捗コールバック（`solve()` のみ対応、`check()` では無視）。 |
+
+> [!NOTE]
+> Pumpkin は離散 CP ソルバーのため、LP 感度情報（`c.dual`・`c.slack`・`v.reducedCost`）は `null`、MIP の境界・ギャップ情報（`objectiveBound`・`relativeGap`・`absoluteGap`）は `undefined` のままになります。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";

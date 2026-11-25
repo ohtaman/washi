@@ -16,6 +16,8 @@ We model a security rule system driven by sensor readings and logical policies:
 3. While the alarm is armed (`alarmArmed`), the front door (`frontDoorUnlocked`) must stay locked.
 4. When motion (`motionDetected`) is detected at night (`isNight`), comfort lights (`lightsOn`) turn on.
 
+Given the observed sensor state — `luxLevel <= 20`, `alarmArmed`, and `motionDetected` — we first deduce the resulting system state. We then formally prove that under these readings, the siren (`sirenActive`) cannot remain off.
+
 ## Implementation in WaSHI
 
 > [!NOTE]
@@ -88,6 +90,8 @@ verifySecurityRules();
 ### Proof by Refutation (Counterexample Search)
 
 A single `"Sat"` result only shows that at least one valid assignment exists. To prove that a safety property `P` (such as `sirenActive`) always holds, add its negation `not(P)` and call `m.check()`. If the solver returns `"Unsat"`, no counterexample exists; if it returns `"Sat"`, the variable values show a concrete loophole.
+
+In this example, the first check returns `"Sat"` with `sirenActive = true`, `lightsOn = true`, `isNight = true`, and the front door locked. Adding `not(sirenActive)` produces `"Unsat"` with a 6-rule proof core, automatically excluding the unrelated `lock_safety_rule` and `comfort_lights`.
 
 ### One-Way Implication (`implies`) vs. Equivalence
 

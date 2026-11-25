@@ -113,8 +113,9 @@ Declare supported features on `capabilities`. Before calling `solve()` or `check
 
 - **Quadratic objectives (`QuadExpr`)**: Rejected when the model has a quadratic objective and `supportsQP === false`.
 - **Warm starts (`initialValue`)**: Rejected when any variable sets `initialValue` and `supportsWarmStart !== true`.
-- **Logical constraints**: Passed natively in `modelData.logicalConstraints` when `supportsLogicalConstraints === true` or Satisfiability Modulo Theories (`supportsSMT === true`) is enabled.
-- **Automatic Mixed-Integer Programming (MIP) linearization**: When neither logical flag is `true`, `Model` converts logical constraints into equivalent binary variables and linear constraints before calling `solve()`.
+- **Logical constraints**: Passed natively in `modelData.logicalConstraints` when `supportsLogicalConstraints === true` or `supportsSMT === true`.
+- **Automatic MIP linearization on `solve()`**: When neither logical flag is `true`, `Model` linearizes `logicalConstraints`, `boolVars`, and nonlinear/CP expressions into equivalent binary variables and linear constraints before calling `solve()`.
+- **`check()` fallback**: When a solver omits `check()`, `Model.check()` falls back to solving an elastic-slack feasibility problem via `solve()` (returning violated constraint names in `conflicts`, with `unsatCore: undefined`).
 
 ```typescript
 export interface SolverCapabilities {
@@ -214,7 +215,7 @@ Choose how your adapter reads `modelData` based on your backend's input format:
 
 | Helper | Purpose |
 | :--- | :--- |
-| `generateLpString(modelData, { relax }?)` | Serializes `modelData` into a CPLEX LP string (`lpString`) with collision-safe `nameToVar` and `nameToConstraint` maps; pass `{ relax: true }` to emit continuous LP relaxation. |
+| `generateLpString(modelData, { relax }?)` | Serializes `modelData` into a CPLEX LP string (`lpString`) with collision-safe `nameToVar` and `nameToConstraint` maps; pass `{ relax: true }` for a continuous LP relaxation. Omits `modelData.objective.constant`, so adapters must add it back to `objectiveValue` and `objectiveBound`. |
 | `buildLpSymbolMaps(modelData)` | Builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string. |
 | `isLpExportResult(value)` | Runtime type guard for `LpExportResult` (useful for legacy 3-argument `solve(modelData, lpResult, options)` overloads). |
 | `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | Converts an arbitrary variable or constraint name into a valid LP identifier. |
@@ -227,9 +228,9 @@ export interface LpExportResult {
 }
 ```
 
-### `SolverResult` Normalization & Identity Decoding
+### `SolverResult` & `SolverCheckResult` Normalization
 
-`solve()` must key returned `values`, `boolValues`, `reducedCosts`, `duals`, and `slacks` by the model's canonical names (`v.name`, `bv.name`, `c.name`). When using LP helpers, decode sanitized LP identifiers back via `nameToVar` and `nameToConstraint`.
+`solve()` must key returned `values`, `boolValues`, `reducedCosts`, `duals`, and `slacks` by the model's canonical names (`v.name`, `bv.name`, `c.name`). Likewise, `check()` keys `values`, `unsatCore`, and `conflicts` by canonical names (`v.name`, `bv.name`, `c.name`, `lc.name`). When using LP helpers, decode sanitized LP identifiers back via `nameToVar` and `nameToConstraint`.
 
 ```typescript
 export interface SolverResult {
@@ -245,6 +246,17 @@ export interface SolverResult {
   reducedCosts?: Record<string, number>;
   duals?: Record<string, number>;
   slacks?: Record<string, number>;
+  runTime?: number;
+  logs?: string[];
+  raw?: any;
+}
+
+export interface SolverCheckResult {
+  status: "Sat" | "Unsat" | "Unknown";
+  values: Record<string, number | boolean>;
+  unsatCore?: readonly string[];
+  /** Alias for unsatCore: subset of conflicting constraints causing infeasibility */
+  conflicts?: readonly string[];
   runTime?: number;
   logs?: string[];
   raw?: any;
@@ -342,6 +354,7 @@ export class CloudSolver implements Solver {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
+          hasPrimalSolution: false,
           objectiveValue: null,
           values: {},
           runTime: (performance.now() - startTime) / 1000,
@@ -379,19 +392,25 @@ export class CloudSolver implements Solver {
       UNSAT: "Unsat",
     };
     const rawStatus: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+    const offset = modelData.objective?.constant ?? 0;
+    const hasFiniteObj =
+      typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue);
     const hasIncumbent =
-      (typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue)) ||
+      hasFiniteObj ||
       Object.values(values).some((val) => typeof val === "number" && Number.isFinite(val));
     const isLimitStop = rawStatus === "TimeLimit" || rawStatus === "IterationLimit";
     const status: SolverStatus = isLimitStop && hasIncumbent ? "Feasible" : rawStatus;
+    const hasPrimalSolution =
+      (status === "Optimal" || status === "Feasible") && hasIncumbent;
 
     return {
       status,
       terminationStatus: rawStatus,
-      objectiveValue: payload.objectiveValue ?? null,
-      values,
-      duals,
-      slacks,
+      hasPrimalSolution,
+      objectiveValue: hasPrimalSolution && hasFiniteObj ? payload.objectiveValue + offset : null,
+      values: hasPrimalSolution ? values : {},
+      duals: hasPrimalSolution ? duals : {},
+      slacks: hasPrimalSolution ? slacks : {},
       runTime: payload.solveDuration || runTime,
       logs: payload.logs || [],
       raw: payload,
@@ -484,7 +503,7 @@ To publish your solver as an independent npm package (such as `@my-org/washi-sol
     "./browser/index.min.js": "./dist/browser/index.min.js"
   },
   "peerDependencies": {
-    "@ohtaman/washi": ">=0.1.0"
+    "@ohtaman/washi": ">=0.8.0"
   }
 }
 ```

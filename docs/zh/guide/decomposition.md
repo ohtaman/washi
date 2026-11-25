@@ -7,6 +7,8 @@
 | **列生成法** | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) | 方案、路径或班次组合呈指数级增长的问题（切割下料、VRP、乘务排班）。 |
 | **Benders 分解** | [`master.solveBenders()`](#benders-分解-solvebenders) | 两阶段决策（选址＋调度）或按需追加的懒约束（TSP 子环消除）。 |
 
+除 `Model` 实例方法外，这两个辅助接口也作为独立函数 `solveColumnGeneration({ master, ... })` 与 `solveBenders({ master, ... })` 导出。
+
 ---
 
 ## 列生成法 (`solveColumnGeneration`)
@@ -22,7 +24,7 @@
 1. 求解 RMP 的 LP 松弛（`master.relax()`），获取每条约束的**对偶值（影子价格）**。
 2. 将对偶值（`duals`、`getDual`）传入 `pricing` 回调。
 3. 检查每个返回的 `ColumnProposal` 的**缩减成本 / 检验数**（未显式指定 `reducedCost` 时自动计算 $\bar{c} = \text{cost} - \sum_i \pi_i a_i$）是否超过 `reducedCostTolerance` 从而改善目标。
-4. 若存在能改善目标的新列（记 $\varepsilon$ 为 `reducedCostTolerance`，最小化时 $\bar{c} < -\varepsilon$，最大化时 $\bar{c} > \varepsilon$），则将其加入 RMP 并重复迭代，直到 `pricing` 返回 `null` / `[]`、不再有改善列或达到 `maxIterations` 为止。
+4. 若存在能改善目标的新列（记 $\varepsilon$ 为 `reducedCostTolerance`，最小化时 $\bar{c} < -\varepsilon$，最大化时 $\bar{c} > \varepsilon$），则将其加入 RMP。循环持续到 `pricing` 返回 `null` / `[]`、不再有改善列或达到 `maxIterations` 为止。
 5. 默认在最后把包含全部已生成列的 RMP 作为整数规划求解一次（`finalizeAsMIP: true`）。
 
 > [!IMPORTANT]
@@ -185,7 +187,7 @@ console.log("主问题解:", result.values);
 > [!IMPORTANT]
 > **自动 `sub.link()` 模式的前置条件**：
 > - **仅支持最优性割**：若连续 LP 子问题不可行会直接报错。请像 `total_capacity_floor` 那样在主问题保证可行性，或改用手动 `kind: "feasibility"` 割。
-> - **`Maximize` 主问题或子问题目标可能为负时须显式传入 `theta`**：自动生成的 `theta` 仅假设 `Minimize` 且下界 `lb: 0`，用于 `Maximize` 会报错，也无法正确表示负的子问题目标值。请在 `master` 上用合适的上下界声明 `theta`、将其加入 `master.objective()`，并传入 `{ theta }`。
+> - **`Maximize` 或负子问题目标须显式提供 `theta`**：自动 `theta` 仅适用于 `Minimize` 且 `lb: 0`。其他情形请在 `master` 上以合适上下界声明 `theta`、加入 `master.objective()`，并传入 `{ theta }`。
 > - **需要支持 LP 对偶的求解器**：求解连续子问题对偶需要 HiGHS 或 GLPK。
 
 ### 手动生成割平面 (`BendersCut` / 懒约束)

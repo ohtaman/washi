@@ -7,6 +7,8 @@ When a single LP or MIP model has too many columns to enumerate upfront, or spli
 | **Column Generation** | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) | Models with exponentially many patterns, routes, or shifts (Cutting Stock, VRP, Crew Rostering). |
 | **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) | Two-stage problems (Facility Location + Dispatch) or lazy constraints added on demand (TSP Subtour Elimination). |
 
+Both helpers are also exported as standalone functions—`solveColumnGeneration({ master, ... })` and `solveBenders({ master, ... })`—alongside the `Model` methods.
+
 ---
 
 ## Column Generation (`solveColumnGeneration`)
@@ -22,7 +24,7 @@ Each call to `master.solveColumnGeneration()` runs this loop:
 1. Solves the LP relaxation of the RMP (`master.relax()`) to obtain each constraint's **dual value** (shadow price).
 2. Passes those duals (`duals`, `getDual`) to your `pricing` callback.
 3. Checks whether each returned `ColumnProposal` improves the objective beyond `reducedCostTolerance` using its **reduced cost** (computed automatically as $\bar{c} = \text{cost} - \sum_i \pi_i a_i$ when `reducedCost` is omitted).
-4. Adds any improving column ($\bar{c} < -\varepsilon$ when minimizing, or $\bar{c} > \varepsilon$ when maximizing, where $\varepsilon$ is `reducedCostTolerance`) and repeats until `pricing` returns `null` / `[]`, no improving column remains, or `maxIterations` is reached.
+4. Adds any improving column ($\bar{c} < -\varepsilon$ when minimizing, or $\bar{c} > \varepsilon$ when maximizing, with $\varepsilon$ = `reducedCostTolerance`). The loop repeats until `pricing` returns `null` / `[]`, no improving column remains, or `maxIterations` is reached.
 5. Optionally solves the final RMP with all generated columns as an integer program (`finalizeAsMIP: true`, enabled by default).
 
 > [!IMPORTANT]
@@ -185,7 +187,7 @@ console.log("Master values:", result.values);
 > [!IMPORTANT]
 > **Preconditions for Automatic `sub.link()` Mode**:
 > - **Optimality cuts only**: Throws if any master candidate makes the LP subproblem infeasible. Add master feasibility guards (like `total_capacity_floor`) or use manual `kind: "feasibility"` cuts.
-> - **Explicit `theta` required for `Maximize` or negative subproblem costs**: Auto-`theta` assumes a `Minimize` master with lower bound `lb: 0`, so it throws on `Maximize` and cannot represent negative subproblem objectives. Declare `theta` on `master` with appropriate bounds, include it in `master.objective()`, and pass `{ theta }`.
+> - **Explicit `theta` for `Maximize` or negative costs**: Auto-`theta` assumes a `Minimize` master with `lb: 0`. For `Maximize` or negative subproblem objectives, declare `theta` on `master` with appropriate bounds, include it in `master.objective()`, and pass `{ theta }`.
 > - **LP-dual solver required**: Requires HiGHS or GLPK to solve the continuous LP subproblem.
 
 ### Manual Cut Generation (`BendersCut` / Lazy Constraints)

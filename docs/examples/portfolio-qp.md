@@ -8,6 +8,8 @@ The Markowitz mean-variance model is a classic problem in quantitative finance. 
 
 <PortfolioQpDemo />
 
+The interactive demo above uses a preset with a `60%` per-asset weight cap, while the formulation and code below solve the uncapped long-only model ($0 \le w_i \le 1$).
+
 ## Mathematical Formulation
 
 Let $n$ be the number of assets, $w_i$ be the allocation weight for asset $i$ (written as vector $\mathbf{w}$), $r_i$ be its expected return, and $R_{\text{target}}$ be the minimum target return:
@@ -85,6 +87,8 @@ solvePortfolio();
 </CodeRunner>
 
 ## Practical Notes
+
+At `8.50%` target return, optimal variance is `0.014229` (`11.93%` volatility): `52.68%` `Tech` and `30.57%` `Bonds` balance return and risk, while `GlobalEq` drops to `0.00%` due to high covariance with `Tech`.
 
 ### Tracing the Efficient Frontier
 

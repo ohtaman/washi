@@ -73,7 +73,7 @@ aside: false
 <div class="washi-showcase-grid">
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-ai-shift.png" alt="护士排班 AI 助手" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-ai-shift.png" alt="护士排班 AI Copilot" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
@@ -82,7 +82,7 @@ aside: false
           <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">护士排班 AI 助手</a>
+          <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">护士排班 AI Copilot</a>
         </div>
         <p class="washi-showcase-desc">
           通过 WaSHI 与 HiGHS MIP 本地求解 30 人 × 1 个月三班倒排班并诊断冲突。自然语言规则输入需在支持 Chrome Built-in AI（Gemini Nano）的 Chrome 浏览器中运行。

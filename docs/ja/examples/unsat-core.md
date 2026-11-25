@@ -1,12 +1,12 @@
-# 制約矛盾の診断 (Z3 Unsat Core)
+# 制約矛盾の診断 (Unsat Core)
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
 | 実行不能 (Infeasible) 診断・Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">ソースコード</a></li></ul> |
 
-通常の最適化（`m.solve()`）では、制約同士が矛盾していても `"Infeasible"` が返るだけで、原因となる制約は分かりません。`m.check()` を呼ぶと `"Unsat"` とともに、同時には満たせない名前付き制約の部分集合である **Unsat Core** を抽出できます。
+通常の最適化（`m.solve()`）では、制約が矛盾しても `"Infeasible"` が返るだけで原因は分かりません。`m.check()` を使うと `"Unsat"` とともに矛盾箇所を特定できます。Z3 や Pumpkin などの SMT/CP ソルバーは同時には満たせない制約集合である **Unsat Core** を抽出し、HiGHS などの MIP ソルバーは **Elastic Repair Set** を返します。
 
-この例では Z3 を使い、矛盾に関わるルール群を `res.conflicts`（`m.conflicts` でも参照可能）として取得します（このシナリオでは無関係な制約が除かれますが、一般に返される Unsat Core の極小性・最小性は保証されません）。
+この例では Z3 と HiGHS で競合を診断し、結果を `res.conflicts`（`m.conflicts` でも参照可能）から読み取ります。このシナリオでは Z3 が無関係なルールを除外しますが、一般に返される Unsat Core の極小性・最小性は保証されません。
 
 ## 矛盾が発生するシナリオ
 
@@ -84,4 +84,4 @@ Pumpkin は `@ohtaman/washi/solvers/pumpkin` に同梱されており、`z3-solv
 
 ### HiGHS（`m.check({ solver: "highs" })`）
 
-HiGHS は Unsat Core ではなく、実行可能にするために必要な制約緩和量（スラック）の総和が最小となる修復候補（**Elastic Repair Set**）を探します。予算上限を `$14,000` 緩めるより `rush_required` を `1` 緩める方が数値として小さいため、`rush_required` が選ばれます。
+HiGHS は Unsat Core ではなく、実行可能にするための制約緩和量（スラック）の総和が最小となる修復候補（**Elastic Repair Set**）を探します。そのため、Z3 や Pumpkin が `conflicts` と `unsatCore` の両方を返すのに対し、HiGHS は `conflicts` のみを設定し `unsatCore` は `undefined` のままにします。予算上限を `$14,000` 緩めるより `rush_required` を `1` 緩める方が数値として小さいため、`rush_required` が選ばれます。

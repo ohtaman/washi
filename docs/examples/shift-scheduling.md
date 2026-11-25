@@ -6,7 +6,7 @@
 
 In staff shift scheduling, vacation requests often collide with minimum headcount or senior coverage rules, causing a Mixed-Integer Programming (MIP) solver to return `"Infeasible"`.
 
-This example shows a two-step workflow on the same model:
+This example shows an optimize-then-diagnose workflow on the same model:
 1. **Optimize with HiGHS first:** Minimize weekly payroll cost under all vacation requests and staffing rules.
 2. **Use the roster if `"Optimal"`:** Output the schedule and payroll cost with no extra diagnostic step.
 3. **Diagnose with Z3 if `"Infeasible"`:** Call `model.check({ solver: "z3" })` on the same model to extract the conflicting rule subset (`unsatCore`).
@@ -18,6 +18,8 @@ This example shows a two-step workflow on the same model:
 <ShiftSchedulingDemo />
 
 ## Scenario & Rules
+
+While the interactive widget above expands to 8 staff members, the runnable walkthrough below uses a compact 5-staff × 7-day model.
 
 We schedule **5 staff members** across **7 days** from `Mon` to `Sun` — seniors `Alice` (`$220/day`) and `Bob` (`$210/day`), plus `Charlie` (`$160/day`), `Diana` (`$160/day`), and `Evan` (`$150/day`):
 
@@ -191,7 +193,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-On Scenario B, HiGHS returns `"Optimal"` with an objective value of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` (`$210/day`) is cheaper than `Alice` (`$220/day`), the cheapest staffing assigns `Bob` up to his limit (`maxShifts = 5`) and `Alice` to the remaining 2 senior days; overriding `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
+On Scenario B, HiGHS returns `"Optimal"` with an objective value of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` has the lower daily wage, the cheapest staffing assigns him up to his 5-day limit (`maxShifts = 5`) and `Alice` to the remaining 2 senior days. Overriding either `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
 
 > [!TIP]
 > This model uses only binary variables (`m.binary()`) and constraints with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` using the bundled `@ohtaman/washi/solvers/pumpkin` engine without installing `z3-solver`.

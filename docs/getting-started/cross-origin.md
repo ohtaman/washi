@@ -3,7 +3,7 @@
 Running the Z3 solver in a browser requires two browser security conditions: a **Secure Context** and **Cross-Origin Isolation**. Together, they enable `SharedArrayBuffer` for Z3's multithreaded WebAssembly build.
 
 > [!TIP]
-> **Not needed for HiGHS, Pumpkin, GLPK, or Node.js**: Bundled HiGHS and Pumpkin, as well as the GLPK plugin, never use `SharedArrayBuffer` and work in standard browser contexts. Running Z3 in Node.js also requires no HTTP headers. You only need this guide when using `@ohtaman/washi/solvers/z3` in a browser.
+> **Not needed for HiGHS, Pumpkin, GLPK, or Node.js**: Bundled HiGHS and Pumpkin, as well as the GLPK plugin, never use `SharedArrayBuffer` and work in standard browser contexts. Running Z3 in Node.js also requires no HTTP headers. You only need this guide when using Z3 in a browser.
 
 ---
 
@@ -13,7 +13,7 @@ Z3's WebAssembly binary uses POSIX threads (`pthreads`) backed by `SharedArrayBu
 
 Browsers re-enable `SharedArrayBuffer` only when both conditions hold on the top-level document:
 
-1. **Secure Context**: The page must load over `https://` or `http://localhost` (`window.isSecureContext === true`). Plain `http://` LAN IP addresses do not qualify.
+1. **Secure Context**: The page must load over `https://` or `http://localhost` (including `127.0.0.1` and `[::1]`) so `window.isSecureContext === true`. Plain `http://` LAN IP addresses do not qualify.
 2. **Cross-Origin Isolation**: The document must opt into isolation headers so `window.crossOriginIsolated === true`.
 
 ---

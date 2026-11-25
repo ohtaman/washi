@@ -60,7 +60,7 @@ console.log("Shadow price:", cap.dual);          // 2
 
 ## Solver Options & Execution Model
 
-WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error` (in browsers, `glpk.js` uses its own internal Web Worker automatically, while in Node.js it executes synchronously on the main thread). In all environments, `signal` is checked only before solving begins and cannot interrupt an in-flight solve.
+WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error`. In browsers, `glpk.js` automatically runs in its own internal Web Worker (call `terminateGlpk()` from `@ohtaman/washi/solvers/glpk` to shut it down), while in Node.js it executes synchronously on the main thread. In all environments, `signal` is checked only before solving begins and cannot interrupt an in-flight solve.
 
 ### Supported Options
 
@@ -68,10 +68,10 @@ WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error` 
 | :--- | :--- | :--- |
 | `timeLimit` | `number` | Maximum solve time in seconds (`tmlim`). |
 | `relativeGap` | `number` | Relative MIP optimality gap tolerance (`mipgap`). |
-| `presolve` | `"on" \| "off" \| "choose"` | Controls GLPK presolve (`"off"` disables it; `"on"` and `"choose"` enable it). |
+| `presolve` | `"on" \| "off" \| "choose"` | Controls GLPK presolve (enabled by default; `"off"` disables it, `"on"` and `"choose"` enable it). |
 | `verbose` | `boolean` | Enables GLPK console logging (`false` by default). |
 | `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model. |
-| `signal` | `AbortSignal` | Checked before execution starts (cannot interrupt an in-flight synchronous solve). |
+| `signal` | `AbortSignal` | Checked before execution starts (cannot interrupt an in-flight solve). |
 | `onProgress` | `(ev) => void` | Invoked during MIP branch-and-cut callbacks, or once when the solve completes. |
 
 ### Unsupported Options & Features (Throw at Runtime)

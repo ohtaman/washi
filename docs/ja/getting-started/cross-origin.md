@@ -3,7 +3,7 @@
 ブラウザ上で Z3 ソルバーを実行するには、**セキュアコンテキスト**と **Cross-Origin Isolation** の 2 つの条件が必要です。これらを満たすことで、Z3 のマルチスレッド WebAssembly が使用する `SharedArrayBuffer` が有効になります。
 
 > [!TIP]
-> **HiGHS・Pumpkin・GLPK や Node.js 環境では不要です**: HiGHS・Pumpkin・GLPK は `SharedArrayBuffer` を使わず、通常のブラウザ環境（特別な HTTP ヘッダーなし）で動作します。Node.js 上の Z3 でも HTTP ヘッダーは不要です。ブラウザで `@ohtaman/washi/solvers/z3` を使う場合のみ本ページを参照してください。
+> **HiGHS・Pumpkin・GLPK や Node.js 環境では不要です**: HiGHS・Pumpkin・GLPK は `SharedArrayBuffer` を使わず、通常のブラウザ環境（特別な HTTP ヘッダーなし）で動作します。Node.js 上の Z3 でも HTTP ヘッダーは不要です。ブラウザで Z3 を使う場合のみ本ページを参照してください。
 
 ---
 

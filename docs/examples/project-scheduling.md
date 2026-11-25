@@ -112,7 +112,7 @@ Calling `await m.check()` on the same `Model` clears the previous `solve()` outp
 
 ### Why the `13h` Rush Deadline Is Infeasible (`unsatCore`)
 
-When the maintenance window and `<= 13h` deadline are added, `m.check()` returns `"Unsat"` and extracts the conflicting constraints (`unsatCore`) while excluding the unrelated `crew_limit`:
+When the maintenance window and `<= 13h` deadline are added, `m.check()` returns `"Unsat"` and isolates the 5 conflicting constraints in `unsatCore`. It excludes unrelated rules such as `crew_limit`, even though crew capacity was the bottleneck in Part 1:
 
 1. `rig_maintenance_window` delays both `firmware` and `calib` until at least `6h`.
 2. Because `chassis` takes `4h` and `assembly` takes `3h`, `assembly_after_chassis` and `test_after_assembly` delay `test` until at least `7h`.

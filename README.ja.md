@@ -17,7 +17,7 @@
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://washi.ohtaman.dev/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/demo/?lang=ja"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -30,14 +30,14 @@
 
 - **直感的な数式記述**: `` expr`30 * ${x} + 50 * ${y} <= 40` `` や総和・内積（`sum`, `dot`）で数式と制約を簡潔に書けます。
 - **Node.js・ブラウザで完結**: WebAssembly ベースのため、Python サーバーや C/C++ のネイティブビルドなしで動作します。
-- **ソルバー非依存**: 追加依存なしの同梱 **HiGHS**（LP/MIP/QP）・**Pumpkin**（CP/LCG）に加え、オプションの **Z3**・**GLPK** や独自ソルバーへ切り替えられます。
+- **ソルバー非依存**: 追加依存なしの同梱 **HiGHS**（LP/MIP/QP）・**Pumpkin**（CP）に加え、オプションの **Z3**・**GLPK** や独自ソルバーへ切り替えられます。
 - **充足判定と矛盾診断**: 論理・数値制約の充足可能性判定や、実行不能（Infeasible）になった原因制約の特定に対応しています。
 - **大規模問題の分解法**: 列生成法やベンダーズ分解などの分解アルゴリズムをサポートしています。
 
 ## 📚 ドキュメント & リンク
 
 - **[ドキュメント](https://washi.ohtaman.dev/ja/)**: モデリングガイド・ソルバー仕様・環境別の導入手順
-- **[ショーケース](https://washi.ohtaman.dev/ja/showcase/) · [ブラウザデモ](https://washi.ohtaman.dev/demo/) · [数理最適化N本ノック](https://washi.ohtaman.dev/exercises/?lang=ja)**: ブラウザ上で動くデモアプリ集・プレイグラウンド・N本ノックを体験できます
+- **[ショーケース](https://washi.ohtaman.dev/ja/showcase/) · [ブラウザデモ](https://washi.ohtaman.dev/demo/?lang=ja) · [数理最適化N本ノック](https://washi.ohtaman.dev/exercises/?lang=ja)**: ブラウザ上で動くデモアプリ集・プレイグラウンド・N本ノックを体験できます
 - **[サンプル集](https://washi.ohtaman.dev/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](examples/README.md)）
 - **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのスキル定義・機械可読ドキュメント
 
@@ -47,7 +47,7 @@
 
 ```bash
 npm install @ohtaman/washi
-# HiGHS (LP/MIP/QP) と Pumpkin (CP/LCG, @ohtaman/washi/solvers/pumpkin) は追加依存なしで同梱されています
+# HiGHS (LP/MIP/QP) と Pumpkin (CP, @ohtaman/washi/solvers/pumpkin) は追加依存なしで同梱されています
 
 # オプションの peer-dependency ソルバープラグイン
 npm install z3-solver   # SMT 論理制約・実数を含む厳密 Unsat Core 診断を使う場合
@@ -78,8 +78,8 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 | ソルバー | ライセンス | 対応クラス | 主な用途 | 導入方法 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・エラスティック矛盾修復 | 標準搭載（追加依存なし） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 論理, 有界整数 | スケジューリング・COOP/COEP不要の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱・追加依存なし） |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・矛盾診断（制約緩和） | 標準搭載（追加依存なし） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP（Lazy Clause Generation）, 論理, 有界整数 | スケジューリング・有界整数の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱・追加依存なし） |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 論理, MIP | 論理ルール・充足判定・厳密な `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 線形・混合整数最適化 | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | テスト用の決定論的な模擬応答 | 標準搭載 (`MockSolver`) |
@@ -169,13 +169,13 @@ console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value
 ### 4. 論理ルール & 矛盾診断 (`m.check`)
 
 論理条件（`m.bool`, `implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
-- **HiGHS（標準）**: 緩和すれば実行可能になる**修復集合**（`res.conflicts`）を特定します。
-- **Pumpkin（同梱）**: 有界整数・真偽値モデルに対して、**COOP/COEP ヘッダー不要**でスケール不変な**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
+- **HiGHS（標準）**: 緩和すれば実行可能になる制約集合（`res.conflicts`）を特定します。
+- **Pumpkin（同梱）**: 有界整数・真偽値モデルに対して、厳密な**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
 - **Z3**: 連続変数・実数演算を含む厳密な SMT **充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/pumpkin"; // COOP/COEP 不要の unsatCore（有界整数・真偽値）
+// import "@ohtaman/washi/solvers/pumpkin"; // 同梱: 有界整数・真偽値の厳密 unsatCore
 // import "@ohtaman/washi/solvers/z3";      // Continuous 変数を含む厳密 SMT unsatCore
 
 const m = new Model("StaffingRules");
@@ -198,7 +198,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ## 🌐 ブラウザ & Web Worker での利用方法
 
-- **バンドラー (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` でそのまま動作します。**HiGHS** と **Pumpkin** はいずれもブラウザで標準で専用 Web Worker 上で実行され（メインスレッドで実行する場合は `{ useWorker: false }` を指定）、**COOP/COEP ヘッダーは不要**です。
+- **バンドラー (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` でそのまま動作します。通常オリジン（`http://` / `https://`）のブラウザでは、**HiGHS** と **Pumpkin** は標準で専用 Web Worker 上で実行されます（`file://` などの不透明オリジンでは自動的に `{ useWorker: false }` になり、明示的に `{ useWorker: false }` を渡してメインスレッドで実行することも可能です）。
 - **単体 ESM / script タグ / CDN**: `dist/browser/` 一式（`highs.wasm`、`solvers/pumpkin.wasm` や Worker を含む）を配信するか、CDN の URL を指定して読み込みます。
 
 ```html
@@ -206,9 +206,9 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 <script type="module">
   import { Model } from "./washi/washi.js";
   // 同梱・オプションプラグイン:
-  // import "./washi/solvers/pumpkin.js"; // 同梱 CP/LCG (COOP/COEP 不要)
+  // import "./washi/solvers/pumpkin.js"; // 同梱 CP ソルバー
   // import "./washi/solvers/glpk.js";    // オプション GLPK プラグイン
-  // import "./washi/solvers/z3.js";      // オプション Z3 プラグイン (COOP/COEP 必要)
+  // import "./washi/solvers/z3.js";      // オプション Z3 プラグイン（下の注記を参照）
   const m = new Model();
   await m.solve();
 </script>
@@ -220,7 +220,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 > [!NOTE]
-> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、Cross-Origin Isolation（`COOP: same-origin` / `COEP: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [`examples/distribution/`](examples/distribution/README.md) を参照してください。**HiGHS**、**Pumpkin**（有界整数・真偽値に対する `unsatCore` を含む）、および **GLPK** は Cross-Origin Isolation ヘッダーなしで動作します。
+> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、**Secure Context**（`HTTPS` または `localhost`）と Cross-Origin Isolation ヘッダー（`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [`examples/distribution/`](examples/distribution/README.md) を参照してください。**HiGHS**・**Pumpkin**・**GLPK** はこれらのヘッダーなしで動作します。
 
 ---
 
@@ -235,7 +235,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 WaSHI は、数理最適化および自動推論分野の素晴らしいオープンソースソフトウェアの上に成り立っています：
 
 - **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— エディンバラ大学の Julian Hall 氏、Qi Huangfu 氏、Ivet Galabova 氏、Leona Gottwald 氏、Michael Feldmeier 氏をはじめとする開発チームによる高性能なオープンソース LP / MIP / 凸 QP ソルバーであり、WaSHI の標準エンジンを支えています（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
-- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — デルフト工科大学 ConSol Lab により Rust で開発された LCG（Lazy Clause Generation）制約プログラミングソルバーであり、WaSHI の同梱 CP/LCG および COOP/COEP 不要な `unsatCore` エンジンを支えています。
+- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — デルフト工科大学 ConSol Lab により Rust で開発された Lazy Clause Generation（LCG）制約プログラミングソルバーであり、WaSHI の同梱 CP および `unsatCore` エンジンを支えています。
 - **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— Microsoft Research により開発された SMT ソルバーであり、オプションの論理充足判定および `unsatCore` 矛盾診断プラグインを支えています。
 - **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — オプションの GPL-3.0 LP / MIP ソルバープラグインを支えています。
 - **[PuLP](https://github.com/coin-or/pulp)** — WaSHI の直感的な代数モデリング API 設計に大きな着想を与えました。

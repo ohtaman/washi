@@ -114,11 +114,11 @@ sum(w) == 1.0 とリージョン 0・1 の合計上限のもとで二乗誤差�
 
 ```text
 @ohtaman/washi と @ohtaman/washi/solvers/pumpkin を使って、有界整数変数と真偽値変数からなるデプロイ・機能フラグ設定ルール群が充足可能かどうかを await m.check({ solver: "pumpkin" }) で検査してください。
-意図的に矛盾する名前付きルールを含むテストケースを用意し、res.status と res.unsatCore（または res.conflicts）を出力して、どのルール同士が衝突しているかを表示してください。
+意図的に矛盾する名前付きルールを含むテストケースを用意し、res.status と res.unsatCore（または res.conflicts）を出力して、どのルール同士が矛盾しているかを表示してください。
 ```
 
 > [!NOTE]
-> `await m.check()` は標準の **HiGHS** でも動作し、競合する制約名を `res.conflicts` に返します。
+> `await m.check()` は標準の **HiGHS** でも動作し、矛盾する制約名を `res.conflicts` に返します。
 >
 > 厳密な充足不能コア（`res.unsatCore`）を抽出したい場合は、変数の種類でソルバーを選びます：
 > - **有界整数・真偽値モデル**: 同梱の `@ohtaman/washi/solvers/pumpkin` をインポートします（ブラウザの `COOP`/`COEP` ヘッダー不要）。
@@ -135,17 +135,11 @@ CLI スクリプトでの定式化と検証が完了したら、同じモデル�
 ```text
 この @ohtaman/washi の最適化モデルを、HTML・CSS・JavaScript を 1 ファイルにまとめたスタンドアロンの .html ツールにして、チームメンバーがローカルの .html ファイルをダブルクリックする（file://）だけで開けるようにしてください。
 - WaSHI は https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js（グローバル変数 window.Washi）から読み込むこと。
-- CSV / テキスト入力欄、「最適化を実行」ボタン、結果テーブル、およびステータスが "Infeasible" の場合に await m.check() で競合ルールを特定して表示する診断欄を用意すること。
+- CSV / テキスト入力欄、「最適化を実行」ボタン、結果テーブル、およびステータスが "Infeasible" の場合に await m.check() で矛盾ルールを特定して表示する診断欄を用意すること。
 - 解が得られた場合は必ず m.verify() で検証すること。
 ```
 
-**`file://` 実行時の動作仕様**:
-
-| シナリオ | 動作と前提条件 |
-| --- | --- |
-| **CDN スクリプト** | HTTPS CDN から読み込む `washi.min.js` は `file://` でもサーバー不要で動作します。`file://` のような不透明オリジン（`window.origin === "null"`）では HiGHS と Pumpkin が自動的にメインスレッドで実行されます。 |
-| **セルフホスト `.wasm`** | `file://` ではブラウザがローカル `.wasm` への `fetch()` をブロックします。セルフホスト時は `http://` または `https://` で配信してください。 |
-| **ブラウザでの Z3** | セキュアコンテキスト（`https://` または `http://localhost`、通常の `http://` LAN URL は不可）と `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`（`COOP`/`COEP`）が必要です。詳細は [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。 |
+**`file://` 実行時の要点**: HTTPS CDN から読み込む `washi.min.js` は `file://` でそのまま動作し、`window.origin === "null"` の不透明オリジンでは HiGHS・Pumpkin が自動的にメインスレッドで実行されます。ローカル `.wasm` のセルフホストには `http://` または `https://` が必要で、ブラウザ上の Z3 には Cross-Origin Isolation が必要です。詳細は [ランタイム環境とデプロイ構成](./runtimes.md) と [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。
 
 ### オフラインのデスクトップ・モバイルアプリ（Vite + Tauri / Capacitor / PWA）
 
@@ -155,9 +149,7 @@ CLI スクリプトでの定式化と検証が完了したら、同じモデル�
 - Content Security Policy で WebAssembly のコンパイル（script-src に 'wasm-unsafe-eval'）および Web Worker（worker-src 'self' blob:）を許可すること。
 ```
 
-**WebView 環境での動作仕様**:
-
-標準の Vite ビルド成果物は、使用するソルバーの `.wasm`（`highs.wasm` やインポート時の `pumpkin.wasm`）を静的アセットとして同梱します。Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、Service Worker 対応 PWA でオフライン動作します。Content Security Policy（`CSP`）では、`script-src` に `'wasm-unsafe-eval'`（Web Worker 利用時は `worker-src 'self' blob:`）を指定してください。`tauri.conf.json` の設定例は [ランタイム環境とデプロイ構成](./runtimes.md) にまとめています。
+**WebView 構成の要点**: 標準の Vite ビルドは利用するソルバーの `.wasm` を静的アセットとして同梱し、Tauri・Capacitor・PWA でオフライン動作します。`CSP` の `script-src` に `'wasm-unsafe-eval'`（Web Worker 利用時は `worker-src 'self' blob:` も）を指定してください。`tauri.conf.json` の設定例は [ランタイム環境とデプロイ構成](./runtimes.md) を参照してください。
 
 ---
 
@@ -165,7 +157,7 @@ CLI スクリプトでの定式化と検証が完了したら、同じモデル�
 
 ### すべての制約に命名し `m.verify()` を徹底する
 
-`m.constraint(c, "rule_name")` と `m.indicator(...)` に分かりやすい名前を付け、求解後に必ず `m.verify().valid === true` であることを確認するよう指示してください。名前を省略すると 1 始まりの自動名（線形制約は `c_1`, `c_2`、論理制約は `lc_1`, `lc_2`）になり、競合診断結果が読みにくくなります。
+`m.constraint(c, "rule_name")` や `m.indicator(b, c, { name: "rule_name" })` に分かりやすい名前を付け、求解後に必ず `m.verify().valid === true` であることを確認するよう指示してください。名前を省略すると自動生成 ID（線形制約は `c_1`, `c_2`、論理制約は `lc_1`, `lc_2`）になり、矛盾診断結果が読みにくくなります。
 
 ### `"Infeasible"` 発生時は `m.check()` で原因を特定する
 

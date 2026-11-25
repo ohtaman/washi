@@ -58,7 +58,8 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ## High-Performance Summation (`sum`)
 
 Use `sum()` to sum 1D or 2D `Array`, `Iterable`, or `Record` containers directly, either inside `` expr`sum(...)` `` or as a standalone helper.
-`sum()` runs in $O(N)$ linear time without repeated expression copying:
+`sum()` runs in $O(N)$ linear time without repeated expression copying.
+Summing quadratic (`QuadExpr`) terms is supported inside `` expr`sum(...)` ``, whereas standalone `sum()` accepts linear terms only:
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -199,7 +200,7 @@ const y = m.continuous("y", { lb: 0 });
 // 1. Construct quadratic terms with .mul() (x * y + 2 * x^2)
 const quad = x.mul(y).add(x.mul(x).mul(2));
 
-// 2. Build portfolio variance objective: w^T * Sigma * w
+// 2. Build portfolio variance objective: w^T * Sigma * w (cross term 0.005 combines 2 * cov)
 const assets = ["Tech", "Bonds"] as const;
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
@@ -264,7 +265,7 @@ In **non-convex or equality contexts** (`minimize(min(...))`, `maximize(abs(...)
 ### 0-Based Element Lookup (`at(array, index)`)
 
 `at(array, index)` models the classic Constraint Programming `Element` constraint, where the array index itself is a decision variable (`array[index]`).
-The `index` expression must be integer-valued, and all backends automatically enforce $0 \le \text{index} < \text{array.length}$.
+The `index` expression must be integer-valued, and all backends automatically enforce `0 <= index < array.length`.
 Pumpkin and Z3 handle `at()` natively, while HiGHS and GLPK encode it with binary selector variables (requiring finite bounds on any variable entries in `array`).
 
 ---

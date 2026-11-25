@@ -4,10 +4,12 @@ A concise reference for reading problem statements, building optimization models
 
 ## 1. How Judging Works (`solve()`) {#solve-contract}
 
-- Every exercise asks you to implement a single `solve` function: `solve(input)` in **WaSHI (TypeScript)** (receiving an input object and returning an output object) or `solve(<snake_case_fields...>)` in **PuLP (Python)** (receiving each camelCase input field as a `snake_case` keyword argument and returning a `dict` with `snake_case` keys).
-- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **PuLP (Python)** runs PuLP backed by HiGHS inside Pyodide for **LP and MIP** exercises so Python users can practice in the browser and compare idioms side by side. Exercises for **CP, SMT, convex QP, and decomposition** (Chapters 4–5 and parts of Chapters 8–10) are **WaSHI (TypeScript)-only**.
-- Pressing **Run & Judge** calls your `solve` function once per test case and checks the object (or Python `dict`) you return.
-- Solving an exercise in **either** runtime marks it solved (`✓`). Console logs are shown for debugging, while grading always inspects the return value.
+- **WaSHI (TypeScript)**: Implement `solve(input)` taking an input object and returning the result object.
+- **PuLP (Python)**: Implement `solve(field_1, field_2, ...)` taking each camelCase input field as a `snake_case` keyword argument and returning a `snake_case` `dict`.
+- **Supported runtimes**: WaSHI is a TypeScript / JavaScript library, not a Python package. For **LP and MIP** exercises, the browser also runs **PuLP (Python)** backed by HiGHS inside Pyodide so you can compare idioms side by side.
+- **WaSHI-only chapters**: Exercises for **CP, SMT, convex QP, and decomposition** (Chapters 4–5 and parts of Chapters 8–10) are **WaSHI (TypeScript)-only**.
+- Pressing **Run & Judge** calls `solve` once per test case and checks that the returned object (or Python `dict`) satisfies all constraints and matches the optimal objective.
+- Solving an exercise in **either** runtime marks it solved (`✓`). `console.log` and `print` output appear for debugging, while grading always inspects the return value.
 
 ## 2. Core Building Blocks {#building-blocks}
 
@@ -17,22 +19,23 @@ A concise reference for reading problem statements, building optimization models
 | **Bounds** | Lower (`lb`) and upper (`ub`) limits on a single variable (for example $x \ge 0$). | `{ lb: 0, ub: cap }` | `lowBound=0, upBound=cap` |
 | **Linear Expression** | A weighted sum of variables plus an optional constant, such as $2x + 3y$. | ``expr`2 * ${x} + 3 * ${y}` `` or `dot(...)` | `2 * x + 3 * y` or `pulp.lpSum(...)` |
 | **Constraint** | A rule (`<=`, `>=`, `==`) every valid solution must satisfy. | ``m.constraint(expr`... <= ...`)`` | `prob += ... <= ...` |
-| **Objective** | The scalar quantity to minimize or maximize. | `m.objective(maximize(...))` / `minimize(...)` | `LpProblem(..., LpMaximize / LpMinimize)` + `prob += ...` |
+| **Objective** | The scalar quantity to minimize or maximize. | `m.objective(maximize(...))` / `m.objective(minimize(...))` | `LpProblem(..., LpMaximize / LpMinimize)` + `prob += ...` |
 
 ### Variable Types {#variable-types}
 
 - **Continuous (`continuous`)**: Any real number within its bounds (e.g., `12.5` liters). Used in Linear Programming (**LP**).
 - **Integer (`integer`)**: Whole numbers only (`0, 1, 2, ...`). Introduces branching (**MIP**).
 - **Binary (`binary`)**: Only `0` or `1` (yes/no decisions). A special case of an integer variable with `0 <= x <= 1`.
+- **Boolean (`bool`)**: Propositional `true` / `false` variables created with `m.bool()` for logical expressions (`and`, `or`, `implies`) and SMT/CP rules.
 
 ## 3. Judge Verdicts & Solver Statuses {#verdicts}
 
 | Verdict | Meaning | Typical Cause |
 | --- | --- | --- |
-| **AC** | Accepted — feasible and optimal on all test cases. | All constraints satisfied and objective matches optimal within tolerance. |
+| **AC** | Accepted — feasible and optimal on all test cases. | — |
 | **SUBOPTIMAL** | Feasible solution, but objective is worse than optimal. | Wrong optimization sense (`minimize` vs `maximize`), wrong objective coefficient, or extra overly tight constraint. |
 | **VIOLATION** | Returned solution breaks a problem rule. | A constraint or bound is missing, reversed (`<=` vs `>=`), or integer rounding changed feasibility. |
-| **INFEASIBLE** | No assignment satisfies all constraints simultaneously. | Contradictory constraints (`x >= 10` and `x <= 5`), or missing solution feasibility. |
+| **INFEASIBLE** | No assignment satisfies all constraints simultaneously. | Contradictory constraints (e.g., $x \ge 10$ and $x \le 5$), overly tight bounds, or reversed inequality signs. |
 | **ERROR** | Code failed to run, forgot to solve, or returned missing/invalid fields. | Missing `await m.solve()`, runtime exception, `Unbounded` model, or wrong output key name. |
 
 ### Solver Status Glossary {#solver-status}
@@ -41,17 +44,19 @@ A concise reference for reading problem statements, building optimization models
 - **Feasible**: A valid solution satisfies all constraints (used when checking feasibility or before optimality proof completes).
 - **Infeasible**: Constraints contradict each other; the feasible region is empty.
 - **Unbounded**: The objective can improve infinitely (`+Inf` or `-Inf`), usually because a capacity constraint or `lb`/`ub` is missing.
+- **Sat / Unsat**: Returned by `m.check()` for satisfiability queries — `Sat` means a satisfying assignment exists, while `Unsat` means constraints conflict (inspect `res.conflicts` / `res.unsatCore`).
 - **NotSolved**: `solve()` was never called before reading `.value` / `objectiveValue`.
 
 ## 4. Problem Families {#paradigms}
 
 - **LP (Linear Programming)**: Linear objective and linear constraints over continuous variables. Solved directly at a corner point (vertex) of the feasible polytope without integer branching.
 - **MIP (Mixed-Integer Programming)**: LP extended with `integer` or `binary` variables to model indivisible units, yes/no selection, or fixed-charge activation (**Big-M**).
-- **CP / SMT**: Constraint Programming and Satisfiability Modulo Theories for combinatorial scheduling, logical rules, and conflict diagnosis (covered in later chapters).
+- **Convex QP (Convex Quadratic Programming)**: Minimizes a convex quadratic objective (such as portfolio variance or squared error) subject to linear constraints over continuous variables.
+- **CP / SMT**: Constraint Programming and Satisfiability Modulo Theories for combinatorial scheduling, logical rules, and conflict diagnosis (Chapters 4–5 and parts of Chapters 8–10).
 
 ## 5. Related Documentation & Learning Resources {#resources}
 
-Official documentation and independent learning resources centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**). Note that the external references listed below are independent learning resources, and all exercises, test cases, and solutions in Optimization N are original to WaSHI:
+Official documentation and independent learning resources centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**). Note that the external references listed below are independent learning resources, and all exercises, test cases, and solutions in Optimization N are original to WaSHI.
 
 ### Choosing the Right Resource
 

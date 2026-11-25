@@ -102,10 +102,10 @@ Rules:
 
 ### Target-Balancing & Variance Minimization (Convex QP — Bundled HiGHS)
 
-Built-in HiGHS solves convex quadratic objectives over continuous variables (`m.continuous`):
+Built-in HiGHS solves convex quadratic objectives over continuous variables (`m.continuous()`):
 
 ```text
-Using @ohtaman/washi (bundled HiGHS), allocate a continuous total budget of 1.0 across 5 regional compute pools using m.continuous variables (lb: 0.05, ub: 0.50).
+Using @ohtaman/washi (bundled HiGHS), allocate a continuous total budget of 1.0 across 5 regional compute pools using m.continuous() variables (lb: 0.05, ub: 0.50).
 Target weights are [0.30, 0.25, 0.20, 0.15, 0.10], plus a policy cap that regions 0 and 1 combined cannot exceed 0.48.
 Minimize the sum of squared deviations expr`sum((${w} - ${target})^2)` subject to sum(w) == 1.0 and the regional cap, then verify m.verify().valid === true.
 ```
@@ -139,13 +139,7 @@ Package this @ohtaman/washi optimization model into a standalone .html file with
 - Verify every feasible solve with m.verify().
 ```
 
-**How `file://` execution works**:
-
-| Scenario | Behavior & Requirement |
-| --- | --- |
-| **CDN scripts** | Loading `washi.min.js` from an HTTPS CDN works directly on `file://` without a local server. On opaque origins (`window.origin === "null"`), WaSHI runs HiGHS and Pumpkin on the main thread automatically. |
-| **Self-hosted `.wasm`** | Browsers block `fetch()` against local `.wasm` files on `file://`. Serve self-hosted WebAssembly assets over `http://` or `https://`. |
-| **Z3 in browsers** | Requires a Secure Context (`https://` or `http://localhost`, not plain `http://` LAN URLs) plus `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` (`COOP`/`COEP`); see [Cross-Origin Isolation](./cross-origin.md). |
+**`file://` runtime notes**: Loading `washi.min.js` from an HTTPS CDN runs directly on `file://`—under `window.origin === "null"`, WaSHI automatically falls back to main-thread execution. Self-hosted `.wasm` files require `http://` or `https://`, and browser Z3 requires Cross-Origin Isolation; see [Runtime Environments](./runtimes.md) and [Cross-Origin Isolation](./cross-origin.md).
 
 ### Offline Desktop & Mobile Apps (Vite + Tauri / Capacitor / PWA)
 
@@ -155,9 +149,7 @@ Wrap this Vite + TypeScript @ohtaman/washi application as an offline desktop/mob
 - Configure Content Security Policy to allow WebAssembly compilation ('wasm-unsafe-eval' in script-src) and Web Workers (worker-src 'self' blob:).
 ```
 
-**How WebView deployment works**:
-
-Standard Vite builds bundle the solver `.wasm` assets you use (`highs.wasm`, and `pumpkin.wasm` when imported) as static files that run offline in Tauri (`tauri://localhost` or `http://tauri.localhost`), Capacitor WebViews, and Service Worker PWAs. Configure your Content Security Policy (`CSP`) with `'wasm-unsafe-eval'` in `script-src` (and `worker-src 'self' blob:` when using Web Workers); see [Runtime Environments](./runtimes.md) for a `tauri.conf.json` example.
+**WebView notes**: Standard Vite builds bundle your solver `.wasm` assets for offline execution in Tauri, Capacitor, and PWAs. Allow `'wasm-unsafe-eval'` in `script-src` (plus `worker-src 'self' blob:` for Web Workers); see [Runtime Environments](./runtimes.md) for a `tauri.conf.json` example.
 
 ---
 
@@ -165,7 +157,7 @@ Standard Vite builds bundle the solver `.wasm` assets you use (`highs.wasm`, and
 
 ### Name Every Constraint and Verify Every Solve
 
-Ask your agent to pass a descriptive name to `m.constraint(c, "rule_name")` and `m.indicator(...)`, then assert `m.verify().valid === true`. Unnamed constraints default to 1-indexed IDs (`c_1`, `c_2` for linear constraints; `lc_1`, `lc_2` for logical constraints), which makes conflict reports harder to read.
+Ask your agent to pass a descriptive name to `m.constraint(c, "rule_name")` and `m.indicator(b, c, { name: "rule_name" })`, then assert `m.verify().valid === true`. Unnamed constraints default to auto-generated IDs (`c_1`, `c_2` for linear constraints; `lc_1`, `lc_2` for logical constraints), which makes conflict reports harder to read.
 
 ### Diagnose `"Infeasible"` Models with `m.check()`
 

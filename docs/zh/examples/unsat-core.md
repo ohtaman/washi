@@ -1,12 +1,12 @@
-# 约束冲突诊断 (Z3 Unsat Core)
+# 约束冲突诊断 (Unsat Core)
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
 | 不可行性诊断 / 不可满足核 (Unsat Core) | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">源代码</a></li></ul> |
 
-当约束之间发生冲突时，常规优化调用（`m.solve()`）只会返回 `"Infeasible"`。改用 `m.check()` 则会返回 `"Unsat"`，并提取出无法同时满足的命名约束子集，即**不可满足核（Unsat Core）**。
+当约束之间发生冲突时，常规优化调用（`m.solve()`）只会返回 `"Infeasible"`。改用 `m.check()` 则会返回 `"Unsat"` 并诊断冲突约束：Z3、Pumpkin 等 SMT/CP 求解器提取无法同时满足的**不可满足核（Unsat Core）**，而 HiGHS 等 MIP 求解器返回**弹性修复集（Elastic Repair Set）**。
 
-本示例使用 Z3 通过 `m.conflicts`（`res.conflicts`）提取引发冲突的规则子集（在此场景下会排除无关约束，但一般而言 `unsatCore` / `m.conflicts` 不保证极小性或最小性）。
+本示例分别使用 Z3 与 HiGHS 诊断冲突，并通过 `res.conflicts`（同时保存在 `m.conflicts` 中）读取结果。在此场景下 Z3 会排除无关约束，但一般而言返回的 Unsat Core 不保证极小性或最小性。
 
 ## 存在冲突的场景
 
@@ -84,4 +84,4 @@ Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，
 
 ### HiGHS（`m.check({ solver: "highs" })`）
 
-与 Unsat Core 不同，HiGHS 返回的是**弹性修复集（Elastic Repair Set）**——即恢复可行性所需总松弛量最小的约束集合。相比将预算上限放宽 `$14,000`，放宽 `rush_required` 仅需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。
+与 Unsat Core 不同，HiGHS 返回的是**弹性修复集（Elastic Repair Set）**——即恢复可行性所需总松弛量最小的约束集合。Z3 与 Pumpkin 会同时填充 `conflicts` 和 `unsatCore`，而 HiGHS 仅填充 `conflicts`，将 `unsatCore` 保持为 `undefined`。相比将预算上限放宽 `$14,000`，放宽 `rush_required` 仅需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。

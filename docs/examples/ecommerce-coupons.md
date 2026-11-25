@@ -6,7 +6,7 @@
 
 E-commerce checkouts often combine minimum spend thresholds, category discounts, mutually exclusive coupons, and per-order coupon caps. Formulating these rules as a single MIP model selects the best coupon set and simultaneously determines whether adding a low-cost filler item lowers the final bill.
 
-This example uses `m.indicator()` to model conditional rules such as "if a coupon is applied, minimum spend must hold." For MIP solvers like HiGHS, WaSHI applies **Big-M linearization**, relaxing the inequality by a constant `M` when the binary indicator is inactive.
+This example uses `m.indicator(binVar, constraint, { activeValue, M? })` to model conditional rules such as "if a coupon is applied, minimum spend must hold." For MIP solvers like HiGHS, WaSHI applies **Big-M linearization**, relaxing the inequality by a constant `M` when the binary indicator is inactive.
 
 > [!IMPORTANT]
 > **Precondition for omitting `M`**: WaSHI derives a tight Big-M automatically only when every variable in the constrained inequality has **finite** `lb` and `ub` bounds (binary variables are automatically bounded in `[0, 1]`). If any variable is unbounded, pass an explicit `M` or set finite bounds first.
@@ -14,6 +14,8 @@ This example uses `m.indicator()` to model conditional rules such as "if a coupo
 <EcommerceCouponDemo />
 
 ## Scenario & Promotion Rules
+
+While the interactive widget above lets you explore a multi-item catalog, the runnable walkthrough below uses a compact single-cart scenario (`$242`, 4 coupons, and 1 optional add-on).
 
 A customer's shopping cart currently contains `$242` of merchandise (`$210` in Tech items and `$32` in Apparel):
 - **Optional Filler Add-on**: Adding a `$10` Braided USB-C Cable (Tech) raises the cart subtotal from `$242` to `$252` (and Tech spend from `$210` to `$220`).

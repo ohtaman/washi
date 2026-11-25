@@ -8,10 +8,10 @@ WaSHI は、ソルバーを切り替えられるプラグイン構造を採用�
 
 | ソルバー | ライセンス | 対応問題クラス | 主な用途 | 提供形態と前提条件 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, 凸 QP** | 一般的な数理最適化、生産計画、凸 QP によるポートフォリオ最適化 | **標準搭載**（設定不要） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | **MIT** | **CP、命題論理、有界整数計画**（LCG 方式） | 非重複制約付きスケジューリング、CP グローバル制約、離散モデルの `unsatCore` | **同梱プラグイン**（`@ohtaman/washi/solvers/pumpkin`）。有界な整数変数・真偽値変数のみ対応（`Continuous` 変数は不可） |
-| **[Z3](https://github.com/Z3Prover/z3)**（`z3-solver` 経由） | **MIT** | **SMT、SAT、LP/MIP**（論理制約付き） | 連続変数や小数の係数・定数を含む論理ルール、連続・整数混在モデルの矛盾診断（`unsatCore`） | **オプション**（`@ohtaman/washi/solvers/z3`、要 `z3-solver`）。ブラウザでは `COOP`/`COEP` ヘッダーが必要 |
-| **[GLPK](https://www.gnu.org/software/glpk/)**（`glpk.js` 経由） | **GPL-3.0** | **LP, MIP** | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | **オプション**（`@ohtaman/washi/solvers/glpk`、要 `glpk.js`。GPL-3.0 ライセンスに注意） |
+| **[HiGHS](./highs.md)** | **MIT** | **LP, MIP, 凸 QP** | 実務・本番環境の数理最適化、オペレーションズ・リサーチ、凸 QP によるポートフォリオ最適化 | **標準搭載**（設定不要） |
+| **[Pumpkin](./pumpkin.md)** | **MIT** | **CP、命題論理、有界整数計画** | 非重複制約付きスケジューリング、CP グローバル制約、離散モデルの `unsatCore` | **同梱プラグイン**（`@ohtaman/washi/solvers/pumpkin`）。有界な整数変数・真偽値変数のみ対応（`Continuous` 変数は不可） |
+| **[Z3](./z3.md)**（`z3-solver` 経由） | **MIT** | **SMT、SAT、LP/MIP**（論理制約付き） | 連続変数や小数の係数・定数を含む論理ルール、連続・整数混在モデルの矛盾診断（`unsatCore`） | **オプション**（`@ohtaman/washi/solvers/z3`、要 `z3-solver`）。ブラウザでは Secure Context（`HTTPS` / `localhost`）と `COOP`/`COEP` ヘッダーが必要 |
+| **[GLPK](./glpk.md)**（`glpk.js` 経由） | **GPL-3.0** | **LP, MIP** | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | **オプション**（`@ohtaman/washi/solvers/glpk`、要 `glpk.js`。GPL-3.0 ライセンスに注意） |
 | **Mock**（`MockSolver`） | **MIT** | *任意*（固定応答スタブ） | WebAssembly を読み込まずに高速実行できる CI・単体テスト | **標準搭載**（`solver: "mock"` または `new MockSolver(...)`） |
 
 ---

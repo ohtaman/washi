@@ -6,9 +6,9 @@
 
 This **Capacitated Vehicle Routing Problem (CVRP)** variant minimizes the number of delivery vehicles needed to serve every customer. In addition to vehicle cargo capacity, each route must respect maximum stops per shift and route duration limits.
 
-Enumerating every feasible route upfront in a monolithic MIP causes the number of binary variables to explode combinatorially as $n$ grows (even unordered customer subsets alone are $O(2^n)$ in general, and ordered visit sequences grow faster still). With **Column Generation (Dantzig-Wolfe Decomposition)**, routes are generated on demand:
-1. **Restricted Master Problem (RMP)**: Solves the **LP relaxation** of a set partitioning problem over the generated routes during column generation (and solves it as a MIP at the end) so every customer is visited exactly once.
-2. **Pricing Subproblem**: Reads dual values (shadow prices) from the master LP relaxation, then uses cheapest insertion and 2-opt search to build a route $r$ with negative reduced cost: $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$.
+Enumerating all feasible routes upfront in a monolithic MIP causes the number of binary variables to explode as the number of customers $n$ grows—unordered subsets alone scale as $O(2^n)$, and ordered routes grow even faster. **Column Generation (Dantzig-Wolfe Decomposition)** avoids this by generating routes on demand:
+1. **Restricted Master Problem (RMP)**: Solves the set-partitioning **LP relaxation** over generated routes so every customer is visited exactly once, then solves the final MIP.
+2. **Pricing Subproblem**: Reads each customer's dual value (shadow price) $\pi_i$ from the master LP relaxation and uses cheapest insertion with 2-opt search to build a route $r$ with negative reduced cost $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$.
 
 ## Problem Inputs
 
@@ -211,16 +211,16 @@ async function runCVRP() {
 
   console.log("\nSample routes selected in fleet:");
   const activeRoutes: RouteMeta[] = [];
+  for (const c of result.generatedColumns) {
+    if (c.variable.value === 1 && c.proposal.meta) {
+      activeRoutes.push(c.proposal.meta);
+    }
+  }
   for (let i = 0; i < customers.length; i++) {
     if (initialRoutes[i].value === 1) {
       const tour = ["Depot", customers[i].id, "Depot"];
       const { travelTime, totalTime } = calcRouteTime(tour, dist, serviceTimes);
       activeRoutes.push({ tour, travelTime, totalTime });
-    }
-  }
-  for (const c of result.generatedColumns) {
-    if (c.variable.value === 1 && c.proposal.meta) {
-      activeRoutes.push(c.proposal.meta);
     }
   }
   for (const r of activeRoutes.slice(0, 5)) {
@@ -235,13 +235,15 @@ runCVRP();
 
 ## Key Takeaways
 
+Starting from `50` single-customer vehicles, heuristic pricing generates `63` additional route columns and lowers the LP relaxation to about `12.65`. Finalizing that column pool as a MIP (root-node Price-and-Branch) yields a `19`-vehicle fleet made up of `11` multi-stop routes and `8` single-customer routes.
+
 ### Master Problem, Pricing & Route Metadata
 
 The master problem handles the LP relaxation and final set-partitioning MIP. Inside `pricing`, `visitConstrs[i].dual` supplies each customer's dual value (shadow price) to guide route construction. Storing `{ tour, travelTime, totalTime }` in `meta` lets you inspect the chosen stop sequence via `result.generatedColumns` after solving.
 
 ### Set Partitioning (`== 1`) vs. Set Covering (`>= 1`)
 
-This example uses `== 1` so no customer is visited twice in the final MIP. In larger instances, using `>= 1` keeps dual values non-negative ($\pi_i \ge 0$) and stabilizes LP convergence. When travel distances satisfy the triangle inequality, duplicate visits can be stripped after solving without increasing any route's travel time (or load, stop count, or fleet size); note that rounding distances with `Math.round` as in this example can introduce small rounding violations of the triangle inequality.
+This example uses `== 1` so no customer is visited twice in the final MIP. In larger instances, using `>= 1` keeps dual values non-negative ($\pi_i \ge 0$) and stabilizes LP convergence. When travel distances satisfy the triangle inequality, duplicate visits can be stripped after solving without increasing travel time, load, stop count, or fleet size. Note that rounding distances with `Math.round`, as in this example, can introduce small rounding violations of the triangle inequality.
 
 ### Heuristic Pricing vs. Exact ESPPRC
 

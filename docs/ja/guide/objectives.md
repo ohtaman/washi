@@ -58,6 +58,7 @@ const status = await m.solve({
 | `relativeGap` | `number` | `undefined` | 相対 MIP 最適性ギャップの許容値（例：`0.01` = 1%）。 |
 | `absoluteGap` | `number` | `undefined` | 絶対 MIP 最適性ギャップの許容値（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 前処理（Presolve）の動作モード。 |
+| `relax` | `boolean` | `false` | 整数・バイナリ変数を連続変数に緩和した LP 緩和を解きます（`m.relax()` と同等）。HiGHS・GLPK で対応。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | ソルバーの内部ログ出力の有効化（HiGHS は `outputFlag`、GLPK は `verbose`）。 |
 | `useWorker` | `boolean` | ブラウザ: `true` / Node.js: `false` | ブラウザでの HiGHS・Pumpkin の Web Worker 実行。メインスレッド実行時は `false`。Node.js では省略するか `false` を指定（明示的な `true` はエラー）。 |
 | `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` や `pumpkin.wasm` を読み込むカスタム URL。 |
@@ -65,6 +66,7 @@ const status = await m.solve({
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 求解中の進捗スナップショットを受け取るコールバック。 |
 
 第1引数にソルバー名を直接指定して `await m.solve("glpk", { timeLimit: 5 })` のように呼び出すこともできます。
+未対応のオプションを指定した場合、ソルバーは暗黙に無視せずエラーをスローします。各ソルバーの対応オプションは [ソルバー概要](../solvers/index.md) を参照してください。
 
 ---
 
@@ -89,6 +91,8 @@ console.log("Absolute Gap:", m.absoluteGap);              // 絶対ギャップ 
 console.log("x =", x.value, "y =", y.value);
 console.log("x by name:", m.values.get("x"));
 ```
+
+`relax: true` を使わずに解いた場合、`Integer`・`Binary` 変数の `.value` は整数から `1e-5` 以内であれば厳密な整数へ自動正規化されますが、`m.objectiveValue` はソルバーが返した生の浮動小数点値を保持します。
 
 > [!TIP]
 > 得られた解が変数の上下限・整数条件・すべての制約を許容誤差内で満たしているかを独立して検証するには、`m.verify()` を呼び出してください。
@@ -191,5 +195,5 @@ console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在す
 - **一括操作のロールバック**: `m.constraint([...])` などの一括操作に不正な要素が含まれる場合、部分的な変更を残さず全体がロールバックされ、既存の有効な解も維持されます。
 
 > [!NOTE]
-> 登録済みの変数や制約の名前変更、および内部マップや AST の直接書き換え（`c.lhs.terms`, `BoolOp.children` など）はサポートされていません。
-> 次回の求解・検証・エクスポート実行時にモデルの整合性チェックでエラーとなります。
+> `Var.name` は読み取り専用であり、登録済み制約の名前変更（`c.name = ...`）は次回の求解・検証・エクスポート時の整合性チェックでエラーになります。
+> `c.lhs.terms` や `BoolOp.children` のような内部マップ・AST 配列を直接書き換えると変更検知をすり抜けて古い解が残る恐れがあるため、代わりに `c.addTerm()`・`c.setTerm()` またはプロパティセッターを使用してください。

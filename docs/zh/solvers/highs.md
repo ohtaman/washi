@@ -2,7 +2,7 @@
 
 **HiGHS** 是发源于爱丁堡大学的开源数理优化求解器（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。它支持求解线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）问题。
 
-在 `@ohtaman/washi` 中，HiGHS 是内置的默认求解器。它以零外部依赖的 WebAssembly 二进制形式随包分发，可在 Node.js、浏览器和 Web Worker 中直接运行。
+在 `@ohtaman/washi` 中，HiGHS 是 MIT 许可的内置默认求解器。它以零外部依赖的单线程 WebAssembly 随包分发，可在 Node.js 与浏览器 Web Worker 中运行，无需 `SharedArrayBuffer` 或 `COOP`/`COEP` 响应头（见[跨域隔离指南](../getting-started/cross-origin.md)）。
 
 ---
 
@@ -17,16 +17,6 @@
 
 > [!TIP]
 > 大多数数值优化任务都可以直接从 **HiGHS** 开始。只有在需要原生 CP 传播或可满足性模理论（SMT）冲突诊断时，再选用 **Pumpkin** 或 **Z3**。
-
----
-
-## 在 WaSHI 中的主要特性
-
-- **内置且零配置**：采用 MIT 许可证随 `@ohtaman/washi` 一同打包，无需安装额外依赖。
-- **无需 `COOP`/`COEP` 响应头**：以单线程 WebAssembly 运行，无需 `SharedArrayBuffer` 或[跨域隔离](../getting-started/cross-origin.md)响应头。
-- **Web Worker 后台执行**：在浏览器中默认使用专用 Web Worker 运行，保持页面 UI 流畅响应。
-- **热启动提示（`initialValue`）**：支持为 `model.continuous()`、`model.integer()` 和 `model.binary()` 设置初始值提示。
-- **LP 松弛（`relax: true`）**：无需修改变量声明，即可直接求解 MIP 模型的连续松弛问题。
 
 ---
 
@@ -54,7 +44,7 @@ console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 
 ### 2. 混合整数规划（MIP）
 
-MIP 模型包含 `model.integer()` 或 `model.binary()` 离散变量（也可与连续变量混用）。HiGHS 通过分支切割法求解，并返回 `objectiveBound`、`relativeGap` 与 `absoluteGap`：
+MIP 模型包含 `model.integer()` 或 `model.binary()` 离散变量（也可与连续变量混用），并支持通过 `initialValue` 提供热启动提示。HiGHS 通过分支切割法求解，并返回 `objectiveBound`、`relativeGap` 与 `absoluteGap`：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -109,10 +99,10 @@ console.log(qpModel.status, qpModel.objectiveValue, x.value, y.value);
 | `absoluteGap` | `number` | 当绝对 MIP 最优间隙落入此容差内时终止。 |
 | `presolve` | `"on" \| "off" \| "choose"` | 控制求解前的模型预处理。 |
 | `outputFlag` | `boolean` | 开启求解器内部日志输出（默认 `false`）。 |
-| `relax` | `boolean` | 求解 MIP 模型的连续 LP 松弛问题。 |
-| `useWorker` | `boolean` | 在浏览器中使用 Web Worker 运行（默认 `true`）。 |
-| `wasmUrl` | `string \| null` | 覆盖 `highs.wasm` 的资源地址（`null` 表示回退到 `setHighsWasmUrl()` 或内置二进制）。 |
-| `signal` | `AbortSignal` | 协作式取消正在进行的求解。 |
+| `relax` | `boolean` | 无需修改变量声明，求解 MIP 模型的连续 LP 松弛问题。 |
+| `useWorker` | `boolean` | 在浏览器中使用 Web Worker 运行（浏览器默认 `true`；在 `file:` 协议或无源环境下回退为 `false`）。在 Node.js 中传入 `useWorker: true` 会抛出 `Error`。 |
+| `wasmUrl` | `string` | 覆盖本次调用的 `highs.wasm` 地址（调用 `setHighsWasmUrl(null)` 可恢复内置二进制）。 |
+| `signal` | `AbortSignal` | 取消正在进行的求解。在浏览器 Web Worker 中会抢占式终止并返回最近捕获的 MIP 暂定解（如有）；在主线程或 Node.js 中则为协作式取消。 |
 | `onProgress` | `(ev) => void` | 实时接收耗时、当前目标值、对偶界与间隙更新。 |
 
 此外还支持以下 HiGHS 透传限制项：`mip_max_nodes`、`mip_max_improving_sols`、`mip_max_leaves`、`simplex_iteration_limit` 和 `ipm_iteration_limit`。
@@ -199,7 +189,7 @@ WaSHI 直接将官方 HiGHS C++ 源码编译为 32 位 WebAssembly（`highs.wasm
 ### 回调与求解器交互控制
 
 - **进度监控与取消**：通过 HiGHS 的日志与中断回调支持 `onProgress` 和 `AbortSignal`。
-- **动态割平面与惰性约束**：搜索树内的回调暂未跨 WASM 边界暴露。对于子回路消除或 Benders 分解，请使用 [`await m.solveBenders({ subproblem })`](../guide/decomposition.md) 或外层迭代割平面循环。
+- **动态割平面与惰性约束**：搜索树内的回调未跨 WASM 边界暴露。对于子环消除或 Benders 分解，请使用 [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-分解-solvebenders) 或外层迭代割平面循环。
 
 ---
 

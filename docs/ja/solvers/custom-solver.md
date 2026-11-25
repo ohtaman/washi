@@ -114,7 +114,8 @@ export interface SolveModelData extends CheckModelData {
 - **二次目的関数（`QuadExpr`）**: モデルが二次目的関数を持ち、かつ `supportsQP === false` の場合はエラーを投げます。
 - **ウォームスタート（`initialValue`）**: 変数に `initialValue` が設定されており、かつ `supportsWarmStart !== true` の場合はエラーを投げます。
 - **論理制約**: `supportsLogicalConstraints` または `supportsSMT` が `true` なら `modelData.logicalConstraints` をそのまま渡します。
-- **混合整数計画（MIP）への自動線形化**: `supportsLogicalConstraints` と `supportsSMT` のいずれも `true` でない場合、`Model` が論理制約を等価なバイナリ変数と線形制約へ自動変換してから `solve()` を呼びます。
+- **`solve()` 時の自動 MIP 線形化**: 両フラグのいずれも `true` でない場合、`Model` は `logicalConstraints`・`boolVars`・非線形／CP 式を等価なバイナリ変数と線形制約へ自動変換してから `solve()` を呼びます。
+- **`check()` 未実装時のフォールバック**: アダプターが `check()` を実装していない場合、`Model.check()` は `solve()` を使った弾性スラック実行可能性問題へフォールバックします（違反した制約名を `conflicts` で返し、`unsatCore` は `undefined` になります）。
 
 ```typescript
 export interface SolverCapabilities {
@@ -214,7 +215,7 @@ export interface SolveProgressEvent {
 
 | ヘルパー関数 | 用途 |
 | :--- | :--- |
-| `generateLpString(modelData, { relax }?)` | `modelData` を CPLEX LP 文字列（`lpString`）と名前衝突を回避した逆引きマップ（`nameToVar`・`nameToConstraint`）へ変換。`{ relax: true }` で連続 LP 緩和問題を出力。 |
+| `generateLpString(modelData, { relax }?)` | `modelData` を CPLEX LP 文字列（`lpString`）と名前衝突を回避した逆引きマップ（`nameToVar`・`nameToConstraint`）へ変換。`{ relax: true }` で連続 LP 緩和を出力。`modelData.objective.constant` は含まれないため、アダプター側で `objectiveValue`・`objectiveBound` に加算が必要。 |
 | `buildLpSymbolMaps(modelData)` | LP 文字列を生成せず、サニタイズ済み識別子マップ（`nameToVar`・`varToName`・`nameToConstraint`・`constraintToName`）だけを構築。 |
 | `isLpExportResult(value)` | `LpExportResult` の実行時型ガード（旧来の 3 引数オーバーロード `solve(modelData, lpResult, options)` 互換用）。 |
 | `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | 任意の変数名・制約名を LP 形式で有効な識別子へ変換。 |
@@ -227,9 +228,9 @@ export interface LpExportResult {
 }
 ```
 
-### `SolverResult` の正規化と識別子の復元
+### `SolverResult`・`SolverCheckResult` の正規化と識別子の復元
 
-`solve()` が返す `values`・`boolValues`・`reducedCosts`・`duals`・`slacks` は、モデル上の元の変数名・制約名（`v.name`・`bv.name`・`c.name`）をキーにする必要があります。LP ヘルパーを使った場合は、`nameToVar` と `nameToConstraint` で元の名前へ復元してください。
+`solve()` が返す `values`・`boolValues`・`reducedCosts`・`duals`・`slacks` は、モデル上の元の変数名・制約名（`v.name`・`bv.name`・`c.name`）をキーにする必要があります。`check()` も同様に、`values`・`unsatCore`・`conflicts` を元の名前（`v.name`・`bv.name`・`c.name`・`lc.name`）で返します。LP ヘルパーを使った場合は、`nameToVar` と `nameToConstraint` で元の名前へ復元してください。
 
 ```typescript
 export interface SolverResult {
@@ -245,6 +246,17 @@ export interface SolverResult {
   reducedCosts?: Record<string, number>;
   duals?: Record<string, number>;
   slacks?: Record<string, number>;
+  runTime?: number;
+  logs?: string[];
+  raw?: any;
+}
+
+export interface SolverCheckResult {
+  status: "Sat" | "Unsat" | "Unknown";
+  values: Record<string, number | boolean>;
+  unsatCore?: readonly string[];
+  /** unsatCore の別名: 実行不能の原因となる矛盾制約の部分集合 */
+  conflicts?: readonly string[];
   runTime?: number;
   logs?: string[];
   raw?: any;
@@ -342,6 +354,7 @@ export class CloudSolver implements Solver {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
+          hasPrimalSolution: false,
           objectiveValue: null,
           values: {},
           runTime: (performance.now() - startTime) / 1000,
@@ -379,19 +392,25 @@ export class CloudSolver implements Solver {
       UNSAT: "Unsat",
     };
     const rawStatus: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+    const offset = modelData.objective?.constant ?? 0;
+    const hasFiniteObj =
+      typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue);
     const hasIncumbent =
-      (typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue)) ||
+      hasFiniteObj ||
       Object.values(values).some((val) => typeof val === "number" && Number.isFinite(val));
     const isLimitStop = rawStatus === "TimeLimit" || rawStatus === "IterationLimit";
     const status: SolverStatus = isLimitStop && hasIncumbent ? "Feasible" : rawStatus;
+    const hasPrimalSolution =
+      (status === "Optimal" || status === "Feasible") && hasIncumbent;
 
     return {
       status,
       terminationStatus: rawStatus,
-      objectiveValue: payload.objectiveValue ?? null,
-      values,
-      duals,
-      slacks,
+      hasPrimalSolution,
+      objectiveValue: hasPrimalSolution && hasFiniteObj ? payload.objectiveValue + offset : null,
+      values: hasPrimalSolution ? values : {},
+      duals: hasPrimalSolution ? duals : {},
+      slacks: hasPrimalSolution ? slacks : {},
       runTime: payload.solveDuration || runTime,
       logs: payload.logs || [],
       raw: payload,
@@ -484,7 +503,7 @@ const model = new Model("DefaultedModel");
     "./browser/index.min.js": "./dist/browser/index.min.js"
   },
   "peerDependencies": {
-    "@ohtaman/washi": ">=0.1.0"
+    "@ohtaman/washi": ">=0.8.0"
   }
 }
 ```

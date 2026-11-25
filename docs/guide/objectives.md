@@ -58,6 +58,7 @@ const status = await m.solve({
 | `relativeGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (for example, `0.01` for 1%). |
 | `absoluteGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
+| `relax` | `boolean` | `false` | Solves the continuous LP relaxation (equivalent to `m.relax()`); supported on HiGHS and GLPK. |
 | `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
 | `useWorker` | `boolean` | `true` (browser) / `false` (Node.js) | Runs HiGHS and Pumpkin in a browser Web Worker. Set `false` for main-thread browser runs; omit or set `false` in Node.js (explicit `true` fails). |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` or `pumpkin.wasm` in browser deployments. |
@@ -65,6 +66,7 @@ const status = await m.solve({
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | Callback receiving live solver progress snapshots. |
 
 You can also pass a solver name directly as the first argument: `await m.solve("glpk", { timeLimit: 5 })`.
+Backends throw an error rather than silently ignoring unsupported options; check each backend's support details in [Solvers Overview](../solvers/index.md).
 
 ---
 
@@ -89,6 +91,8 @@ console.log("Absolute Gap:", m.absoluteGap);              // |objectiveValue - o
 console.log("x =", x.value, "y =", y.value);
 console.log("x by name:", m.values.get("x"));
 ```
+
+When solving without `relax: true`, WaSHI automatically normalizes `Integer` and `Binary` `.value`s within `1e-5` of an integer to exact integers, whereas `m.objectiveValue` preserves the solver's raw floating-point value.
 
 > [!TIP]
 > To independently check that returned values satisfy all bounds, integrality rules, and constraints within tolerance, call `m.verify()`.
@@ -192,5 +196,5 @@ This clears `m.solution` and `m.objectiveValue`, resets variable `value` and `re
 - **Atomic batch edits**: If a batch call such as `m.constraint([...])` contains an invalid item, WaSHI rolls back the entire call without leaving partial edits or clearing an existing valid solution.
 
 > [!NOTE]
-> Renaming already-registered variables or constraints, or mutating internal maps and ASTs directly (`c.lhs.terms`, `BoolOp.children`), is unsupported.
-> Such edits are rejected by model integrity validation on the next solve, check, or export call.
+> `Var.name` is read-only, and renaming a registered constraint (`c.name = ...`) is rejected by integrity validation on the next solve, check, or export call.
+> Directly mutating internal maps or AST arrays such as `c.lhs.terms` or `BoolOp.children` bypasses mutation tracking and can leave stale solution state—use `c.addTerm()`, `c.setTerm()`, or property setters instead.

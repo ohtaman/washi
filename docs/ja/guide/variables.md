@@ -125,14 +125,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ## 変数オプション
 
-各ファクトリメソッドは変数の種類に応じたオプションを受け取ります。`m.continuous()`・`m.integer()` は `lb`・`ub`・`prefix`・`name`・`initialValue`、`m.binary()` は `prefix`・`name`・`initialValue`、`m.bool()` は `prefix`・`name` のみに対応します。
+各ファクトリメソッドは変数の種類に応じたオプションを受け取ります。
+`m.continuous()`・`m.integer()` は下記のファクトリ向けオプションすべてに対応し、`m.binary()` は `lb`・`ub` を除いたオプション、`m.bool()` は `name` と `prefix` のみに対応します。
 
 | オプション | 型 | デフォルト | 説明 |
 | :--- | :--- | :--- | :--- |
+| `name` | `string` | 自動生成 | スカラー変数の明示的な名前（第1引数で名前を渡す代替手段）。 |
 | `lb` | `number` | `0` | 下限（Lower bound、`m.continuous()`・`m.integer()` 用）。負の値を許す場合は負の有限値または `-Infinity` を指定します。 |
 | `ub` | `number` | `Infinity`（`binary` は `1`） | 上限（Upper bound、`m.continuous()`・`m.integer()` 用）。`m.binary()` では `1` に固定されます。 |
 | `prefix` | `string` | `"x"`（`m.bool()` は `"p"`） | 名前を省略したスカラー変数や配列・辞書・2次元コンテナの変数名プレフィックス（例：`queen_0_0`）。 |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | メソッドから自動推論 | 数値変数の型（`new Var()` 直接生成時のみ）。 |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | メソッドから自動推論 | 数値変数の型（`new Var()` 直接生成時のみ適用）。 |
 | `initialValue` | `number` | `undefined` | 初期解ヒント（ウォームスタート、数値変数専用）。求解結果の `variable.value` とは独立して保持されます。 |
 
 ### 上下限（`lb`, `ub`）の設計ポイント
@@ -187,9 +189,9 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 `await m.solve()` または `await m.check()` の実行後、各変数の解は `variable.value` または `m.values` から取得できます。
 `variable.value` の型は `Var` が `number | null`、`BoolVar` が `boolean | null` です。
 
-HiGHS で連続線形計画（LP）モデルを解いた場合、`variable.reducedCost` から被約費用（`number | null`）を取得できます。
+HiGHS で連続線形計画（LP）モデルまたは `m.relax()` による LP 緩和を解いた場合、`variable.reducedCost` から被約費用（`number | null`）を取得できます。
 **被約費用（Reduced Cost）** は、下限または上限に張り付いている非基底変数について、目的関数係数がどれだけ改善すれば現在の境界から値を動かすことが有利になるかを示す指標です。
-`variable.reducedCost` は、未求解時や最適解が得られなかった場合、GLPK（制約の `dual` のみ対応）、および MIP・CP・SMT モデルでは `null` になります。
+`reducedCost` は、未求解時、最適解が得られなかった場合、GLPK（制約の `dual` のみ対応）、`m.solve()` で解いた MIP モデル、および CP・SMT モデルでは `null` になります。
 
 ```typescript
 await m.solve();

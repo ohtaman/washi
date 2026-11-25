@@ -1,6 +1,6 @@
 # Pumpkin Constraint Programming Solver
 
-**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`) as WebAssembly in `@ohtaman/washi/solvers/pumpkin` with zero extra packages.
+**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`, `pumpkin.wasm`, ~2.1 MB) in `@ohtaman/washi/solvers/pumpkin` under the MIT license with zero extra packages.
 
 Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` or `COOP`/`COEP` headers (see [Cross-Origin Isolation](../getting-started/cross-origin.md)).
 
@@ -17,12 +17,10 @@ Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` o
 
 ---
 
-## Key Features
+## Supported Modeling Primitives
 
-- **Bundled & zero dependencies**: `pumpkin.wasm` (~1.4 MB) ships inside `@ohtaman/washi` under an MIT-compatible license.
-- **Background Web Worker execution**: Runs off the main thread in browsers without `SharedArrayBuffer`, keeping UI rendering responsive.
-- **Native CP constraints**: Supports `disjoint()`, `cumulative()`, `distinct()`, `allowed()`, `at()`, `max()`, `min()`, `abs()`, discrete `!=`, and `m.indicator()`.
-- **Conflict diagnosis (`unsatCore`)**: `await model.check({ solver: "pumpkin" })` identifies conflicting named constraints in bounded integer and boolean models.
+- **Native CP & global constraints**: `disjoint()`, `cumulative()`, `distinct()`, `allowed()`, `at()`, `max()`, `min()`, `abs()`, discrete `!=`, and `m.indicator()`.
+- **Native propositional logic**: `model.bool()`, `and()`, `or()`, `not()`, `implies()`, and `xor()`.
 - **Warm starts (`initialValue`)**: Accepts starting value hints on `model.integer()` and `model.binary()` variables.
 
 ---
@@ -86,7 +84,18 @@ if (result.status === "Unsat") {
 
 ## Solver Options
 
-Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`. Supported options are `timeLimit` (seconds), `useWorker`, `wasmUrl`, `signal`, and `onProgress` (`solve()` only):
+Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`:
+
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | Maximum solve or check time in seconds. |
+| `useWorker` | `boolean` | Runs Pumpkin in a browser Web Worker (`true` by default in browsers; falls back to `false` on `file:` URLs or opaque origins). Passing `useWorker: true` in Node.js throws an `Error`. |
+| `wasmUrl` | `string \| null` | Overrides the `pumpkin.wasm` asset URL (`null` uses the bundled binary; call `setPumpkinWasmUrl()` to set a global URL). |
+| `signal` | `AbortSignal` | Cancels an in-flight call. In a browser Web Worker, aborts preemptively and preserves the last captured incumbent if available; on the main thread or in Node.js, cancels cooperatively at checkpoints. |
+| `onProgress` | `(ev) => void` | Receives live elapsed time and incumbent objective updates (`solve()` only; ignored by `check()`). |
+
+> [!NOTE]
+> Pumpkin is a discrete CP solver: LP sensitivity fields (`c.dual`, `c.slack`, `v.reducedCost`) remain `null`, and MIP bound/gap fields (`objectiveBound`, `relativeGap`, `absoluteGap`) remain `undefined`.
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";

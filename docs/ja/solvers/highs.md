@@ -2,7 +2,7 @@
 
 **HiGHS** はエディンバラ大学で開発が始まったオープンソースの数理最適化ソルバーです（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）を解けます。
 
-`@ohtaman/washi` では HiGHS がデフォルトソルバーです。WebAssembly バイナリを同梱しているため追加パッケージは不要で、Node.js やブラウザ（Web Worker を含む）でそのまま動作します。
+`@ohtaman/washi` では HiGHS が標準搭載のデフォルトソルバー（MIT ライセンス）です。追加パッケージ不要のシングルスレッド WebAssembly として同梱されており、Node.js やブラウザの Web Worker で動作します。`SharedArrayBuffer` や `COOP`/`COEP` ヘッダー（[Cross-Origin Isolation 設定](../getting-started/cross-origin.md)）も不要です。
 
 ---
 
@@ -17,16 +17,6 @@
 
 > [!TIP]
 > 一般的な数理最適化（LP・MIP・凸 QP）はまず **HiGHS** を選んでください。ネイティブな CP の制約伝播や SMT による矛盾診断が必要な場合のみ、**Pumpkin** や **Z3** を使い分けます。
-
----
-
-## WaSHI における主な特徴
-
-- **標準同梱・追加依存なし**: MIT ライセンスで `@ohtaman/washi` 本体に組み込まれており、追加インストールは不要です。
-- **`COOP`/`COEP` ヘッダー不要**: シングルスレッド動作のため、`SharedArrayBuffer` や [Cross-Origin Isolation 設定](../getting-started/cross-origin.md) は不要です。
-- **Web Worker バックグラウンド実行**: ブラウザではデフォルトで専用 Web Worker を使い、メインスレッド（UI 描画）をブロックせずに求解します。
-- **ウォームスタート（`initialValue`）**: `model.continuous()`・`model.integer()`・`model.binary()` の変数定義時に初期値ヒント（`initialValue`）を指定できます。
-- **LP 緩和（`relax: true`）**: 変数定義を書き換えずに、MIP モデルの連続緩和問題を解けます。
 
 ---
 
@@ -54,7 +44,7 @@ console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 
 ### 2. 混合整数計画問題（MIP）
 
-`model.integer()` や `model.binary()` による整数・バイナリ変数を含むモデル（連続変数との混在も可）です。分枝カット法で求解され、`objectiveBound`・`relativeGap`・`absoluteGap` を取得できます。
+`model.integer()` や `model.binary()` による整数・バイナリ変数を含むモデル（連続変数との混在も可）で、変数定義時の `initialValue` によるウォームスタートにも対応します。分枝カット法で求解され、`objectiveBound`・`relativeGap`・`absoluteGap` を取得できます。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -109,10 +99,10 @@ console.log(qpModel.status, qpModel.objectiveValue, x.value, y.value);
 | `absoluteGap` | `number` | 絶対 MIP 最適性ギャップがこの値以下になると求解を終了。 |
 | `presolve` | `"on" \| "off" \| "choose"` | 求解前の前処理を制御。 |
 | `outputFlag` | `boolean` | ソルバーの内部ログ出力を有効化（既定は `false`）。 |
-| `relax` | `boolean` | MIP モデルの連続 LP 緩和問題を解く。 |
-| `useWorker` | `boolean` | ブラウザ環境で Web Worker を使用（ブラウザでの既定は `true`）。 |
-| `wasmUrl` | `string \| null` | 使用する `highs.wasm` の URL を上書き（`null` で `setHighsWasmUrl()` または同梱バイナリを使用）。 |
-| `signal` | `AbortSignal` | 実行中の求解を協調的に中断。 |
+| `relax` | `boolean` | 変数定義を書き換えずに MIP モデルの連続 LP 緩和問題を解く。 |
+| `useWorker` | `boolean` | ブラウザ環境で Web Worker を使用（ブラウザでの既定は `true`。`file:` URL やオリジンを持たない環境では `false` へフォールバック）。Node.js で `useWorker: true` を指定すると `Error` を投げる。 |
+| `wasmUrl` | `string` | この呼び出しで使う `highs.wasm` の URL を上書き（同梱バイナリに戻すには `setHighsWasmUrl(null)` を使用）。 |
+| `signal` | `AbortSignal` | 実行中の求解を中断。ブラウザの Web Worker では強制終了し、取得済みの MIP 暫定解があればそれを返す。メインスレッドや Node.js では協調的に中断。 |
 | `onProgress` | `(ev) => void` | 経過時間・暫定目的関数値・双対境界・ギャップを逐次受け取る進捗コールバック。 |
 
 このほか、HiGHS 固有の上限オプション（`mip_max_nodes`、`mip_max_improving_sols`、`mip_max_leaves`、`simplex_iteration_limit`、`ipm_iteration_limit`）も指定できます。
@@ -199,7 +189,7 @@ WaSHI は公式 HiGHS C++ ソースを `-fwasm-exceptions` と `-DHIGHS_NO_DEFAU
 ### コールバックと対話的制御
 
 - **進捗監視と中断**: HiGHS のロギング・割り込みコールバック経由で `onProgress` と `AbortSignal` に対応しています。
-- **動的カット・遅延制約**: 分枝限定法の探索木内コールバックには非対応です（WASM 境界越しには公開していません）。Benders 分解には [`solveBenders()`](../guide/decomposition.md) や外側の切除平面ループを使います。
+- **動的カット・遅延制約**: 分枝限定法の探索木内コールバックは WASM 境界越しに公開していません。部分巡回路除去や Benders 分解には [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-分解-solvebenders) や外側の切除平面ループを使います。
 
 ---
 

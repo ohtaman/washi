@@ -4,9 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 凸二次规划 (Convex QP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">源代码</a></li></ul> |
 
-马科维茨均值-方差模型是量化金融中的经典优化问题。在满足最低预期收益率与 100% 资金预算约束的前提下，将资金分配至各类风险资产，以最小化投资组合方差 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$。
+马科维茨均值-方差模型是量化金融中的经典优化问题。在满足最低预期收益率与 100% 资金预算约束的前提下，将资金分配至各类风险资产，以最小化投资组合方差（风险）。
 
 <PortfolioQpDemo />
+
+上方的交互式演示使用了单资产权重上限为 `60%` 的预设，而下方的数学模型与代码求解的是无单资产上限的仅做多模型（$0 \le w_i \le 1$）。
 
 ## 数学模型
 
@@ -85,6 +87,8 @@ solvePortfolio();
 </CodeRunner>
 
 ## 实战要点
+
+在 `8.50%` 目标收益率下，最优组合方差为 `0.014229`（波动率 `11.93%`）：模型以 `52.68%` 的 `Tech` 与 `30.57%` 的 `Bonds` 平衡收益与风险，而与 `Tech` 协方差较高的 `GlobalEq` 权重降至 `0.00%`。
 
 ### 描绘有效前沿
 

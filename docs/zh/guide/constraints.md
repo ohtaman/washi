@@ -89,12 +89,13 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## 对偶值（影子价格）与松弛量
 
-使用 HiGHS 求解连续线性规划（LP）模型后，每条线性约束会提供两个灵敏度分析属性（GLPK 仅填充 `dual`，`slack` 保持为 `null`）：
+使用 HiGHS 求解连续线性规划（LP）模型或通过 `m.relax()` 求解 LP 松弛后，每条线性约束会提供两个灵敏度分析属性（GLPK 仅填充 `dual`，`slack` 保持为 `null`）：
 
 - **`dual`（影子价格 / 对偶值）**：在最优基不变的范围内，约束右端项每增加一个单位时，最优目标函数值的边际有符号变化量。
-- **`slack`（松弛量）**：最优解下约束左端与右端之间的未用余量（约束取紧时为 `0`）。
+- **`slack`（松弛量）**：最优解下的 `rhs - lhs` 值（`<=` 约束为 `>= 0`，`>=` 约束为 `<= 0`，约束取紧时为 `0`）。
 
-两个属性的类型均为 `number | null`；在求解前、未求得最优解时，或对于 MIP、CP、SMT 模型与逻辑约束，其值均为 `null`。
+两个属性的类型均为 `number | null`。
+在求解前、未求得最优解时、使用 `m.solve()` 求解 MIP 模型时，以及对于 CP、SMT 模型与逻辑约束，其值均为 `null`。
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -111,8 +112,11 @@ console.log("已注册约束总数:", m.constraints.size);
 
 ## 条件约束 / 指示约束 (`m.indicator`)
 
-当某条线性约束仅在 0-1 二元变量（`m.binary()`）取 `1` 或 `0` 时生效，请使用 `m.indicator()`。
-在 MIP 中，这类条件约束通过 **Big-M 法**编码：例如 $a^\top x \le b + M(1 - y)$ 在 $y = 1$ 时强制 $a^\top x \le b$，而在 $y = 0$ 时借助足够大的常数 $M$ 将约束放宽至不限制可行解：
+当某条线性约束仅在 0-1 二元变量（`m.binary()`）等于 `activeValue`（默认为 `1`，或 `0`）时生效，请使用 `m.indicator()`。
+在 MIP 中，这类条件约束通过 **Big-M 法**编码。
+例如，$a^\top x \le b + M(1 - y)$ 在 $y = 1$ 时强制 $a^\top x \le b$，在 $y = 0$ 时借助足够大的常数 $M$ 放宽该约束。
+
+目标约束必须为使用 `<=`、`>=` 或 `==` 的线性约束；离散 `!=`、非线性项（`max`、`min`、`abs`、`at`）以及在被约束表达式中引用 `binVar` 本身均会被拒绝：
 
 ```typescript
 const useDiscount = m.binary("use_discount");
@@ -153,7 +157,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **优先设置有限变量边界而非手动指定过大的 `M`**：过小的 $M$ 会误删可行解，而过大的 $M$（如 $10^9$）不仅会削弱 LP 松弛，还会破坏 MIP 求解器的数值稳定性。
+> **优先设置有限变量边界而非手动指定过大的 `M`**：过小的 $M$ 会误删可行解，而过大的 $M$（如 `1e9`）不仅会削弱 LP 松弛，还会破坏 MIP 求解器的数值稳定性。
 > 为变量设置符合实际的 `lb` 与 `ub`，即可让 WaSHI 自动推导最紧致的安全 Big-M。
 
 ---

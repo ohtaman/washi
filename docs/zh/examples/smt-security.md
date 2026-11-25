@@ -16,6 +16,8 @@
 3. 警报处于布防状态（`alarmArmed`）时，前门不能处于未锁状态（`frontDoorUnlocked`）。
 4. 夜间（`isNight`）检测到移动（`motionDetected`）时，开启柔和照明灯（`lightsOn`）。
 
+在当前观测到的传感器状态（`luxLevel <= 20`、`alarmArmed`、`motionDetected`）下，我们先推导系统的正常响应状态。随后形式化证明：在这些读数下，警笛（`sirenActive`）不可能保持关闭。
+
 ## WaSHI 实现
 
 > [!NOTE]
@@ -88,6 +90,8 @@ verifySecurityRules();
 ### 反证法形式化验证（反例搜索）
 
 单次 `m.check()` 返回 `"Sat"` 只说明至少存在一种合法状态。若要证明某项安全属性 `P`（如 `sirenActive`）必然成立，应加入其否定 `not(P)` 再调用 `m.check()`。返回 `"Unsat"` 表示不存在反例；返回 `"Sat"` 时，变量取值即给出具体的安全漏洞反例。
+
+在本例中，首次检查返回 `"Sat"`，推导出 `sirenActive = true`、`lightsOn = true`、`isNight = true` 且前门上锁。加入 `not(sirenActive)` 后返回 `"Unsat"` 及由 6 条规则组成的证明核，并自动排除了无关的 `lock_safety_rule` 与 `comfort_lights`。
 
 ### 单向蕴含（`implies`）与双向等价
 

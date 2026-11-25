@@ -48,7 +48,7 @@ const x = prevPlan.map((prev, i) =>
 // Linear terms counting how many 0/1 decisions differ from prevPlan
 const flipTerms = x.map((v, i) => (prevPlan[i] === 1 ? expr`1 - ${v}` : v));
 
-// Require at least 3 active slots while penalizing changes from prevPlan
+// Require at least 3 active slots while minimizing changes (in practice, add this weighted penalty to your main cost objective)
 m.constraint(expr`sum(${x}) >= 3`, "min_active_slots");
 m.objective(minimize(expr`5 * sum(${flipTerms})`));
 ```
@@ -139,8 +139,8 @@ await m.solve();
 ```
 
 > [!TIP]
-> **Scaling Penalty Weights ($W$)**: Set $W$ larger than normal marginal costs (typically $10\times$ to $1{,}000\times$ unit cost), and avoid extreme constants like $10^{12}$.
-> Keeping the ratio between the largest and smallest non-zero absolute coefficients within $10^5\text{–}10^6$ preserves floating-point accuracy in LP and MIP solvers.
+> **Scaling Penalty Weights ($W$)**: Set $W$ larger than normal marginal costs (typically 10×–1,000× unit cost), and avoid extreme constants like 10<sup>12</sup>.
+> Keeping the ratio between the largest and smallest non-zero absolute coefficients within 10<sup>5</sup>–10<sup>6</sup> preserves floating-point accuracy in LP and MIP solvers.
 
 ### Symmetry Breaking for Identical Resources
 

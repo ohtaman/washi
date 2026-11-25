@@ -124,14 +124,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ## Variable Options
 
-Factory methods accept options matching their variable kind: `m.continuous()` and `m.integer()` accept `lb`, `ub`, `prefix`, `name`, and `initialValue`; `m.binary()` accepts `prefix`, `name`, and `initialValue`; `m.bool()` accepts `prefix` and `name` only.
+Each factory method accepts options matching its variable kind.
+`m.continuous()` and `m.integer()` accept all factory options below, `m.binary()` omits `lb` and `ub`, and `m.bool()` accepts `name` and `prefix` only.
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `name` | `string` | Auto-generated | Explicit name for a scalar variable (alternative to passing the name as the first argument). |
 | `lb` | `number` | `0` | Lower bound (`m.continuous()`, `m.integer()`). Pass a negative finite number or `-Infinity` to allow negative values. |
 | `ub` | `number` | `Infinity` (`1` for binary) | Upper bound (`m.continuous()`, `m.integer()`). Fixed to `1` for `m.binary()`. |
 | `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalars, arrays, dictionaries, and 2D containers (e.g., `queen_0_0`). |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Numeric variable domain (for direct `new Var()` construction only). |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Numeric variable domain (applies to direct `new Var()` construction only). |
 | `initialValue` | `number` | `undefined` | Warm-start hint for numeric variables (`m.continuous()`, `m.integer()`, `m.binary()`), stored separately from solved `variable.value`. |
 
 ### Designing Bounds (`lb` & `ub`)
@@ -186,9 +188,9 @@ Partial starts are allowed; providing a complete feasible assignment gives MIP s
 After calling `await m.solve()` or `await m.check()`, read assigned values directly from `variable.value` or look them up by name in `m.values`.
 `variable.value` returns `number | null` for `Var` and `boolean | null` for `BoolVar`.
 
-For continuous Linear Programming (LP) models solved by HiGHS, `variable.reducedCost` exposes the variable's LP reduced cost as `number | null`.
+For continuous Linear Programming (LP) models—or LP relaxations solved via `m.relax()`—on HiGHS, `variable.reducedCost` exposes the variable's reduced cost as `number | null`.
 The **reduced cost** indicates how much a non-basic variable's objective coefficient must improve before moving it away from its active bound (`lb` or `ub`) becomes worthwhile.
-Before solving, when no optimal LP solution is found, on GLPK (which populates constraint `dual` only), or on MIP, CP, and SMT models, `reducedCost` is `null`.
+`reducedCost` is `null` before solving, when no optimal LP solution is found, on GLPK (which populates constraint `dual` only), on MIP models solved with `m.solve()`, and on CP and SMT models.
 
 ```typescript
 await m.solve();

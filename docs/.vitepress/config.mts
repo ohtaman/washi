@@ -203,8 +203,8 @@ export default withMermaid(
         if (start >= state.posMax) return false;
 
         const firstChar = state.src[start];
-        // Ignore currency values ($0-$9) or whitespace after opening $
-        if (!firstChar || /[\s0-9]/.test(firstChar)) return false;
+        // Ignore whitespace after opening $
+        if (!firstChar || /\s/.test(firstChar)) return false;
 
         let match = start;
         while ((match = state.src.indexOf("$", match)) !== -1) {
@@ -219,8 +219,21 @@ export default withMermaid(
         }
 
         if (match === -1 || match === start) return false;
+        // Ignore currency pairs like "$100-$200" or "$10/$20" where closing $ precedes a digit
+        if (match + 1 < state.posMax && /[0-9]/.test(state.src[match + 1])) return false;
         const content = state.src.slice(start, match);
         if (/\s$/.test(content)) return false;
+        // For digit-leading spans (e.g. "$0 \le x \le 4$", "$2^n - 2$"), require explicit
+        // math syntax and reject CJK prose outside \text{...} so currency amounts stay literal.
+        if (/[0-9]/.test(firstChar)) {
+          const withoutText = content.replace(/\\text\{[^}]*\}/g, "");
+          if (
+            !/[\\^_=<>+*|-]/.test(withoutText) ||
+            /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(withoutText)
+          ) {
+            return false;
+          }
+        }
 
         if (!silent) {
           const token = state.push("math_inline", "math", 0);
