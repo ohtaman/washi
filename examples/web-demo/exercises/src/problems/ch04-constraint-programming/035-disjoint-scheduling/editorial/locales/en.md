@@ -1,6 +1,6 @@
 ## Approach
 
-Give each task a bounded integer variable `starts[i]` in `[releaseTimes[i], horizon - durations[i]]`, add precedence inequalities, group tasks by machine into `disjoint(tasks)` constraints, and minimize `max(starts[i] + durations[i])`.
+Let `horizon = max(releaseTimes) + sum(durations)` ($H = \max_i r_i + \sum_{i=0}^{n-1} d_i$) be a safe finite upper bound on schedule completion. Give each task a bounded integer variable `starts[i]` in `[releaseTimes[i], horizon - durations[i]]`, add precedence inequalities, group tasks by machine into `disjoint(tasks)` constraints, and minimize `max(starts[i] + durations[i])`.
 
 ## Mathematical Model
 
@@ -21,7 +21,7 @@ $$
 
 ## Key Implementation
 
-Extract the `{ start, duration }` task list assigned to each tool, register `disjoint(...)` constraints across all tools in bulk, and minimize the maximum completion time across all steps.
+Extract the `{ start, duration }` task list assigned to each machine, filter out empty machines, register `disjoint(...)` constraints in bulk, and minimize the maximum completion time across all tasks.
 
 **WaSHI (TypeScript)**
 
@@ -29,13 +29,13 @@ Extract the `{ start, duration }` task list assigned to each tool, register `dis
 const numMachines = Math.max(...input.machines) + 1;
 m.constraint(
   Array.from({ length: numMachines }, (_, mach) =>
-    disjoint(
-      starts
-        .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
-        .filter((t) => t.mach === mach)
-        .map(({ start, duration }) => ({ start, duration }))
-    )
+    starts
+      .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
+      .filter((t) => t.mach === mach)
+      .map(({ start, duration }) => ({ start, duration }))
   )
+    .filter((tasks) => tasks.length > 0)
+    .map((tasks) => disjoint(tasks))
 );
 m.objective(minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`))));
 ```

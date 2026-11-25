@@ -1,6 +1,6 @@
 ## アプローチ
 
-各作業に有界整数変数 `starts[i]`（`[releaseTimes[i], horizon - durations[i]]`）を用意し、先行制約と機械ごとの `disjoint(tasks)` 制約を追加して、最大終了時刻 `max(starts[i] + durations[i])` を最小化します。
+計画期間の上界を `horizon = max(releaseTimes) + sum(durations)`（$H = \max_i r_i + \sum_{i=0}^{n-1} d_i$）と置きます。各作業に有界整数変数 `starts[i]`（`[releaseTimes[i], horizon - durations[i]]`）を用意し、先行制約と機械ごとの `disjoint(tasks)` 制約を追加して、最大終了時刻 `max(starts[i] + durations[i])` を最小化します。
 
 ## 数理モデル
 
@@ -21,7 +21,7 @@ $$
 
 ## 実装の勘所
 
-各担当装置ごとに割り当てられた作業の `{ start, duration }` リストを抽出し、`disjoint(...)` 制約を装置数分まとめて登録したうえで、全作業の最大終了時刻を最小化します。
+各機械に割り当てられた作業の `{ start, duration }` リストを抽出し、作業が 1 件以上ある機械に対して `disjoint(...)` 制約をまとめて登録したうえで、全作業の最大終了時刻を最小化します。
 
 **WaSHI (TypeScript)**
 
@@ -29,13 +29,13 @@ $$
 const numMachines = Math.max(...input.machines) + 1;
 m.constraint(
   Array.from({ length: numMachines }, (_, mach) =>
-    disjoint(
-      starts
-        .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
-        .filter((t) => t.mach === mach)
-        .map(({ start, duration }) => ({ start, duration }))
-    )
+    starts
+      .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
+      .filter((t) => t.mach === mach)
+      .map(({ start, duration }) => ({ start, duration }))
   )
+    .filter((tasks) => tasks.length > 0)
+    .map((tasks) => disjoint(tasks))
 );
 m.objective(minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`))));
 ```

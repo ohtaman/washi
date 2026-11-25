@@ -1,6 +1,6 @@
 {
   "title": "#032. Element 制約（at）による機械・作業割当",
-  "subtitle": "N×M の 0-1 行列を使わず、N 個の整数変数と distinct()・要素参照プリミティブ at(costs[i], assign[i]) で割当コストを最小化します。",
+  "subtitle": "N×M の 0-1 行列を使わず、N 個の整数変数と distinct()・要素参照プリミティブ at(costs[i], assignment[i]) で総段取りコストを最小化します。",
   "tags": [
     "CP",
     "Element制約",

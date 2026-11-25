@@ -1,9 +1,9 @@
 # #031. Weighted N-Queens
 
 <!-- section:scenario -->
-A puzzle designer is placing $N$ queens on an $N \times N$ chessboard, with one queen in each row. Each queen's column index is an integer from 0 to $N - 1$, and no two queens may share the same column or lie on the same diagonal.
+A puzzle designer is placing $N$ queens on an $N \times N$ chessboard, with one queen in each row. Each queen's column index is an integer from $0$ to $N - 1$, and no two queens may share the same column or lie on the same diagonal.
 
-Each cell has its own integer placement cost. Among all mutually non-attacking placements, minimize the total cost of the selected cells.
+Each cell has an integer placement cost. Among all mutually non-attacking placements, minimize the total cost of the selected cells.
 
 <!-- section:io -->
 ### Input

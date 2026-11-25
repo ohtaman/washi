@@ -18,12 +18,12 @@ Decide which services to deploy, the pairwise simultaneous-deployment indicators
 | --- | --- | --- |
 | `baseCosts` | `number[]` | Base deployment cost $c_i$ of service $i$ |
 | `values` | `number[]` | Capability value $v_i$ of service $i$ |
-| `minValue` | `number` | Required minimum total capability $\sum_i v_i x_i$ |
-| `loads` | `number[][]` | `loads[r][i]` is the load added to zone $r$ when service $i$ runs |
+| `minValue` | `number` | Lower bound required on total delivered value ($\sum_i v_i x_i$, where $x_i \in \{0, 1\}$) |
+| `loads` | `number[][]` | Non-negative load `loads[r][i]` added to zone $r$ when service $i$ runs; zone $r$'s total load is $L_r = \sum_i \text{loads}[r][i]\, x_i$ |
 | `targets` | `number[]` | Target load $\tau_r$ for zone $r$ |
-| `devWeights` | `number[]` | L1 deviation penalty weight $\beta_r$ per unit in zone $r$ |
-| `peakWeight` | `number` | Cost weight $\alpha$ on peak zone load $\max_r L_r$ |
-| `pairs` | `number[][]` | Interaction list `[i, j, s]` added to cost when both $i$ and $j$ deploy |
+| `devWeights` | `number[]` | Non-negative penalty weight $\beta_r$ per unit L1 deviation $|L_r - \tau_r|$ in zone $r$ |
+| `peakWeight` | `number` | Positive cost weight $\alpha > 0$ on peak zone load $\max_r L_r$ |
+| `pairs` | `number[][]` | Interaction list `[i, j, s]` (0-based service indices `i, j`) added to cost when both $i$ and $j$ deploy |
 
 ### Output
 
@@ -75,4 +75,4 @@ Deploying services 0 and 3 ([1, 0, 0, 1]) delivers value $30 + 30 = 60 \ge 60$, 
 Combine three linearization patterns in one MIP: binary variables for service selection, continuous $[0, 1]$ variables for pairwise interaction products, a scalar continuous epigraph variable for the peak zone load, and non-negative positive/negative deviation variable pairs for each zone's L1 target tracking.
 
 <!-- section:hint2 -->
-Each zone's load $L_r = \sum_i \text{loads}_{r,i} x_i$ feeds into both the epigraph cap ($L_r \le \text{peakLoad}$) and the L1 split ($L_r - \tau_r = d_r^+ - d_r^-$). For every pair `[i, j, s]`, enforce all three McCormick inequalities ($w_k \le x_i$, $w_k \le x_j$, $w_k \ge x_i + x_j - 1$) because interaction costs $s$ can be either negative (synergy savings, needing the upper bounds) or positive (interference overhead, needing the lower bound). Remember the minimum delivered capability constraint, and round `selected` and `pairProducts` cleanly in the output.
+Each zone's load $L_r = \sum_i \text{loads}_{r,i} x_i$ feeds into both the epigraph cap ($L_r \le \text{peakLoad}$) and the L1 split ($L_r - \tau_r = d_r^+ - d_r^-$). For every pair `[i, j, s]`, enforce all three McCormick inequalities ($w_k \le x_i$, $w_k \le x_j$, $w_k \ge x_i + x_j - 1$) because interaction costs $s$ can be either negative (synergistic cost savings, needing the upper bounds) or positive (interference cost, needing the lower bound). Remember the minimum delivered capability constraint, and round `selected` and `pairProducts` cleanly in the output.

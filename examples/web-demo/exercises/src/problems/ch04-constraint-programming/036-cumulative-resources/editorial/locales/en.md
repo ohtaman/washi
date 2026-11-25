@@ -1,6 +1,6 @@
 ## Approach
 
-Model each task's start time with a bounded integer `starts[i]` in `[0, horizon - durations[i]]`, enforce DAG precedences, apply a single `cumulative(tasks, input.capacity)` constraint for the shared resource pool, and minimize `max(starts[i] + durations[i])`.
+Let `horizon = sum(durations)` ($H = \sum_{i=0}^{n-1} d_i$) be a safe finite upper bound on completion time. Model each task's start time with a bounded integer `starts[i]` in `[0, horizon - durations[i]]`, enforce DAG precedences, apply a single `cumulative(tasks, input.capacity)` constraint for the shared resource pool, and minimize `max(starts[i] + durations[i])`.
 
 ## Mathematical Model
 

@@ -1,6 +1,6 @@
 {
   "title": "#032. 基于 Element 索引（at）的机器作业指派",
-  "subtitle": "用 N 个有限域整数变量配合 distinct() 和 Element 索引原语 at(costs[i], assign[i]) 替代二维 0-1 矩阵求解最小成本指派。",
+  "subtitle": "用 N 个有限域整数变量配合 distinct() 和 Element 索引原语 at(costs[i], assignment[i]) 替代二维 0-1 矩阵求解最小换装成本指派。",
   "tags": [
     "CP",
     "Element约束",

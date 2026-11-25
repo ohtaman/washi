@@ -1,6 +1,6 @@
 {
   "title": "#033. Compatible System Configuration (Table Constraints)",
-  "subtitle": "Enforce positive allowed(...) compatibility tables and negative not(allowed(...)) forbidden pairs directly in CP.",
+  "subtitle": "Enforce positive allowed(...) compatibility tables and negative not(allowed(...)) forbidden tuples directly in CP.",
   "tags": [
     "CP",
     "Table Constraint",

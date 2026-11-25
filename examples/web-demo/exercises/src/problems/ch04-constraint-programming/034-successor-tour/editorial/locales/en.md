@@ -10,7 +10,8 @@ $$
 \text{s.t.} \quad & \text{AllDifferent}(\text{next}), \quad \text{AllDifferent}(\text{rank}) \\
 & \text{next}_i \ne i && \forall i \in \{0, \dots, n-1\} \\
 & \text{rank}_0 = 0, \quad \text{rank}_{\text{next}_0} = 1 \\
-& \text{next}_i \ne 0 \implies \text{rank}_{\text{next}_i} = \text{rank}_i + 1 && \forall i \in \{1, \dots, n-1\}
+& \text{next}_i \ne 0 \implies \text{rank}_{\text{next}_i} = \text{rank}_i + 1 && \forall i \in \{1, \dots, n-1\} \\
+& \text{next}_i, \text{rank}_i \in \{0, \dots, n-1\} && \forall i \in \{0, \dots, n-1\}
 \end{aligned}
 $$
 
@@ -22,7 +23,7 @@ $$
 
 ## Key Implementation
 
-In addition to `distinct` and no-self-loop constraints on the successor variables `next` and rank variables `rank`, register the constraint that ranks increment by 1 along every non-depot edge using `implies` and `at(rank, nx)`.
+In addition to `distinct` and no-self-loop constraints on the successor variables `next` and rank variables `rank`, register the constraint that ranks increment by 1 along every edge not returning to depot `0` using `implies` and `at(rank, nx)`.
 
 **WaSHI (TypeScript)**
 

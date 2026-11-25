@@ -10,14 +10,14 @@ Every job-machine combination has an integer setup cost (in 1,000 JPY). Choose a
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | `n × m` integer setup cost matrix (`costs[i][j]` = cost of assigning job `i` to machine `j` in 1,000 JPY, with `n <= m`) |
+| `costs` | `number[][]` | `n × m` integer setup cost matrix (`costs[i][j]` = cost of assigning job `i` to machine `j` in 1,000 JPY, with `1 <= n <= m`) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignment` | `number[]` | Assigned machine index (`0` to `m - 1`) for each job |
-| `totalCost` | `number` | Minimized total assignment cost (1,000 JPY) |
+| `assignment` | `number[]` | Length-`n` array where `assignment[i]` is the 0-based machine index (`0` to `m - 1`) assigned to job `i` |
+| `totalCost` | `number` | Minimized total setup cost (1,000 JPY) |
 
 <!-- section:example -->
 **Input**

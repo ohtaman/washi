@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **CP Element (`at`) vs. 0-1 assignment matrix (`#007`)**: In `#007`, MIP required $n \times m$ binary variables $x_{i,j}$ and $n + m$ sum constraints. With `at(costs[i], assignment[i])`, you use only $n$ integer variables and index directly by the decision variable via Pumpkin's native `element` propagator.
+- **CP Element (`at`) vs. 0-1 assignment matrix (as in `#007`)**: A binary-matrix MIP formulation (generalizing the $n \times n$ model in `#007` to rectangular $n \times m$ instances) requires $n \times m$ binary variables $x_{i,j}$ and $n + m$ sum constraints. With `at(costs[i], assignment[i])`, you use only $n$ integer variables and index directly by the decision variable via Pumpkin's native `element` propagator.
 - **0-based bounds guard**: `at(array, idx)` automatically constrains $0 \le \text{idx} < \text{array.length}$ and supports rectangular $n \le m$ tables without dummy rows.
 - Related references: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 

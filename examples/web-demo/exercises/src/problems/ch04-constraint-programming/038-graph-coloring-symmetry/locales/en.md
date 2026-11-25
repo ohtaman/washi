@@ -1,7 +1,7 @@
 # #038. Graph Coloring with Symmetry Breaking
 
 <!-- section:scenario -->
-A radio spectrum planner is assigning frequency channels (0-based integer indices) within an available limit to wireless base stations on an undirected interference graph. Any two base stations that interfere with each other (connected by an edge) must be assigned different channel numbers.
+A radio spectrum planner is assigning frequency channels from a fixed pool of available channels (0-based integer indices) to wireless base stations (vertices) on an undirected interference graph. Any two base stations that interfere with each other (connected by an edge) must be assigned different channel numbers.
 
 Among all valid interference-free channel assignments (colorings), minimize the total number of distinct channels (colors) used.
 

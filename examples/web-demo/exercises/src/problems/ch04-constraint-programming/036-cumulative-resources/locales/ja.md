@@ -3,24 +3,24 @@
 <!-- section:scenario -->
 建設プロジェクトの工程管理者は、作業員や電源設備など上限容量のある共有再生可能資源のもとで、複数の作業を中断なしで実施するスケジュールを立てています。各作業には処理時間（時間）と稼働中に継続して消費する資源量（単位）が設定されています。
 
-先行制約が指定された作業の組では先行作業が終わってから後続作業を開始し、かつ任意の時刻において同時稼働中作業の資源消費量合計が上限容量を超えないように非負の整数開始時刻を定め、全体の完了時刻（メイクスパン、時間）を最小化してください。
+先行制約が指定された作業の組では先行作業が終わってから後続作業を開始し、かつ任意の時刻において同時に稼働している作業の資源消費量の合計が上限容量を超えないように非負の整数開始時刻を定め、全体の完了時刻（メイクスパン、時間）を最小化してください。
 
 <!-- section:io -->
 ### 入力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `capacity` | `number` | 共有再生可能資源の上限容量 |
+| `capacity` | `number` | 共有再生可能資源の上限容量（整数） |
 | `durations` | `number[]` | 各作業の処理時間（整数、時間） |
 | `demands` | `number[]` | 各作業の稼働中の資源消費量（整数） |
-| `precedences` | `number[][]` | `starts[u] + durations[u] <= starts[v]` を満たすべき先行ペア `[u, v]` |
+| `precedences` | `number[][]` | `starts[u] + durations[u] <= starts[v]` を満たすべき 0 始まりの先行作業ペア `[u, v]` |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `starts` | `number[]` | 各作業の非負整数開始時刻（時間） |
-| `makespan` | `number` | 最小化された総完了時刻 `max(starts[i] + durations[i])`（時間） |
+| `makespan` | `number` | 最小化された最大完了時刻 `max(starts[i] + durations[i])`（時間） |
 
 <!-- section:example -->
 **入力例**
@@ -46,10 +46,10 @@
 }
 ```
 
-時刻 [0, 3) では作業 0 と作業 2 が並行して $2 + 1 = 3 \le 3$ を消費し、作業 0 完了後に作業 1 が [4, 7) で稼働、先行する作業 0・1 の完了後に作業 3 が [7, 9) で実行されます。総完了時刻は $\max(0 + 4, 4 + 3, 0 + 3, 7 + 2) = \max(4, 7, 3, 9) =$ **9** 時間となります。
+時刻 [0, 3) では作業 0 と作業 2 が並行して $2 + 1 = 3 \le 3$ を消費し、作業 0 完了後に作業 1 が [4, 7) で稼働、先行する作業 0・1 の完了後に作業 3 が [7, 9) で実行されます。最大完了時刻は $\max(0 + 4, 4 + 3, 0 + 3, 7 + 2) = \max(4, 7, 3, 9) =$ **9** 時間となります。
 
 <!-- section:hint1 -->
-各作業に対して `[0, horizon - durations[i]]` の範囲の整数開始時刻変数を定義します。依存作業間の先行制約に加えて、全作業を対象とした累積（cumulative）資源グローバル制約を 1 つ課し、総完了時刻を最小化します。
+各作業に対して `[0, horizon - durations[i]]` の範囲の整数開始時刻変数を定義します。依存作業間の先行制約に加えて、全作業を対象とした累積（cumulative）資源グローバル制約を 1 つ課し、最大完了時刻を最小化します。
 
 <!-- section:hint2 -->
-全作業について `{ start: starts[i], duration: input.durations[i], demand: input.demands[i] }` を組み立てて `cumulative(tasks, input.capacity)` を追加してください。目的関数は `minimize(max(starts.map((s, i) => expr\`${s} + ${input.durations[i]}\`)))` として `solver: "pumpkin"` で解きます。
+全作業について `{ start: starts[i], duration: input.durations[i], demand: input.demands[i] }` を組み立てて `cumulative(tasks, input.capacity)` を追加してください。目的関数は ``minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`)))`` として `solver: "pumpkin"` で解きます。

@@ -7,17 +7,17 @@
     "Disjunctive Logic"
   ],
   "caseNames": [
-    "3 boxes on width-6 strip",
-    "4 boxes on width-8 strip",
-    "5 boxes on width-10 strip",
-    "5 mixed-height boxes on width-9 strip",
-    "6 boxes on width-10 strip"
+    "3 rectangles on width-6 strip",
+    "4 rectangles on width-8 strip",
+    "5 rectangles on width-10 strip",
+    "5 mixed-height rectangles on width-9 strip",
+    "6 rectangles on width-10 strip"
   ],
   "judge": {
     "m0": "Output must be an object { x, y, height }.",
-    "m1": "Coordinates for box {p0} must be integers (received x={p1}, y={p2}).",
-    "m2": "Box {p0} out of strip bounds: x=[{p1}, {p2}] (width {p4}), y={p3}.",
-    "m3": "Boxes {p0} {p2} and {p1} {p3} overlap.",
+    "m1": "Coordinates for rectangle {p0} must be integers (received x={p1}, y={p2}).",
+    "m2": "Rectangle {p0} out of strip bounds: x=[{p1}, {p2}] (width {p4}), y={p3}.",
+    "m3": "Rectangles {p0} {p2} and {p1} {p3} overlap.",
     "m4": "Reported height ({p0}) does not match max top coordinate ({p1}).",
     "m5": "Valid non-overlapping packing, but strip height ({p0}) exceeds optimal ({p1}).",
     "m6": "Optimal 2D orthogonal packing found (height = {p0})!"

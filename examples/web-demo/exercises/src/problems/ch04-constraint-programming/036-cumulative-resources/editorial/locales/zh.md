@@ -1,6 +1,6 @@
 ## 解题思路
 
-用有界整数变量 `starts[i]`（范围 `[0, horizon - durations[i]]`）表示各项任务的开始时刻，加入有向无环图前后序不等式和全局累积资源约束 `cumulative(tasks, input.capacity)`，并最小化 `max(starts[i] + durations[i])`。
+设最大完工时间的安全有限上界为 `horizon = sum(durations)`（$H = \sum_{i=0}^{n-1} d_i$）。用有界整数变量 `starts[i]`（范围 `[0, horizon - durations[i]]`）表示各项任务的开始时刻，加入有向无环图前后序不等式和全局累积资源约束 `cumulative(tasks, input.capacity)`，并最小化 `max(starts[i] + durations[i])`。
 
 ## 数学模型
 

@@ -1,7 +1,7 @@
 # #034. Successor-Variable Hamiltonian Tour
 
 <!-- section:scenario -->
-A delivery planner is routing a delivery vehicle that starts at the depot (node 0), visits every customer node exactly once, and returns to the depot in a single closed tour. Between any two nodes, an integer travel distance (in km) for direct travel is given.
+A delivery planner is routing a delivery vehicle that starts at the depot (node 0), visits every customer node exactly once, and returns to the depot in a single closed tour. Between any ordered pair of nodes, a directed integer travel distance (in km) is given, and distances may be asymmetric between opposite directions.
 
 Choose the immediate successor node visited right after each node so that all nodes are visited in a single closed loop without disconnected subtours, minimizing the total travel distance (in km).
 
@@ -10,7 +10,7 @@ Choose the immediate successor node visited right after each node so that all no
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `distances` | `number[][]` | `n × n` integer travel distance matrix (`distances[i][j]` from node `i` to `j`, in km) |
+| `distances` | `number[][]` | `n × n` directed integer travel distance matrix (`distances[i][j]` from node `i` to `j`, in km; may be asymmetric, i.e., `distances[i][j]` may differ from `distances[j][i]`) |
 
 ### Output
 
@@ -48,4 +48,4 @@ When `next` is [1, 2, 3, 0], it forms the single closed tour 0 -> 1 -> 2 -> 3 ->
 Model one successor integer variable per node in `[0, n - 1]` with no self-loops and all distinct values. To rule out disconnected cycles (subtours), introduce an auxiliary visit-order rank variable per node starting at depot 0.
 
 <!-- section:hint2 -->
-Enforce `distinct(next)`, `distinct(rank)`, and `rank[0] == 0` along with `at(rank, next[0]) == 1`. For every customer node $i \ge 1$, link successor steps with `implies(expr\`${next[i]} != 0\`, expr\`at(${rank}, ${next[i]}) == ${rank[i]} + 1\`)`, and minimize `sum(input.distances.map((row, i) => at(row, next[i])))` using `solver: "pumpkin"`.
+Enforce `distinct(next)`, `distinct(rank)`, and `rank[0] == 0` along with `at(rank, next[0]) == 1`. For every customer node $i \ge 1$, link successor steps with ``implies(expr`${next[i]} != 0`, expr`at(${rank}, ${next[i]}) == ${rank[i]} + 1`)``, and minimize `sum(input.distances.map((row, i) => at(row, next[i])))` using `solver: "pumpkin"`.

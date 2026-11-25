@@ -1,25 +1,27 @@
 ## アプローチ
 
-各頂点に有限整数変数 `colors[i]`（`0 .. maxColors - 1`）を割り当て、すべての辺に `colors[u] != colors[v]` を課したうえで、先頭から順に色番号を登場させる値対称性破壊（`colors[0] == 0` および `colors[i] <= 1 + max(colors[0..i-1])`）を加えることで、色の置換対称性を取り除き `maxColor + 1` で使用色数を直接最小化します。
+各頂点に有界整数変数 `colors[i]`（`0 .. maxColors - 1`）を割り当て、最大色番号の上界を表す有界整数変数 `maxColor`（全頂点で `colors[i] <= maxColor`）を導入します。すべての辺に `colors[u] != colors[v]` を課したうえで、先頭から順に色番号を登場させる値対称性破壊（`colors[0] == 0` および `colors[i] <= 1 + max(colors[0..i-1])`）を加えることで、色の置換対称性を取り除き `maxColor + 1` で使用色数を直接最小化します。
 
 ## 数理モデル
+
+$n = \text{numNodes} \ge 1$、$K = \text{maxColors}$、$E = \text{edges}$ とします。
 
 $$
 \begin{aligned}
 \min \quad & c_{\max} + 1 \\
 \text{s.t.} \quad & c_u \ne c_v && \forall (u, v) \in E \\
 & c_0 = 0 \\
-& c_i \le 1 + \max_{j < i} c_j && \forall i \in \{1, \dots, n - 1\} \\
+& c_i \le 1 + \max_{0 \le j < i} c_j && \forall i \in \{1, \dots, n - 1\} \\
 & c_i \le c_{\max} && \forall i \in \{0, \dots, n - 1\} \\
-& c_i, c_{\max} \in \{0, \dots, K - 1\} \cap \mathbb{Z}
+& c_i, c_{\max} \in \{0, \dots, K - 1\} && \forall i \in \{0, \dots, n - 1\}
 \end{aligned}
 $$
 
 ## ポイント
 
-- **$K!$ 通りの色ラベル置換を削減**: 任意の $k$-彩色は色番号の付け替えにより $k! \binom{K}{k}$ 通りの等価な解を持ちます。`colors[0] == 0` と `colors[i] <= 1 + max(colors[0..i-1])` を課すことで、新しい色が `0, 1, 2, ...` の順にのみ出現する正規番号付けに探索を絞れます。
-- **飛び番がないため `maxColor + 1` が正確な使用色数に一致**: 正規番号付けでは色番号に空きが生じないため、使われる色の集合は必ず `{0, ..., maxColor}` となり、バイナリの色使用フラグを別途立てずに `maxColor + 1` を最小化できます。
-- 関連リファレンス: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [代表的な問題クラス](?view=guide&lang=ja#paradigms)
+- **$K!$ 通りの色ラベル置換を削減**: ちょうど $k$ 色を使う任意の彩色は、$\{0, \dots, K - 1\}$ からの色の選択と付け替えにより $k! \binom{K}{k}$ 通りの等価な解を持ちます。`colors[0] == 0` と `colors[i] <= 1 + max(colors[0..i-1])` を課すことで、新しい色が `0, 1, 2, ...` の順にのみ出現する正規番号付けに探索を絞れます。
+- **飛び番がないため最適解で `maxColor + 1` が正確な使用色数に一致**: 正規番号付けでは色番号に空きが生じないため、使われる色の集合は常に `{0, ..., max_i colors[i]}` になります。`maxColor + 1` を最小化すると最適解では `maxColor = max_i colors[i]` が成り立つため、使用色集合は `{0, ..., maxColor}` に一致し、バイナリの色使用フラグを別途立てずに使用色数を最小化できます。
+- 関連リファレンス: [ガイド・用語集 — モデルの基本構成要素](?view=guide&lang=ja#building-blocks) / [代表的な問題クラス](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
 

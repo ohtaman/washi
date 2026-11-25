@@ -14,13 +14,13 @@
 | `givens` | `number[][]` | 已知提示格 `[row, col, value]`（行列索引从 `0` 开始） |
 | `cages` | `CageClue[]` | 区域和线索 `{ cells, targetSum }`（区域内数字互异且求和等于 `targetSum`） |
 
-每个 `CageClue` 对象为 `{ cells: [number, number][], targetSum: number }`，其中 `cells` 为区域内从 0 开始的 `[row, col]` 坐标列表。
+每个 `CageClue` 对象为 `{ cells: number[][], targetSum: number }`，其中 `cells` 的每个元素为区域内从 `0` 开始的 `[row, col]` 坐标对。
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `grid` | `number[][]` | 满足所有拉丁方与区域线索的 `N × N` 二维数组 |
+| `grid` | `number[][]` | 满足所有拉丁方与区域线索的 `N × N` 网格（`grid[row][col]` 的行列从 `0` 开始，元素为 `1..N` 的整数） |
 
 <!-- section:example -->
 **输入示例**
@@ -56,7 +56,7 @@
 每行每列均为 {1, 2, 3, 4} 的排列，并满足全部固定提示与区域和、互异条件（例如 $2 + 3 = 5$、$3 + 2 + 1 = 6$）。
 
 <!-- section:hint1 -->
-定义一个值域为 `[1, n]` 的 $N \times N$ 整数决策变量矩阵。对每一行、每一列以及每个区域（cage）施加全异约束，并添加已知提示格和区域求和等式约束。本题为纯可行性谜题，无需设置目标函数。
+定义一个值域为 `[1, N]` 的 $N \times N$ 整数决策变量矩阵。对每一行、每一列以及每个区域（cage）施加全异约束，并添加已知提示格和区域求和等式约束。本题为纯可行性谜题，无需设置目标函数。
 
 <!-- section:hint2 -->
-对每行施加 `distinct(row)`，对每列 `c` 施加 `distinct(grid.map((row) => row[c]))`。对 `input.cages` 中的每个 `cage`，提取 `vars = cage.cells.map(([r, c]) => grid[r][c])`，同时约束 `expr\`${sum(vars)} == ${cage.targetSum}\`` 和 `distinct(vars)`，然后使用 `solver: "pumpkin"` 求解。
+对每行施加 `distinct(row)`，对每列 `c` 施加 `distinct(grid.map((row) => row[c]))`。对 `input.cages` 中的每个 `cage`，提取 `vars = cage.cells.map(([r, c]) => grid[r][c])`，同时约束 `` expr`${sum(vars)} == ${cage.targetSum}` `` 和 `distinct(vars)`，然后使用 `solver: "pumpkin"` 求解。

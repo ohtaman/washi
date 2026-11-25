@@ -1,4 +1,4 @@
-# #030. 线性化技巧综合实战（多集群服务部署与平准化）
+# #030. 线性化技巧综合实战（多区域服务部署与平准化）
 
 <!-- section:scenario -->
 平台基础设施团队正从候选微服务集合中选择一个子集进行部署。
@@ -18,12 +18,12 @@
 | --- | --- | --- |
 | `baseCosts` | `number[]` | 服务 $i$ 的基础部署成本 $c_i$ |
 | `values` | `number[]` | 服务 $i$ 的能力价值 $v_i$ |
-| `minValue` | `number` | 要求的最低总能力 $\sum_i v_i x_i$ |
-| `loads` | `number[][]` | `loads[r][i]` 为服务 $i$ 上线后对区域 $r$ 施加的负载 |
+| `minValue` | `number` | 对总交付价值（$\sum_i v_i x_i$，其中 $x_i \in \{0, 1\}$ 为服务 $i$ 的部署选择）要求的下限 |
+| `loads` | `number[][]` | 服务 $i$ 上线后对区域 $r$ 施加的非负负载 `loads[r][i]`（区域 $r$ 的总负载为 $L_r = \sum_i \text{loads}[r][i]\, x_i$） |
 | `targets` | `number[]` | 区域 $r$ 的目标负载 $\tau_r$ |
-| `devWeights` | `number[]` | 区域 $r$ 每单位 L1 偏差的惩罚权重 $\beta_r$ |
-| `peakWeight` | `number` | 所有区域峰值负载 $\max_r L_r$ 的成本权重 $\alpha$ |
-| `pairs` | `number[][]` | 交互对列表 `[i, j, s]`（同时部署 $i, j$ 时计入成本 $s$） |
+| `devWeights` | `number[]` | 区域 $r$ 的 L1 偏差 $|L_r - \tau_r|$ 对应的非负惩罚权重 $\beta_r$ |
+| `peakWeight` | `number` | 所有区域峰值负载 $\max_r L_r$ 的正成本权重 $\alpha > 0$ |
+| `pairs` | `number[][]` | 交互对列表 `[i, j, s]`（`i, j` 为从 0 开始的服务索引；同时部署 $i, j$ 时计入成本 $s$） |
 
 ### 输出
 
@@ -75,4 +75,4 @@
 在一个 MIP 中组合三种线性化模式：用于服务选择的二元变量、用于成对交互乘积的 $[0, 1]$ 连续变量、用于区域峰值负载的标量连续上境图变量，以及用于各区域 L1 目标跟踪的非负正负偏差变量对。
 
 <!-- section:hint2 -->
-每个区域的负载 $L_r = \sum_i \text{loads}_{r,i} x_i$ 同时进入上境图上限（$L_r \le \text{peakLoad}$）与 L1 拆分（$L_r - \tau_r = d_r^+ - d_r^-$）。对于每个交互对 `[i, j, s]`，由于交互成本 $s$ 既可能为负（协同节省，需要上界约束）也可能为正（干扰开销，需要下界约束），必须同时施加全部三条 McCormick 不等式（$w_k \le x_i$、$w_k \le x_j$、$w_k \ge x_i + x_j - 1$）。同时别忘了最低能力要求约束，并在输出时对 `selected` 与 `pairProducts` 取整。
+每个区域的负载 $L_r = \sum_i \text{loads}_{r,i} x_i$ 同时进入上境图上限（$L_r \le \text{peakLoad}$）与 L1 拆分（$L_r - \tau_r = d_r^+ - d_r^-$）。对于每个交互对 `[i, j, s]`，由于交互成本 $s$ 既可能为负（协同降本，需要上界约束）也可能为正（冲突额外开销，需要下界约束），必须同时施加全部三条 McCormick 不等式（$w_k \le x_i$、$w_k \le x_j$、$w_k \ge x_i + x_j - 1$）。同时别忘了最低能力要求约束，并在输出时对 `selected` 与 `pairProducts` 取整。

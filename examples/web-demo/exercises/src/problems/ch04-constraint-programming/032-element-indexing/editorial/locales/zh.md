@@ -14,7 +14,7 @@ $$
 
 ## 核心要点
 
-- **Element 约束与二维 0-1 矩阵（#007）的对比**：#007 的 MIP 模型需要 $n \times m$ 个 0-1 变量，而 CP 模型只需 $n$ 个整数变量；`at(costs[i], assignment[i])` 会直接下沉为 Pumpkin 的原生 `element` 传播器。
+- **Element 约束与二维 0-1 矩阵（#007 类建模）的对比**：若将 #007（$n \times n$ 方阵）那样的 0-1 矩阵 MIP 建模推广到矩形 $n \times m$ 指派，需要 $n \times m$ 个 0-1 变量；而 CP 模型只需 $n$ 个整数变量，并通过 `at(costs[i], assignment[i])` 将代价索引 $c_{i, a_i}$ 直接下沉为 Pumpkin 的原生 `element` 传播器。
 - **从 0 开始的越界守卫与矩形指派**：`at(array, idx)` 自动强制 $0 \le \text{idx} < \text{array.length}$，对于 $n < m$ 的非方阵指派问题也无需补虚行即可直接建模。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
 

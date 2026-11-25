@@ -1,7 +1,7 @@
 # #039. ケージ和付きラテン方陣パズル
 
 <!-- section:scenario -->
-パズル設計者は、盤面サイズ N 行 N 列のマス目に 1 から N までの整数を埋め、すべての行とすべての列で 1 から N の数字がちょうど 1 回ずつ現れるラテン方陣を作成しようとしています。
+パズル設計者は、$N \times N$ のマス目に 1 から $N$ までの整数を埋め、すべての行とすべての列で 1 から $N$ の数字がちょうど 1 回ずつ現れるラテン方陣を作成しようとしています。
 
 あらかじめ指定されたマスには所定の数字を固定し、さらにケージと呼ばれる各領域では含まれるマスの値がすべて互いに異なり、かつその合計が指定された目標和に一致する必要があります。目的関数なしの純粋な充足可能性パズルとして解を求めてください。
 
@@ -14,13 +14,13 @@
 | `givens` | `number[][]` | 初期固定ヒント `[row, col, value]`（`row`, `col` は 0 始まり） |
 | `cages` | `CageClue[]` | 重複なしで和が `targetSum` になるべきケージ領域 `{ cells, targetSum }` |
 
-各 `CageClue` は `{ cells: [number, number][], targetSum: number }` の形式で、`cells` はケージ内の 0 始まり `[row, col]` 座標の配列です。
+各 `CageClue` は `{ cells: number[][], targetSum: number }` の形式で、`cells` の各要素はケージ内の 0 始まり `[row, col]` 座標ペアです。
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `grid` | `number[][]` | 全制約を満たす `N × N` の整数盤面 |
+| `grid` | `number[][]` | 全制約を満たす `N × N` の盤面（0 始まりの `grid[row][col]` は `1..N` の整数） |
 
 <!-- section:example -->
 **入力例**
@@ -56,7 +56,7 @@
 各行・各列が {1, 2, 3, 4} の順列になり、固定ヒントと全ケージの和・相異条件（例：$2 + 3 = 5$、$3 + 2 + 1 = 6$）を満たしています。
 
 <!-- section:hint1 -->
-値域 `[1, n]` をもつ $N \times N$ の整数変数行列を定義します。各行・各列・各ケージに AllDifferent 制約を課し、固定ヒントとケージ合計値の等式制約を加えます。純粋な充足問題なので目的関数は不要です。
+値域 `[1, N]` をもつ $N \times N$ の整数変数行列を定義します。各行・各列・各ケージに AllDifferent 制約を課し、固定ヒントとケージ合計値の等式制約を加えます。純粋な充足問題なので目的関数は不要です。
 
 <!-- section:hint2 -->
-各行に `distinct(row)`、各列 `c` に `distinct(grid.map((row) => row[c]))` を適用します。`input.cages` の各 `cage` に対して `vars = cage.cells.map(([r, c]) => grid[r][c])` を取り、`expr\`${sum(vars)} == ${cage.targetSum}\`` と `distinct(vars)` の両方を追加して `solver: "pumpkin"` で解いてください。
+各行に `distinct(row)`、各列 `c` に `distinct(grid.map((row) => row[c]))` を適用します。`input.cages` の各 `cage` に対して `vars = cage.cells.map(([r, c]) => grid[r][c])` を取り、`` expr`${sum(vars)} == ${cage.targetSum}` `` と `distinct(vars)` の両方を追加して `solver: "pumpkin"` で解いてください。

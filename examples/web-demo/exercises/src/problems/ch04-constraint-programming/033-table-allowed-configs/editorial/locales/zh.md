@@ -1,15 +1,15 @@
 ## 解题思路
 
-为每个组件声明有界整数变量 `choices[c]`，分别用 `allowed(vars, tuples)` 与 `not(allowed(vars, tuples))` 表达正表允许组合与负表禁用组合，并通过 `at(componentCosts[c], choices[c])` 累加并最小化总配置成本。
+对 $k$ 个组件（$c \in \{0, \dots, k - 1\}$）分别声明有界整数变量 $x_c = \text{choices}[c]$，用 `allowed(vars, tuples)` 与 `not(allowed(vars, tuples))` 分别表达正表允许组合与负表禁用组合，并通过 `at(componentCosts[c], choices[c])` 累加并最小化总配置成本。
 
 ## 数学模型
 
 $$
 \begin{aligned}
 \min \quad & \sum_{c=0}^{k-1} \text{cost}_{c,\, x_c} \\
-\text{s.t.} \quad & (x_{v_1}, \dots, x_{v_r}) \in T^+ && \forall (V, T^+) \in \mathcal{R}_{\text{allowed}} \\
-& (x_{v_1}, \dots, x_{v_r}) \notin T^- && \forall (V, T^-) \in \mathcal{R}_{\text{forbidden}} \\
-& x_c \in \{0, \dots, |\text{cost}_c| - 1\} && \forall c
+\text{s.t.} \quad & (x_{v_1}, \dots, x_{v_r}) \in T^+ && \forall (V, T^+) \in \mathcal{R}_{\text{allowed}}, \; V = (v_1, \dots, v_r) \\
+& (x_{v_1}, \dots, x_{v_r}) \notin T^- && \forall (V, T^-) \in \mathcal{R}_{\text{forbidden}}, \; V = (v_1, \dots, v_r) \\
+& x_c \in \{0, \dots, |\text{cost}_c| - 1\} && \forall c \in \{0, \dots, k - 1\}
 \end{aligned}
 $$
 
@@ -21,11 +21,14 @@ $$
 
 ## 实现要点
 
-通过 `m.constraint([...])` 批量注册 `allowedRules` 对应的 `allowed(...)` 与 `forbiddenRules` 对应的 `not(allowed(...))`，最小化 `at(costs, choices[c])` 的总和，并交由 Pumpkin 求解。
+先按各组件的选项数量声明有界整数变量 `choices[c]`，再通过 `m.constraint([...])` 批量注册 `allowedRules` 对应的 `allowed(...)` 与 `forbiddenRules` 对应的 `not(allowed(...))`，最小化 `at(costs, choices[c])` 的总和，并交由 Pumpkin 求解。
 
 **WaSHI (TypeScript)**
 
 ```ts
+const choices = input.componentCosts.map((costs, c) =>
+  m.integer(`comp_${c}`, { lb: 0, ub: costs.length - 1 })
+);
 m.constraint(
   input.allowedRules.map((r) => allowed(r.vars.map((c) => choices[c]), r.tuples))
 );

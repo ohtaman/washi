@@ -1,6 +1,6 @@
 {
   "title": "#032. Element-Indexed Machine Assignment",
-  "subtitle": "Replace an N-by-M binary matrix with N integer variables, distinct(), and variable-indexed lookup at(row, var).",
+  "subtitle": "Replace an N-by-M binary matrix with N integer variables, distinct(), and variable-indexed lookup at(costs[i], assignment[i]).",
   "tags": [
     "CP",
     "Element",

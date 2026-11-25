@@ -1,6 +1,6 @@
 ## 解题思路
 
-在二元部署变量 $x_i \in \{0, 1\}$ 上，将第 3 章的三项核心线性化技巧融汇进同一个 MIP 模型：峰值负载上境图变量 $t \ge L_r$、L1 偏差拆分变量 $d_r^+ - d_r^- = L_r - \tau_r$，以及针对正负混合交互项的 McCormick 线性化 $w_k = x_{i_k} x_{j_k}$。
+在二元部署变量 $x_i \in \{0, 1\}$ 上，记区域负载 $L_r = \sum_{i=0}^{n-1} a_{ri} x_i$（其中 $a_{ri} = \text{loads}[r][i]$）、第 $k$ 个交互对为 $(i_k, j_k, s_k)$，将第 3 章的三项核心线性化技巧融汇进同一个 MIP 模型：峰值负载上境图变量 $t \ge L_r$、L1 偏差拆分变量 $d_r^+ - d_r^- = L_r - \tau_r$，以及针对正负混合交互项的 McCormick 线性化 $w_k = x_{i_k} x_{j_k}$。
 
 ## 数学模型
 
@@ -8,21 +8,22 @@ $$
 \begin{aligned}
 \min \quad & \sum_{i=0}^{n-1} c_i x_i + \sum_{k=0}^{P-1} s_k w_k + \alpha \, t + \sum_{r=0}^{m-1} \beta_r (d_r^+ + d_r^-) \\
 \text{s.t.} \quad & \sum_{i=0}^{n-1} v_i x_i \ge \text{minValue} \\
-& \sum_{i=0}^{n-1} a_{ri} x_i \le t, \qquad \sum_{i=0}^{n-1} a_{ri} x_i - \tau_r = d_r^+ - d_r^- && \forall r \\
-& w_k \le x_{i_k}, \quad w_k \le x_{j_k}, \quad w_k \ge x_{i_k} + x_{j_k} - 1 && \forall k \\
-& x_i \in \{0, 1\}, \quad 0 \le w_k \le 1, \quad t, d_r^+, d_r^- \ge 0 && \forall i, k, r
+& L_r = \sum_{i=0}^{n-1} a_{ri} x_i, \qquad L_r \le t, \qquad L_r - \tau_r = d_r^+ - d_r^- && \forall r \in \{0, \dots, m - 1\} \\
+& w_k \le x_{i_k}, \quad w_k \le x_{j_k}, \quad w_k \ge x_{i_k} + x_{j_k} - 1 && \forall k \in \{0, \dots, P - 1\} \\
+& x_i \in \{0, 1\}, \quad 0 \le w_k \le 1, \quad d_r^+, d_r^- \ge 0 && \forall i, k, r \\
+& t \ge 0
 \end{aligned}
 $$
 
 ## 核心要点
 
 - **模块化组合多种线性化**：$\max_r L_r$、$|L_r - \tau_r|$ 与 $x_i x_j$ 各自对应一组彼此解耦的辅助变量与线性约束模块，可以无缝组合成单一可解模型。
-- **混合正负交互项需全套 McCormick 约束**：负成本协同（$s_k < 0$）依赖上界 $w_k \le x_{i_k}, w_k \le x_{j_k}$ 防止虚报折扣，正成本冲突（$s_k > 0$）则依赖下界 $w_k \ge x_{i_k} + x_{j_k} - 1$ 防止逃避惩罚。
+- **混合正负交互项需全套 McCormick 约束**：负成本协同降本（$s_k < 0$）依赖上界 $w_k \le x_{i_k}, w_k \le x_{j_k}$ 防止虚报折扣，正成本冲突额外开销（$s_k > 0$）则依赖下界 $w_k \ge x_{i_k} + x_{j_k} - 1$ 防止逃避惩罚。
 - 概念参考：[指南与术语表 — 核心要素](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
 
-除最低价值约束外，分别使用 `flatMap` 批量注册各区域负载的上境图上界与 L1 偏差拆分约束，以及各交互对的 3 条 McCormick 不等式。
+除最低价值约束外，分别为各区域负载添加上境图上界与 L1 偏差拆分约束，并为各交互对添加 3 条 McCormick 不等式（WaSHI (TypeScript) 中可用 `flatMap` 批量注册，PuLP (Python) 中用循环逐条添加）。
 
 **WaSHI (TypeScript)**
 

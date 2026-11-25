@@ -4,19 +4,21 @@
 
 ## 数理モデル
 
+$N = \text{size}$ とし、各ケージ $k \in \{0, \dots, |\text{cages}| - 1\}$ のマス集合を $S_k = \text{cages}[k].\text{cells}$、目標和を $T_k = \text{cages}[k].\text{targetSum}$ とします。
+
 $$
 \begin{aligned}
 \text{find} \quad & g_{r,c} \in \{1, \dots, N\} && \forall r, c \in \{0, \dots, N-1\} \\
-\text{s.t.} \quad & \text{AllDifferent}(g_{r,0}, \dots, g_{r,N-1}) && \forall r \\
-& \text{AllDifferent}(g_{0,c}, \dots, g_{N-1,c}) && \forall c \\
+\text{s.t.} \quad & \text{AllDifferent}(g_{r,0}, \dots, g_{r,N-1}) && \forall r \in \{0, \dots, N-1\} \\
+& \text{AllDifferent}(g_{0,c}, \dots, g_{N-1,c}) && \forall c \in \{0, \dots, N-1\} \\
 & g_{r,c} = v && \forall (r, c, v) \in \text{givens} \\
-& \sum_{(r,c) \in S_k} g_{r,c} = T_k, \quad \text{AllDifferent}\big(\{g_{r,c} \mid (r,c) \in S_k\}\big) && \forall k
+& \sum_{(r,c) \in S_k} g_{r,c} = T_k, \quad \text{AllDifferent}\big((g_{r,c})_{(r,c) \in S_k}\big) && \forall k
 \end{aligned}
 $$
 
 ## ポイント
 
-- **目的関数なしの充足可能性モデル**: CP では最適化するスカラー指標がなくても、制約伝播と遅延節生成（LCG）によって高速に実行可能解を見つけられます。`m.objective(...)` を省略したまま `await m.solve({ solver: "pumpkin" })` を呼ぶだけで求解できます。
+- **目的関数なしの充足可能性モデル**: WaSHI では `m.objective(...)` を省略すると目的関数が `0` として扱われ、`await m.solve({ solver: "pumpkin" })` を呼ぶだけで純粋な充足問題を求解できます。CP がこうしたパズルに強いのは、定義域の制約伝播と遅延節生成（LCG / ノーグッド学習）によって無効な数字の割当を高速に枝刈りできるためです。
 - **`distinct` と `sum` の協調伝播**: ケージ和の制約が候補数字の組を絞り、行・列の `distinct` が交差するケージの候補を連鎖的に削減します。
 - 関連リファレンス: [ガイド・用語集 — モデルの基本構成要素](?view=guide&lang=ja#building-blocks) / [解の状態に関する用語](?view=guide&lang=ja#solver-status)
 

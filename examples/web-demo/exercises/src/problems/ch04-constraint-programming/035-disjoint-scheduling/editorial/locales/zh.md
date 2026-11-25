@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每项任务声明有界整数开始时间变量 `starts[i]`（范围为 `[releaseTimes[i], horizon - durations[i]]`），添加前后序不等式并按机器分组施加 `disjoint(tasks)` 全局约束，最后最小化 `max(starts[i] + durations[i])`。
+设规划时间上界为 `horizon = max(releaseTimes) + sum(durations)`（$H = \max_i r_i + \sum_{i=0}^{n-1} d_i$）。为每项任务声明有界整数开始时间变量 `starts[i]`（范围为 `[releaseTimes[i], horizon - durations[i]]`），添加前后序不等式并按机器分组施加 `disjoint(tasks)` 全局约束，最后最小化 `max(starts[i] + durations[i])`。
 
 ## 数学模型
 
@@ -21,7 +21,7 @@ $$
 
 ## 实现要点
 
-按负责设备提取每台设备分配到的 `{ start, duration }` 工序列表，按设备数量批量注册 `disjoint(...)` 约束，并最小化所有工序的最大完工时间。
+按机器提取每台机器分配到的 `{ start, duration }` 任务列表，过滤掉没有任务的空机器后批量注册 `disjoint(...)` 约束，并最小化所有任务的最大完工时间。
 
 **WaSHI (TypeScript)**
 
@@ -29,13 +29,13 @@ $$
 const numMachines = Math.max(...input.machines) + 1;
 m.constraint(
   Array.from({ length: numMachines }, (_, mach) =>
-    disjoint(
-      starts
-        .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
-        .filter((t) => t.mach === mach)
-        .map(({ start, duration }) => ({ start, duration }))
-    )
+    starts
+      .map((s, i) => ({ start: s, duration: input.durations[i], mach: input.machines[i] }))
+      .filter((t) => t.mach === mach)
+      .map(({ start, duration }) => ({ start, duration }))
   )
+    .filter((tasks) => tasks.length > 0)
+    .map((tasks) => disjoint(tasks))
 );
 m.objective(minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`))));
 ```

@@ -14,7 +14,7 @@ $$
 
 ## ポイント
 
-- **Element 制約 `at()` と 0-1 割当行列（#007）の対比**: `#007` の MIP では $n \times m$ 個のバイナリ変数が必要でしたが、CP ではたった $n$ 個の整数変数で済み、目的関数のコスト参照 `c_{i, a_i}` をそのまま Pumpkin の `element` プロパゲータへ渡せます。
+- **Element 制約 `at()` と 0-1 割当行列（#007 型の定式化）の対比**: `#007`（正方 $n \times n$）のような 0-1 行列 MIP を長方形 $n \times m$ 問題へ適用すると $n \times m$ 個のバイナリ変数が必要になりますが、CP ではたった $n$ 個の整数変数で済み、目的関数のコスト参照 $c_{i, a_i}$ をそのまま Pumpkin の `element` プロパゲータへ渡せます。
 - **0 始まりインデックスと長方形行列への対応**: `at(array, idx)` は $0 \le \text{idx} < \text{array.length}$ を自動で保証し、$n < m$（余剰機械あり）の場合でもダミー行なしでそのまま書けます。
 - 関連リファレンス: [ガイド・用語集 — モデルの基本構成要素](?view=guide&lang=ja#building-blocks) / [代表的な問題クラス](?view=guide&lang=ja#paradigms)
 
