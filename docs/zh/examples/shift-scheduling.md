@@ -2,13 +2,13 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
+| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()`, `m.unsatCore` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
 
 在员工排班中，休假申请常会与最低到岗人数或资深值班规则冲突，导致混合整数规划（MIP）求解器返回 `"Infeasible"`。
 
 本示例演示在同一模型上结合优化求解与冲突诊断的流程：
 1. **先用 HiGHS 优化：** 在所有休假申请与排班规则下求最低周薪方案。
-2. **返回 `"Optimal"` 时直接采纳：** 得到可行排班后直接输出结果，无需额外诊断。
+2. **返回 `"Optimal"` 时直接采纳：** 得到最优排班后直接输出结果，无需额外诊断。
 3. **返回 `"Infeasible"` 时用 Z3 诊断：** 对同一模型调用 `model.check({ solver: "z3" })`，提取冲突约束子集（`unsatCore`）。
 
 > [!IMPORTANT]
@@ -19,7 +19,7 @@
 
 ## 场景与排班规则
 
-我们需要为 **5 名员工**（`Alice`、`Bob`、`Charlie`、`Diana`、`Evan`）制定 `Mon`–`Sun` 共 **7 天**的排班表：
+我们需要为 **5 名员工**（资深员工 `Alice` 日薪 `$220`、`Bob` `$210`，普通员工 `Charlie` `$160`、`Diana` `$160`、`Evan` `$150`）制定 `Mon`–`Sun` 共 **7 天**的排班表：
 
 - **每日最低人数：** `Mon–Thu`：3 人，`Fri`：4 人，`Sat`：3 人，`Sun`：2 人。
 - **资深值班：** 每天至少安排 1 名资深员工（`Alice` 或 `Bob`）。
@@ -144,7 +144,7 @@ async function runScenario(
     console.log("冲突约束子集 (unsatCore):", model.unsatCore);
     console.log(
       "注: unsatCore 返回引发冲突的约束子集（不保证极小性或返回顺序）。" +
-      "与冲突无关的申请（如 Diana 的周三休假）已被排除在核心之外。\n"
+      "在本例中，与冲突无关的申请（如 Diana 的周三休假）已被排除在核心之外。\n"
     );
   }
 }
@@ -180,9 +180,9 @@ main();
 
 </CodeRunner>
 
-## 使用软约束自动修复排班冲突
+## 使用软约束缓解排班冲突（生成替代方案）
 
-当 Z3 `unsatCore` 定位出 `senior_duty_Sat` 与 `day_off_Alice_Sat`、`day_off_Bob_Sat` 冲突后，可以自动生成替代方案。去掉硬休假约束，改为**软偏好**：只要在申请休假日排班，就在目标函数中加上 `$500` 惩罚项。
+当 Z3 `unsatCore` 定位出 `senior_duty_Sat` 与 `day_off_Alice_Sat`、`day_off_Bob_Sat` 冲突后，可以生成替代方案。去掉硬休假约束（规则 4），改为**软偏好**：每在申请休假日安排一次班次，就在目标函数中加上 `$500` 惩罚项。
 
 ```typescript
 // 软约束模式：不强制 shift[req.staff][req.day] == 0，而是对在申请休假日排班施加 $500 惩罚
@@ -190,7 +190,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-对场景 B 求解该软约束模型时，HiGHS 返回 `"Optimal"`，总目标值为 **`$4,330`**（薪资 `$3,830` 加 `$500` 惩罚）。方案保留了 4 项申请中的 3 项，仅调整 1 名资深员工的周六休假（HiGHS 输出为 `Alice (Sat)`）。由于 `Bob` 已排满 `maxShifts = 5` 天，其余 2 天资深班次必须由 `Alice` 承担。因此，调整 `Alice (Sat)` 或 `Bob (Sat)` 得到的最优总成本同为 `$4,330`。
+对场景 B 求解该软约束模型时，HiGHS 返回 `"Optimal"`，目标函数值为 **`$4,330`**（薪资 `$3,830` 加 `$500` 惩罚）。方案保留了 4 项申请中的 3 项，仅调整 1 名资深员工的周六休假（HiGHS 输出为 `Alice (Sat)`）。由于 `Bob`（`$210/天`）的日薪低于 `Alice`（`$220/天`），最低成本方案会将 `Bob` 排满上限（`maxShifts = 5`）5 天，并由 `Alice` 承担其余 2 天的资深班次；因此，调整 `Alice (Sat)` 或 `Bob (Sat)` 得到的最优总成本同为 `$4,330`。
 
 > [!TIP]
-> 该模型仅包含带整数系数的 0-1 变量（`m.binary()`）。您也可以引入内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `await model.check({ solver: "pumpkin" })`，无需安装 `z3-solver` 即可提取 `unsatCore`。
+> 该模型仅由 0-1 变量（`m.binary()`）与整数系数约束构成。您也可以引入内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `await model.check({ solver: "pumpkin" })`，无需安装 `z3-solver` 即可提取 `unsatCore`。

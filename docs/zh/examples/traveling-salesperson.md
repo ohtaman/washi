@@ -6,11 +6,11 @@
 
 **旅行商问题（TSP）** 寻找一条恰好访问每座城市一次并返回起点的最短闭合回路。
 
-在 **Dantzig-Fulkerson-Johnson (DFJ)** 形式化中，为消除称为**子回路**的孤立小环，需对城市的每个非空真子集 $S \subset V$ 添加子回路消除约束：
+在 **Dantzig-Fulkerson-Johnson (DFJ)** 形式化中，为消除称为**子回路**的孤立小环，需对满足 $2 \le |S| \le |V| - 1$ 的每个城市子集 $S \subset V$ 添加子回路消除约束：
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
-由于子集共有 $2^n - 2$ 个，城市数增加后无法预先列出全部约束。采用 **Benders 分解（延迟割平面分离）** 可按需补充被违反的约束：
+满足条件的子集共有 $2^n - n - 2$ 个，城市数增加后无法预先列出全部约束。采用 **延迟约束分离（通过 `solveBenders()` 生成组合 Benders 割平面）** 可按需补充被违反的约束：
 1. **主问题（Master Problem）**：求解度数分配松弛，要求每个城市入度与出度均为 1。
 2. **分离子问题（Subproblem）**：检查主问题解中的有向环路。若存在多个孤立子回路，则一次性返回所有对应的 **Benders 可行割**（多割分离），直到得到单一连通回路。
 
@@ -31,7 +31,7 @@ $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, type Var } from "@ohtaman/washi";
 
 async function runTSP() {
   const cities = [
@@ -43,7 +43,7 @@ async function runTSP() {
   ];
   const n = cities.length;
 
-  function dist(i, j) {
+  function dist(i: number, j: number): number {
     const dx = cities[i].x - cities[j].x;
     const dy = cities[i].y - cities[j].y;
     return Math.hypot(dx, dy);
@@ -51,8 +51,8 @@ async function runTSP() {
 
   // 1. 主问题：度数分配松弛（每个城市 1 条出边、1 条入边）
   const master = new Model("TSP_BendersMaster");
-  const x = {};
-  const distMatrix = {};
+  const x: Record<number, Record<number, Var>> = {};
+  const distMatrix: Record<number, Record<number, number>> = {};
 
   for (let i = 0; i < n; i++) {
     x[i] = {};
@@ -71,7 +71,7 @@ async function runTSP() {
   // 每个城市有 1 条出边和 1 条入边
   for (let i = 0; i < n; i++) {
     master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
-    master.constraint(expr`sum(${n}, ${(j) => x[j][i]}) == 1`, `in_${i}`);
+    master.constraint(expr`sum(${n}, ${(j: number) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log("启动 Benders 延迟子回路消除算法求解 TSP...");
@@ -80,8 +80,8 @@ async function runTSP() {
   let cutCounter = 0;
   const result = await master.solveBenders({
     subproblem: () => {
-      // 提取主问题暂定解所激活的有向边
-      const succ = {};
+      // 提取主问题候选解所激活的有向边
+      const succ: Record<number, number> = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           if (i !== j && x[i][j].value === 1) {
@@ -91,11 +91,11 @@ async function runTSP() {
       }
 
       // 追踪连通环路
-      const visited = new Set();
-      const cycles = [];
+      const visited = new Set<number>();
+      const cycles: number[][] = [];
       for (let i = 0; i < n; i++) {
         if (!visited.has(i)) {
-          const cycle = [];
+          const cycle: number[] = [];
           let curr = i;
           while (!visited.has(curr)) {
             visited.add(curr);
@@ -118,7 +118,7 @@ async function runTSP() {
           const cutEdges = cycle.flatMap((i) => outCities.map((j) => x[i][j]));
 
           return {
-            kind: "feasibility",
+            kind: "feasibility" as const,
             constraint: expr`sum(${cutEdges}) >= 1`,
             name: `subtour_cut_${cutCounter}`,
           };
@@ -153,16 +153,16 @@ runTSP();
 
 ### 延迟子回路消除与多割分离
 
-主问题初始只包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时通过 `subproblem` 注入割平面。返回割平面数组（`cycles.map(...)`）可在一轮内消除所有孤立子回路，减少主问题 MIP 的重求解次数。形成单一连通回路后返回 `null` 即可结束迭代。
+主问题初始只包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时通过 `subproblem` 注入割平面。返回割平面数组（`cycles.map(...)`）可在一轮内同时消除当前解中检测到的所有孤立子回路，减少主问题 MIP 的重求解次数。形成单一连通回路后返回 `null` 即可结束迭代。
 
 ### 两种等价的 DFJ 割平面形式
 
 每个城市满足出度等式 $\sum_{j \ne i} x_{ij} = 1$。对 $i \in S$ 求和可得：
 
-$$\sum_{i \in S, \, j \in S} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
+$$\sum_{i \in S, \, j \in S, \, j \ne i} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
 
-因此，上方代码使用的割集不等式 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 与 [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) 中的内部边不等式 $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ 在代数上完全等价。
+因此，上方代码使用的割集不等式 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 与 [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) 中的内部边不等式 $\sum_{i \in S, \, j \in S, \, j \ne i} x_{ij} \le |S| - 1$ 在代数上完全等价。
 
 ### 预先消除双城往返子回路
 
-在城市数较多的实例中，初始迭代最容易出现两城往返小环（$i \leftrightarrow j$）。在主问题中预先加入 $\binom{n}{2}$ 条 $x_{ij} + x_{ji} \le 1$ 约束，通常能显著减少 Benders 迭代轮数。
+在城市数较多的实例中，初始迭代最容易出现两城往返小环（$i \leftrightarrow j$）。在主问题中预先为每对城市 $i < j$ 加入 $\binom{n}{2}$ 条 $x_{ij} + x_{ji} \le 1$ 约束，通常能显著减少 Benders 迭代轮数。

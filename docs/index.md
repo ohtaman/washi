@@ -56,7 +56,7 @@ features:
 <a href="/showcase/" class="washi-home-all-link">View All Showcase →</a>
 </div>
 <p class="washi-home-showcase-sub">
-Decision-support apps and optimization puzzles running locally in the browser via WebAssembly, with zero server round-trips.
+Decision-support apps and optimization puzzles running locally in the browser, with zero server round-trips.
 </p>
 <div class="washi-home-showcase-grid">
 <div class="washi-showcase-card">
@@ -133,7 +133,7 @@ Block wolf entry paths with limited wooden fences while maximizing safe pasture 
 - **Advanced Modeling**: [Conflict Diagnosis, Validation & Debugging](/guide/unsat-core) · [Constraint Programming (CP) Modeling](/guide/constraint-programming) · [Decomposition Methods](/guide/decomposition) · [Formulation Patterns & Tips](/guide/formulation-tips)
 - **Solver Backends**: [Solvers Overview](/solvers/) · [HiGHS](/solvers/highs) · [Pumpkin](/solvers/pumpkin) · [Z3](/solvers/z3) · [GLPK](/solvers/glpk) · [Custom Solvers](/solvers/custom-solver)
 - **Examples — LP, MIP & QP**: [Examples & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack Problem](/examples/knapsack) · [Transportation & Allocation Network](/examples/transportation) · [Diet Problem & Sensitivity Analysis](/examples/diet-sensitivity) · [Portfolio Optimization (QP)](/examples/portfolio-qp)
-- **Examples — Scheduling & CP**: [Staff Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Cart & Coupon Optimizer](/examples/ecommerce-coupons) · [Project Scheduling (CP)](/examples/project-scheduling)
+- **Examples — Scheduling, Indicator MIP & CP**: [Staff Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Cart & Coupon Optimizer](/examples/ecommerce-coupons) · [Project Scheduling (CP)](/examples/project-scheduling)
 - **Examples — SMT, Diagnosis & Decomposition**: [SMT Security Policies](/examples/smt-security) · [Conflict Diagnosis (Unsat Core)](/examples/unsat-core) · [Vehicle Routing (CVRP)](/examples/vehicle-routing) · [Traveling Salesperson (TSP)](/examples/traveling-salesperson)
 - **Playground & Apps**: [Showcase](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">Optimization 100</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a>
 - **Optimization Games**: <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>

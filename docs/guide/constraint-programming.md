@@ -5,20 +5,20 @@ Using the bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`), you can
 
 ---
 
-## 1. When to Use CP (Pumpkin) vs. MIP (HiGHS)
+## 1. When to Use CP (Pumpkin) vs. MIP (HiGHS / GLPK)
 
 The two paradigms differ in how they represent decisions and prune the search space.
 
 ### Mixed-Integer Programming (`HiGHS` / `GLPK`)
 
-MIP encodes decisions as linear inequalities over continuous and 0-1 variables, then solves them with LP relaxation and branch-and-bound.
+MIP represents decisions with continuous and integer (including 0-1) variables, expresses rules as linear inequalities, and solves them with LP relaxation and branch-and-bound.
 This excels at continuous flows, linear budgets, quadratic objectives, and LP dual analysis.
-However, discretizing fine-grained timelines or combinatorial structures into 0-1 variables can make the model grow huge.
+However, discretizing fine-grained timelines or expanding combinatorial structures into 0-1 variables can make the model grow huge.
 
 ### Constraint Programming (`Pumpkin`)
 
 CP assigns each decision a finite integer domain and connects variables with **global constraints**—high-level predicates that express structured combinatorial rules across groups of variables.
-During search, **domain propagation** automatically prunes impossible values from each variable's domain whenever constraints tighten, keeping models compact.
+During search, **domain propagation** automatically prunes impossible values from each variable's domain whenever variable domains or constraints tighten, keeping models compact.
 
 The table below shows how common modeling patterns map between MIP and CP:
 
@@ -28,8 +28,8 @@ The table below shows how common modeling patterns map between MIP and CP:
 | **Non-overlapping tasks** | Pairwise ordering binaries + Big-M inequalities | `disjoint(tasks)` |
 | **Shared worker / machine capacity** | One linear sum constraint per time step | `cumulative(tasks, capacity)` |
 | **One-to-one assignment** | 2D 0-1 assignment matrix | `machine[i]` + `distinct(machine)` |
-| **Cost lookup by choice** | Sum over 0-1 selector variables | `at(costs, indexVar)` |
-| **Best suited for** | Continuous flows, blending, quadratic objectives, dual prices | Scheduling, resource limits, permutations, compatibility tables |
+| **Value / cost lookup by choice** | Weighted sum over 0-1 selector variables | `at(costs, indexVar)` |
+| **Best suited for** | Continuous flows, blending, quadratic objectives, dual analysis | Scheduling, resource limits, permutations, compatibility tables |
 
 > [!TIP]
 > Use `HiGHS` when your model requires `Continuous` variables, decimal coefficients, or quadratic objectives, or `Z3` for continuous logical rules.
@@ -60,10 +60,10 @@ const workers = { prep: 1, mill: 1, drill: 1, coat: 2 };
 const start = m.integer(tasks, { lb: 0, ub: 20, prefix: "start" });
 
 // Precedence rules: prep -> (mill, drill) -> coat
-m.constraint(expr`${start.prep} + 3 <= ${start.mill}`, "mill_after_prep");
-m.constraint(expr`${start.prep} + 3 <= ${start.drill}`, "drill_after_prep");
-m.constraint(expr`${start.mill} + 4 <= ${start.coat}`, "coat_after_mill");
-m.constraint(expr`${start.drill} + 3 <= ${start.coat}`, "coat_after_drill");
+m.constraint(expr`${start.prep} + ${duration.prep} <= ${start.mill}`, "mill_after_prep");
+m.constraint(expr`${start.prep} + ${duration.prep} <= ${start.drill}`, "drill_after_prep");
+m.constraint(expr`${start.mill} + ${duration.mill} <= ${start.coat}`, "coat_after_mill");
+m.constraint(expr`${start.drill} + ${duration.drill} <= ${start.coat}`, "coat_after_drill");
 
 // Single CNC machine shared between mill and drill
 m.constraint(
@@ -101,7 +101,7 @@ Instead of an $N \times M$ matrix of 0-1 assignment variables, give each job a s
 - **`at(costs, indexVar)`**: Variable-indexed lookup returning `costs[indexVar]` directly inside an `expr` or objective.
 
 ```typescript
-import { Model, expr, distinct, allowed, not, at, minimize } from "@ohtaman/washi";
+import { Model, expr, distinct, allowed, not, minimize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("MachineAssignmentCP", { solver: "pumpkin" });
@@ -135,7 +135,7 @@ console.log("Total cost:", m.objectiveValue);
 ### Keep Integer Bounds Finite and Tight
 
 Pumpkin supports only finite integers within $[-(2^{30} - 1),\, 2^{30} - 1]$.
-It rejects `Continuous` variables, decimal values, and infinite bounds (`-Infinity` / `Infinity`).
+It rejects `Continuous` variables, non-integer coefficients or constants, and infinite bounds (`-Infinity` / `Infinity`).
 Tighter `[lb, ub]` intervals shrink domains upfront and make domain propagation more effective.
 See [Pumpkin Domain Preconditions](../solvers/pumpkin.md#domain-api-preconditions).
 
@@ -146,7 +146,7 @@ Without symmetry breaking, the solver wastes time checking $k!$ equivalent order
 Adding `slot[0] < slot[1] < ...` enforces both uniqueness and a single canonical order:
 
 ```typescript
-import { Model, expr, at, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("SymmetryBreakingCP", { solver: "pumpkin" });

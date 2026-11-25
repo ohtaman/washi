@@ -9,7 +9,7 @@ On a `Model` instance, WaSHI provides four domain-specific factory methods: `m.c
 
 ### 1. Continuous Variables (`m.continuous`)
 
-Continuous variables take any real number within `[lb, ub]`.
+Continuous variables take any real number bounded by `lb` and `ub` (default: `lb = 0`, `ub = Infinity`).
 Use them for divisible quantities such as flow rates, weights, budgets, and portfolio weights:
 
 ```typescript
@@ -23,7 +23,7 @@ const fuel = m.continuous("fuel", { lb: 0, ub: 1000 });
 
 ### 2. Integer Variables (`m.integer`)
 
-Integer variables take whole numbers within `[lb, ub]`.
+Integer variables take whole numbers bounded by `lb` and `ub` (default: `lb = 0`, `ub = Infinity`).
 Use them for indivisible counts such as vehicles, machines, or staff headcount:
 
 ```typescript
@@ -124,17 +124,19 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ## Variable Options
 
+Factory methods accept options matching their variable kind: `m.continuous()` and `m.integer()` accept `lb`, `ub`, `prefix`, `name`, and `initialValue`; `m.binary()` accepts `prefix`, `name`, and `initialValue`; `m.bool()` accepts `prefix` and `name` only.
+
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | Lower bound. Pass `-Infinity` to allow negative values. |
-| `ub` | `number` | `Infinity` (`1` for binary) | Upper bound. |
-| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalars, arrays, and matrices (e.g., `queen_0_0`). |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying numeric variable domain. |
-| `initialValue` | `number` | `undefined` | Optional warm-start hint, stored separately from solved `variable.value`. |
+| `lb` | `number` | `0` | Lower bound (`m.continuous()`, `m.integer()`). Pass a negative finite number or `-Infinity` to allow negative values. |
+| `ub` | `number` | `Infinity` (`1` for binary) | Upper bound (`m.continuous()`, `m.integer()`). Fixed to `1` for `m.binary()`. |
+| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalars, arrays, dictionaries, and 2D containers (e.g., `queen_0_0`). |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Numeric variable domain (for direct `new Var()` construction only). |
+| `initialValue` | `number` | `undefined` | Warm-start hint for numeric variables (`m.continuous()`, `m.integer()`, `m.binary()`), stored separately from solved `variable.value`. |
 
 ### Designing Bounds (`lb` & `ub`)
 
-- **Allowing negative values**: Numeric variables are non-negative by default. For signed quantities such as net inventory change or deviation, explicitly pass `{ lb: -Infinity }`.
+- **Allowing negative values**: Numeric variables are non-negative by default. For signed quantities such as net inventory change or deviation, explicitly pass a negative finite bound or `{ lb: -Infinity }`.
 - **Strengthening MIP formulations**: Realistic finite `lb` and `ub` bounds improve MIP presolve and let `m.indicator()` compute tight Big-M constants automatically.
 - **CP solver requirement**: Bounded-integer Constraint Programming (CP) solvers such as Pumpkin require finite integer bounds on every numeric variable.
 
@@ -184,9 +186,9 @@ Partial starts are allowed; providing a complete feasible assignment gives MIP s
 After calling `await m.solve()` or `await m.check()`, read assigned values directly from `variable.value` or look them up by name in `m.values`.
 `variable.value` returns `number | null` for `Var` and `boolean | null` for `BoolVar`.
 
-For continuous Linear Programming (LP) models solved by HiGHS, `variable.reducedCost` exposes LP sensitivity analysis as `number | null`.
-The **reduced cost** indicates how much a non-basic variable's objective coefficient must improve before taking a non-zero value becomes worthwhile.
-Before solving, on GLPK (which populates constraint `dual` only), or on MIP, CP, and SMT models, `reducedCost` is `null`.
+For continuous Linear Programming (LP) models solved by HiGHS, `variable.reducedCost` exposes the variable's LP reduced cost as `number | null`.
+The **reduced cost** indicates how much a non-basic variable's objective coefficient must improve before moving it away from its active bound (`lb` or `ub`) becomes worthwhile.
+Before solving, when no optimal LP solution is found, on GLPK (which populates constraint `dual` only), or on MIP, CP, and SMT models, `reducedCost` is `null`.
 
 ```typescript
 await m.solve();

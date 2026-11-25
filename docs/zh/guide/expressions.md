@@ -1,6 +1,6 @@
 # 代数表达式 (`expr`, `sum`, `dot`)
 
-数学表达式是决策变量与数值系数的线性或二次组合。
+数学表达式将决策变量与数值系数组合为线性、二次或分段线性公式。
 由于 JavaScript 与 TypeScript 不支持运算符重载，WaSHI 提供了 `expr` 标签模板字面量以及 `sum()`、`dot()` 函数。
 这让您能在保持完整静态类型安全的前提下编写清晰易读的代数公式。
 
@@ -14,8 +14,8 @@
 
 ## 标签模板字面量 (`expr`)
 
-与参数化的 `sql` 模板类似，`expr` 将静态运算符文本（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）与 `${...}` 中的插值分开接收。
-您可以直接插值 `Var`、`LinExpr`、`QuadExpr` 或有限 `number`。
+与参数化 SQL 模板类似，`expr` 将运算符与语法文本（`+`、`-`、`*`、`/`、`^2`、`<=`、`>=`、`==` 等）与 `${...}` 中的插值分开接收。
+您可以直接插值 `Var`、`LinExpr`、`QuadExpr` 或有限 `number`，也可以在 `sum()` 或 `dot()` 中传入数组、字典容器及映射回调函数。
 变量通过对象引用直接绑定，而非按字符串查找，因此既能避免命名冲突，也能完整保留 IDE 重命名等重构功能。
 
 算术表达式（`LinExpr | QuadExpr`）和比较约束（`Constraint`）均可使用 `expr` 构建：
@@ -43,15 +43,15 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **标量乘法与除法**：`4 * ${x}`、`${x} / 2`
 - **二次项与幂运算**：`${x} * ${y}`、`2 * ${x} * ${x}`、`${x}^2`、`${x}**2`
 - **一元正负号与圆括号**：`-${x} + 10`、`+${x}`、`2 * (${x} + ${y})`
-- **聚合函数**：`sum(${xVec}) <= 100`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
+- **聚合函数**：`sum(${xVec})`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
 - **分段线性与下标索引**：`max(${xVec}) <= 15`、`sum(abs(${w} - ${target}))`、`at(${costs}, ${idx})`（见 [分段线性与下标索引表达式](#分段线性与下标索引表达式-max-min-abs-at)）
-- **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${xVec} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
+- **容器逐元素运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${xVec} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
 - **嵌套表达式**：支持插值变量、数字、嵌套的 `LinExpr` 或 `QuadExpr`，以及 `sum` / `dot` 内的容器。
 
 > [!NOTE]
-> - **比较表达式（`<=`, `>=`, `==`）** 返回 `Constraint` 对象。
-> - **算术表达式** 一次式返回 `LinExpr`，二次式返回 `QuadExpr`。嵌入的数组或字典必须先用 `sum(...)` 或 `dot(..., ...)` 归约为标量。
-> - **不支持的非线性**：三次及以上多项式（如 `${x}^3`）和非线性约束（如 `${x} * ${y} <= 10`）会抛出错误。
+> - **包含比较运算符（`<=`、`>=`、`==` 以及整数表达式专用的 `<`、`>`、`!=`）时**，`expr` 返回 `Constraint` 对象。
+> - **算术表达式**一次式返回 `LinExpr`，二次式返回 `QuadExpr`。嵌入的数组或字典必须先用 `sum(...)`、`dot(..., ...)`、`max(...)` 或 `min(...)` 归约为标量表达式。
+> - **不支持的非线性**：三次及以上多项式项（如 `${x}^3`）以及二次及以上约束（如 `${x} * ${y} <= 10`）会抛出错误（分段线性函数 `max`、`min`、`abs` 与 `at` 见下文）。
 
 ---
 
@@ -212,9 +212,9 @@ m.objective(minimize(risk));
 ```
 
 > [!NOTE]
-> **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：最小化二次目标时，HiGHS 要求二次型矩阵 $\mathbf{Q}$ 为**半正定（PSD）**。
-> 最大化时，则要求 $\mathbf{Q}$ 为半负定。
-> 平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然半正定。
+> **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：最小化二次目标时，HiGHS 要求对称二次型矩阵 $\mathbf{Q}$ 为**半正定（PSD，$\mathbf{Q} \succeq 0$）**。
+> 最大化时，$\mathbf{Q}$ 必须为**半负定（$\mathbf{Q} \preceq 0$）**。
+> 平方和 $\sum_i (x_i - t_i)^2$ 以及由协方差矩阵 $\boldsymbol{\Sigma}$ 构成的方差二次型 $\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$ 天然满足凸性（对应的 $\mathbf{Q}$ 为半正定）。
 > 连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。
 > 若要在 MILP 中线性化两个二元变量的乘积 $x_A \cdot x_B$，请参见 [建模模式与优化技巧](./formulation-tips.md#binary-product)。
 
@@ -234,7 +234,7 @@ const target = [4, 7, 10];
 const route = m.integer("route", { lb: 0, ub: 2 });
 const routeCost = [18, 12, 25];
 
-// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯线性规划：
+// 凸方向的 max/abs 在 HiGHS/GLPK 上转为无二元变量的线性不等式（本例中的 at() 会使用二元选择变量）：
 m.objective(
   minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
 );
@@ -306,12 +306,12 @@ console.log("Labor Used:", laborUsed.value);    // 50
 | :--- | :--- | :--- | :--- |
 | `.add(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 加上一个数值、`Var`、`LinExpr` 或 `QuadExpr`。 |
 | `.sub(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 减去一个数值、`Var`、`LinExpr` 或 `QuadExpr`。 |
-| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 乘以标量 `number`，或将两个一次项相乘得到 `QuadExpr`。 |
+| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 乘以标量 `number`，或将两个一次式相乘得到 `QuadExpr`（含二次项的 `QuadExpr` 仅支持标量乘法，三次及以上会报错）。 |
 | `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 除以非零有限标量 `number`。 |
 | `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 对所有项取反（$-e$）。 |
-| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`；要求左端为线性）。 |
-| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`；要求左端为线性）。 |
-| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $==$ 等式约束（`lhs == rhs`；要求左端为线性）。 |
-| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $<$ 约束（`lhs - rhs <= -1`；仅限整数值表达式）。 |
-| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $>$ 约束（`lhs - rhs >= 1`；仅限整数值表达式）。 |
-| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $\ne$ 约束（`lhs != rhs`；仅限整数值表达式）。 |
+| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`；要求左右两端均不含二次项）。 |
+| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`；要求左右两端均不含二次项）。 |
+| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建 $=$ 等式约束（`lhs == rhs`；要求左右两端均不含二次项）。 |
+| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $<$ 约束（`lhs - rhs <= -1`；仅限不含二次项的整数值表达式）。 |
+| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $>$ 约束（`lhs - rhs >= 1`；仅限不含二次项的整数值表达式）。 |
+| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | 构建离散 $\ne$ 约束（`lhs != rhs`；仅限不含二次项的整数值表达式）。 |

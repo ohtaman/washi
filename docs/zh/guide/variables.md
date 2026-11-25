@@ -9,7 +9,7 @@
 
 ### 1. 连续变量 (`m.continuous`)
 
-连续变量可在 `[lb, ub]` 内取任意实数值。
+连续变量可取下界 `lb` 以上、上界 `ub` 以下的任意实数值（默认为 `lb = 0`、`ub = Infinity`）。
 适用于流量、重量、预算分配和投资比例等可分割的连续量：
 
 ```typescript
@@ -23,7 +23,7 @@ const fuel = m.continuous("fuel", { lb: 0, ub: 1000 });
 
 ### 2. 整数变量 (`m.integer`)
 
-整数变量仅在 `[lb, ub]` 内取整数值。
+整数变量取下界 `lb` 以上、上界 `ub` 以下的整数值（默认为 `lb = 0`、`ub = Infinity`）。
 适用于车辆台数、生产件数、人员数量等不可分割的计数变量：
 
 ```typescript
@@ -33,7 +33,7 @@ const trucks = m.integer("trucks", { lb: 0, ub: 15 });
 
 ### 3. 0-1 二元变量 (`m.binary`)
 
-0-1 二元变量仅取数值 $\{0, 1\}$，并自动设置 `lb = 0`、`ub = 1`。
+0-1 二元变量取数值 `0` 或 `1`，并自动设置 `lb = 0`、`ub = 1`。
 适用于混合整数规划（MIP）中参与线性求和或目标函数成本项的是/否决策：
 
 ```typescript
@@ -59,7 +59,7 @@ m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 
 | 特性 | `m.binary()` (`Var`) | `m.bool()` (`BoolVar`) |
 | :--- | :--- | :--- |
-| **求解后的 `.value` 类型** | `number \| null`（精确的 `0` 或 `1`） | `boolean \| null`（`true` 或 `false`） |
+| **求解后的 `.value` 类型** | `number \| null`（`0` 或 `1`） | `boolean \| null`（`true` 或 `false`） |
 | **线性算术运算（`expr`, `sum`, `dot`, 目标成本）** | ✅ 原生支持（`` expr`30 * ${b}` ``） | ❌ 不能直接与数值相乘或求和 |
 | **指示约束（`m.indicator(b, ...)`）** | ✅ 可作为触发变量 | ❌ 请改用 `` implies(flag, expr`...`) `` |
 | **命题逻辑（`and`, `or`, `not`, `implies`, `xor`）** | 需通过比较式（`` expr`${b} == 1` ``） | ✅ 原生一等方法（`.implies()`, `.and()`） |
@@ -123,19 +123,21 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ---
 
-## 变量配置选项 (`VarOptions`)
+## 变量配置选项
+
+各工厂方法接受与其变量类型对应的选项：`m.continuous()` 与 `m.integer()` 支持 `lb`、`ub`、`prefix`、`name`、`initialValue`；`m.binary()` 支持 `prefix`、`name`、`initialValue`；`m.bool()` 仅支持 `prefix` 与 `name`。
 
 | 选项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | 下界（Lower bound）。允许负值时请传入 `-Infinity`。 |
-| `ub` | `number` | `Infinity`（`binary` 为 `1`） | 上界（Upper bound）。 |
-| `prefix` | `string` | `"x"`（`m.bool()` 为 `"p"`） | 未命名标量变量以及索引数组/矩阵的命名前缀（如 `queen_0_0`）。 |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | 由方法自动推断 | 底层数值变量定义域类别。 |
-| `initialValue` | `number` | `undefined` | 可选的热启动提示值，与求解后的 `variable.value` 相互独立。 |
+| `lb` | `number` | `0` | 下界（`m.continuous()`、`m.integer()`）。允许负值时请传入有限负数或 `-Infinity`。 |
+| `ub` | `number` | `Infinity`（`binary` 为 `1`） | 上界（`m.continuous()`、`m.integer()`）。`m.binary()` 固定为 `1`。 |
+| `prefix` | `string` | `"x"`（`m.bool()` 为 `"p"`） | 未命名标量变量以及数组、字典、二维容器的命名前缀（如 `queen_0_0`）。 |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | 由方法自动推断 | 数值变量的定义域类型（仅直接调用 `new Var()` 时使用）。 |
+| `initialValue` | `number` | `undefined` | 数值变量（`m.continuous()`、`m.integer()`、`m.binary()`）的热启动提示值，与求解后的 `variable.value` 相互独立。 |
 
 ### 上下界（`lb`, `ub`）设置要点
 
-- **允许负值**：数值变量默认非负。对于净库存变化或偏差项等可能为负的量，请显式传入 `{ lb: -Infinity }`。
+- **允许负值**：数值变量默认非负。对于净库存变化或偏差项等可能为负的量，请显式传入有限负下界或 `{ lb: -Infinity }`。
 - **增强 MIP 求解**：有限的 `lb` 与 `ub` 能提升 MIP 预处理效果，也让 `m.indicator()` 自动推导紧凑的 Big-M 常数。
 - **CP 求解器前置要求**：Pumpkin 等有界整数约束规划（CP）求解器要求每个数值变量都具备有限整数边界。
 
@@ -185,9 +187,9 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value` 直接读取解，也可按名称从 `m.values` 查询。
 `variable.value` 对 `Var` 返回 `number | null`，对 `BoolVar` 返回 `boolean | null`。
 
-使用 HiGHS 求解连续线性规划（LP）模型后，`variable.reducedCost` 会以 `number | null` 返回灵敏度分析结果。
-**缩减成本（Reduced Cost）**表示处于上下界处的非基变量的目标系数需要改善多少，才值得在最优解中取非零值。
-在求解前、使用 GLPK（仅返回约束的 `dual`）或对于 MIP、CP 与 SMT 模型，`reducedCost` 为 `null`。
+使用 HiGHS 求解连续线性规划（LP）模型后，`variable.reducedCost` 会以 `number | null` 返回变量的缩减成本。
+**缩减成本（Reduced Cost）** 表示处于下界或上界处的非基变量的目标系数需要改善多少，将其从当前边界移开才对目标有利。
+在求解前、未求得最优解时、使用 GLPK（仅返回约束的 `dual`），或对于 MIP、CP 与 SMT 模型，`reducedCost` 均为 `null`。
 
 ```typescript
 await m.solve();

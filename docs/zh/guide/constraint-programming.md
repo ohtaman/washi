@@ -5,19 +5,19 @@ WaSHI 支持用同一套 TypeScript API 编写数学规划（LP / MIP / QP）与
 
 ---
 
-## 1. 何时使用 CP (`Pumpkin`) 与 MIP (`HiGHS`)
+## 1. 何时使用 CP (`Pumpkin`) 与 MIP (`HiGHS` / `GLPK`)
 
 两种范式在表示决策与剪枝搜索空间的方式上截然不同。
 
 ### 混合整数规划（MIP：`HiGHS` / `GLPK`）
 
-MIP 用连续变量和 0-1 变量的线性不等式表达决策，依靠线性规划松弛与分支定界求解。
-它非常适合连续流、线性预算、二次目标与 LP 对偶分析，但一旦需要将细粒度时间轴或组合结构离散化为 0-1 变量，模型规模就会急剧膨胀。
+MIP 用连续变量和整数变量（含 0-1 变量）表示决策，以线性不等式表达约束，并依靠线性规划松弛与分支定界求解。
+它非常适合连续流、线性预算、二次目标与 LP 对偶分析，但一旦需要将细粒度时间轴离散化或将组合结构展开为 0-1 变量，模型规模就会急剧膨胀。
 
 ### 约束规划（CP：`Pumpkin`）
 
 CP 直接为每个决策赋予有限整数定义域，并用**全局约束**（把一组变量间的结构化组合规则封装在一起的高层谓词）将它们连接起来。
-在搜索过程中，**域传播**（每当某条约束收紧时，自动从其他变量的定义域中剔除不可能的取值）会持续缩小搜索空间，使模型保持紧凑。
+在搜索过程中，**域传播**（每当变量定义域收窄或约束收紧时，自动从其他变量的定义域中剔除不可能的取值）会持续缩小搜索空间，使模型保持紧凑。
 
 下表对比了常见建模需求在 MIP 与 CP 中的对应方式：
 
@@ -27,8 +27,8 @@ CP 直接为每个决策赋予有限整数定义域，并用**全局约束**（�
 | **任务禁止重叠** | 成对顺序变量 + Big-M 不等式 | `disjoint(tasks)` |
 | **共享人力/设备容量** | 每个时间步生成一条求和约束 | `cumulative(tasks, capacity)` |
 | **一对一分配** | 二维 0-1 分配矩阵 | `machine[i]` + `distinct(machine)` |
-| **按选择查表计费** | 0-1 选择变量加权求和 | `at(costs, indexVar)` |
-| **最适合的问题** | 连续流、配比、二次目标、对偶价格 | 排程调度、资源上限、排列分配、兼容表 |
+| **按选择查表取值/计费** | 0-1 选择变量加权求和 | `at(costs, indexVar)` |
+| **最适合的问题** | 连续流、配比、二次目标、对偶分析 | 排程调度、资源上限、排列分配、兼容表 |
 
 > [!TIP]
 > 如果模型需要 `Continuous` 变量、小数系数或二次目标函数，请使用 `HiGHS`；含连续变量的逻辑规则请使用 `Z3`。
@@ -59,10 +59,10 @@ const workers = { prep: 1, mill: 1, drill: 1, coat: 2 };
 const start = m.integer(tasks, { lb: 0, ub: 20, prefix: "start" });
 
 // 先后顺序：prep -> (mill, drill) -> coat
-m.constraint(expr`${start.prep} + 3 <= ${start.mill}`, "mill_after_prep");
-m.constraint(expr`${start.prep} + 3 <= ${start.drill}`, "drill_after_prep");
-m.constraint(expr`${start.mill} + 4 <= ${start.coat}`, "coat_after_mill");
-m.constraint(expr`${start.drill} + 3 <= ${start.coat}`, "coat_after_drill");
+m.constraint(expr`${start.prep} + ${duration.prep} <= ${start.mill}`, "mill_after_prep");
+m.constraint(expr`${start.prep} + ${duration.prep} <= ${start.drill}`, "drill_after_prep");
+m.constraint(expr`${start.mill} + ${duration.mill} <= ${start.coat}`, "coat_after_mill");
+m.constraint(expr`${start.drill} + ${duration.drill} <= ${start.coat}`, "coat_after_drill");
 
 // mill 和 drill 共用同一台 CNC 机床（不可重叠）
 m.constraint(
@@ -100,7 +100,7 @@ console.log("总完工时间 (Makespan):", m.objectiveValue);
 - **`at(costs, indexVar)`**：变量索引查表，可在 `expr` 或目标函数中直接读取 `costs[indexVar]`。
 
 ```typescript
-import { Model, expr, distinct, allowed, not, at, minimize } from "@ohtaman/washi";
+import { Model, expr, distinct, allowed, not, minimize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("MachineAssignmentCP", { solver: "pumpkin" });
@@ -134,18 +134,18 @@ console.log("总成本:", m.objectiveValue);
 ### 保持整数上下界有限且紧凑
 
 Pumpkin 仅支持 $[-(2^{30} - 1),\, 2^{30} - 1]$ 范围内的有限整数。
-它不接受 `Continuous` 变量、小数或无穷边界（`-Infinity` / `Infinity`）。
+它不接受 `Continuous` 变量、非整数系数/常数以及无穷上下界（`-Infinity` / `Infinity`）。
 将 `[lb, ub]` 收紧到合理范围可以缩小初始定义域并提升域传播效率。
 详见 [Pumpkin 定义域前置条件](../solvers/pumpkin.md#domain-api-preconditions)。
 
 ### 用严格递增 (`<`) 消除排列对称性
 
-从候选项中挑选 $k$ 个填入可互换的位置（`slot[0]`, ..., `slot[k-1]`）时，同一组选项的任意排列目标值都完全相同。
+从候选项中挑选 $k$ 个互不相同的元素填入可互换的位置（`slot[0]`, ..., `slot[k-1]`）时，同一组选项的任意排列目标值都完全相同。
 若不打破对称性，求解器会白白遍历 $k!$ 种等价排列。
 添加 `slot[0] < slot[1] < ...` 可以同时强制互不相同并固定唯一标准顺序：
 
 ```typescript
-import { Model, expr, at, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("SymmetryBreakingCP", { solver: "pumpkin" });

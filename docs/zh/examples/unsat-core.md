@@ -6,20 +6,20 @@
 
 当约束之间发生冲突时，常规优化调用（`m.solve()`）只会返回 `"Infeasible"`。改用 `m.check()` 则会返回 `"Unsat"`，并提取出无法同时满足的命名约束子集，即**不可满足核（Unsat Core）**。
 
-本示例使用 Z3 在 `m.conflicts` 中定位引发冲突的规则，同时排除无关约束。请注意，返回的子集不保证极小性。
+本示例使用 Z3 通过 `m.conflicts`（`res.conflicts`）提取引发冲突的规则子集（在此场景下会排除无关约束，但一般而言 `unsatCore` / `m.conflicts` 不保证极小性或最小性）。
 
 ## 存在冲突的场景
 
 某技术团队正在为一个客户项目调配开发人员：
-1. 每名工程师占用 $8,000 的项目预算（`budget_limit`）。
+1. 每名工程师的人力成本为 $8,000，总成本不得超过项目预算 `budget`（`budget_limit`）。
 2. 客户要求加急交付（`rush_required`）。
 3. 加急交付强制要求至少配置 8 名工程师（`rush_staffing_rule`）。
 4. 董事会设定了 $50,000 的严格预算上限（`strict_board_budget_cap`）。
-5. 劳动法规定项目至少需要配备 1 名员工（`minimum_one_employee`）。
+5. 劳动法规定项目至少需要配备 1 名工程师（`minimum_one_employee`）。
 
 这些规则直接构成矛盾：
 
-$$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
+$$8 \text{ 名工程师} \times \$8,000 = \$64,000 > \$50,000$$
 
 ## WaSHI 实现
 
@@ -48,7 +48,7 @@ async function diagnoseConflicts() {
   // 规则 3: 加急交付要求至少配备 8 名工程师
   m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
-  // 规则 4: 董事会设定的 $50,000 预算上限（引发冲突！）
+  // 规则 4: 董事会设定的 $50,000 预算上限（与规则 1–3 矛盾）
   m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
   // 规则 5: 与冲突无关的无辜规则
@@ -58,7 +58,7 @@ async function diagnoseConflicts() {
   const res = await m.check({ solver: "z3" });
 
   console.log(`Status: ${res.status}`); // Status: Unsat
-  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  console.log("Z3 Unsat Core (scale-invariant):", res.conflicts); // 也可通过 m.conflicts 读取
   // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
   // 内置的 HiGHS 也可找出放宽后即可恢复可行的约束：
@@ -76,12 +76,12 @@ diagnoseConflicts();
 
 ### Z3（`m.check({ solver: "z3" })`）
 
-Z3 支持 `budget` 这类 `Continuous` 变量与小数系数。它不受数值量纲影响，能排除无关的 `minimum_one_employee` 并返回构成冲突的 4 条规则。
+Z3 支持 `budget` 这类连续变量（`m.continuous()`）与小数系数。它不受数值量纲影响，能排除无关的 `minimum_one_employee` 并返回构成冲突的 4 条规则。
 
 ### Pumpkin（`m.check({ solver: "pumpkin" })`）
 
-Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的冲突核心。
+Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的 Unsat Core。
 
 ### HiGHS（`m.check({ solver: "highs" })`）
 
-HiGHS 会寻找使总放宽量最小的约束集合来恢复可行性。相比将预算上限放宽 `$14,000`，放宽加急要求只需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。
+与 Unsat Core 不同，HiGHS 返回的是**弹性修复集（Elastic Repair Set）**——即恢复可行性所需总松弛量最小的约束集合。相比将预算上限放宽 `$14,000`，放宽 `rush_required` 仅需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。

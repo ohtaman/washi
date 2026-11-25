@@ -1,14 +1,14 @@
-# 生産計画問題 (LP / MIP)
+# 生産計画問題 (整数計画 / MIP)
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
+| 整数計画 (MIP) | HiGHS (標準) | `m.integer()`, `m.constraint()`, `expr`, `maximize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
 
-限られたリソース（木材・労働時間など）の制約を守りながら、各製品の最適な生産数を求めて総利益を最大化する古典的な最適化問題です。
+限られたリソース（木材・労働時間など）の制約のもとで、総利益が最大となる各製品の生産数を求める古典的な最適化問題です。
 
 ## 数理モデルの定式化
 
-椅子の生産数を $x$、机の生産数を $y$ とします。
+椅子の生産数を $x$（利益 `$45`/脚）、机の生産数を $y$（利益 `$80`/台）とします。
 
 $$\begin{aligned}
 \text{Maximize} \quad & 45x + 80y & (\text{総利益}) \\
@@ -31,10 +31,10 @@ async function runProductionOptimization() {
   const chairs = m.integer("chairs", { lb: 0 });
   const tables = m.integer("tables", { lb: 0 });
 
-  // 目的関数: 総利益の最大化 ($45/椅子, $80/机)
+  // 目的関数: 総利益の最大化 (椅子 $45/脚, 机 $80/台)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // リソース制約: m.constraint と expr による宣言的記述
+  // リソース制約: マホガニー材と木工労働時間の上限
   m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
   m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
@@ -52,5 +52,5 @@ runProductionOptimization();
 
 ## 解の読み解きとポイント
 
-- **最適解の確認**: `chairs = 24`、`tables = 14` のとき総利益は最大の `$2,200` になります。木材は $5 \times 24 + 20 \times 14 = 400$、労働時間は $10 \times 24 + 15 \times 14 = 450$ となり、2 つの制約をちょうど使い切っています。
-- **`m.continuous()` ではなく `m.integer()` を使う理由**: 椅子や机は個数単位で生産するため端数を許せません。この数値例では連続緩和解も整数になりますが、`m.integer()` にしておけば上限値や利益単価が変わっても必ず整数解が得られます。
+- **最適解の確認**: `chairs = 24`、`tables = 14` のとき総利益は最大の `$2,200` になります。マホガニー材は $5 \times 24 + 20 \times 14 = 400$、木工労働時間は $10 \times 24 + 15 \times 14 = 450$ となり、2 つのリソースをちょうど上限まで使い切っています。
+- **`m.continuous()` ではなく `m.integer()` を使う理由**: 椅子や机は個数単位で生産するため端数（小数）を取ることができません。この数値例では連続変数として解いた場合（LP 緩和解）もたまたま整数になりますが、`m.integer()` にしておけば上限値や利益単価が変わっても整数最適解が得られます。

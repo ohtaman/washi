@@ -1,8 +1,8 @@
 # Pumpkin 制約プログラミングソルバー
 
-**Pumpkin** は [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) が Rust で開発しているオープンソースの制約プログラミング（CP）ソルバーです。WaSHI は Pumpkin（`v0.5.0`）を WebAssembly として `@ohtaman/washi/solvers/pumpkin` に同梱しており、追加パッケージは不要です。
+**Pumpkin** は ConSol-Lab が Rust で開発しているオープンソースの制約プログラミング（CP）ソルバーです（[ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)）。WaSHI は Pumpkin（`v0.5.0`）を WebAssembly として `@ohtaman/washi/solvers/pumpkin` に同梱しており、追加パッケージは不要です。
 
-シングルスレッドで動作するため、ブラウザで `SharedArrayBuffer` や `COOP`/`COEP` ヘッダー（[Cross-Origin Isolation 設定](../getting-started/cross-origin.md)）は不要です。
+シングルスレッドで動作するため、ブラウザでも `SharedArrayBuffer` や `COOP`/`COEP` ヘッダー（[Cross-Origin Isolation 設定](../getting-started/cross-origin.md)）の設定は不要です。
 
 ---
 
@@ -10,28 +10,28 @@
 
 | 問題のタイプ | 推奨ソルバー | 選定理由 |
 | :--- | :--- | :--- |
-| **スケジューリング・資源上限・離散グローバル制約** | **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`） | `disjoint`・`cumulative`・`distinct`・`allowed` を追加設定なしでネイティブ処理。 |
-| **`COOP`/`COEP` なしでのブラウザ `unsatCore`** | **Pumpkin**（`m.check({ solver: "pumpkin" })`） | 通常の静的サイトや iframe でも、有界整数・真偽値モデルの矛盾制約を抽出可能。 |
-| **線形計画・混合整数計画・二次計画** | **[HiGHS](./highs.md)**（デフォルト） | 連続変数、双対値・スラック、凸二次目的関数、連続緩和に対応。 |
-| **`Continuous` 変数を含む論理ルール** | **[Z3](./z3.md)** | 論理演算子内の実数不等式や、連続・整数混在モデルの `unsatCore` に対応。 |
+| **スケジューリング・資源制約・離散グローバル制約** | **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`） | `disjoint`・`cumulative`・`distinct`・`allowed` を追加設定なしでネイティブに制約伝播。 |
+| **`COOP`/`COEP` なしでのブラウザ上での `unsatCore` 抽出** | **Pumpkin**（`m.check({ solver: "pumpkin" })`） | 通常の静的サイトや iframe でも、有界整数・真偽値モデルの矛盾する制約を抽出可能。 |
+| **線形計画・混合整数計画・凸二次計画** | **[HiGHS](./highs.md)**（デフォルト） | 連続変数、双対値・スラック、凸二次目的関数、連続緩和に対応。 |
+| **`Continuous` 変数を含む論理ルール** | **[Z3](./z3.md)** | 論理式内の実数不等式や、連続・整数混在モデルの `unsatCore` 抽出に対応。 |
 
 ---
 
 ## 主な特徴
 
-- **標準同梱・追加依存なし**: `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に含まれ、MIT 互換ライセンスで利用できます。
-- **Web Worker バックグラウンド実行**: `SharedArrayBuffer` を使わずにメインスレッド外で実行し、ブラウザ UI の応答性を保ちます。
-- **ネイティブ CP 制約**: `disjoint()`・`cumulative()`・`distinct()`・`allowed()`・`at()`・`max()`・`min()`・`abs()`・離散 `!=`・`m.indicator()` に対応します。
-- **矛盾診断（`unsatCore`）**: `await model.check({ solver: "pumpkin" })` で、有界整数・真偽値モデル内の矛盾した名前付き制約を特定できます。
-- **ウォームスタート（`initialValue`）**: `model.integer()` や `model.binary()` に探索時の初期値ヒントを渡せます。
+- **パッケージ同梱・追加依存なし**: `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に含まれ、MIT 互換ライセンスで利用できます。
+- **Web Worker バックグラウンド実行**: ブラウザでは `SharedArrayBuffer` を使わずに専用 Web Worker で実行し、UI の応答性を保ちます。
+- **ネイティブ CP 制約**: `disjoint()`・`cumulative()`・`distinct()`・`allowed()`・`at()`・`max()`・`min()`・`abs()`・離散変数間の `!=`（不等値制約）・`m.indicator()` に対応します。
+- **矛盾診断（`unsatCore`）**: `await model.check({ solver: "pumpkin" })` で、有界整数・真偽値モデル内の互いに矛盾する名前付き制約（の部分集合）を特定できます。
+- **ウォームスタート（`initialValue`）**: `model.integer()` や `model.binary()` の変数定義時に探索の初期値ヒント（`initialValue`）を指定できます。
 
 ---
 
 ## 使用例
 
-`@ohtaman/washi/solvers/pumpkin` を一度インポートすると `"pumpkin"` ソルバーが登録されます。有界整数・真偽値モデルの最適化には `model.solve()`、充足可能性の確認や矛盾制約の抽出には `model.check()` を使います。
+`@ohtaman/washi/solvers/pumpkin` を一度インポートすると `"pumpkin"` ソルバーが登録されます。有界整数・真偽値モデルにおける整数線形目的関数の最適化には `model.solve()`、充足可能性の確認や矛盾する制約の抽出には `model.check()` を使います。
 
-### 1. スケジューリングとグローバル制約 (`model.solve()`)
+### 1. スケジューリングとグローバル制約（`model.solve()`）
 
 ```typescript
 import { Model, disjoint, expr, implies, minimize, not } from "@ohtaman/washi";
@@ -50,6 +50,7 @@ model.constraint(
   ]),
   "single_machine"
 );
+// 任意: disjoint のみで非重複は保証されるが、選択された順序を job1First に記録する例
 model.constraint(implies(job1First, expr`${s1} + 6 <= ${s2}`), "job1_before_job2");
 model.constraint(implies(not(job1First), expr`${s2} + 4 <= ${s1}`), "job2_before_job1");
 
@@ -60,7 +61,7 @@ console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
 // Status: Optimal, s1=4, s2=0
 ```
 
-### 2. 矛盾診断 (`model.check()`)
+### 2. 矛盾診断（`model.check()`）
 
 ```typescript
 import { Model, expr, implies } from "@ohtaman/washi";
@@ -85,7 +86,7 @@ if (result.status === "Unsat") {
 
 ## ソルバーオプション
 
-`model.solve()`、`model.check()`、または `new PumpkinSolver(options)` に実行オプションを渡せます。対応オプションは `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal`、`onProgress` です。
+`model.solve()`、`model.check()`、または `new PumpkinSolver(options)` に実行オプションを渡せます。対応オプションは `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal`、`onProgress`（`solve()` のみ）です。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -109,7 +110,7 @@ await model.solve({
 
 if (model.hasPrimalSolution) {
   console.log(
-    `解 (${model.status}, termination: ${model.terminationStatus}):`,
+    `解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
     `obj = ${model.objectiveValue}`
   );
 }
@@ -117,24 +118,24 @@ if (model.hasPrimalSolution) {
 
 ---
 
-## 制約と前提条件 {#domain-api-preconditions}
+## 制限事項と前提条件 {#domain-api-preconditions}
 
-Pumpkin は **有界な整数・真偽値** のみを対象とします。未対応の変数・値・オプションを渡すと実行時に `Error` を投げます。
+Pumpkin は **有界な整数変数と真偽値変数**のみからなるモデルを対象とします。未対応の変数・値・オプションを渡すと実行時に `Error` を投げます。
 
-- **有界整数のみ対応**: `Integer` / `Binary` 変数は $[-(2^{30} - 1),\, 2^{30} - 1]$ の有限整数に限り、`Continuous` や無限大は `Error` になります。
-- **整数係数と上限**: 係数・調整後右辺（`rhs - lhs.constant`）・スケーリング上下限はすべて $[-(2^{30} - 1),\, 2^{30} - 1]$ の整数が必要です。
-- **制約全体の 32 ビット上限**: 各制約について、調整後右辺の絶対値と各項の最大絶対値（係数 × 上下限の最大絶対値）の合計は $2^{31} - 2$ 以下である必要があります。
-- **目的関数のより厳しい上限**: 目的関数の係数は整数で、各項の最大絶対値の合計は $2^{30} - 1$ 以下である必要があります（目的関数の定数項は小数可）。
-- **未対応の数式・緩和**: `QuadExpr`（二次目的関数・二次制約）と `relax: true` は実行時に `Error` を投げます。
-- **未対応オプション**: `relativeGap`・`absoluteGap`・`presolve`・`threads`・`verbose`・`outputFlag` および未定義キーは実行時に `Error` を投げます。
+- **有界整数のみ対応**: `Integer` 変数の上下限は $[-(2^{30} - 1),\, 2^{30} - 1]$ の有限整数である必要があり（`Binary` 変数は 0/1 の範囲）、`Continuous` 変数や `Integer` 変数への無限大指定は `Error` を投げます。
+- **整数係数と許容範囲**: 係数・調整後右辺（`rhs - lhs.constant`）・係数倍した変数の上下限（$a_i \cdot \mathrm{lb}_i, a_i \cdot \mathrm{ub}_i$）はすべて $[-(2^{30} - 1),\, 2^{30} - 1]$ の範囲の整数である必要があります。
+- **制約全体の 32 ビット上限**: 各制約について、調整後右辺の絶対値と各項の最大絶対値（$|\text{係数}| \times \max(|\mathrm{lb}|, |\mathrm{ub}|)$）の合計は $2^{31} - 2$ 以下である必要があります。
+- **目的関数のより厳しい数値上限**: 目的関数の係数は整数で、各項の最大絶対値の合計は $2^{30} - 1$ 以下である必要があります（目的関数の定数項は小数可）。
+- **未対応のモデル機能**: `QuadExpr`（二次目的関数・二次制約）や `relax: true` を指定すると実行時に `Error` を投げます。
+- **未対応オプション**: `relativeGap`・`absoluteGap`・`presolve`・`threads`・`verbose`・`outputFlag` や未定義キーを指定すると実行時に `Error` を投げます。
 
 ---
 
 ## ブラウザでの Worker と WASM 配置
 
-ブラウザではデフォルトで同梱の `pumpkin.wasm` を専用 Web Worker 内で読み込みます。`file:` URL やオリジンを持たない sandboxed iframe では、自動的にメインスレッドへ切り替わります。
+ブラウザではデフォルトで同梱の `pumpkin.wasm` を専用 Web Worker 内で読み込みます。`file:` URL やオリジンを持たない `sandbox` 属性付きの iframe では、自動的にメインスレッドでの実行へフォールバックします。
 
-メインスレッドでの実行や独自 URL からの `pumpkin.wasm` 配信を指定する例は次のとおりです。
+メインスレッドでの実行や独自 URL から `pumpkin.wasm` を読み込む設定例は次のとおりです。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -154,11 +155,11 @@ await model.solve({ useWorker: false });
 const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
 ```
 
-`pumpkin.wasm` の読み込みに失敗した場合や HTML ページが返された場合、外部 CDN へフォールバックせず試行した URL 付きでエラーを投げます。
+`pumpkin.wasm` の読み込みに失敗した場合や HTML のエラーページが返された場合、外部 CDN へフォールバックせず、試行した URL を含むエラーを投げます。
 
 ---
 
 ## 参考リンク
 
-- [制約プログラミング (CP) モデリング](../guide/constraint-programming.md) · [資源制約付きプロジェクトスケジューリング (RCPSP)](../examples/project-scheduling.md)
-- [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) · [`CONTRIBUTING.md` (WASM の再ビルド手順)](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow)
+- [制約プログラミング（CP）モデリング](../guide/constraint-programming.md) · [資源制約付きプロジェクトスケジューリング（RCPSP）](../examples/project-scheduling.md)
+- [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) · [`CONTRIBUTING.md`（WASM の再ビルド手順）](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow)

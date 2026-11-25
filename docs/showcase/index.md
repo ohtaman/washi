@@ -164,7 +164,7 @@ Explore WaSHI's interactive WebAssembly playground, decision-support application
           <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">Fluffy Sheep Pasture Enclosure</a>
         </div>
         <p class="washi-showcase-desc">
-          Block hungry wolves using a limited supply of wooden fences. Maximize wild strawberries inside Moko's safe pasture while plugging or avoiding pitfalls.
+          Block hungry wolves using a limited supply of wooden fences. Maximize wild strawberries inside Moko the sheep's safe pasture while plugging or avoiding pitfalls.
         </p>
       </div>
       <div class="washi-showcase-actions">

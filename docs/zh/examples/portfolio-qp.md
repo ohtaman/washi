@@ -10,16 +10,16 @@
 
 ## 数学模型
 
-设 $w_i \ge 0$ 表示分配给资产 $i$ 的投资权重：
+设资产数量为 $n$，资产 $i$ 的配置权重为 $w_i$（向量记作 $\mathbf{w}$），预期收益率为 $r_i$，目标最低预期收益率为 $R_{\text{target}}$：
 
 $$\begin{aligned}
-\text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{投资组合方差最小化}) \\
+\text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{投资组合方差}) \\
 \text{Subject to} \quad & \sum_{i=1}^n w_i = 1 & (\text{100\% 资金预算约束}) \\
 & \sum_{i=1}^n r_i w_i \ge R_{\text{target}} & (\text{最低目标预期收益率}) \\
-& 0 \le w_i \le 1 & (\text{仅做多权重约束，禁止做空})
+& 0 \le w_i \le 1 \quad \forall i = 1, \dots, n & (\text{仅做多权重约束，禁止做空})
 \end{aligned}$$
 
-其中 $\boldsymbol{\Sigma}$ 为半正定的资产收益率协方差矩阵。
+其中 $\boldsymbol{\Sigma}$ 为对称半正定的资产收益率协方差矩阵，从而使目标函数成为凸二次函数。
 
 ## WaSHI 实现
 
@@ -55,7 +55,7 @@ async function solvePortfolio() {
   const portfolioReturn = dot(retMap, w);
   m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
-  // 3. 二次目标函数: 最小化风险 w^T * Sigma * w
+  // 3. 二次目标函数: 最小化投资组合方差 w^T * Sigma * w
   let risk = new QuadExpr();
   for (let i = 0; i < assets.length; i++) {
     for (let j = 0; j < assets.length; j++) {
@@ -66,7 +66,7 @@ async function solvePortfolio() {
   }
   m.objective(minimize(risk));
 
-  // 使用 HiGHS 原生凸二次规划引擎求解
+  // 使用 HiGHS 的 QP 求解器求解
   const status = await m.solve();
 
   console.log(`Status: ${status}`);
@@ -88,12 +88,12 @@ solvePortfolio();
 
 ### 描绘有效前沿
 
-求解后的 `portfolioReturn.value` 恰好等于 `targetReturn`（`8.50%`）。这说明目标收益率约束紧绑定在马科维茨有效前沿上。在 `[0.05, 0.12]` 区间内扫描 `targetReturn`，即可画出完整的风险-收益前沿曲线。
+求解后的 `portfolioReturn.value` 恰好等于 `targetReturn`（`8.50%`），说明目标预期收益率约束在等号处紧绑定，所得解位于 `8.50%` 对应的马科维茨有效前沿上。将 `targetReturn` 从最小方差投资组合的预期收益率（约 `4.52%`）扫描至最高单一资产收益率（`12%`），即可绘出完整的有效前沿。
 
 ### 目标收益约束与风险厌恶系数标量化
 
 在禁止做空（$0 \le w_i \le 1$）条件下，若 `targetReturn` 高于最高单一资产收益率（`Tech` 为 `12%`），硬约束会导致模型返回 `"Infeasible"`。
 
-若希望模型对任意风险偏好 $\lambda > 0$ 始终可行，可改用风险调整目标函数：
+若希望移除硬目标收益率约束、使模型对任意风险厌恶系数 $\lambda > 0$ 始终可行，可使用预期收益率向量 $\mathbf{r}$ 最小化如下风险调整目标函数：
 
 $$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

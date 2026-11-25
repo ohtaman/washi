@@ -15,7 +15,7 @@ Installing `@ohtaman/washi` bundles **HiGHS** for linear, mixed-integer, and con
 ```bash
 npm install @ohtaman/washi
 
-# Optional peer dependencies for Satisfiability Modulo Theories (SMT) continuous logic or GLPK:
+# Optional peer dependencies for Z3 (SMT / continuous logic) or GLPK:
 # npm install z3-solver
 # npm install glpk.js
 ```
@@ -30,7 +30,7 @@ Choose the integration method that matches your tool:
 | **IDE `@Docs` Index** | Cursor, Windsurf | Add `https://washi.ohtaman.dev/llms.txt` or `https://washi.ohtaman.dev/llms-full.txt` |
 | **Context7 MCP** | MCP-enabled agents | Reference library ID `/ohtaman/washi` |
 
-The Agent Skill installs `skills/washi/SKILL.md`, which is also packaged at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`. It teaches your agent solver selection, `expr` modeling, and debugging with `m.toLpString()`, `m.verify()`, and `m.check()`.
+The Agent Skill installs the `washi` skill from `skills/washi/SKILL.md` (also packaged at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`) into your agent's skills directory. It teaches your agent solver selection, `expr` modeling, and debugging with `m.toLpString()`, `m.verify()`, and `m.check()`.
 
 ---
 
@@ -50,8 +50,8 @@ Requirements:
 
 When you run this prompt, the agent executes three steps locally:
 
-1. **Formulates the model**: Declares 0-1 binary variables with `m.binary`, linear expressions with `` expr`...` `` and `sum`, named constraints, and a minimization objective.
-2. **Solves in Node.js via WebAssembly**: Runs the script with the bundled HiGHS binary, for example via `npx tsx schedule.ts`. No Python runtime or native solver installation is needed.
+1. **Formulates the model**: Declares 0-1 binary variables with `m.binary()`, linear expressions with `` expr`...` `` and `sum()`, named constraints, and a minimization objective.
+2. **Solves in Node.js via WebAssembly**: Runs the script (for example via `npx tsx schedule.ts`) using the bundled HiGHS WebAssembly binary. No Python runtime or native solver installation is needed.
 3. **Independently verifies the solution**: Checks `m.hasPrimalSolution` and calls `m.verify()`. This confirms variable bounds, integrality, and constraint satisfaction before printing results.
 
 ---
@@ -60,14 +60,14 @@ When you run this prompt, the agent executes three steps locally:
 
 Match your task to the problem class and solver below, then customize the corresponding prompt template:
 
-| Problem Type | Recommended Solver | Key Primitives |
+| Problem Class | Recommended Solver | Key Primitives |
 | --- | --- | --- |
 | Assignment, timetabling, 0-1 selection (`MILP` / `0-1 MIP`) | Bundled **HiGHS** | `m.binary()`, `sum()`, `dot()` |
 | Task scheduling with shared resources (`CP`) | Bundled **Pumpkin** | `disjoint()`, `cumulative()`, `distinct()` |
 | Target balancing & variance minimization (Convex `QP`) | Bundled **HiGHS** | `m.continuous()`, `` expr`...^2` `` |
 | Rule conflict diagnosis (`unsatCore`) | Bundled **Pumpkin** or optional **Z3** | `m.check()` |
 
-### Event Timetable & Reviewer Assignment (MILP — Bundled HiGHS)
+### Reviewer Assignment & Load Balancing (MILP — Bundled HiGHS)
 
 ```text
 Using @ohtaman/washi (bundled HiGHS), assign 24 pull-request / RFC submissions to 6 engineers so each submission gets 2 distinct reviewers.
@@ -121,7 +121,7 @@ Include a sample test case with contradictory named rules, print res.status and 
 > `await m.check()` works with default **HiGHS**, which reports conflicting constraint names in `res.conflicts`.
 >
 > To extract an exact unsatisfiable core (`res.unsatCore`), choose the solver by variable domain:
-> - **Bounded integers and booleans**: Import bundled `@ohtaman/washi/solvers/pumpkin` (no browser isolation headers required).
+> - **Bounded integers and booleans**: Import bundled `@ohtaman/washi/solvers/pumpkin` (no browser `COOP`/`COEP` headers required).
 > - **Continuous or fractional arithmetic**: Install `z3-solver` and import `@ohtaman/washi/solvers/z3`.
 
 ---
@@ -130,10 +130,10 @@ Include a sample test case with contradictory named rules, print res.status and 
 
 Once a CLI script produces verified results, ask your agent to package the same model as a local HTML tool or an offline app.
 
-### Zero-Server Single-File `.html` Tool (`file://` Double-Click)
+### Zero-Server Single-File `.html` Tool (Double-Click via `file://`)
 
 ```text
-Package this @ohtaman/washi optimization model into a single standalone .html file with inline HTML, CSS, and JavaScript so team members can open it directly via file:// by double-clicking.
+Package this @ohtaman/washi optimization model into a standalone .html file with inline HTML, CSS, and JavaScript so team members can open it directly by double-clicking (file://).
 - Load WaSHI from https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js (global window.Washi).
 - Provide a textarea / CSV file input, a "Solve" button, a table displaying the optimal assignment, and a conflict report using await m.check() if status is "Infeasible".
 - Verify every feasible solve with m.verify().
@@ -150,14 +150,14 @@ Package this @ohtaman/washi optimization model into a single standalone .html fi
 ### Offline Desktop & Mobile Apps (Vite + Tauri / Capacitor / PWA)
 
 ```text
-Wrap this Vite + TypeScript @ohtaman/washi application as an offline desktop/mobile app using bundled HiGHS (or @ohtaman/washi/solvers/pumpkin) with zero backend server and zero native C++ solver compilation.
+Wrap this Vite + TypeScript @ohtaman/washi application as an offline desktop/mobile app using bundled HiGHS (or @ohtaman/washi/solvers/pumpkin) with zero backend server and zero native solver compilation.
 - Keep all solver execution client-side via @ohtaman/washi.
 - Configure Content Security Policy to allow WebAssembly compilation ('wasm-unsafe-eval' in script-src) and Web Workers (worker-src 'self' blob:).
 ```
 
 **How WebView deployment works**:
 
-Standard Vite builds bundle `highs.wasm` and `pumpkin.wasm` as static assets that run offline in Tauri (`tauri://localhost` or `http://tauri.localhost`), Capacitor WebViews, and Service Worker PWAs. Configure your Content Security Policy (`CSP`) with `'wasm-unsafe-eval'` in `script-src`; see [Runtime Environments](./runtimes.md) for a `tauri.conf.json` example.
+Standard Vite builds bundle the solver `.wasm` assets you use (`highs.wasm`, and `pumpkin.wasm` when imported) as static files that run offline in Tauri (`tauri://localhost` or `http://tauri.localhost`), Capacitor WebViews, and Service Worker PWAs. Configure your Content Security Policy (`CSP`) with `'wasm-unsafe-eval'` in `script-src` (and `worker-src 'self' blob:` when using Web Workers); see [Runtime Environments](./runtimes.md) for a `tauri.conf.json` example.
 
 ---
 
@@ -165,7 +165,7 @@ Standard Vite builds bundle `highs.wasm` and `pumpkin.wasm` as static assets tha
 
 ### Name Every Constraint and Verify Every Solve
 
-Ask your agent to pass a descriptive name to `m.constraint(c, "rule_name")` and `m.indicator(...)`, then assert `m.verify().valid === true`. Unnamed constraints default to 1-indexed IDs (`c_1`, `c_2`), which makes conflict reports harder to read.
+Ask your agent to pass a descriptive name to `m.constraint(c, "rule_name")` and `m.indicator(...)`, then assert `m.verify().valid === true`. Unnamed constraints default to 1-indexed IDs (`c_1`, `c_2` for linear constraints; `lc_1`, `lc_2` for logical constraints), which makes conflict reports harder to read.
 
 ### Diagnose `"Infeasible"` Models with `m.check()`
 
@@ -182,4 +182,4 @@ Have your agent print `m.toLpString()` on a small test fixture before shipping. 
 
 - **Finite bounds (`lb` / `ub`)**: Variables inside `m.indicator()` require finite bounds whenever `M` is omitted.
 - **Objective sense**: Check that `Maximize` vs. `Minimize` matches your business goal.
-- **Constraint signs**: Verify that every `<=`, `>=`, and `==` points in the intended direction.
+- **Constraint operators**: Verify that every `<=`, `>=`, and `=` operator and direction matches your intent.

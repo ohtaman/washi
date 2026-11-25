@@ -11,10 +11,10 @@ This example verifies safety rules and deduces system states for a smart-home se
 ## The Scenario
 
 We model a security rule system driven by sensor readings and logical policies:
-1. When ambient light is $\le 50$, the system enters night mode (`isNight`).
-2. When motion is detected at night while the alarm is armed, the siren (`sirenActive`) must sound.
-3. While the alarm is armed, the front door (`frontDoorUnlocked`) must stay locked.
-4. When motion is detected at night, comfort lights (`lightsOn`) turn on.
+1. When ambient light (`luxLevel`) is at most `50 lux`, the system enters night mode (`isNight`).
+2. When motion (`motionDetected`) is detected at night (`isNight`) while the alarm is armed (`alarmArmed`), the siren (`sirenActive`) must sound.
+3. While the alarm is armed (`alarmArmed`), the front door (`frontDoorUnlocked`) must stay locked.
+4. When motion (`motionDetected`) is detected at night (`isNight`), comfort lights (`lightsOn`) turn on.
 
 ## Implementation in WaSHI
 
@@ -62,7 +62,7 @@ async function verifySecurityRules() {
   m.constraint(motionDetected, "sensor_motion_triggered");
 
   // Check satisfiability and deduce state
-  const res = await m.check({ solver: "z3" });
+  const res = await m.check();
 
   console.log(`Status: ${res.status}`);
   console.log(`Siren Active : ${sirenActive.value}`);
@@ -73,7 +73,7 @@ async function verifySecurityRules() {
   // 4. Formal Safety Verification (Counterexample Search):
   // Prove that the siren CANNOT remain off under these sensor readings
   m.constraint(not(sirenActive), "counterexample_siren_off");
-  const proof = await m.check({ solver: "z3" });
+  const proof = await m.check();
   console.log(`Can siren stay off? ${proof.status} (Proven safe when Unsat)`);
   console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
@@ -91,7 +91,7 @@ A single `"Sat"` result only shows that at least one valid assignment exists. To
 
 ### One-Way Implication (`implies`) vs. Equivalence
 
-The rule `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNight` when `luxLevel <= 50` is true. When `luxLevel > 50`, `isNight` is unconstrained and may be assigned either `true` or `false`. To enforce an exact two-way equivalence, also add the converse rule `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``.
+The rule `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNight` when `luxLevel <= 50` is true. When `luxLevel > 50`, `isNight` is unconstrained and may be assigned either `true` or `false`. To enforce an exact two-way equivalence, also add the converse rule `` implies(isNight, expr`${luxLevel} <= 50`) `` (or its logically equivalent inverse, `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``).
 
 ### Alternative Solver for Discrete Models
 

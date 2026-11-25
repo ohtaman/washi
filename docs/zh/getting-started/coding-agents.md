@@ -15,7 +15,7 @@
 ```bash
 npm install @ohtaman/washi
 
-# 仅在需要可满足性模理论 (SMT) 连续变量逻辑约束或 GLPK 时按需安装可选依赖：
+# 仅在需要 SMT 求解器（Z3：连续变量逻辑约束等）或 GLPK 时按需安装可选依赖：
 # npm install z3-solver
 # npm install glpk.js
 ```
@@ -30,7 +30,7 @@ npm install @ohtaman/washi
 | **IDE `@Docs` 索引** | Cursor、Windsurf | 添加 `https://washi.ohtaman.dev/llms.txt` 或 `https://washi.ohtaman.dev/llms-full.txt` |
 | **Context7 MCP** | 支持 MCP 的助手 | 引用库 ID `/ohtaman/washi` |
 
-Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`）。它帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试。
+安装 Agent Skill 后，会将 `SKILL.md`（源文件位于 `skills/washi/SKILL.md`，也随包附带于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`）配置到编程助手的技能目录中。它帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试。
 
 ---
 
@@ -50,8 +50,8 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 
 运行该提示词时，助手会在本地依次执行三个步骤：
 
-1. **构建数学模型**：用 `m.binary` 声明 0-1 二元变量，并通过 `` expr`...` `` 与 `sum` 编写表达式、具名约束及最小化目标。
-2. **在 Node.js 中通过 WebAssembly 求解**：使用内置 HiGHS 二进制文件直接运行脚本（例如 `npx tsx schedule.ts`）。无需 Python 环境或本地编译求解器。
+1. **构建数学模型**：用 `m.binary()` 声明 0-1 二元变量，并通过 `` expr`...` `` 与 `sum()` 编写表达式、具名约束及最小化目标。
+2. **在 Node.js 中通过 WebAssembly 求解**：运行脚本（例如 `npx tsx schedule.ts`），并使用内置 HiGHS WebAssembly 二进制文件完成求解。无需 Python 环境或本地编译求解器。
 3. **独立校验求解结果**：检查 `m.hasPrimalSolution` 并调用 `m.verify()`。这会在输出结果前独立确认上下界、整数性与约束满足情况。
 
 ---
@@ -67,7 +67,7 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 | 目标配比均衡与方差最小化（凸 `QP`） | 内置 **HiGHS** | `m.continuous()`、`` expr`...^2` `` |
 | 规则冲突诊断（`unsatCore`） | 内置 **Pumpkin** 或可选 **Z3** | `m.check()` |
 
-### 会议排程与评审人分配（MILP — 内置 HiGHS）
+### 评审人分配与负载均衡（MILP — 内置 HiGHS）
 
 ```text
 请使用 @ohtaman/washi（内置 HiGHS），将 24 份技术方案 / PR 评审任务分配给 6 名工程师，使每份方案由 2 名不同的评审人负责。
@@ -83,7 +83,7 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 请使用 @ohtaman/washi（内置 HiGHS），从候选研发项目 JSON 列表中选择一组项目以最大化年度预期收益总和。
 每个项目包含 cost、backend_engineers、frontend_engineers 与 savings。
 规则：
-- 季度总预算不超过 120，后端人力不超过 14，前端人力不超过 10。
+- 季度总预算不超过 120，后端工程师不超过 14 人，前端工程师不超过 10 人。
 - 依赖关系：若选择项目 "billing_v2"，则必须同时选择 "auth_token_service"。
 - 互斥关系："legacy_search_tuning" 与 "vector_search_migration" 最多只能选择其一。
 - 为每条约束指定清晰名称，并确认 m.verify().valid === true。
@@ -121,8 +121,8 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 > `await m.check()` 默认即可配合内置 **HiGHS** 使用，并在 `res.conflicts` 中返回冲突约束名称。
 >
 > 若需提取精确的不可满足核心（`res.unsatCore`），请按变量类型选择求解器：
-> - **有界整数与布尔变量**：导入内置的 `@ohtaman/washi/solvers/pumpkin`（无需浏览器跨源隔离响应头）。
-> - **连续变量或实数系数**：安装 `z3-solver` 并导入 `@ohtaman/washi/solvers/z3`。
+> - **有界整数与布尔变量**：导入内置的 `@ohtaman/washi/solvers/pumpkin`（无需浏览器 `COOP`/`COEP` 响应头）。
+> - **连续变量或非整数（小数/分数）系数**：安装 `z3-solver` 并导入 `@ohtaman/washi/solvers/z3`。
 
 ---
 
@@ -130,10 +130,10 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 
 命令行脚本验证通过后，您可以让编程助手将同一模型打包为单文件网页工具或离线应用。
 
-### 零服务器单文件 `.html` 工具（`file://` 双击即用）
+### 零服务器单文件 `.html` 工具（双击本地文件 `file://` 即用）
 
 ```text
-请将这个 @ohtaman/washi 优化模型打包为单个自包含的 .html 文件（内联 HTML、CSS 与 JavaScript），以便团队成员直接通过 file:// 双击打开使用。
+请将这个 @ohtaman/washi 优化模型打包为单个自包含的 .html 文件（内联 HTML、CSS 与 JavaScript），以便团队成员直接双击本地 .html 文件（file://）打开使用。
 - 从 https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js 加载 WaSHI（挂载于全局 window.Washi）。
 - 提供 CSV / 文本输入框、“求解”按钮、最优分配结果表格，并在状态为 "Infeasible" 时调用 await m.check() 展示冲突规则。
 - 每次求得可行解后均调用 m.verify() 进行校验。
@@ -150,14 +150,14 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 ### 离线桌面端与移动端应用（Vite + Tauri / Capacitor / PWA）
 
 ```text
-请将这个 Vite + TypeScript 的 @ohtaman/washi 应用封装为离线运行的桌面端/移动端应用，使用内置 HiGHS（或 @ohtaman/washi/solvers/pumpkin），无需后端服务器，也无需本地编译 C++ 求解器。
+请将这个 Vite + TypeScript 的 @ohtaman/washi 应用封装为离线运行的桌面端/移动端应用，使用内置 HiGHS（或 @ohtaman/washi/solvers/pumpkin），无需后端服务器，也无需本地编译原生求解器。
 - 所有求解计算均通过 @ohtaman/washi 在客户端本地完成。
 - 配置内容安全策略（CSP）以允许 WebAssembly 编译（在 script-src 中加入 'wasm-unsafe-eval'）与 Web Worker（worker-src 'self' blob:）。
 ```
 
 **WebView 部署机制说明**：
 
-标准 Vite 构建会将 `highs.wasm` 与 `pumpkin.wasm` 作为静态资源打包，可在 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA 中直接运行。请在内容安全策略（`CSP`）的 `script-src` 中加入 `'wasm-unsafe-eval'`；完整的 `tauri.conf.json` 示例请参阅[运行时环境配置](./runtimes.md)。
+标准 Vite 构建会将所使用的求解器 `.wasm` 资源（`highs.wasm`，以及导入时的 `pumpkin.wasm`）打包为静态资源，可在 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA 中直接运行。请在内容安全策略（`CSP`）的 `script-src` 中加入 `'wasm-unsafe-eval'`（使用 Web Worker 时同时配置 `worker-src 'self' blob:`）；完整的 `tauri.conf.json` 示例请参阅[运行时环境与部署配置](./runtimes.md)。
 
 ---
 
@@ -165,7 +165,7 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 
 ### 为所有约束命名并校验每次求解
 
-要求助手在调用 `m.constraint(c, "rule_name")` 和 `m.indicator(...)` 时传入清晰的名称，并断言 `m.verify().valid === true`。未命名约束会按从 1 开始的编号自动命名（`c_1`、`c_2`），不利于排查冲突。
+要求助手在调用 `m.constraint(c, "rule_name")` 和 `m.indicator(...)` 时传入清晰的名称，并断言 `m.verify().valid === true`。未命名约束会按从 1 开始的编号自动命名（线性约束为 `c_1`、`c_2`，逻辑约束为 `lc_1`、`lc_2`），不利于排查冲突。
 
 ### 遇到 `"Infeasible"` 时用 `m.check()` 定位冲突
 
@@ -182,4 +182,4 @@ Agent Skill 会安装 `skills/washi/SKILL.md`（也随包附带于 `node_modules
 
 - **有限上下界（`lb` / `ub`）**：省略 `M` 时，`m.indicator()` 中引用的变量必须设置有限上下界。
 - **目标方向**：确认 `Maximize` 或 `Minimize` 与业务目标一致。
-- **不等号方向**：逐一核查 `<=`、`>=` 与 `==` 是否指向正确方向。
+- **约束等号与不等号**：逐一核查所有 `<=`、`>=` 与 `=` 的类型和方向是否符合预期。

@@ -30,7 +30,7 @@ Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-If your page loads scripts, images, or `.wasm` files from another origin, those responses must include **Cross-Origin-Resource-Policy (`CORP`)** set to `cross-origin` or valid CORS headers.
+If your page loads scripts, images, or `.wasm` files from another origin, those responses must include `Cross-Origin-Resource-Policy: cross-origin` (`CORP`) or valid CORS headers (`Access-Control-Allow-Origin`), depending on the request mode.
 
 > [!NOTE]
 > Chromium and Firefox also accept `Cross-Origin-Embedder-Policy: credentialless`, which relaxes `CORP` requirements on cross-origin subresources. **Safari (WebKit) does not support `credentialless`**, so use `require-corp` if you support Safari or iOS.
@@ -93,7 +93,7 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
-### 4. Custom Node.js / Express Server
+### 4. Express (Custom Node.js Server)
 
 ```javascript
 app.use((req, res, next) => {

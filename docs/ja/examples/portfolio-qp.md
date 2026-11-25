@@ -4,22 +4,22 @@
 | :--- | :--- | :--- | :--- |
 | 凸二次計画問題 (Convex QP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">ソースコード</a></li></ul> |
 
-マーコウィッツの平均・分散モデルを用いた資産配分の最適化問題です。目標期待リターンと投資比率合計 100% を満たしながら、ポートフォリオ全体の分散 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$ を最小化します。
+マーコウィッツの平均・分散モデルを用いた資産配分の最適化問題です。目標期待リターン以上という条件と、投資比率の合計が 100% という制約を満たしながら、ポートフォリオ全体の分散 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$ を最小化します。
 
 <PortfolioQpDemo />
 
-## 数理定式化
+## 数理モデルの定式化
 
-各資産 $i$ への投資ウェイトを $w_i \ge 0$ とします。
+資産数を $n$、各資産 $i$ の投資比率（ウェイト）を $w_i$（ベクトル表記で $\mathbf{w}$）、期待リターンを $r_i$、目標期待リターンを $R_{\text{target}}$ とします。
 
 $$\begin{aligned}
-\text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{ポートフォリオ分散の最小化}) \\
-\text{Subject to} \quad & \sum_{i=1}^n w_i = 1 & (\text{投資予算 100\%}) \\
+\text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{ポートフォリオ分散}) \\
+\text{Subject to} \quad & \sum_{i=1}^n w_i = 1 & (\text{投資比率の合計 100\%}) \\
 & \sum_{i=1}^n r_i w_i \ge R_{\text{target}} & (\text{目標期待リターン以上}) \\
-& 0 \le w_i \le 1 & (\text{空売りなし条件})
+& 0 \le w_i \le 1 \quad \forall i = 1, \dots, n & (\text{空売り禁止制約})
 \end{aligned}$$
 
-ここで $\boldsymbol{\Sigma}$ は半正定値の共分散行列です。
+ここで $\boldsymbol{\Sigma}$ は対称半正定値の共分散行列であり、目的関数は凸二次関数になります。
 
 ## WaSHI による実装
 
@@ -50,12 +50,12 @@ async function solvePortfolio() {
   // 1. 予算制約: sum(w_i) == 1.0 (100%)
   m.constraint(expr`sum(${w}) == 1.0`, "budget_limit");
 
-  // 2. 目標リターン制約: sum(r_i * w_i) >= 8.5%
+  // 2. 目標期待リターン制約: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));
   const portfolioReturn = dot(retMap, w);
   m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
-  // 3. 二次目的関数: リスク w^T * Sigma * w の最小化
+  // 3. 二次目的関数: ポートフォリオ分散 w^T * Sigma * w の最小化
   let risk = new QuadExpr();
   for (let i = 0; i < assets.length; i++) {
     for (let j = 0; j < assets.length; j++) {
@@ -66,7 +66,7 @@ async function solvePortfolio() {
   }
   m.objective(minimize(risk));
 
-  // HiGHS の凸二次計画エンジンで求解
+  // HiGHS の QP ソルバーで求解
   const status = await m.solve();
 
   console.log(`Status: ${status}`);
@@ -86,14 +86,14 @@ solvePortfolio();
 
 ## 実務上のポイント
 
-### 有効フロンティアの描出
+### 有効フロンティアの描画
 
-求解後の `portfolioReturn.value` は `targetReturn`（`8.50%`）と一致します。これは目標リターン制約がタイトに効いており、解がマーコウィッツの有効フロンティア上にあることを示します。`targetReturn` を `[0.05, 0.12]` で変化させると、リスクとリターンの曲線全体を描けます。
+求解後の `portfolioReturn.value` は `targetReturn`（`8.50%`）と一致します。これは目標期待リターン制約が等号で成立しており、目標リターン `8.50%` に対応する有効フロンティア上の最小分散解が得られていることを示します。最小分散ポートフォリオの期待リターン（約 `4.52%`）から最大期待リターン（`12%`）までの範囲で `targetReturn` を変化させると、有効フロンティア全体を描けます。
 
 ### 目標リターン制約とリスク回避度 $\lambda$ の使い分け
 
-空売りなし（$0 \le w_i \le 1$）のモデルでは、単一資産の最大リターンである `Tech` の `12%` を超える `targetReturn` を指定すると `"Infeasible"` になります。
+空売り禁止（$0 \le w_i \le 1$）のモデルでは、各資産の中で最も高い期待リターンである `Tech` の `12%` を超える `targetReturn` を指定すると `"Infeasible"` になります。
 
-任意のリスク許容度で常に実行可能なモデルにする場合は、リスク回避度 $\lambda > 0$ を用いて次の目的関数を最小化します。
+目標期待リターン制約を外して常に実行可能なモデルにする場合は、期待リターンベクトル $\mathbf{r}$ とリスク回避度 $\lambda > 0$ を用いて次の目的関数を最小化します。
 
 $$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

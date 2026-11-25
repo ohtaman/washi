@@ -8,12 +8,12 @@ The 0-1 Knapsack problem is a fundamental combinatorial optimization problem. Gi
 
 ## Mathematical Formulation
 
-Let $x_i \in \{0, 1\}$ be a binary decision variable for each item $i$, where $x_i = 1$ selects the item and $x_i = 0$ leaves it out:
+Let $v_i$ and $w_i$ be the value and weight of item $i$, $W$ be the weight capacity, and $x_i \in \{0, 1\}$ be a binary decision variable where $x_i = 1$ selects the item and $x_i = 0$ leaves it out:
 
 $$\begin{aligned}
 \text{Maximize} \quad & \sum_{i} v_i x_i & (\text{Total Value}) \\
 \text{Subject to} \quad & \sum_{i} w_i x_i \le W & (\text{Weight Capacity}) \\
-& x_i \in \{0, 1\} & (\text{Binary Decisions})
+& x_i \in \{0, 1\} \quad \forall i & (\text{Binary Decisions})
 \end{aligned}$$
 
 ## Implementation in WaSHI
@@ -26,6 +26,7 @@ import { Model, maximize, expr } from "@ohtaman/washi";
 async function solveKnapsack() {
   const m = new Model("Knapsack");
 
+  // weight in kg, value in $
   const items = [
     { name: "Laptop",   weight: 3, value: 50 },
     { name: "Camera",   weight: 2, value: 40 },
@@ -41,10 +42,10 @@ async function solveKnapsack() {
   const values = Object.fromEntries(items.map((it) => [it.name, it.value]));
   const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
-  // Maximize total value via dot() inside expr
+  // Objective: Maximize total value
   m.objective(maximize(expr`dot(${values}, ${x})`));
 
-  // Weight capacity constraint using expr and constraint()
+  // Weight capacity constraint
   m.constraint(expr`dot(${weights}, ${x}) <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();

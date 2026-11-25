@@ -90,7 +90,7 @@ export interface Solver {
 
 ### `CheckModelData` & `SolveModelData`
 
-`Model.solve()` and `Model.check()` pass structured model snapshots directly to your adapter without serializing a Linear Programming (LP) string upfront:
+`Model.solve()` and `Model.check()` pass structured model snapshots directly to your adapter without serializing a CPLEX LP format string upfront:
 
 ```typescript
 export interface CheckModelData {
@@ -111,8 +111,8 @@ export interface SolveModelData extends CheckModelData {
 
 Declare supported features on `capabilities`. Before calling `solve()` or `check()`, `Model` checks these flags:
 
-- **Quadratic objectives (`QuadExpr`)**: Rejected if `supportsQP === false`.
-- **Warm starts (`initialValue`)**: Rejected if `supportsWarmStart !== true`.
+- **Quadratic objectives (`QuadExpr`)**: Rejected when the model has a quadratic objective and `supportsQP === false`.
+- **Warm starts (`initialValue`)**: Rejected when any variable sets `initialValue` and `supportsWarmStart !== true`.
 - **Logical constraints**: Passed natively in `modelData.logicalConstraints` when `supportsLogicalConstraints === true` or Satisfiability Modulo Theories (`supportsSMT === true`) is enabled.
 - **Automatic Mixed-Integer Programming (MIP) linearization**: When neither logical flag is `true`, `Model` converts logical constraints into equivalent binary variables and linear constraints before calling `solve()`.
 
@@ -133,7 +133,7 @@ export interface SolverCapabilities {
   /** Supports native boolean/propositional logical constraints without SMT continuous theories */
   supportsLogicalConstraints?: boolean;
 
-  /** Supports extracting an unsatisfiable core (conflicting constraint subset) */
+  /** Supports extracting an unsatisfiable core (conflicting constraint subset; minimality is not guaranteed) */
   supportsUnsatCore?: boolean;
 
   /** Supports primal initial values / warm-start hints (Var.initialValue) */
@@ -179,6 +179,29 @@ export interface SolverOptions {
 
   /** Additional solver-specific options */
   [key: string]: any;
+}
+
+export interface SolveProgressEvent {
+  /** Elapsed solver time in seconds */
+  elapsedTime: number;
+  /** Alias for elapsedTime: elapsed solver time in seconds */
+  elapsedSeconds?: number;
+  /** Current solver phase when known */
+  phase?: "simplex" | "ipm" | "mip";
+  /** Best feasible incumbent objective value when available */
+  objectiveValue?: number;
+  /** Best proven dual / objective bound when available */
+  objectiveBound?: number;
+  /** Relative MIP optimality gap when available */
+  relativeGap?: number;
+  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when available */
+  absoluteGap?: number;
+  /** Explored MIP branch-and-bound node count when available */
+  nodes?: number;
+  /** Solver iteration count (simplex, IPM, or MIP LP iterations) when available */
+  iterations?: number;
+  /** Optional raw progress message from the solver */
+  message?: string;
 }
 ```
 
@@ -234,8 +257,8 @@ export interface SolverResult {
 - `"Feasible"`: Feasible incumbent found, but optimality is not yet proven.
 - `"Infeasible"`: Model is proven infeasible.
 - `"Unbounded"`: Model objective is unbounded.
-- `"TimeLimit"`: Stopped by `timeLimit` without an incumbent or optimality proof.
-- `"IterationLimit"`: Stopped by an iteration limit.
+- `"TimeLimit"`: Stopped by `timeLimit` without finding a feasible incumbent.
+- `"IterationLimit"`: Stopped by an iteration limit without finding a feasible incumbent.
 - `"Sat"` / `"Unsat"`: Satisfiable / unsatisfiable status from `check()` or SMT solvers.
 - `"Error"` / `"NotSolved"` / `"Unknown"`: Failure, unsolved, or unrecognized status. Never map `"Unknown"` or `"Error"` to `"Optimal"`.
 
@@ -270,22 +293,26 @@ export class CloudSolver implements Solver {
     supportsMIP: true,
     supportsQP: false,
   };
+  public readonly options: SolverOptions;
 
   private endpoint: string;
   private apiKey: string;
 
   constructor(config: CloudSolverConfig = {}) {
-    this.endpoint = config.endpoint || "https://solver.mycompany.internal/v1/solve";
-    this.apiKey = config.apiKey || "";
+    const { endpoint, apiKey, ...defaultOptions } = config;
+    this.endpoint = endpoint || "https://solver.mycompany.internal/v1/solve";
+    this.apiKey = apiKey || "";
+    this.options = defaultOptions;
   }
 
   async solve(
     modelData: SolveModelData,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    const mergedOptions: SolverOptions = { ...this.options, ...options };
     const startTime = performance.now();
     const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData, {
-      relax: options.relax,
+      relax: mergedOptions.relax,
     });
 
     let payload: any;
@@ -298,11 +325,11 @@ export class CloudSolver implements Solver {
         },
         body: JSON.stringify({
           lp: lpString,
-          timeLimit: options.timeLimit,
-          relativeGap: options.relativeGap,
-          absoluteGap: options.absoluteGap,
+          timeLimit: mergedOptions.timeLimit,
+          relativeGap: mergedOptions.relativeGap,
+          absoluteGap: mergedOptions.absoluteGap,
         }),
-        signal: options.signal,
+        signal: mergedOptions.signal,
       });
 
       if (!response.ok) {
@@ -311,7 +338,7 @@ export class CloudSolver implements Solver {
 
       payload = await response.json();
     } catch (err: any) {
-      if (options.signal?.aborted || err?.name === "AbortError") {
+      if (mergedOptions.signal?.aborted || err?.name === "AbortError") {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
@@ -383,12 +410,12 @@ registerCloudSolver();
 
 ### Tutorial B: Registering and Using the Custom Solver
 
-Choose how to attach your solver based on whether configuration is shared globally or varies per request:
+Choose how to attach your solver based on whether configuration is shared globally or varies per call or per model:
 
 | Method | Best For |
 | :--- | :--- |
 | **Registered name string** | Reusable plugins with default settings (`solver: "cloud"`). |
-| **Solver instance** | Per-request credentials, endpoints, or custom option presets. |
+| **Solver instance** | Per-call or per-model credentials, endpoints, or custom option presets. |
 | **Global default (`setDefaultSolver`)** | Replacing HiGHS across an entire application without updating every `new Model()`. |
 
 #### Option 1: By Registered Name String
@@ -424,7 +451,7 @@ import { CloudSolver } from "./cloud-solver.js";
 
 setDefaultSolver(() => new CloudSolver());
 
-// All subsequent models use CloudSolver by default
+// Models without an explicit solver use CloudSolver by default
 const model = new Model("DefaultedModel");
 ```
 

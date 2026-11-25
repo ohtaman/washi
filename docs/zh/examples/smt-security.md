@@ -4,17 +4,17 @@
 | :--- | :--- | :--- | :--- |
 | 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
 
-**可满足性模理论（SMT, Satisfiability Modulo Theories）**将布尔逻辑与整数范围、线性不等式等算术约束结合起来求解。
+**可满足性模理论（SMT, Satisfiability Modulo Theories）** 将布尔逻辑与整数范围、线性不等式等算术约束结合起来求解。
 
 本示例演示如何使用 WaSHI 与 Z3 验证智能家居安防规则，并根据传感器读数推导系统状态。
 
 ## 业务场景
 
 我们对一个包含传感器读数和逻辑规则的安防系统进行建模：
-1. 环境照度 $\le 50$ 时，进入夜间模式（`isNight`）。
-2. 夜间检测到移动且警报处于布防状态时，必须触发警笛（`sirenActive`）。
-3. 警报处于布防状态时，前门不能处于未锁状态（`frontDoorUnlocked`）。
-4. 夜间检测到移动时，开启柔和照明灯（`lightsOn`）。
+1. 环境照度（`luxLevel`）不超过 `50 lux` 时，进入夜间模式（`isNight`）。
+2. 夜间（`isNight`）检测到移动（`motionDetected`）且警报处于布防状态（`alarmArmed`）时，必须触发警笛（`sirenActive`）。
+3. 警报处于布防状态（`alarmArmed`）时，前门不能处于未锁状态（`frontDoorUnlocked`）。
+4. 夜间（`isNight`）检测到移动（`motionDetected`）时，开启柔和照明灯（`lightsOn`）。
 
 ## WaSHI 实现
 
@@ -62,7 +62,7 @@ async function verifySecurityRules() {
   m.constraint(motionDetected, "sensor_motion_triggered");
 
   // 检查可满足性并推导系统状态
-  const res = await m.check({ solver: "z3" });
+  const res = await m.check();
 
   console.log(`Status: ${res.status}`);
   console.log(`Siren Active : ${sirenActive.value}`);
@@ -73,8 +73,8 @@ async function verifySecurityRules() {
   // 4. 安全性属性的形式化验证（反例搜索 / 反证法）：
   // 证明在该传感器状态下，“警笛不响 (not(sirenActive))”是不可能的（Unsat）
   m.constraint(not(sirenActive), "counterexample_siren_off");
-  const proof = await m.check({ solver: "z3" });
-  console.log(`Can siren stay off? ${proof.status} (返回 Unsat 即证明无安全漏洞)`);
+  const proof = await m.check();
+  console.log(`Can siren stay off? ${proof.status} (Proven safe when Unsat)`);
   console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
 
@@ -91,7 +91,7 @@ verifySecurityRules();
 
 ### 单向蕴含（`implies`）与双向等价
 
-`` implies(expr`${luxLevel} <= 50`, isNight) `` 仅在 `luxLevel <= 50` 为真时限制 `isNight`。当 `luxLevel > 50` 时，`isNight` 不受该规则约束，取 `true` 或 `false` 均可。若要表达双向等价，需同时添加反向规则 `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``。
+`` implies(expr`${luxLevel} <= 50`, isNight) `` 仅在 `luxLevel <= 50` 为真时限制 `isNight`。当 `luxLevel > 50` 时，`isNight` 不受该规则约束，取 `true` 或 `false` 均可。若要表达双向等价，需同时添加逆命题 `` implies(isNight, expr`${luxLevel} <= 50`) ``（或与其逻辑等价的否命题 `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``）。
 
 ### 离散模型的替代求解器
 

@@ -60,7 +60,7 @@ console.log("Shadow price:", cap.dual);          // 2
 
 ## 求解器选项与执行模型
 
-GLPK 不支持 WaSHI 的 `useWorker: true` 选项，传入时会直接抛出 `Error`。在 Node.js 中，`glpk.js` 在主线程上同步执行；在所有环境中，`signal` 仅在求解开始前检查，无法中断正在运行的求解。
+GLPK 不支持 WaSHI 的 `useWorker: true` 选项，传入时会直接抛出 `Error`（在浏览器中 `glpk.js` 会自动使用其内置的 Web Worker，而在 Node.js 中则在主线程同步执行）。在所有环境中，`signal` 仅在求解开始前检查，无法中断正在运行的求解。
 
 ### 支持的选项
 
@@ -91,7 +91,7 @@ GLPK 返回码严格映射为 WaSHI 的 `SolverStatus`：
 | GLPK 状态码 | WaSHI 状态 | 含义 |
 | :--- | :--- | :--- |
 | `GLP_OPT` (5) | `"Optimal"` | 找到已证明的最优解。 |
-| `GLP_FEAS` (2) | `"Feasible"` | 找到可行 MIP 暂定解。 |
+| `GLP_FEAS` (2) | `"Feasible"` | 找到可行解（尚未证明最优性）。 |
 | `GLP_INFEAS` (3) / `GLP_NOFEAS` (4) | `"Infeasible"` | 模型无可行解。 |
 | `GLP_UNBND` (6) | `"Unbounded"` | 目标函数无界。 |
 | `GLP_UNDEF` (1) / 其他 | `"Unknown"` | 未定义或未识别（绝不映射为 `"Optimal"`）。 |
@@ -99,9 +99,9 @@ GLPK 返回码严格映射为 WaSHI 的 `SolverStatus`：
 ### 解的可用性
 
 - 仅当状态为 `"Optimal"` 或 `"Feasible"` 时，才会填充 `model.values`、`var.value` 与 `model.objectiveValue`。
-- 当状态为 `Infeasible`、`Unbounded`、`Unknown` 或 `Error` 时，`model.objectiveValue` 与各变量取值保持为 `null`。
+- 当状态为 `"Infeasible"`、`"Unbounded"`、`"Unknown"` 或 `"Error"` 时，`model.objectiveValue` 与各变量取值保持为 `null`。
 
 ### LP 与 MIP 的区别
 
-- **线性规划（LP）**：使用单纯形法求解。最优解仅填充约束对偶值（`c.dual`）；`c.slack` 与 `v.reducedCost` 始终为 `null`。
-- **混合整数规划（MIP）**：使用分支切割法求解，不返回对偶值，`objectiveBound`、`relativeGap` 与 `absoluteGap` 为 `undefined`。
+- **线性规划（LP）**：使用单纯形法求解。最优解的灵敏度信息仅填充约束对偶值（`c.dual`）；`c.slack` 与 `v.reducedCost` 始终为 `null`。
+- **混合整数规划（MIP）**：使用分支切割法求解。MIP 不产生 LP 对偶值，且 `glpk.js` 不暴露 MIP 的对偶界或最优间隙，因此 `objectiveBound`、`relativeGap` 与 `absoluteGap` 保持为 `undefined`。

@@ -1,7 +1,7 @@
 # 约束条件 (`m.constraint` & `m.indicator`)
 
 约束条件定义了合法解必须满足的规则。
-在 WaSHI 中，线性算术约束与逻辑规则均通过 `m.constraint()` 注册：
+在 WaSHI 中，线性算术约束、逻辑约束与 CP 全局约束均通过 `m.constraint()` 注册：
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -66,7 +66,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ---
 
-## 聚合约束 (`sum` & `dot`)
+## 使用求和与点积的约束 (`sum` & `dot`)
 
 在 `expr` 中直接使用 `sum(...)` 与 `dot(..., ...)`，可简洁地表达数组或字典上的线性聚合约束：
 
@@ -91,10 +91,10 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 使用 HiGHS 求解连续线性规划（LP）模型后，每条线性约束会提供两个灵敏度分析属性（GLPK 仅填充 `dual`，`slack` 保持为 `null`）：
 
-- **`dual`（影子价格 / 对偶值）**：约束右端项每增加一个单位时，最优目标函数值的有符号变化量。
+- **`dual`（影子价格 / 对偶值）**：在最优基不变的范围内，约束右端项每增加一个单位时，最优目标函数值的边际有符号变化量。
 - **`slack`（松弛量）**：最优解下约束左端与右端之间的未用余量（约束取紧时为 `0`）。
 
-两个属性均返回 `number | null`；在求解前，或对于 MIP、CP 与逻辑约束，其值为 `null`。
+两个属性的类型均为 `number | null`；在求解前、未求得最优解时，或对于 MIP、CP、SMT 模型与逻辑约束，其值均为 `null`。
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -137,9 +137,9 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 若任意引用变量缺少所需有限边界，`m.indicator()` 会抛出错误，提示补充有限边界或显式传入 `options.M`。
 
 > [!NOTE]
-> **`m.indicator()` 在 MIP、CP 与 SMT 求解器上的工作方式**：省略 `options.M` 时，`m.indicator()` 返回带原生指示标记的 Big-M 线性 `Constraint` 对象。
-> HiGHS、GLPK 和 `m.toLpString()` 直接使用其中的 Big-M 不等式，而 Pumpkin 和 Z3 会读取该标记并原生求解，避免 Big-M 数值误差。
-> 若后续直接修改返回的 `Constraint` 对象，WaSHI 会清除该原生标记，使修改后的线性约束在所有求解器中生效。
+> **`m.indicator()` 在 MIP、CP 与 SMT 求解器上的工作方式**：省略 `options.M` 时，`m.indicator()` 返回带原生指示标记的 Big-M 线性约束数组（`Constraint[]`）。
+> HiGHS、GLPK 和 `m.toLpString()` 直接使用其中的 Big-M 不等式，而 Pumpkin 和 Z3 会读取该标记并原生求解，避免 Big-M 带来的数值误差与松弛过弱问题。
+> 若后续直接修改返回的任意 `Constraint` 对象，WaSHI 会清除该原生标记，使修改后的线性约束在所有求解器中生效。
 
 ### 显式指定 `M`
 
@@ -153,7 +153,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **优先设置有限变量边界而非手动指定过大的 `M`**：过小的 $M$ 会误删可行解，而过大的 $M$（如 $10^9$）会破坏 MIP 求解器的数值稳定性。
+> **优先设置有限变量边界而非手动指定过大的 `M`**：过小的 $M$ 会误删可行解，而过大的 $M$（如 $10^9$）不仅会削弱 LP 松弛，还会破坏 MIP 求解器的数值稳定性。
 > 为变量设置符合实际的 `lb` 与 `ub`，即可让 WaSHI 自动推导最紧致的安全 Big-M。
 
 ---
@@ -191,7 +191,7 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-所有已命名约束均统一存储在 `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）中，可通过 `m.constraints.get(name)` 检索。
+所有已注册约束（包括自动命名的约束）均存储在 `m.constraints`（`ReadonlyMap<string, Constraint | LogicalConstraint>`）中，可通过 `m.constraints.get(name)` 检索。
 逻辑与 CP 约束条目的结构为 `{ kind: "logical", name, expr, dual: null, slack: null }`。
 
 ### 如何选择 `m.indicator()` 与 `implies()`
@@ -199,12 +199,12 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | 特性 | `m.indicator(binVar, constraint, opts)` | `implies(a, b)` / `a.implies(b)` |
 | :--- | :--- | :--- |
 | **触发条件变量** | 数值 `Binary` 变量 (`m.binary()`) | `BoolVar` (`m.bool()`)、`BoolOp` 或 `Constraint` |
-| **推论约束** | 线性 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp` 或线性 `Constraint` |
+| **推论侧** | 线性 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp` 或线性 `Constraint` |
 | **适用求解器** | 全部求解器（HiGHS/GLPK 用 Big-M；省略 `M` 时 Pumpkin/Z3 原生求解） | 全部求解器（HiGHS/GLPK 自动 0-1 MIP 线性化；Pumpkin/Z3 原生求解） |
 | **主要用途** | 含数值二元变量的 MIP 优化模型 | 逻辑规则系统与 SMT 可满足性判定 |
 
 > [!NOTE]
-> **当比较约束出现在取反位置（`not`、`xor` 或 `implies` 条件侧）时**：
+> **当比较约束出现在取反位置（`not`、`xor` 的参数，或 `implies` 的条件侧）时**：
 > - **纯整数表达式**：例如 $\neg(x \le 5)$ 在 HiGHS 和 GLPK 上会自动转为 $x \ge 6$，在 Pumpkin 和 Z3 上则原生求解。
 > - **包含 `Continuous` 变量或小数时**：HiGHS 和 GLPK 无法用闭线性不等式表示连续域的严格 `<` / `>`，会直接报错。请改用 `{ solver: "z3" }` 或用 `m.bool()` 表达条件。
 
@@ -226,7 +226,7 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin/Z3 原生支
 ```
 
 包含 `Continuous` 变量或小数常数的表达式无法使用 `!=`、`<` 或 `>`，系统会立即报错。
-原因在于实数域上的严格不等式构成开集，例如 $x < 5$ 不存在最大实数解。
+原因在于实数域上的严格不等式构成开集，例如在 $x < 5$ 条件下最大化 $x$ 不存在最优实数解。
 因此 LP 与 MIP 求解器要求使用闭不等式（$\le$、$\ge$、$=$），以保证最优解可达。
 
 ---
@@ -259,4 +259,4 @@ m.objective(minimize(expr`${s[0]} + ${s[1]}`));
 ```
 
 > [!TIP]
-> 关于**使用松弛变量构建软约束**与**对称性破缺（Symmetry Breaking）**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。
+> 关于 **使用松弛变量构建软约束** 与 **对称性破缺（Symmetry Breaking）** 等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#constraint-design)。

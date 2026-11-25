@@ -12,7 +12,7 @@
 | :--- | :--- | :--- |
 | **排程调度、资源上限与离散全局约束** | **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`） | 原生支持 `disjoint`、`cumulative`、`distinct` 与 `allowed`，零额外配置。 |
 | **无需 `COOP`/`COEP` 的浏览器 `unsatCore`** | **Pumpkin**（`m.check({ solver: "pumpkin" })`） | 可在任意静态托管或 iframe 中提取有界整数和布尔模型的冲突约束。 |
-| **线性规划、混合整数规划与二次规划** | **[HiGHS](./highs.md)**（默认） | 支持连续变量、对偶值与松弛量、凸二次目标函数及连续松弛。 |
+| **线性规划、混合整数规划与凸二次规划** | **[HiGHS](./highs.md)**（默认） | 支持连续变量、对偶值与松弛量、凸二次目标函数及连续松弛。 |
 | **含 `Continuous` 变量的逻辑规则** | **[Z3](./z3.md)** | 支持逻辑运算符中的实数不等式，以及连续/整数混合模型的 `unsatCore`。 |
 
 ---
@@ -50,6 +50,7 @@ model.constraint(
   ]),
   "single_machine"
 );
+// 可选：disjoint 本身已保证不重叠，此处将选定顺序显式记录到 job1First 中
 model.constraint(implies(job1First, expr`${s1} + 6 <= ${s2}`), "job1_before_job2");
 model.constraint(implies(not(job1First), expr`${s2} + 4 <= ${s1}`), "job2_before_job1");
 
@@ -85,7 +86,7 @@ if (result.status === "Unsat") {
 
 ## 求解选项
 
-可将运行选项传入 `model.solve()`、`model.check()` 或 `new PumpkinSolver(options)`。支持的选项包括 `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal` 和 `onProgress`：
+可将运行选项传入 `model.solve()`、`model.check()` 或 `new PumpkinSolver(options)`。支持的选项包括 `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal` 和 `onProgress`（仅 `solve()`）：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -121,9 +122,9 @@ if (model.hasPrimalSolution) {
 
 Pumpkin 仅支持**有界整数和布尔**模型。遇到不支持的变量、数值或选项时，会在运行时直接抛出 `Error`：
 
-- **仅限有界整数**：`Integer` 和 `Binary` 变量的上下界须为 $[-(2^{30} - 1),\, 2^{30} - 1]$ 内的有限整数；`Continuous` 与无穷界会抛错。
+- **仅限有界整数**：`Integer` 变量的上下界须为 $[-(2^{30} - 1),\, 2^{30} - 1]$ 内的有限整数（`Binary` 变量范围为 0/1）；`Continuous` 变量以及 `Integer` 变量的无穷界会抛出 `Error`。
 - **整数系数与缩放界**：约束系数、调整后的右端项（`rhs - lhs.constant`）以及系数乘以变量上下界的结果均须为 $[-(2^{30} - 1),\, 2^{30} - 1]$ 内的精确整数。
-- **单条约束的 32 位总幅值上限**：在每条约束中，调整后右端项的绝对值加上所有缩放变量项最坏情况幅值的总和不得超过 $2^{31} - 2$。
+- **单条约束的 32 位总幅值上限**：在每条约束中，调整后右端项的绝对值加上各项最坏情况幅值（$|\text{系数}| \times \max(|\mathrm{lb}|, |\mathrm{ub}|)$）的总和不得超过 $2^{31} - 2$。
 - **更严格的目标函数上限**：目标函数系数须为整数，且各项最坏情况缩放幅值之和不得超过 $2^{30} - 1$；目标函数常数项允许为小数。
 - **不支持的模型特性**：`QuadExpr` 目标或约束以及 `relax: true` 会抛出运行时 `Error`。
 - **不支持的选项**：`relativeGap`、`absoluteGap`、`presolve`、`threads`、`verbose`、`outputFlag` 以及任何未知选项键都会抛出运行时 `Error`。

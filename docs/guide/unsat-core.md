@@ -1,9 +1,9 @@
 # Conflict Diagnosis (`unsatCore`), Validation & Debugging
 
-When a model has no feasible solution (`"Infeasible"`), or when you want to verify solver output before using it in production, WaSHI provides four diagnostic tools:
+When a model has no feasible solution (`"Infeasible"`), or when you want to verify solver output before using it in production, WaSHI provides four diagnostic and debugging tools:
 
-- **Conflict diagnosis (`m.check()`)**: Pinpoints which named constraints contradict each other.
-- **Solution verification (`m.verify()`)**: Independently checks bounds, integrality, and all constraints.
+- **Conflict diagnosis (`m.check()`)**: Pinpoints which named constraints cause infeasibility.
+- **Solution verification (`m.verify()`)**: Independently checks variable bounds, integrality, and all constraints.
 - **Formulation inspection (`m.toLpString()`)**: Exports CPLEX `.lp` text to inspect signs, coefficients, and names.
 - **Deterministic testing (`MockSolver`)**: Returns fixed results in unit tests without loading WebAssembly.
 
@@ -13,9 +13,9 @@ When a model has no feasible solution (`"Infeasible"`), or when you want to veri
 
 When `m.solve()` returns `"Infeasible"`, it proves that no solution satisfies every rule, but does not tell you *which* rules clash.
 To diagnose the cause, call `m.check()`.
-A logical **Unsat Core** is a subset of constraints that cannot hold simultaneously—even if every other constraint in the model were removed, those rules would still conflict.
+A logical **Unsat Core** is a subset of named constraints that cannot hold simultaneously—even if every other named constraint in the model were removed (keeping variable bounds), those rules would still conflict.
 
-Pass `{ solver: "pumpkin" }` for bounded integer and Boolean models, or `{ solver: "z3" }` for models with `Continuous` variables or decimal arithmetic:
+Pass `{ solver: "pumpkin" }` for models with only bounded integer and Boolean variables, or `{ solver: "z3" }` for models with `Continuous` variables or non-integer coefficients/constants:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -32,7 +32,7 @@ m.constraint(expr`${x} >= 10`, "routine_operating_cost");
 const result = await m.check({ solver: "z3" });
 
 if (result.status === "Unsat") {
-  console.log("Conflicting constraints:", m.conflicts);
+  console.log("Conflicting constraints:", result.unsatCore); // also available via m.conflicts
   // Output: ["minimum_regulatory_reserve", "budget_ceiling"]
 }
 ```
@@ -40,16 +40,16 @@ if (result.status === "Unsat") {
 In this example, `routine_operating_cost` is excluded because only `minimum_regulatory_reserve` and `budget_ceiling` directly contradict each other.
 
 > [!IMPORTANT]
-> - **Use `m.check()` for diagnosis**: `m.solve()` only optimizes an objective and returns `"Infeasible"`. `m.check()` populates `conflicts` on all solvers, plus `unsatCore` on Pumpkin and Z3 (`undefined` on HiGHS/GLPK).
+> - **Use `m.check()` for diagnosis**: When a model is infeasible, `m.solve()` only returns `"Infeasible"` without identifying the conflicting rules. When `m.check()` returns `"Unsat"`, it populates `conflicts` on all solvers, plus `unsatCore` on Pumpkin and Z3 (`undefined` on HiGHS/GLPK).
 > - **Name every rule you want diagnosed**: Variable `lb`/`ub` bounds are unnamed and never appear in `conflicts`. Register any bound you want diagnosed with ``m.constraint(expr`...`, "rule_name")``.
 
 ### Choosing a Diagnosis Solver
 
 After `m.solve()` returns `"Infeasible"`, choose among three backends based on your variable types and scale sensitivity:
 
-| | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| Criterion | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()` / `{ solver: "glpk" }`) |
 | :--- | :--- | :--- | :--- |
-| **Best for** | Bounded integer & Boolean models | Models with `Continuous` or decimal values | Quick check with zero extra imports |
+| **Best for** | Bounded integer & Boolean models | Models with `Continuous` or non-integer values | General LP / MIP models (HiGHS needs zero extra imports) |
 | **Setup** | Bundled (`@ohtaman/washi/solvers/pumpkin`) | Optional (`z3-solver`) | Built-in (HiGHS) / optional (`glpk.js`) |
 | **Browser headers** | None | Requires `COOP` / `COEP` headers | None |
 | **Result fields** | `unsatCore` and `conflicts` | `unsatCore` and `conflicts` | `conflicts` only (`unsatCore` is `undefined`) |
@@ -79,9 +79,9 @@ if (status === "Infeasible") {
 ```
 
 > [!TIP]
-> **Why HiGHS is scale-sensitive**: Default `m.check()` (HiGHS) diagnoses infeasibility by adding a non-negative relaxation slack to each named constraint and minimizing the **unweighted sum of relaxations**.
-> When constraints mix very different numeric scales—such as headcount $\le 8$ alongside budget $\le 50{,}000$—relaxing the smaller-scale constraint adds far less to the total slack, so HiGHS tends to flag it first.
-> Use `pumpkin` or `z3` for scale-invariant Unsat Core diagnosis, or normalize your constraint units.
+> **Why HiGHS / GLPK are scale-sensitive**: In MIP solvers (HiGHS and GLPK), `m.check()` diagnoses infeasibility by introducing non-negative relaxation slack variables to each named constraint (subtracting slack on `<=`, adding on `>=`, and both on `==`) and minimizing the **unweighted sum of relaxations**.
+> When constraints mix very different numeric scales—such as headcount $\le 8$ alongside budget $\le 50{,}000$—relaxing the smaller-scale constraint adds far less to the total slack, so HiGHS/GLPK tends to flag it first.
+> Normalize your constraint units to reduce scale bias in elastic relaxation, or use `pumpkin` or `z3` when you need a scale-invariant Unsat Core.
 
 ---
 

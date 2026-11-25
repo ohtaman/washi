@@ -90,7 +90,7 @@ export interface Solver {
 
 ### `CheckModelData` 与 `SolveModelData`
 
-`Model.solve()` 与 `Model.check()` 会直接把结构化模型快照传给适配器，不会提前序列化为线性规划（LP）字符串：
+`Model.solve()` 与 `Model.check()` 会直接把结构化模型快照传给适配器，不会提前序列化为 CPLEX LP 格式字符串：
 
 ```typescript
 export interface CheckModelData {
@@ -111,8 +111,8 @@ export interface SolveModelData extends CheckModelData {
 
 通过 `capabilities` 声明求解器支持的能力。在调用 `solve()` 或 `check()` 之前，`Model` 会检查以下标志：
 
-- **二次目标函数（`QuadExpr`）**：若 `supportsQP === false` 则直接报错拒绝。
-- **热启动（`initialValue`）**：若 `supportsWarmStart !== true` 则直接报错拒绝。
+- **二次目标函数（`QuadExpr`）**：当模型包含二次目标函数且 `supportsQP === false` 时直接报错拒绝。
+- **热启动（`initialValue`）**：当变量设置了 `initialValue` 且 `supportsWarmStart !== true` 时直接报错拒绝。
 - **逻辑约束**：`supportsLogicalConstraints` 或 `supportsSMT` 为 `true` 时，通过 `modelData.logicalConstraints` 原生传递。
 - **混合整数规划（MIP）自动线性化**：当两个逻辑标志均不为 `true` 时，`Model` 会在调用 `solve()` 前将逻辑约束自动转为等价的二元变量与线性约束。
 
@@ -133,7 +133,7 @@ export interface SolverCapabilities {
   /** 原生支持布尔/命题逻辑约束，无需 SMT 连续理论 */
   supportsLogicalConstraints?: boolean;
 
-  /** 支持提取不可行核心（冲突约束子集） */
+  /** 支持提取不可行核心（冲突约束子集；不保证极小性） */
   supportsUnsatCore?: boolean;
 
   /** 支持原始初始值 / 热启动提示（Var.initialValue） */
@@ -180,6 +180,29 @@ export interface SolverOptions {
   /** 其他求解器专属选项 */
   [key: string]: any;
 }
+
+export interface SolveProgressEvent {
+  /** 求解器已运行时间（秒） */
+  elapsedTime: number;
+  /** elapsedTime 的别名（秒） */
+  elapsedSeconds?: number;
+  /** 当前求解阶段（可用时提供） */
+  phase?: "simplex" | "ipm" | "mip";
+  /** 当前可行暂定解的目标函数值（可用时提供） */
+  objectiveValue?: number;
+  /** 已证明的最佳对偶界 / 目标界（可用时提供） */
+  objectiveBound?: number;
+  /** 相对 MIP 最优间隙（可用时提供） */
+  relativeGap?: number;
+  /** 绝对 MIP 最优间隙 |objectiveValue - objectiveBound|（可用时提供） */
+  absoluteGap?: number;
+  /** 已探索的 MIP 分支定界节点数（可用时提供） */
+  nodes?: number;
+  /** 求解器迭代次数（单纯形、内点法或 MIP 的 LP 迭代） */
+  iterations?: number;
+  /** 求解器可选的原始进度消息 */
+  message?: string;
+}
 ```
 
 ### 直接读取模型数据 vs. 使用 LP 辅助函数
@@ -193,7 +216,7 @@ export interface SolverOptions {
 | :--- | :--- |
 | `generateLpString(modelData, { relax }?)` | 将 `modelData` 序列化为 CPLEX LP 字符串（`lpString`）及防冲突映射表（`nameToVar`、`nameToConstraint`）；传入 `{ relax: true }` 输出连续 LP 松弛模型。 |
 | `buildLpSymbolMaps(modelData)` | 在不序列化 LP 字符串的前提下构建防冲突符号映射表（`nameToVar`、`varToName`、`nameToConstraint`、`constraintToName`）。 |
-| `isLpExportResult(value)` | `LpExportResult` 的运行时类型守卫（用于兼容旧版三参数重载）。 |
+| `isLpExportResult(value)` | `LpExportResult` 的运行时类型守卫（用于兼容旧版三参数重载 `solve(modelData, lpResult, options)`）。 |
 | `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | 将任意变量名或约束名转换为合法的 LP 标识符。 |
 
 ```typescript
@@ -234,8 +257,8 @@ export interface SolverResult {
 - `"Feasible"`：已找到可行暂定解，但尚未证明全局最优。
 - `"Infeasible"`：已证明模型不可行。
 - `"Unbounded"`：模型目标函数无界。
-- `"TimeLimit"`：达到 `timeLimit` 而终止，且无可行解或最优性证明。
-- `"IterationLimit"`：达到迭代次数上限而终止。
+- `"TimeLimit"`：达到 `timeLimit` 而终止，且未找到可行暂定解。
+- `"IterationLimit"`：达到迭代次数上限而终止，且未找到可行暂定解。
 - `"Sat"` / `"Unsat"`：`check()` 或 SMT 求解器返回的可满足 / 不可满足状态。
 - `"Error"` / `"NotSolved"` / `"Unknown"`：求解失败、尚未求解或未识别状态。切勿将 `"Unknown"` 或 `"Error"` 映射为 `"Optimal"`。
 
@@ -270,22 +293,26 @@ export class CloudSolver implements Solver {
     supportsMIP: true,
     supportsQP: false,
   };
+  public readonly options: SolverOptions;
 
   private endpoint: string;
   private apiKey: string;
 
   constructor(config: CloudSolverConfig = {}) {
-    this.endpoint = config.endpoint || "https://solver.mycompany.internal/v1/solve";
-    this.apiKey = config.apiKey || "";
+    const { endpoint, apiKey, ...defaultOptions } = config;
+    this.endpoint = endpoint || "https://solver.mycompany.internal/v1/solve";
+    this.apiKey = apiKey || "";
+    this.options = defaultOptions;
   }
 
   async solve(
     modelData: SolveModelData,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    const mergedOptions: SolverOptions = { ...this.options, ...options };
     const startTime = performance.now();
     const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData, {
-      relax: options.relax,
+      relax: mergedOptions.relax,
     });
 
     let payload: any;
@@ -298,11 +325,11 @@ export class CloudSolver implements Solver {
         },
         body: JSON.stringify({
           lp: lpString,
-          timeLimit: options.timeLimit,
-          relativeGap: options.relativeGap,
-          absoluteGap: options.absoluteGap,
+          timeLimit: mergedOptions.timeLimit,
+          relativeGap: mergedOptions.relativeGap,
+          absoluteGap: mergedOptions.absoluteGap,
         }),
-        signal: options.signal,
+        signal: mergedOptions.signal,
       });
 
       if (!response.ok) {
@@ -311,7 +338,7 @@ export class CloudSolver implements Solver {
 
       payload = await response.json();
     } catch (err: any) {
-      if (options.signal?.aborted || err?.name === "AbortError") {
+      if (mergedOptions.signal?.aborted || err?.name === "AbortError") {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
@@ -388,7 +415,7 @@ registerCloudSolver();
 | 方式 | 适用场景 |
 | :--- | :--- |
 | **已注册名称字符串** | 使用默认配置复用插件（`solver: "cloud"`）。 |
-| **直接传入求解器实例** | 每次请求需要不同的凭证、端点或预设选项。 |
+| **直接传入求解器实例** | 每次调用或每个模型需要不同的凭证、端点或预设选项。 |
 | **全局默认（`setDefaultSolver`）** | 在不修改每处 `new Model()` 的情况下全局替换默认求解器。 |
 
 #### 方式 1：通过已注册的名称字符串指定
@@ -424,7 +451,7 @@ import { CloudSolver } from "./cloud-solver.js";
 
 setDefaultSolver(() => new CloudSolver());
 
-// 后续创建的所有模型默认使用 CloudSolver
+// 未显式指定 solver 的模型将默认使用 CloudSolver
 const model = new Model("DefaultedModel");
 ```
 

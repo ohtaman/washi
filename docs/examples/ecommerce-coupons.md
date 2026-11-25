@@ -4,20 +4,20 @@
 | :--- | :--- | :--- | :--- |
 | Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
-E-commerce checkouts often combine minimum spend thresholds, category discounts, mutually exclusive coupons, and per-order coupon caps. Running a MIP model in the browser or an edge worker selects the best coupon set and can also test whether adding a low-cost filler item lowers the final bill.
+E-commerce checkouts often combine minimum spend thresholds, category discounts, mutually exclusive coupons, and per-order coupon caps. Formulating these rules as a single MIP model selects the best coupon set and simultaneously determines whether adding a low-cost filler item lowers the final bill.
 
 This example uses `m.indicator()` to model conditional rules such as "if a coupon is applied, minimum spend must hold." For MIP solvers like HiGHS, WaSHI applies **Big-M linearization**, relaxing the inequality by a constant `M` when the binary indicator is inactive.
 
 > [!IMPORTANT]
-> **Precondition for omitting `M`**: WaSHI derives a tight Big-M automatically only when every variable in the conditional constraint has **finite** `lb` and `ub` bounds. Binary variables are already bounded in `[0, 1]`. If any variable is unbounded, pass an explicit `M` or set finite bounds first.
+> **Precondition for omitting `M`**: WaSHI derives a tight Big-M automatically only when every variable in the constrained inequality has **finite** `lb` and `ub` bounds (binary variables are automatically bounded in `[0, 1]`). If any variable is unbounded, pass an explicit `M` or set finite bounds first.
 
 <EcommerceCouponDemo />
 
 ## Scenario & Promotion Rules
 
 A customer's shopping cart currently contains `$242` of merchandise (`$210` in Tech items and `$32` in Apparel):
-- **Optional Filler Add-on**: Adding a `$10` Braided USB-C Cable (Tech) raises the cart subtotal from `$242` to `$252`.
-- **Available Coupons**: At most 2 coupons per checkout, and at most 1 exclusive coupon.
+- **Optional Filler Add-on**: Adding a `$10` Braided USB-C Cable (Tech) raises the cart subtotal from `$242` to `$252` (and Tech spend from `$210` to `$220`).
+- **Available Coupons**: At most 2 coupons per checkout; exclusive coupons are mutually exclusive with each other (at most 1), though still combinable with stackable coupons.
 
 | Coupon Code | Discount | Condition | Stacking Rule |
 | :--- | :---: | :--- | :--- |
@@ -58,7 +58,7 @@ async function optimizeCheckoutCart() {
   const techSpend  = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // 1. Indicator constraints: If useCoupon[id] == 1, minimum spend threshold must hold.
-  // Omitting `M` lets WaSHI automatically derive the tightest Big-M from variable bounds!
+  // Omitting `M` lets WaSHI automatically derive a tight Big-M from variable bounds.
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
       m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCart}`, {

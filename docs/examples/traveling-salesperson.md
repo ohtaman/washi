@@ -6,11 +6,11 @@
 
 The **Traveling Salesperson Problem (TSP)** finds the shortest closed tour that visits every city once and returns to the starting city.
 
-In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles called **subtours** requires a subtour elimination constraint for every non-empty proper subset of cities $S \subset V$:
+In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles called **subtours** requires a subtour elimination constraint for every subset of cities $S \subset V$ with $2 \le |S| \le |V| - 1$:
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
-Because there are $2^n - 2$ subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Benders Decomposition (Lazy Constraint Separation)**, constraints are added only when violated:
+Because there are $2^n - n - 2$ such subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Lazy Constraint Separation (combinatorial Benders cuts via `solveBenders()`)**, constraints are added only when violated:
 1. **Master Problem**: Solves the degree-assignment relaxation, where each city has 1 incoming edge and 1 outgoing edge.
 2. **Separation Subproblem**: Traces cycles in the master solution. When disconnected cycles appear, it returns **Benders Feasibility Cuts** for all detected subtours at once (multi-cut separation) until a single tour remains.
 
@@ -31,7 +31,7 @@ We consider **5 cities** on a 2D Euclidean coordinate grid:
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, type Var } from "@ohtaman/washi";
 
 async function runTSP() {
   const cities = [
@@ -43,7 +43,7 @@ async function runTSP() {
   ];
   const n = cities.length;
 
-  function dist(i, j) {
+  function dist(i: number, j: number): number {
     const dx = cities[i].x - cities[j].x;
     const dy = cities[i].y - cities[j].y;
     return Math.hypot(dx, dy);
@@ -51,8 +51,8 @@ async function runTSP() {
 
   // 1. Master Problem: Degree assignment relaxation
   const master = new Model("TSP_BendersMaster");
-  const x = {};
-  const distMatrix = {};
+  const x: Record<number, Record<number, Var>> = {};
+  const distMatrix: Record<number, Record<number, number>> = {};
 
   for (let i = 0; i < n; i++) {
     x[i] = {};
@@ -71,7 +71,7 @@ async function runTSP() {
   // Each city must have 1 outgoing and 1 incoming edge
   for (let i = 0; i < n; i++) {
     master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
-    master.constraint(expr`sum(${n}, ${(j) => x[j][i]}) == 1`, `in_${i}`);
+    master.constraint(expr`sum(${n}, ${(j: number) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log("Solving TSP with Benders lazy subtour elimination...");
@@ -81,7 +81,7 @@ async function runTSP() {
   const result = await master.solveBenders({
     subproblem: () => {
       // Find active directed edges in the master solution
-      const succ = {};
+      const succ: Record<number, number> = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           if (i !== j && x[i][j].value === 1) {
@@ -91,11 +91,11 @@ async function runTSP() {
       }
 
       // Trace connected cycles
-      const visited = new Set();
-      const cycles = [];
+      const visited = new Set<number>();
+      const cycles: number[][] = [];
       for (let i = 0; i < n; i++) {
         if (!visited.has(i)) {
-          const cycle = [];
+          const cycle: number[] = [];
           let curr = i;
           while (!visited.has(curr)) {
             visited.add(curr);
@@ -117,7 +117,7 @@ async function runTSP() {
           const cutEdges = cycle.flatMap((i) => outCities.map((j) => x[i][j]));
 
           return {
-            kind: "feasibility",
+            kind: "feasibility" as const,
             constraint: expr`sum(${cutEdges}) >= 1`,
             name: `subtour_cut_${cutCounter}`,
           };
@@ -158,10 +158,10 @@ The master problem starts with only $2n$ degree constraints, and `subproblem` ad
 
 Every city satisfies the out-degree equation $\sum_{j \ne i} x_{ij} = 1$. Summing this identity over all $i \in S$ gives:
 
-$$\sum_{i \in S, \, j \in S} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
+$$\sum_{i \in S, \, j \in S, \, j \ne i} x_{ij} + \sum_{i \in S, \, j \notin S} x_{ij} = |S|$$
 
-Therefore, the cut-set inequality $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ used above is algebraically identical to the internal-edge form $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ used in [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts).
+Therefore, the cut-set inequality $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ used above is algebraically identical to the internal-edge form $\sum_{i \in S, \, j \in S, \, j \ne i} x_{ij} \le |S| - 1$ used in [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts).
 
 ### Upfront 2-City Subtour Elimination
 
-In larger TSP instances, mutual 2-cycles ($i \leftrightarrow j$) are the most frequent early subtours. Adding the $\binom{n}{2}$ pairwise constraints $x_{ij} + x_{ji} \le 1$ to the initial master problem often cuts the number of Benders iterations substantially.
+In larger TSP instances, mutual 2-cycles ($i \leftrightarrow j$) are the most frequent early subtours. Adding the $\binom{n}{2}$ pairwise constraints $x_{ij} + x_{ji} \le 1$ ($i < j$) to the initial master problem often cuts the number of Benders iterations substantially.

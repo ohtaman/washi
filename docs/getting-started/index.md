@@ -11,11 +11,11 @@ Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, 
 | Solver | Install | Problem Classes & Capabilities |
 | --- | --- | --- |
 | **HiGHS** *(default)* | Bundled in `@ohtaman/washi` | Linear, mixed-integer, and convex quadratic programming — `LP`, `MIP`, and `QP`. |
-| **Pumpkin** | Bundled at `@ohtaman/washi/solvers/pumpkin` | Constraint Programming (`CP`) and `unsatCore` conflict diagnosis on bounded integers and booleans. |
-| **Z3** | Optional (`z3-solver`) | Satisfiability Modulo Theories (`SMT`), continuous logic, and exact `unsatCore` diagnosis. |
-| **GLPK** | Optional (`glpk.js`) | Alternative LP and MIP solver under the GPL-3.0 license. |
+| **Pumpkin** | Bundled in `@ohtaman/washi` (`@ohtaman/washi/solvers/pumpkin`) | Constraint Programming (`CP`) and exact `unsatCore` conflict diagnosis on bounded integers and booleans. |
+| **Z3** | Optional (`z3-solver`) | Satisfiability Modulo Theories (`SMT`), continuous logic, and exact `unsatCore` diagnosis (including continuous variables). |
+| **GLPK** | Optional (`glpk.js`) | Alternative `LP` and `MIP` solver under the GPL-3.0 license. |
 
-An **unsatisfiable core** (`unsatCore`) is a subset of named constraints that cannot all hold at once. Both Pumpkin and Z3 extract `unsatCore` via `m.check()`.
+An **unsatisfiable core** (`unsatCore`) is a subset of constraints that cannot all hold at once (naming constraints makes conflicts easy to identify). Both Pumpkin and Z3 extract `unsatCore` via `m.check()`.
 
 ::: code-group
 
@@ -40,7 +40,7 @@ bun add @ohtaman/washi
 Install optional peer dependencies when you need **Z3** or **GLPK**:
 
 ```bash
-npm install z3-solver   # Optional: SMT logic and continuous Unsat Core diagnosis
+npm install z3-solver   # Optional: SMT logic and unsatCore diagnosis for models with continuous variables
 npm install glpk.js     # Optional: GLPK solver (GPL-3.0)
 ```
 
@@ -52,7 +52,7 @@ Using an AI coding agent? See [Coding with AI Agents](./coding-agents.md) for `n
 
 ## 🚀 Quick Start
 
-Every WaSHI optimization model follows three steps: declare bounded decision variables, register an objective and named constraints, and solve plus verify the result.
+A typical WaSHI optimization workflow follows three steps: declare decision variables, register an objective and named constraints, and solve and verify the result.
 
 The production-planning example below maximizes profit from desks and chairs under wood and labor limits:
 
@@ -70,7 +70,7 @@ m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
 m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
 
-// 3. Solve (built-in HiGHS WebAssembly) and verify the solution
+// 3. Solve (bundled HiGHS WebAssembly) and verify the solution
 const status = await m.solve();
 if (m.hasPrimalSolution) {
   const report = m.verify();
@@ -79,8 +79,8 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **Define decision variables**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`. Supply finite `lb` and `ub` bounds whenever they are known.
-2. **Describe the objective and constraints**: Write algebraic formulas with `` expr`...` ``. Pass descriptive constraint names so infeasibility reports identify conflicting rules clearly.
+1. **Define decision variables**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`. For continuous and integer variables, supply finite `lb` and `ub` bounds whenever they are known.
+2. **Describe the objective and constraints**: Write algebraic formulas with `` expr`...` `` and register them with `m.objective()` and `m.constraint()`. Pass descriptive constraint names so infeasibility reports identify conflicting rules clearly.
 3. **Solve and verify**: Call `await m.solve()` to run the bundled HiGHS solver. Check `m.hasPrimalSolution` before reading `.value`, then call `m.verify()` to confirm bounds, integrality, and constraints hold.
 
 ---
@@ -89,7 +89,7 @@ if (m.hasPrimalSolution) {
 
 ### Choose Your Workflow
 
-- **Build with an AI Coding Agent**: [Coding with AI Agents](./coding-agents.md) — Skill setup via `npx skills add`, `llms.txt` / Context7, and ready-to-use prompt templates.
+- **Build with an AI Coding Agent**: [Coding with AI Agents](./coding-agents.md) — Skill setup via `npx skills add ohtaman/washi`, `llms.txt` / Context7, and ready-to-use prompt templates.
 - **Write Models in TypeScript**: [Modeling Guide](../guide/variables.md) — Variable containers, `sum` and `dot` aggregations, logical constraints, and conflict diagnosis.
 
 ### Reference & Examples

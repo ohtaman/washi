@@ -9,7 +9,7 @@ aside: false
 # 案例展示
 
 <p class="washi-showcase-lead">
-体验基于浏览器端 WebAssembly 本地运行的交互式 Playground、决策支持应用与数理优化益智游戏。
+体验无需外部服务器、全部在浏览器本地运行的交互式 Playground、决策支持应用与数理优化益智游戏。
 </p>
 
 <div class="washi-showcase-section">

@@ -1,6 +1,6 @@
 # Expressions (`expr`, `sum`, `dot`)
 
-Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
+Mathematical expressions combine decision variables and numeric coefficients into linear, quadratic, or piecewise-linear formulas.
 Because JavaScript and TypeScript lack operator overloading, WaSHI provides the `expr` tagged template literal together with `sum()` and `dot()`.
 This lets you write readable algebraic formulas while preserving full static type safety.
 
@@ -14,8 +14,8 @@ This lets you write readable algebraic formulas while preserving full static typ
 
 ## Tagged Template Literal (`expr`)
 
-Similar to parameterized `sql` templates, `expr` separates operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) from interpolated `${...}` values.
-You can interpolate `Var`, `LinExpr`, `QuadExpr`, or finite `number` values directly.
+Similar to parameterized SQL templates, `expr` separates operator text (`+`, `-`, `*`, `/`, `^2`, `<=`, `>=`, `==`, and more) from interpolated `${...}` values.
+You can interpolate `Var`, `LinExpr`, `QuadExpr`, or finite `number` values directly, as well as containers (`Array`, `Iterable`, `Record`) and mapping callbacks inside `sum()` or `dot()`.
 Because variables bind by object reference rather than string lookup, you avoid name collisions and keep IDE refactoring intact.
 
 Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and comparison constraints (`Constraint`):
@@ -43,15 +43,15 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **Scalar multiplication & division**: `4 * ${x}`, `${x} / 2`
 - **Quadratic terms & powers**: `${x} * ${y}`, `2 * ${x} * ${x}`, `${x}^2`, `${x}**2`
 - **Unary signs & parentheses**: `-${x} + 10`, `+${x}`, `2 * (${x} + ${y})`
-- **Aggregations**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
+- **Aggregations**: `sum(${xVec})`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
 - **Piecewise-linear & element lookup**: `max(${xVec}) <= 15`, `sum(abs(${w} - ${target}))`, `at(${costs}, ${idx})` (see [Piecewise-Linear & Element Expressions](#piecewise-linear-element-expressions-max-min-abs-at))
 - **Element-wise container arithmetic**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
 - **Nested expressions**: Interpolates variables, numbers, nested `LinExpr` or `QuadExpr` objects, and containers inside `sum` or `dot`.
 
 > [!NOTE]
-> - **Comparisons (`<=`, `>=`, `==`)** return a `Constraint` object.
-> - **Arithmetic expressions** return a `LinExpr` (degree 1) or `QuadExpr` (degree 2). Embedded containers must be reduced to a scalar via `sum(...)` or `dot(..., ...)`.
-> - **Unsupported nonlinearities**: Degree $> 2$ terms (such as `${x}^3`) and nonlinear constraints (such as `${x} * ${y} <= 10`) throw an error.
+> - **Comparisons (`<=`, `>=`, `==`, and integer `<`, `>`, `!=`)** return a `Constraint` object.
+> - **Arithmetic expressions** return a `LinExpr` (degree 1) or `QuadExpr` (degree 2). Embedded containers must be reduced to a scalar via `sum(...)`, `dot(..., ...)`, `max(...)`, or `min(...)`.
+> - **Unsupported nonlinearities**: Polynomial terms of degree $> 2$ (such as `${x}^3`) and quadratic constraints (such as `${x} * ${y} <= 10`) throw an error. (Piecewise-linear `max`, `min`, `abs`, and `at` expressions are supported separately below.)
 
 ---
 
@@ -212,9 +212,9 @@ m.objective(minimize(risk));
 ```
 
 > [!NOTE]
-> **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: When minimizing a quadratic objective, HiGHS requires the quadratic matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)**.
-> When maximizing, $\mathbf{Q}$ must be negative semi-definite.
-> Sums of squares ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD.
+> **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: When minimizing a quadratic objective, HiGHS requires the symmetric quadratic matrix $\mathbf{Q}$ to be **positive semi-definite (PSD, $\mathbf{Q} \succeq 0$)**.
+> When maximizing, $\mathbf{Q}$ must be **negative semi-definite ($\mathbf{Q} \preceq 0$)**.
+> Sums of squares ($\sum_i (x_i - t_i)^2$) and variance quadratic forms $\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$ (with a valid covariance matrix $\boldsymbol{\Sigma}$) are guaranteed convex ($\mathbf{Q} \succeq 0$).
 > Indefinite products of continuous variables (such as minimizing $x \cdot y$) are non-convex and rejected by the solver.
 > To linearize the product of two binary variables $x_A \cdot x_B$ in MILP, see [Formulation Patterns & Tips](./formulation-tips.md#product-of-two-binary-variables).
 
@@ -234,7 +234,7 @@ const target = [4, 7, 10];
 const route = m.integer("route", { lb: 0, ub: 2 });
 const routeCost = [18, 12, 25];
 
-// Convex directions (minimizing max/abs) lower to pure LP with zero binary variables:
+// Convex max/abs terms lower to linear inequalities with zero binary variables (at() uses binary selectors on HiGHS/GLPK):
 m.objective(
   minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
 );
@@ -306,12 +306,12 @@ In addition to `expr`, `Var`, `LinExpr`, and `QuadExpr` provide immutable fluent
 | :--- | :--- | :--- | :--- |
 | `.add(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Adds a number, `Var`, `LinExpr`, or `QuadExpr`. |
 | `.sub(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Subtracts a number, `Var`, `LinExpr`, or `QuadExpr`. |
-| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Multiplies by a scalar `number`, or multiplies two linear terms into a `QuadExpr`. |
+| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Multiplies by a scalar `number`, or multiplies two linear expressions into a `QuadExpr` (a `QuadExpr` with quadratic terms only allows scalar multiplication; degree $> 2$ throws). |
 | `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Divides by a non-zero finite scalar `number`. |
 | `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Negates all terms ($-e$). |
-| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a $\le$ constraint (`lhs <= rhs`; linear LHS required). |
-| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a $\ge$ constraint (`lhs >= rhs`; linear LHS required). |
-| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds an $==$ equality constraint (`lhs == rhs`; linear LHS required). |
-| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $<$ constraint (`lhs - rhs <= -1`; integer-valued expressions only). |
-| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $>$ constraint (`lhs - rhs >= 1`; integer-valued expressions only). |
-| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $\ne$ constraint (`lhs != rhs`; integer-valued expressions only). |
+| `.le(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a $\le$ constraint (`lhs <= rhs`; both sides must have no quadratic terms). |
+| `.ge(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a $\ge$ constraint (`lhs >= rhs`; both sides must have no quadratic terms). |
+| `.eq(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds an $=$ equality constraint (`lhs == rhs`; both sides must have no quadratic terms). |
+| `.lt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $<$ constraint (`lhs - rhs <= -1`; integer-valued expressions without quadratic terms only). |
+| `.gt(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $>$ constraint (`lhs - rhs >= 1`; integer-valued expressions without quadratic terms only). |
+| `.ne(rhs)` | `Var`, `LinExpr`, `QuadExpr` | `Constraint` | Builds a discrete $\ne$ constraint (`lhs != rhs`; integer-valued expressions without quadratic terms only). |

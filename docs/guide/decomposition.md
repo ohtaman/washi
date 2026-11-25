@@ -1,6 +1,6 @@
 # Decomposition Methods (`solveColumnGeneration` & `solveBenders`)
 
-When a single MIP model has too many columns to enumerate upfront, or splits naturally into two decision stages, WaSHI provides two decomposition helpers:
+When a single LP or MIP model has too many columns to enumerate upfront, or splits naturally into two decision stages, WaSHI provides two decomposition helpers:
 
 | Method | WaSHI API | When to use |
 | :--- | :--- | :--- |
@@ -19,15 +19,15 @@ It splits the problem into two parts:
 
 Each call to `master.solveColumnGeneration()` runs this loop:
 
-1. Solves the continuous LP relaxation of the RMP (`master.relax()`) to obtain each constraint's **dual value** (shadow price).
+1. Solves the LP relaxation of the RMP (`master.relax()`) to obtain each constraint's **dual value** (shadow price).
 2. Passes those duals (`duals`, `getDual`) to your `pricing` callback.
-3. Automatically evaluates the **reduced cost** ($\bar{c} = \text{cost} - \sum_i \pi_i a_i$) of every returned `ColumnProposal` against `reducedCostTolerance`.
-4. Adds any improving column ($\bar{c} < 0$ when minimizing, or $\bar{c} > 0$ when maximizing) and repeats until `pricing` returns `null` / `[]` or no improving column remains.
+3. Checks whether each returned `ColumnProposal` improves the objective beyond `reducedCostTolerance` using its **reduced cost** (computed automatically as $\bar{c} = \text{cost} - \sum_i \pi_i a_i$ when `reducedCost` is omitted).
+4. Adds any improving column ($\bar{c} < -\varepsilon$ when minimizing, or $\bar{c} > \varepsilon$ when maximizing, where $\varepsilon$ is `reducedCostTolerance`) and repeats until `pricing` returns `null` / `[]`, no improving column remains, or `maxIterations` is reached.
 5. Optionally solves the final RMP with all generated columns as an integer program (`finalizeAsMIP: true`, enabled by default).
 
 > [!IMPORTANT]
 > **Preconditions & Guarantees**:
-> - **Feasible initial RMP**: Starting columns (or artificial slacks) must make the initial LP relaxation feasible so valid duals exist.
+> - **Feasible & bounded initial RMP**: Starting columns (or penalized artificial slacks) must make the initial LP relaxation feasible and bounded so a finite optimum and valid duals exist.
 > - **LP-dual solver required**: Requires HiGHS or GLPK; Pumpkin and Z3 do not produce LP duals.
 > - **Price-and-Branch heuristic**: `finalizeAsMIP: true` solves one MIP over root-LP columns only—fast and practical, but not exact Branch-and-Price.
 
@@ -55,16 +55,16 @@ const demandC = master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 // 2. Run Column Generation
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async () => {
+  pricing: async ({ getDual }) => {
     // Subproblem: find a valid roll pattern maximizing total dual value
     const sub = new Model("KnapsackPricing");
     const aA = sub.integer("a_A", { lb: 0, ub: 2 });
     const aB = sub.integer("a_B", { lb: 0, ub: 2 });
     const aC = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    const dualA = demandA.dual ?? 0;
-    const dualB = demandB.dual ?? 0;
-    const dualC = demandC.dual ?? 0;
+    const dualA = getDual(demandA);
+    const dualB = getDual(demandB);
+    const dualC = getDual(demandC);
     sub.objective(maximize(expr`${dualA} * ${aA} + ${dualB} * ${aB} + ${dualC} * ${aC}`));
     sub.constraint(expr`45 * ${aA} + 36 * ${aB} + 16 * ${aC} <= ${rollWidth}`);
 
@@ -125,15 +125,15 @@ const customResult = await master.solveColumnGeneration({
 ## Benders Decomposition (`solveBenders`)
 
 `master.solveBenders(options)` splits a problem into a **master problem** for first-stage decisions and a **subproblem** for second-stage evaluation.
-On each iteration, the subproblem evaluates the master's candidate solution and adds linear constraints (**cuts**) back to the master:
+On each iteration, the subproblem evaluates the master's candidate solution and `solveBenders()` adds the resulting linear constraints (**cuts**) back to the master:
 
-- **Optimality cut (`kind: "optimality"`)**: Tightens the master's estimate (`theta`) of the subproblem objective when the candidate is feasible but its true second-stage cost is higher than estimated.
+- **Optimality cut (`kind: "optimality"`)**: Tightens the master's estimate (`theta`) of the subproblem objective when the candidate is feasible but its true second-stage cost exceeds the estimate (for minimization; for maximization, tightens the upper bound when the true value is lower).
 - **Feasibility cut (`kind: "feasibility"`)**: Rules out a master candidate when the subproblem is infeasible or violates a lazy structural rule (such as a disconnected TSP subtour).
 
 ### Automatic Cut Generation (`sub.link()`)
 
 Return a continuous LP subproblem `Model` from `subproblem` and connect it to master variables using `sub.link(...)`.
-WaSHI manages the cost estimator `theta`, substitutes current master values, extracts duals from the LP subproblem, and adds optimality cuts until the gap converges:
+WaSHI manages the cost estimator `theta`, substitutes current master values, extracts duals from the LP subproblem, and adds optimality cuts until the bound gap falls within `gapTolerance`:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -143,7 +143,7 @@ const master = new Model("FacilityMaster");
 const y1 = master.binary("open_F1");
 const y2 = master.binary("open_F2");
 
-// Fixed opening costs (operational cost variable theta is added automatically)
+// Fixed opening costs (operational cost estimator theta is added automatically)
 master.objective(minimize(expr`100 * ${y1} + 120 * ${y2}`));
 master.constraint(expr`50 * ${y1} + 60 * ${y2} >= 75`, "total_capacity_floor");
 
@@ -179,19 +179,19 @@ const result = await master.solveBenders({
 
 console.log("Optimal total cost:", result.objectiveValue); // 390
 console.log("Cuts added:", result.cutsAdded);
-console.log("Open facilities:", result.values);
+console.log("Master values:", result.values);
 ```
 
 > [!IMPORTANT]
 > **Preconditions for Automatic `sub.link()` Mode**:
 > - **Optimality cuts only**: Throws if any master candidate makes the LP subproblem infeasible. Add master feasibility guards (like `total_capacity_floor`) or use manual `kind: "feasibility"` cuts.
-> - **Explicit `theta` required for `Maximize` or negative costs**: Auto-`theta` assumes a `Minimize` master with `lb: 0` and throws on `Maximize`. Declare `theta` on `master`, add it to `master.objective()`, and pass `{ theta }`.
+> - **Explicit `theta` required for `Maximize` or negative subproblem costs**: Auto-`theta` assumes a `Minimize` master with lower bound `lb: 0`, so it throws on `Maximize` and cannot represent negative subproblem objectives. Declare `theta` on `master` with appropriate bounds, include it in `master.objective()`, and pass `{ theta }`.
 > - **LP-dual solver required**: Requires HiGHS or GLPK to solve the continuous LP subproblem.
 
 ### Manual Cut Generation (`BendersCut` / Lazy Constraints)
 
 For custom cuts, feasibility cuts, or lazy constraints (such as TSP subtour elimination), return a `BendersCut`, a `BendersCut[]`, or `null` when converged.
-When returning an optimality cut, pass the **total** objective (`master + subproblem`) in `subproblemObjective` so WaSHI can compute the true optimality gap against the master's bound:
+When returning an optimality cut, pass the **total evaluated objective** (first-stage objective *excluding* `theta`, plus the actual subproblem objective) in `subproblemObjective` so WaSHI can compare it against the master's bound to compute the optimality gap:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -251,7 +251,7 @@ console.log(m.solution?.duals.capacity); // Lookup by constraint name
 
 ### 2. Continuous LP Relaxation (`m.relax()`)
 
-`m.relax()` temporarily treats all `Integer` and `Binary` variables as continuous within `[lb, ub]` and solves the LP so dual values are available:
+`m.relax()` temporarily relaxes all `Integer` variables to continuous `[lb, ub]` and `Binary` variables to `[0, 1]`, then solves the LP so dual values are available:
 
 ```typescript
 const status = await m.relax();
@@ -276,7 +276,7 @@ const col = m.column({
 
 ### 4. Dynamic Constraint Updates (`c.addTerm()` / `c.setTerm()`)
 
-Add to or overwrite a variable's coefficient inside an existing linear constraint:
+Add to (introducing the variable if not yet present) or overwrite a variable's coefficient in an existing linear constraint:
 
 ```typescript
 const extra = m.continuous("extra", { lb: 0 });

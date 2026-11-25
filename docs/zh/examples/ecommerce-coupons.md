@@ -4,20 +4,20 @@
 | :--- | :--- | :--- | :--- |
 | 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
 
-电商结算规则常同时包含最低消费门槛、品类满减、互斥优惠券和单笔用券数量上限。在浏览器或边缘节点运行 MIP 模型，可同时计算最优优惠券组合，并判断是否加购低价凑单商品以进一步降低实付总额。
+电商结算规则常同时包含最低消费门槛、品类满减、互斥优惠券和单笔用券数量上限。将这些规则统一建模为单个 MIP，可同时求得最优优惠券组合，并判断是否加购低价凑单商品以进一步降低实付总额。
 
 本例使用 `m.indicator(binVar, constraint, { activeValue, M? })` 表示“若选用某张优惠券，则必须满足最低消费门槛”的条件约束。对于 HiGHS 等 MIP 求解器，WaSHI 会通过 **Big-M 线性化** 自动转换：当二元指示变量未激活时，利用常数 `M` 放宽对应不等式。
 
 > [!IMPORTANT]
-> **省略 `M` 的前提条件**：条件约束中的所有变量都具备**有限的** `lb` 和 `ub` 上下界时，WaSHI 才会自动推导紧凑的 Big-M。0-1 变量天然有界于 `[0, 1]`。若包含无界变量，需显式传入 `M` 或先设置有限边界。
+> **省略 `M` 的前提条件**：被控约束表达式中的所有变量都具备**有限的** `lb` 和 `ub` 上下界时，WaSHI 才会自动推导紧凑的 Big-M（0-1 变量天然有界于 `[0, 1]`）。若包含无界变量，需显式传入 `M` 或先设置有限边界。
 
 <EcommerceCouponDemo />
 
 ## 场景与促销规则
 
 顾客购物车当前共有 `$242` 商品（数码类 Tech 占 `$210`，服饰类 Apparel 占 `$32`）：
-- **可选凑单商品**：加购一根 `$10` 的编织 USB-C 数据线（Tech 品类）后，商品总额从 `$242` 升至 `$252`。
-- **可用优惠券**：每笔订单最多使用 2 张优惠券，其中互斥券（Exclusive）最多使用 1 张。
+- **可选凑单商品**：加购一根 `$10` 的编织 USB-C 数据线（Tech 品类）后，商品总额从 `$242` 升至 `$252`（Tech 品类小计从 `$210` 升至 `$220`）。
+- **可用优惠券**：每笔订单最多使用 2 张优惠券；互斥券（Exclusive）彼此不能同时使用，最多使用 1 张（可与可叠加券组合使用）。
 
 | 优惠券代码 | 抵扣金额 | 适用门槛 | 叠加规则 |
 | :--- | :---: | :--- | :--- |
@@ -58,7 +58,7 @@ async function optimizeCheckoutCart() {
   const techSpend  = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // 1. 指示符约束 (Indicator)：若 useCoupon[id] == 1，则必须满足最低消费门槛
-  // 省略 M 时，WaSHI 会根据变量边界自动推导最紧凑的 Big-M
+  // 省略 M 时，WaSHI 会根据变量边界自动推导紧凑的 Big-M
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
       m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCart}`, {

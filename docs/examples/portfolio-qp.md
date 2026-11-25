@@ -10,16 +10,16 @@ The Markowitz mean-variance model is a classic problem in quantitative finance. 
 
 ## Mathematical Formulation
 
-Let $w_i \ge 0$ denote the allocation weight for asset $i$:
+Let $n$ be the number of assets, $w_i$ be the allocation weight for asset $i$ (written as vector $\mathbf{w}$), $r_i$ be its expected return, and $R_{\text{target}}$ be the minimum target return:
 
 $$\begin{aligned}
 \text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{Portfolio Variance}) \\
 \text{Subject to} \quad & \sum_{i=1}^n w_i = 1 & (\text{Full Capital Budget}) \\
 & \sum_{i=1}^n r_i w_i \ge R_{\text{target}} & (\text{Minimum Target Return}) \\
-& 0 \le w_i \le 1 & (\text{Long-Only Weights})
+& 0 \le w_i \le 1 \quad \forall i = 1, \dots, n & (\text{Long-Only Weights})
 \end{aligned}$$
 
-where $\boldsymbol{\Sigma}$ is the positive semi-definite asset return covariance matrix.
+where $\boldsymbol{\Sigma}$ is the symmetric positive semi-definite asset return covariance matrix, making the objective a convex quadratic function.
 
 ## Implementation in WaSHI
 
@@ -55,7 +55,7 @@ async function solvePortfolio() {
   const portfolioReturn = dot(retMap, w);
   m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
-  // 3. Quadratic Objective: minimize risk w^T * Sigma * w
+  // 3. Quadratic Objective: minimize portfolio variance w^T * Sigma * w
   let risk = new QuadExpr();
   for (let i = 0; i < assets.length; i++) {
     for (let j = 0; j < assets.length; j++) {
@@ -66,7 +66,7 @@ async function solvePortfolio() {
   }
   m.objective(minimize(risk));
 
-  // Solve natively with HiGHS Convex QP engine
+  // Solve with HiGHS QP solver
   const status = await m.solve();
 
   console.log(`Status: ${status}`);
@@ -88,12 +88,12 @@ solvePortfolio();
 
 ### Tracing the Efficient Frontier
 
-The solved `portfolioReturn.value` matches `targetReturn` (`8.50%`) exactly. That means the return constraint is tightly binding on the Markowitz efficient frontier. Sweeping `targetReturn` across `[0.05, 0.12]` traces the full risk-return curve.
+The solved `portfolioReturn.value` matches `targetReturn` (`8.50%`) exactly, showing that the target return constraint is binding and the solution lies on the Markowitz efficient frontier for `8.50%`. Sweeping `targetReturn` from the minimum-variance portfolio's expected return (about `4.52%`) up to the maximum single-asset return (`12%`) traces the entire efficient frontier.
 
 ### Target Return Constraint vs. Risk-Aversion Scalarization
 
 Under long-only weights ($0 \le w_i \le 1$), setting `targetReturn` above the highest single-asset return (`12%` for `Tech`) makes the hard return constraint `"Infeasible"`.
 
-To keep the model feasible for any risk appetite $\lambda > 0$, you can instead minimize the risk-adjusted objective:
+To drop the hard target-return constraint and keep the model feasible for any risk-aversion coefficient $\lambda > 0$, minimize the risk-adjusted objective using the expected return vector $\mathbf{r}$:
 
 $$\min_{\mathbf{w}} \; \lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w}$$

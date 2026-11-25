@@ -10,7 +10,7 @@
 
 | 问题类型 | 推荐求解器 | 原因 |
 | :--- | :--- | :--- |
-| **LP、MIP 或连续凸 QP** | **HiGHS**（默认） | MIT 许可内置，数值求解快，支持 LP 对偶值/松弛量与 MIP 热启动。 |
+| **LP、MIP 或连续凸 QP** | **HiGHS**（默认） | MIT 许可内置，数值求解快，支持 LP 对偶值/松弛量/缩减成本与 MIP 热启动。 |
 | **有界整数约束规划（CP）** | **[Pumpkin](./pumpkin.md)** | 原生支持 `disjoint`、`cumulative`、`distinct` 和 `unsatCore`，无需跨域隔离响应头。 |
 | **含连续变量的逻辑规则** | **[Z3](./z3.md)** | 支持逻辑运算符中的精确算术以及连续/整数混合模型的 `unsatCore` 诊断。 |
 | **GNU GLPK 兼容或基准对比** | **[GLPK](./glpk.md)** | 可选的 GPL-3.0 依赖，适合与现有 GLPK 模型交叉验证。 |
@@ -54,7 +54,7 @@ console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 
 ### 2. 混合整数规划（MIP）
 
-MIP 模型将连续变量与 `model.integer()` 或 `model.binary()` 离散变量结合。HiGHS 通过分支切割法求解，并返回 `objectiveBound`、`relativeGap` 与 `absoluteGap`：
+MIP 模型包含 `model.integer()` 或 `model.binary()` 离散变量（也可与连续变量混用）。HiGHS 通过分支切割法求解，并返回 `objectiveBound`、`relativeGap` 与 `absoluteGap`：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -108,10 +108,10 @@ console.log(qpModel.status, qpModel.objectiveValue, x.value, y.value);
 | `relativeGap` | `number` | 当相对 MIP 最优间隙落入此容差内时终止。 |
 | `absoluteGap` | `number` | 当绝对 MIP 最优间隙落入此容差内时终止。 |
 | `presolve` | `"on" \| "off" \| "choose"` | 控制求解前的模型预处理。 |
-| `outputFlag` | `boolean` | 开启单纯形法与分支切割法内部日志输出（默认 `false`）。 |
+| `outputFlag` | `boolean` | 开启求解器内部日志输出（默认 `false`）。 |
 | `relax` | `boolean` | 求解 MIP 模型的连续 LP 松弛问题。 |
 | `useWorker` | `boolean` | 在浏览器中使用 Web Worker 运行（默认 `true`）。 |
-| `wasmUrl` | `string \| null` | 为本次求解覆盖 `highs.wasm` 的资源地址。 |
+| `wasmUrl` | `string \| null` | 覆盖 `highs.wasm` 的资源地址（`null` 表示回退到 `setHighsWasmUrl()` 或内置二进制）。 |
 | `signal` | `AbortSignal` | 协作式取消正在进行的求解。 |
 | `onProgress` | `(ev) => void` | 实时接收耗时、当前目标值、对偶界与间隙更新。 |
 

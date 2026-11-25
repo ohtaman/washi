@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
+| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()`, `m.unsatCore` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
 
 In staff shift scheduling, vacation requests often collide with minimum headcount or senior coverage rules, causing a Mixed-Integer Programming (MIP) solver to return `"Infeasible"`.
 
@@ -19,7 +19,7 @@ This example shows a two-step workflow on the same model:
 
 ## Scenario & Rules
 
-We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) across **7 days** from `Mon` to `Sun`:
+We schedule **5 staff members** across **7 days** from `Mon` to `Sun` — seniors `Alice` (`$220/day`) and `Bob` (`$210/day`), plus `Charlie` (`$160/day`), `Diana` (`$160/day`), and `Evan` (`$150/day`):
 
 - **Daily Headcount:** `Mon–Thu`: 3 staff, `Fri`: 4 staff, `Sat`: 3 staff, `Sun`: 2 staff.
 - **Senior Duty:** At least 1 senior staff member (`Alice` or `Bob`) must work every day.
@@ -144,7 +144,7 @@ async function runScenario(
     console.log("Conflicting Constraint Subset (unsatCore):", model.unsatCore);
     console.log(
       "Note: unsatCore returns a conflicting subset (minimality/order not guaranteed). " +
-      "Independent requests like Diana's Wednesday off are excluded.\n"
+      "In this run, unrelated requests like Diana's Wednesday off are excluded.\n"
     );
   }
 }
@@ -180,9 +180,9 @@ main();
 
 </CodeRunner>
 
-## Auto-Repairing Conflicts with Soft Constraints
+## Relaxing Conflicts with Soft Constraints
 
-After Z3 isolates the conflict among `senior_duty_Sat`, `day_off_Alice_Sat`, and `day_off_Bob_Sat`, you can repair the schedule automatically. Replace the hard day-off rules with **soft preferences** that add a `$500` penalty whenever a requested day off is overridden:
+After Z3 isolates the conflict among `senior_duty_Sat`, `day_off_Alice_Sat`, and `day_off_Bob_Sat`, you can generate a fallback schedule by relaxing the hard day-off constraints (Rule 4) into **soft preferences** that add a `$500` penalty per overridden request:
 
 ```typescript
 // Soft constraint pattern: penalize working on a requested day off by $500
@@ -191,7 +191,7 @@ const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]
 m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
-On Scenario B, HiGHS returns `"Optimal"` with a total objective of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` already reaches `maxShifts = 5`, `Alice` covers the remaining 2 senior days. Overriding `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
+On Scenario B, HiGHS returns `"Optimal"` with an objective value of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` (`$210/day`) is cheaper than `Alice` (`$220/day`), the cheapest staffing assigns `Bob` up to his limit (`maxShifts = 5`) and `Alice` to the remaining 2 senior days; overriding `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
 
 > [!TIP]
-> All variables in this model are binary (`m.binary()`) with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` using the bundled `@ohtaman/washi/solvers/pumpkin` engine without installing `z3-solver`.
+> This model uses only binary variables (`m.binary()`) and constraints with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` using the bundled `@ohtaman/washi/solvers/pumpkin` engine without installing `z3-solver`.

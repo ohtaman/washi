@@ -1,6 +1,6 @@
 # 目标函数与求解 (`m.solve` & `m.check`)
 
-目标函数定义了数理优化的方向与目标，例如最大化利润、最小化成本或最小化二次风险方差。
+目标函数定义了数理优化的方向与目标，例如最大化利润、最小化成本或最小化二次方差（风险）。
 如果只需验证约束可行性或求解纯逻辑规则，可以不设置目标函数，直接调用 `m.check()`。
 
 ---
@@ -28,7 +28,7 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 若未设置目标函数，模型默认最小化常数 `0`。
 
 > [!TIP]
-> 有关 Min-Max / Max-Min 负载均衡、多目标优化以及 MIP 停止间隙容差（`relativeGap` / `absoluteGap`）设计，请参见 [建模模式与优化技巧](./formulation-tips.md#multi-objective)。
+> 有关 Min-Max / Max-Min 负载均衡，请参见 [Min-Max 与 Max-Min 目标函数（负载均衡）](./formulation-tips.md#min-max-与-max-min-目标函数-负载均衡)；有关多目标优化以及 MIP 停止间隙容差（`relativeGap` / `absoluteGap`）设计，请参见 [多目标优化与 MIP 停止条件设计](./formulation-tips.md#multi-objective)。
 
 ---
 
@@ -59,7 +59,7 @@ const status = await m.solve({
 | `absoluteGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
 | `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
-| `useWorker` | `boolean` | `true`（浏览器） | 在浏览器中于 Web Worker 内运行 HiGHS 与 Pumpkin。主线程运行请设为 `false`；在 Node.js 中请省略或设为 `false`（显式传 `true` 会报错）。 |
+| `useWorker` | `boolean` | `true`（浏览器）/ `false`（Node.js） | 在浏览器中于 Web Worker 内运行 HiGHS 与 Pumpkin。主线程运行请设为 `false`；在 Node.js 中请省略或设为 `false`（显式传 `true` 会报错）。 |
 | `wasmUrl` | `string` | 自动解析 | 浏览器部署时加载 `highs.wasm` 或 `pumpkin.wasm` 的自定义 URL。 |
 | `signal` | `AbortSignal` | `undefined` | 取消信号（`AbortController.signal`）；具体限制见下文。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 接收实时求解进度快照的回调函数。 |
@@ -70,7 +70,7 @@ const status = await m.solve({
 
 ## 读取结果、边界与求解器状态
 
-求解完成后，可在 `Model` 实例上读取状态、最优值以及 MIP 边界指标：
+求解完成后，可在 `Model` 实例上读取状态、目标值、变量值以及 MIP 边界指标：
 
 ```typescript
 const status = await m.solve();
@@ -102,7 +102,7 @@ console.log("x by name:", m.values.get("x"));
 2. **求解器为什么停止？** 检查 `m.terminationStatus`。
 
 如果在停止前已找到有效解（即**暂定解 / Incumbent**），WaSHI 会将 `m.status` 设为 `"Feasible"`。
-此时 `x.value` 与 `m.objectiveValue` 保存该可行解，而 `m.terminationStatus` 记录 `"TimeLimit"` 或 `"Interrupted"`。
+此时 `x.value` 保存该暂定解的变量值、`m.objectiveValue` 保存对应的目标函数值，而 `m.terminationStatus` 记录 `"TimeLimit"`、`"IterationLimit"` 或 `"Interrupted"` 等停止原因。
 若未找到任何解即停止，则 `m.hasPrimalSolution` 为 `false`，`m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`。
 
 ### 所有 `SolverStatus` 状态值一览
@@ -141,7 +141,7 @@ const status = await m.solve({
       `Gap: ${event.relativeGap !== undefined ? (event.relativeGap * 100).toFixed(2) + "%" : "—"}`
     );
 
-    // 可选：一旦找到足够好的可行解（Incumbent）即提前终止
+    // 可选（最大化问题示例）：一旦找到足够好的可行解（Incumbent）即提前终止
     if (event.objectiveValue !== undefined && event.objectiveValue >= 1000) {
       controller.abort();
     }
@@ -156,7 +156,7 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 > [!NOTE]
 > **各求解器后端的 `AbortSignal` 行为**：
 > - **异步抢占式取消**：在浏览器 Web Worker（`useWorker: true`）中运行 HiGHS 或 Pumpkin 时，触发取消会立即终止 Worker。
-> - **协作式中途取消**：在 Node.js 或浏览器主线程（`useWorker: false`）中，HiGHS 会在 `onProgress` 回调中、Pumpkin 会在搜索检查点与 `onProgress` 中检测取消并停止当前求解。
+> - **协作式中途取消**：在 Node.js 或浏览器主线程（`useWorker: false`）中，HiGHS 可通过在 `onProgress` 回调中调用 `abort()`、Pumpkin 可在搜索检查点及 `onProgress` 中协作中断当前求解。
 > - **仅求解前检查**：在 GLPK 与 Z3 中，`AbortSignal` 仅在求解开始前检查。
 
 ### `SolveProgressEvent` 字段说明
@@ -182,7 +182,7 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 ### 求解后修改自动重置状态
 
 添加变量或约束，或通过 `m.objective()` 与 `m.sense` 更新目标函数，都会立即将 `m.status` 重置为 `"NotSolved"`。
-修改变量属性（`v.lb`、`v.ub`、`v.type`）或约束属性（`c.lhs`、`c.sense`、`c.rhs`）时也是如此。
+修改变量属性（`v.lb`、`v.ub`、`v.type`、`v.initialValue`）或约束属性（`c.lhs`、`c.sense`、`c.rhs`）时也是如此。
 同时会清空 `m.solution` 与 `m.objectiveValue`，将变量的 `value` 与 `reducedCost` 重置为 `null`，并将约束的 `dual` 与 `slack` 重置为 `null`。
 
 ### 求解中途修改与并发调用保护

@@ -10,10 +10,10 @@ For Constraint Programming idioms with Pumpkin (`disjoint`, `cumulative`, `disti
 
 ### Semi-Continuous Decisions ($\{0\} \cup [L, U]$)
 
-A semi-continuous quantity must be either `0` when inactive, or lie inside a positive interval `[L, U]` when active.
+A semi-continuous variable must be either `0` when inactive, or lie inside a positive interval $[L, U]$ (`0 < L <= U`) when active.
 For example, a production batch might require a minimum run size $L = 10$ and capacity $U = 100$.
 
-Combine a continuous variable `x` with a binary activation variable `isActive` using linking inequalities $L \cdot b \le x \le U \cdot b$:
+Combine a continuous variable $x$ (`batch`) with a binary activation variable $b$ (`isActive`) using linking inequalities $L \cdot b \le x \le U \cdot b$:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -85,8 +85,8 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 WaSHI's built-in `max(...)` and `min(...)` helpers already convert convex load-balancing objectives into pure linear inequalities on HiGHS and GLPK, and native constraints on Pumpkin.
 See [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at).
 
-When you need explicit access to the shared ceiling variable $z$—for instance, to reuse it in a second-stage lexicographic constraint—write the **epigraph** reformulation directly.
-Constrain every load $\text{load}_i \le z$ and minimize $z$ (or constrain $u_i \ge z$ and maximize $z$ for Max-Min):
+When you need explicit access to the shared ceiling variable $z$—for instance, to reuse it in subsequent constraints or multi-stage formulations (such as constraining peak load after a first-stage solve)—write the **epigraph** reformulation directly.
+Constrain every load $\text{load}_i \le z$ and minimize $z$ (for Max-Min, constrain each score or utility $u_i \ge z$ and maximize $z$):
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -140,14 +140,14 @@ await m.solve();
 
 > [!TIP]
 > **Scaling Penalty Weights ($W$)**: Set $W$ larger than normal marginal costs (typically $10\times$ to $1{,}000\times$ unit cost), and avoid extreme constants like $10^{12}$.
-> Keeping the ratio between the largest and smallest coefficients within $10^5\text{–}10^6$ preserves floating-point accuracy in LP and MIP solvers.
+> Keeping the ratio between the largest and smallest non-zero absolute coefficients within $10^5\text{–}10^6$ preserves floating-point accuracy in LP and MIP solvers.
 
 ### Symmetry Breaking for Identical Resources
 
 When a model contains $K$ interchangeable resources—such as identical trucks, bins, or machines—every feasible assignment has up to $K!$ equivalent permutations with the same objective value.
-Without symmetry breaking, a MIP solver explores redundant mirror-image subtrees before proving optimality.
+Without symmetry breaking, a MIP solver explores redundant isomorphic subtrees before proving optimality.
 
-Impose a canonical ordering ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) so identical resources activate in index order:
+Let $u_k \in \{0, 1\}$ indicate whether resource $k$ is used, and impose a canonical ordering ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) so identical resources activate in index order:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -206,8 +206,8 @@ In combinatorial MIP problems, solvers often find a strong incumbent solution wi
 
 In interactive apps and batch pipelines, pair `timeLimit` with practical tolerances in [`m.solve(options)`](./objectives.md#solve-options-solveoptions):
 
-- **`relativeGap: 0.01`**: Stops once the incumbent is proven within **1%** of the dual bound.
-- **`absoluteGap: 100`**: Stops once `|objectiveValue - objectiveBound| <= 100` in objective units.
+- **`relativeGap: 0.01`** (HiGHS / GLPK): Stops once the incumbent objective is proven within **1%** of the dual bound.
+- **`absoluteGap: 100`** (HiGHS only): Stops once `|objectiveValue - objectiveBound| <= 100` in objective units.
 
 ---
 
@@ -217,15 +217,15 @@ When using [`solveColumnGeneration` or `solveBenders`](./decomposition.md), thre
 
 ### Set Covering (`>= 1`) vs. Set Partitioning (`== 1`) in Column Generation
 
-Writing demand coverage as inequalities (`>= 1`) rather than equalities (`== 1`) restricts dual shadow prices to $\pi_i \ge 0$.
+In minimization problems, writing demand coverage as inequalities (`>= 1`) rather than equalities (`== 1`) restricts dual shadow prices to $\pi_i \ge 0$.
 This reduces dual oscillations and speeds up convergence whenever over-coverage can be removed without increasing cost (such as Euclidean routing under the triangle inequality).
 
 ### Price-and-Branch (`finalizeAsMIP: true`) vs. Exact Branch-and-Price
 
 Solving one final MIP over the columns generated at the root LP relaxation (`finalizeAsMIP: true`) is called the **Price-and-Branch** heuristic.
-Unlike exact **Branch-and-Price**—which re-runs column generation inside every branch-and-bound node—Price-and-Branch avoids embedding branching constraints into the pricing subproblem while producing strong integer solutions quickly.
+Unlike exact **Branch-and-Price**—which re-runs column generation inside every branch-and-bound node—Price-and-Branch avoids embedding branching constraints into the pricing subproblem while producing strong integer solutions quickly (though exact integer optimality is not guaranteed).
 
-### Multi-Cut Separation in Benders & Lazy Constraints
+### Returning Multiple Cuts per Iteration (Benders & Lazy Constraints)
 
-When a separation callback detects multiple disconnected subtours or violated components in a candidate solution, return cuts for **all** violated components in one batch.
+When a `subproblem` callback detects multiple disconnected subtours or violated components in a candidate solution, return cuts for **all** violated components in one batch.
 Adding multiple cuts per iteration significantly reduces the number of master MIP re-solves (see [Traveling Salesperson](../examples/traveling-salesperson.md)).

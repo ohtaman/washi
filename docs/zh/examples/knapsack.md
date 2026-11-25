@@ -8,12 +8,12 @@
 
 ## 数学模型形式化
 
-为每件物品 $i$ 定义 0-1 二元决策变量 $x_i \in \{0, 1\}$，选中时 $x_i = 1$，不选时 $x_i = 0$：
+设物品 $i$ 的价值为 $v_i$、重量为 $w_i$，背包承重上限为 $W$，并为每件物品 $i$ 定义 0-1 二元决策变量 $x_i \in \{0, 1\}$（选中时 $x_i = 1$，不选时 $x_i = 0$）：
 
 $$\begin{aligned}
 \text{Maximize} \quad & \sum_{i} v_i x_i & (\text{总价值}) \\
 \text{Subject to} \quad & \sum_{i} w_i x_i \le W & (\text{重量容量上限}) \\
-& x_i \in \{0, 1\} & (\text{0-1 二元决策})
+& x_i \in \{0, 1\} \quad \forall i & (\text{0-1 二元决策})
 \end{aligned}$$
 
 ## 使用 WaSHI 实现
@@ -26,6 +26,7 @@ import { Model, maximize, expr } from "@ohtaman/washi";
 async function solveKnapsack() {
   const m = new Model("Knapsack");
 
+  // weight: kg, value: $
   const items = [
     { name: "Laptop",   weight: 3, value: 50 },
     { name: "Camera",   weight: 2, value: 40 },
@@ -41,10 +42,10 @@ async function solveKnapsack() {
   const values = Object.fromEntries(items.map((it) => [it.name, it.value]));
   const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
-  // 目标函数：通过 expr 内的点积（dot）最大化所选物品的总价值
+  // 目标函数：最大化所选物品的总价值
   m.objective(maximize(expr`dot(${values}, ${x})`));
 
-  // 重量上限约束：使用自然的 expr 与 constraint() 语法
+  // 重量上限约束
   m.constraint(expr`dot(${weights}, ${x}) <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();

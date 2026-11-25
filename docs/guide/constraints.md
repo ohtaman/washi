@@ -1,7 +1,7 @@
 # Constraints (`m.constraint` & `m.indicator`)
 
 Constraints define the rules that every valid solution must satisfy.
-In WaSHI, both linear arithmetic constraints and logical rules are registered with `m.constraint()`:
+In WaSHI, linear arithmetic constraints, logical rules, and CP global constraints are all registered with `m.constraint()`:
 
 ```typescript
 m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
@@ -66,7 +66,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ---
 
-## Aggregated Constraints (`sum` & `dot`)
+## Constraints with Sums & Dot Products (`sum` & `dot`)
 
 Use `sum(...)` and `dot(..., ...)` directly inside `expr` to express linear aggregations over arrays and dictionaries:
 
@@ -91,10 +91,10 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 For continuous Linear Programming (LP) models solved by HiGHS, each linear constraint exposes two sensitivity properties after `m.solve()` (GLPK populates `dual` only and leaves `slack` as `null`):
 
-- **`dual` (shadow price)**: The signed change in the optimal objective value per unit increase in the constraint's right-hand side.
+- **`dual` (shadow price)**: The marginal signed change in the optimal objective value per unit increase in the constraint's right-hand side (while the optimal basis remains unchanged).
 - **`slack`**: The unused margin between the constraint's left-hand side and right-hand side at the optimal solution (`0` when the constraint is tight).
 
-Both properties return `number | null` and are `null` before solving or on MIP, CP, and logical constraints.
+Both properties have type `number | null` and are `null` before solving, when no optimal LP solution is found, or on MIP, CP, SMT, and logical constraints.
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -137,9 +137,9 @@ When `options.M` is omitted, WaSHI computes the smallest valid Big-M from finite
 If any referenced variable lacks a required finite bound, `m.indicator()` throws an error asking for finite bounds or an explicit `options.M`.
 
 > [!NOTE]
-> **How `m.indicator()` works across MIP, CP, and SMT solvers**: When `options.M` is omitted, `m.indicator()` returns Big-M linear `Constraint` objects that also carry a native-indicator annotation.
-> HiGHS, GLPK, and `m.toLpString()` use the Big-M inequalities directly, while Pumpkin and Z3 read the annotation to solve the implication natively without Big-M numerical loss.
-> If you later mutate a returned `Constraint` object, WaSHI clears that annotation so your direct edits take effect across every solver.
+> **How `m.indicator()` works across MIP, CP, and SMT solvers**: When `options.M` is omitted, `m.indicator()` returns an array of Big-M linear `Constraint` objects (`Constraint[]`) that also carry a native-indicator annotation.
+> HiGHS, GLPK, and `m.toLpString()` use the Big-M inequalities directly, while Pumpkin and Z3 read the annotation to solve the implication natively without Big-M numerical issues or weak relaxations.
+> If you later mutate any returned `Constraint` object, WaSHI clears that annotation so your direct edits take effect across every solver.
 
 ### Explicit `M` Override
 
@@ -153,7 +153,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **Prefer Finite Variable Bounds Over Arbitrary Large `M`**: Too small an $M$ can cut off valid solutions, while an excessively large $M$ (such as $10^9$) harms MIP numerical stability.
+> **Prefer Finite Variable Bounds Over Arbitrary Large `M`**: Too small an $M$ can cut off valid solutions, while an excessively large $M$ (such as $10^9$) weakens LP relaxations and harms MIP numerical stability.
 > Setting realistic `lb` and `ub` bounds lets WaSHI compute the tightest safe Big-M automatically.
 
 ---
@@ -191,7 +191,7 @@ m.constraint(
 m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 ```
 
-All named constraints are stored uniformly in `m.constraints` (`ReadonlyMap<string, Constraint | LogicalConstraint>`) and can be looked up with `m.constraints.get(name)`.
+All registered constraints (including auto-named ones) are stored in `m.constraints` (`ReadonlyMap<string, Constraint | LogicalConstraint>`) and can be looked up with `m.constraints.get(name)`.
 Logical and CP entries use the shape `{ kind: "logical", name, expr, dual: null, slack: null }`.
 
 ### Choosing Between `m.indicator()` and `implies()`
@@ -204,7 +204,7 @@ Logical and CP entries use the shape `{ kind: "logical", name, expr, dual: null,
 | **Primary Use Case** | MIP optimization models using numeric binary variables | Logical rule systems and SMT feasibility checks |
 
 > [!NOTE]
-> **Negating Comparison Constraints (`not`, `xor`, or `implies` condition)**:
+> **Negating Comparison Constraints (arguments of `not` or `xor`, or the condition of `implies`)**:
 > - **Integer expressions**: Negations such as $\neg(x \le 5)$ are converted automatically to $x \ge 6$ on HiGHS and GLPK, and handled natively on Pumpkin and Z3.
 > - **`Continuous` or decimal expressions**: HiGHS and GLPK reject negated continuous comparisons because strict `<` and `>` cannot form closed linear inequalities. Use `{ solver: "z3" }` or model the condition with `m.bool()`.
 
@@ -226,7 +226,7 @@ m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // native on Pumpkin/Z3
 ```
 
 Expressions containing `Continuous` variables or decimal constants are rejected immediately for `!=`, `<`, and `>`.
-Over real numbers, strict inequalities define open sets—for example, $x < 5$ has no largest real solution.
+Over real numbers, strict inequalities define open sets—for example, maximizing $x$ subject to $x < 5$ has no optimal real solution.
 LP and MIP solvers therefore require closed inequalities ($\le$, $\ge$, $=$) so an optimum is well-defined.
 
 ---

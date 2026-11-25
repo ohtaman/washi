@@ -12,7 +12,7 @@ Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` o
 | :--- | :--- | :--- |
 | **Scheduling, resource caps, & discrete global constraints** | **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) | Native propagation for `disjoint`, `cumulative`, `distinct`, and `allowed` with zero extra setup. |
 | **Browser `unsatCore` without `COOP`/`COEP`** | **Pumpkin** (`m.check({ solver: "pumpkin" })`) | Extracts conflicting named constraints on bounded integer and boolean models in any static site or iframe. |
-| **Linear, Mixed-Integer, & Quadratic Programming** | **[HiGHS](./highs.md)** (default) | Supports continuous variables, duals and slacks, convex quadratic objectives, and continuous relaxation. |
+| **Linear, Mixed-Integer, & Convex Quadratic Programming** | **[HiGHS](./highs.md)** (default) | Supports continuous variables, duals and slacks, convex quadratic objectives, and continuous relaxation. |
 | **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Handles real-valued inequalities inside logical operators and mixed continuous/integer `unsatCore`. |
 
 ---
@@ -50,6 +50,7 @@ model.constraint(
   ]),
   "single_machine"
 );
+// Optional: reify the chosen order in job1First (disjoint already enforces non-overlap)
 model.constraint(implies(job1First, expr`${s1} + 6 <= ${s2}`), "job1_before_job2");
 model.constraint(implies(not(job1First), expr`${s2} + 4 <= ${s1}`), "job2_before_job1");
 
@@ -85,7 +86,7 @@ if (result.status === "Unsat") {
 
 ## Solver Options
 
-Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`. Supported options are `timeLimit` (seconds), `useWorker`, `wasmUrl`, `signal`, and `onProgress`:
+Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`. Supported options are `timeLimit` (seconds), `useWorker`, `wasmUrl`, `signal`, and `onProgress` (`solve()` only):
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -121,9 +122,9 @@ if (model.hasPrimalSolution) {
 
 Pumpkin solves **bounded integer and boolean** models only. Unsupported variables, values, or options fail fast by throwing a runtime `Error`:
 
-- **Bounded integers only**: Every `Integer` and `Binary` variable must have finite integer bounds in $[-(2^{30} - 1),\, 2^{30} - 1]$; `Continuous` variables and infinite bounds throw an `Error`.
+- **Bounded integers only**: Every `Integer` variable must have finite integer bounds in $[-(2^{30} - 1),\, 2^{30} - 1]$ (`Binary` variables are bounded to 0/1); `Continuous` variables and infinite bounds on `Integer` variables throw an `Error`.
 - **Integer coefficients & scaled bounds**: Constraint coefficients, adjusted right-hand sides (`rhs - lhs.constant`), and scaled variable bounds must be exact integers in $[-(2^{30} - 1),\, 2^{30} - 1]$.
-- **Constraint magnitude sum**: In each constraint, the adjusted right-hand side magnitude plus the worst-case magnitude of every scaled variable term must not exceed $2^{31} - 2$.
+- **Constraint magnitude sum**: In each constraint, the adjusted right-hand side magnitude plus the sum of worst-case term magnitudes ($|\text{coeff}| \times \max(|\mathrm{lb}|, |\mathrm{ub}|)$) must not exceed $2^{31} - 2$.
 - **Stricter objective bound**: Objective coefficients must be integers whose worst-case scaled term magnitudes sum to at most $2^{30} - 1$; objective constants may be fractional.
 - **Unsupported model features**: `QuadExpr` objectives or constraints and `relax: true` throw a runtime `Error`.
 - **Unsupported options**: `relativeGap`, `absoluteGap`, `presolve`, `threads`, `verbose`, `outputFlag`, and unknown option keys throw a runtime `Error`.

@@ -2,17 +2,17 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
+| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
 
 After solving a Linear Programming (LP) model, **sensitivity analysis** shows how the optimal cost responds to changes in requirements, caps, or unit prices:
 
-1. **Shadow Price (`constr.dual`):** Marginal change in optimal cost per unit shift in a constraint's right-hand side.
-2. **Slack (`constr.slack`):** Spare margin remaining on a constraint, where `0` means the constraint is binding.
-3. **Reduced Cost (`var.reducedCost`):** Marginal cost impact of moving a variable away from its lower or upper bound.
+1. **Shadow Price (`constr.dual`):** Marginal change in optimal cost when a constraint's right-hand side increases by 1 unit.
+2. **Slack (`constr.slack`):** Spare margin (or surplus) on a constraint, where `0` means the constraint is binding.
+3. **Reduced Cost (`var.reducedCost`):** Marginal change in optimal cost when a variable fixed at its lower or upper bound is increased by 1 unit.
 
 ## Problem Inputs
 
-We choose daily servings ($0 \le x_i \le 4$) across 6 foods to minimize daily cost. The plan must meet 4 daily minimums: `Calories >= 2000 kcal`, `Protein >= 105 g`, `Calcium >= 1000 mg`, and `Iron >= 18 mg`.
+We determine daily servings ($0 \le x_i \le 4$, continuous) for each of 6 foods to minimize daily cost. The plan must meet 4 daily minimums: at least `2000 kcal` of calories, `105 g` of protein, `1000 mg` of calcium, and `18 mg` of iron.
 
 | Food Item | Cost / Serving | Calories (kcal) | Protein (g) | Calcium (mg) | Iron (mg) | Max Servings |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -42,7 +42,7 @@ const foods = [
 async function runDietSensitivity() {
   const m = new Model("DietSensitivity");
 
-  // Continuous servings per day (0 to 4 servings max per food)
+  // Continuous servings per day (0 to 4 servings per food)
   const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
   const costs = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
@@ -51,10 +51,10 @@ async function runDietSensitivity() {
   const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // Objective: Minimize total daily cost via dot() inside expr
+  // Objective: Minimize total daily cost
   m.objective(minimize(expr`dot(${costs}, ${srv})`));
 
-  // Nutritional constraints defined declaratively with expr and constraint()
+  // Nutritional minimum constraints
   const nutConstraints = [
     m.constraint(expr`dot(${cals}, ${srv}) >= 2000`, "min_calories"),
     m.constraint(expr`dot(${prots}, ${srv}) >= 105`,  "min_protein"),
@@ -83,27 +83,27 @@ runDietSensitivity();
 
 ## Interpretation of Results
 
-HiGHS returns `"Optimal"` with a minimum daily cost of **`$13.66`**.
+HiGHS returns `"Optimal"` with a minimum daily cost of **`$13.66`** (`Oats`, `Eggs`, and `Milk` at `4.00` servings each, `Chicken` at `1.55`, `Spinach` at `0.50`, and `Salmon` at `0.00`).
 
 ### Bottleneck Constraints (`slack == 0`, `dual > 0`)
 
-Both `min_calories` and `min_iron` are binding at their lower bounds, with `dual = $0.0091` for calories and `dual = $0.3241` for iron. Raising the daily iron target by `1 mg` increases the minimum daily cost by `$0.3241`.
+Both `min_calories` and `min_iron` are binding at their lower bounds, with `dual = $0.0091/kcal` for calories and `dual = $0.3241/mg` for iron. Raising the daily iron target by `1 mg` increases the minimum daily cost by `$0.3241`.
 
 ### Constraints with Surplus (`|slack| > 0`, `dual == 0`)
 
-For `>=` constraints, HiGHS returns a negative `slack` (`-46.46` for protein and `-483.02` for calcium). The code prints `Math.abs(c.slack)` as the surplus (`46.46 g` of protein and `483.02 mg` of calcium). Because both targets have spare room, their shadow prices are `$0`.
+For `>=` constraints, HiGHS reports `slack` as `rhs - lhs`, returning negative values (`-46.46` for protein and `-483.02` for calcium). The code prints `Math.abs(c.slack)` as the surplus (`46.46 g` of protein and `483.02 mg` of calcium). Because both targets have spare room, their shadow prices are `0`.
 
 ### Reduced Cost at the Lower Bound (`Salmon`)
 
-`Salmon` is unselected (`value = 0.00`) with `reducedCost = +1.5125`. Its price per serving would need to drop by at least `$1.51` before entering the optimal menu.
+`Salmon` is unselected (`value = 0.00`) with `reducedCost = +1.5125`. Its price per serving would need to drop by at least `$1.5125` (about `$1.51`) before entering the optimal menu.
 
 ### Negative Reduced Cost at the Upper Bound (`Oats`, `Eggs`, `Milk`)
 
-Three foods hit the daily cap of `ub = 4.0`. In a minimization LP, a negative reduced cost on an upper-bounded variable shows how much the daily cost drops per unit increase in `ub`:
+Three foods hit the daily cap of `ub = 4.0`. In a minimization LP, an upper-bounded variable has a non-positive reduced cost, indicating the marginal cost change per unit increase in `ub` (its magnitude is the saving per added serving):
 
-- `Oats`: `reducedCost = -1.3546` (raising `ub` by 1 serving saves `$1.35/day`)
-- `Eggs`: `reducedCost = -1.0307` (raising `ub` by 1 serving saves `$1.03/day`)
-- `Milk`: `reducedCost = -0.2294` (raising `ub` by 1 serving saves `$0.23/day`)
+- `Oats`: `reducedCost = -1.3546` (raising `ub` by 1 serving saves about `$1.35/day`)
+- `Eggs`: `reducedCost = -1.0307` (raising `ub` by 1 serving saves about `$1.03/day`)
+- `Milk`: `reducedCost = -0.2294` (raising `ub` by 1 serving saves about `$0.23/day`)
 
 ### Basis Stability Range
 

@@ -1,4 +1,4 @@
-# 跨源隔离配置 (Z3 与浏览器环境)
+# 跨源隔离配置（Z3 与浏览器环境）
 
 在浏览器中运行 Z3 求解器需要同时满足两项浏览器安全前提：**安全上下文**与**跨源隔离**。只有两者同时成立，浏览器才会为 Z3 的多线程 WebAssembly 启用 `SharedArrayBuffer`。
 
@@ -30,7 +30,7 @@ Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-如果页面从其他源加载脚本、图片或 `.wasm` 文件，这些资源的响应还需附带 **Cross-Origin-Resource-Policy（`CORP`）**：`cross-origin`，或有效的 CORS 响应头。
+如果页面从其他源加载脚本、图片或 `.wasm` 文件，这些资源的响应需根据请求模式附带 `Cross-Origin-Resource-Policy: cross-origin`（`CORP`）或有效的 CORS 响应头（`Access-Control-Allow-Origin`）。
 
 > [!NOTE]
 > Chromium 与 Firefox 也支持 `Cross-Origin-Embedder-Policy: credentialless`，可放宽外部子资源的 `CORP` 要求。但 **Safari（WebKit）不支持 `credentialless`**，如需兼容 Safari 或 iOS，请使用 `require-corp`。
@@ -39,7 +39,7 @@ Cross-Origin-Embedder-Policy: require-corp
 
 ## 各环境的配置方案
 
-### 1. Vite (`vite.config.ts`)
+### 1. Vite（`vite.config.ts`）
 
 同时为 `vite` 开发服务器和 `vite preview` 预览服务器配置响应头：
 
@@ -62,7 +62,7 @@ export default defineConfig({
 });
 ```
 
-### 2. Cloudflare Pages / Netlify (`public/_headers`)
+### 2. Cloudflare Pages / Netlify（`public/_headers`）
 
 在 `public/` 下放置 `_headers` 文件，构建时会自动复制到站点根目录：
 
@@ -72,7 +72,7 @@ export default defineConfig({
   Cross-Origin-Embedder-Policy: require-corp
 ```
 
-### 3. Next.js (`next.config.js`)
+### 3. Next.js（`next.config.js`）
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -93,7 +93,7 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
-### 4. 自定义 Node.js / Express 服务器
+### 4. Express（自定义 Node.js 服务器）
 
 ```javascript
 app.use((req, res, next) => {
@@ -107,7 +107,7 @@ app.use((req, res, next) => {
 
 GitHub Pages 等平台不允许直接修改 HTTP 响应头。您可以使用 **`coi-serviceworker`** 通过客户端 Service Worker 注入 `COOP` 与 `COEP` 响应头。请注意，Service Worker 本身同样需要安全上下文（`https://` 或 `http://localhost`）。
 
-1. 从 [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) 或 WaSHI 的 [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js) 复制文件到站点根目录。
+1. 从 [`coi-serviceworker`](https://github.com/gzuidhof/coi-serviceworker) 复制 `coi-serviceworker.js`，或复制 WaSHI 的 [`public/coi-serviceworker.js`](https://github.com/ohtaman/washi/blob/main/public/coi-serviceworker.js) 到站点根目录。
 2. 在 HTML `<head>` 中引入该脚本：
 
 ```html

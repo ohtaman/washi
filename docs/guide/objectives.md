@@ -28,7 +28,7 @@ Calling `m.objective()` with no arguments returns the current objective expressi
 If you omit setting an objective, the model defaults to minimizing `0`.
 
 > [!TIP]
-> For Min-Max load balancing, multi-objective optimization, and MIP gap tolerances (`relativeGap` / `absoluteGap`), see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
+> For Min-Max / Max-Min load balancing, see [Min-Max & Max-Min Objectives](./formulation-tips.md#min-max-max-min-objectives-load-balancing); for multi-objective optimization and MIP gap tolerances (`relativeGap` / `absoluteGap`), see [Multi-Objective & MIP Stopping Design](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
 
 ---
 
@@ -59,7 +59,7 @@ const status = await m.solve({
 | `absoluteGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
 | `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
-| `useWorker` | `boolean` | `true` (browser) | Runs HiGHS and Pumpkin in a browser Web Worker. Set `false` for main-thread browser runs; omit or set `false` in Node.js (explicit `true` fails). |
+| `useWorker` | `boolean` | `true` (browser) / `false` (Node.js) | Runs HiGHS and Pumpkin in a browser Web Worker. Set `false` for main-thread browser runs; omit or set `false` in Node.js (explicit `true` fails). |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` or `pumpkin.wasm` in browser deployments. |
 | `signal` | `AbortSignal` | `undefined` | Cancellation signal (`AbortController.signal`); see cancellation limitations below. |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | Callback receiving live solver progress snapshots. |
@@ -70,7 +70,7 @@ You can also pass a solver name directly as the first argument: `await m.solve("
 
 ## Reading Results, Bounds & Solver Status
 
-After solving, inspect the status, optimal values, and MIP bounds directly on the `Model`:
+After solving, inspect the status, objective value, variable values, and MIP bounds directly on the `Model`:
 
 ```typescript
 const status = await m.solve();
@@ -102,7 +102,7 @@ When a MIP solver stops early due to a time limit, iteration limit, or `AbortSig
 2. **Why did the solver stop?** Check `m.terminationStatus`.
 
 If the solver found a valid solution—called an **incumbent**—before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"`.
-In that case, `x.value` and `m.objectiveValue` contain that incumbent, while `m.terminationStatus` records `"TimeLimit"` or `"Interrupted"`.
+In that case, `x.value` holds the incumbent's variable values and `m.objectiveValue` holds its objective value, while `m.terminationStatus` records `"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`.
 If no solution was found before stopping, `m.hasPrimalSolution` is `false` and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"`.
 
 ### All `SolverStatus` Values
@@ -141,7 +141,7 @@ const status = await m.solve({
       `Gap: ${event.relativeGap !== undefined ? (event.relativeGap * 100).toFixed(2) + "%" : "—"}`
     );
 
-    // Optional: stop early as soon as a good-enough incumbent is found
+    // Optional (maximization model): stop early as soon as a good-enough incumbent is found
     if (event.objectiveValue !== undefined && event.objectiveValue >= 1000) {
       controller.abort();
     }
@@ -182,7 +182,7 @@ A `Model` keeps its solution state consistent across edits made through `Model` 
 ### Post-Solve Mutations Reset State
 
 Adding variables or constraints, or updating the objective via `m.objective()` or `m.sense`, immediately resets `m.status` to `"NotSolved"`.
-The same reset applies when modifying variable fields (`v.lb`, `v.ub`, `v.type`) or constraint fields (`c.lhs`, `c.sense`, `c.rhs`).
+The same reset applies when modifying variable fields (`v.lb`, `v.ub`, `v.type`, `v.initialValue`) or constraint fields (`c.lhs`, `c.sense`, `c.rhs`).
 This clears `m.solution` and `m.objectiveValue`, resets variable `value` and `reducedCost` to `null`, and resets constraint `dual` and `slack` to `null`.
 
 ### Mid-Flight & Overlapping Runs

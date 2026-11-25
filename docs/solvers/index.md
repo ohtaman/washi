@@ -9,10 +9,10 @@ WaSHI uses a pluggable solver architecture. You write a model once with the unif
 | Solver | License | Problem Classes | Best For | Status & Preconditions |
 | :--- | :--- | :--- | :--- | :--- |
 | **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, Convex QP** | Production optimization, operations research, portfolio QP | **Built-in default** (zero configuration) |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | **MIT** | **CP, LCG, Logic, Bounded Integer** | Non-overlapping scheduling, CP global constraints, discrete `unsatCore` | **Bundled plugin** (`@ohtaman/washi/solvers/pumpkin`); requires finite-bound integer or boolean variables only (no `Continuous` variables) |
-| **[Z3](https://github.com/Z3Prover/z3)** (`z3-solver`) | **MIT** | **SMT, SAT, Logic, MIP** | Propositional logic with continuous/decimal variables, `unsatCore` diagnosis | **Optional peer** (`@ohtaman/washi/solvers/z3`, requires `z3-solver`); browsers require `COOP`/`COEP` headers |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | **MIT** | **CP, Propositional Logic, Bounded Integer** (via LCG) | Non-overlapping scheduling, CP global constraints, discrete `unsatCore` | **Bundled plugin** (`@ohtaman/washi/solvers/pumpkin`); requires finite-bound integer or boolean variables only (no `Continuous` variables) |
+| **[Z3](https://github.com/Z3Prover/z3)** (`z3-solver`) | **MIT** | **SMT, SAT, LP/MIP** (with logical constraints) | Logical rules with continuous variables or decimal coefficients, mixed continuous/integer `unsatCore` diagnosis | **Optional peer** (`@ohtaman/washi/solvers/z3`, requires `z3-solver`); browsers require `COOP`/`COEP` headers |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (`glpk.js`) | **GPL-3.0** | **LP, MIP** | Academic benchmarks, legacy GLPK compatibility | **Optional peer** (`@ohtaman/washi/solvers/glpk`, requires `glpk.js`; note GPL-3.0 license) |
-| **Mock** (`MockSolver`) | **MIT** | *Any* | Fast CI unit tests without loading WebAssembly | **Built-in** (`solver: "mock"` or `new MockSolver(...)`) |
+| **Mock** (`MockSolver`) | **MIT** | *Any* (fixed-response stub) | Fast CI unit tests without loading WebAssembly | **Built-in** (`solver: "mock"` or `new MockSolver(...)`) |
 
 ---
 
@@ -34,6 +34,7 @@ m.objective(maximize(expr`${x}`));
 // 2. Override solver per solve() or check() call
 await m.solve({ solver: "highs" });
 await m.solve({ solver: "glpk" });
+// check() ignores the objective and checks constraint satisfiability only
 await m.check({ solver: "pumpkin" });
 await m.check({ solver: "z3" });
 
@@ -50,6 +51,6 @@ See [Conflict Diagnosis, Validation & Debugging](../guide/unsat-core.md) for ful
 
 - [HiGHS Solver Guide](./highs.md): Background Web Worker execution, MIP tolerances, Convex QP solving, and progress callbacks.
 - [Pumpkin Solver Guide](./pumpkin.md): Bundled CP / Lazy Clause Generation (LCG) solver, global constraints, warm starts, and discrete `unsatCore` diagnosis.
-- [Z3 Solver Guide](./z3.md): SMT logic assertions, `Continuous` / decimal rules, `unsatCore` extraction, and browser `COOP`/`COEP` setup.
+- [Z3 Solver Guide](./z3.md): SMT logical constraints, `Continuous` / decimal rules, `unsatCore` extraction, and browser `COOP`/`COEP` setup.
 - [GLPK Solver Guide](./glpk.md): GLPK adapter setup, GPL-3.0 licensing notes, and browser usage.
-- [Custom Solvers](./custom-solver.md): Developer guide for integrating proprietary, cloud REST, or custom WASM solvers.
+- [Custom Solvers](./custom-solver.md): Developer guide for integrating commercial/proprietary, cloud REST, or custom WASM solvers.

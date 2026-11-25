@@ -60,7 +60,7 @@ console.log("Shadow price:", cap.dual);          // 2
 
 ## Solver Options & Execution Model
 
-WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error`. In Node.js, `glpk.js` executes synchronously on the main thread; in all environments, `signal` is checked only before solving begins and cannot interrupt an in-flight solve.
+WaSHI's `useWorker: true` option is not supported on GLPK and throws an `Error` (in browsers, `glpk.js` uses its own internal Web Worker automatically, while in Node.js it executes synchronously on the main thread). In all environments, `signal` is checked only before solving begins and cannot interrupt an in-flight solve.
 
 ### Supported Options
 
@@ -91,7 +91,7 @@ GLPK return codes map strictly to WaSHI `SolverStatus`:
 | GLPK Code | WaSHI Status | Meaning |
 | :--- | :--- | :--- |
 | `GLP_OPT` (5) | `"Optimal"` | Proven optimal solution found. |
-| `GLP_FEAS` (2) | `"Feasible"` | Feasible MIP incumbent found. |
+| `GLP_FEAS` (2) | `"Feasible"` | Feasible solution found (optimality not proven). |
 | `GLP_INFEAS` (3) / `GLP_NOFEAS` (4) | `"Infeasible"` | No feasible solution exists. |
 | `GLP_UNBND` (6) | `"Unbounded"` | Objective is unbounded. |
 | `GLP_UNDEF` (1) / other | `"Unknown"` | Undefined or unrecognized status (never mapped to `"Optimal"`). |
@@ -99,9 +99,9 @@ GLPK return codes map strictly to WaSHI `SolverStatus`:
 ### Solution Availability
 
 - Variable values (`model.values`, `var.value`) and `model.objectiveValue` are populated only for `"Optimal"` or `"Feasible"` outcomes.
-- On `Infeasible`, `Unbounded`, `Unknown`, or `Error` outcomes, `model.objectiveValue` and variable values remain `null`.
+- On `"Infeasible"`, `"Unbounded"`, `"Unknown"`, or `"Error"` outcomes, `model.objectiveValue` and variable values remain `null`.
 
 ### Differences Between LP and MIP
 
-- **Linear Programming (LP)**: Solved via simplex. Only constraint duals (`c.dual`) are populated on optimal solutions; `c.slack` and `v.reducedCost` remain `null`.
-- **Mixed-Integer Programming (MIP)**: Solved via branch-and-cut. Duals are omitted, and `glpk.js` does not expose MIP dual bounds or gaps (`objectiveBound`, `relativeGap`, and `absoluteGap` remain `undefined`).
+- **Linear Programming (LP)**: Solved via simplex. For sensitivity information on optimal solutions, only constraint duals (`c.dual`) are populated; `c.slack` and `v.reducedCost` remain `null`.
+- **Mixed-Integer Programming (MIP)**: Solved via branch-and-cut. MIP models do not produce LP duals, and `glpk.js` does not expose MIP dual bounds or gaps (`objectiveBound`, `relativeGap`, and `absoluteGap` remain `undefined`).

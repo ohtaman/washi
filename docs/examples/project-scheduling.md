@@ -2,9 +2,9 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Constraint Programming (RCPSP & Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (Schedule)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
+| Constraint Programming (RCPSP) / Unsat Core Diagnosis | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (Schedule)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
 
-The **Resource-Constrained Project Scheduling Problem (RCPSP)** schedules project tasks to minimize total completion time, known as the **makespan**. It balances task precedence order, exclusive single-machine equipment, and limited team headcount at the same time.
+The **Resource-Constrained Project Scheduling Problem (RCPSP)** schedules project tasks to minimize the maximum completion time, known as the **makespan**. It balances task precedence order, exclusive single-machine equipment, and limited team headcount at the same time.
 
 Using WaSHI's bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`):
 1. Each task needs only one integer start variable (`start[task]`), avoiding binary variables for every `(task, hour)` pair.
@@ -12,7 +12,7 @@ Using WaSHI's bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`):
 
 ## Problem Inputs
 
-We schedule **6 hardware prototype tasks** inside a 24-hour scheduling window. The team has `crewCapacity = 3` engineers and 1 shared test and calibration rig:
+We schedule **6 hardware prototype tasks** with a start-time horizon of `24` hours (`horizon = 24`). The team has `crewCapacity = 3` engineers and 1 shared test and calibration rig:
 
 | Task | Duration | Crew | Dependencies | Shared Rig (`disjoint`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -83,6 +83,7 @@ async function runProjectScheduling() {
   }
 
   // 4. Diagnose an impossible rush deadline when the rig is offline for maintenance [0, 6)
+  // (restricting firmware and calib to start >= 6; test is already >= 7 via precedence)
   m.constraint(
     and(expr`${start.firmware} >= 6`, expr`${start.calib} >= 6`),
     "rig_maintenance_window"
@@ -111,7 +112,7 @@ Calling `await m.check()` on the same `Model` clears the previous `solve()` outp
 
 ### Why the `13h` Rush Deadline Is Infeasible (`unsatCore`)
 
-When the maintenance window and `13h` deadline are added, `m.check()` returns `"Unsat"` and isolates the exact bottleneck without blaming `crew_limit`:
+When the maintenance window and `<= 13h` deadline are added, `m.check()` returns `"Unsat"` and extracts the conflicting constraints (`unsatCore`) while excluding the unrelated `crew_limit`:
 
 1. `rig_maintenance_window` delays both `firmware` and `calib` until at least `6h`.
 2. Because `chassis` takes `4h` and `assembly` takes `3h`, `assembly_after_chassis` and `test_after_assembly` delay `test` until at least `7h`.

@@ -10,7 +10,7 @@ In `@ohtaman/washi`, HiGHS is the built-in default solver. It ships as a bundled
 
 | Problem Type | Recommended Solver | Why |
 | :--- | :--- | :--- |
-| **LP, MIP, or continuous convex QP** | **HiGHS** (default) | Bundled under MIT, fast numerical solving, LP duals and slacks, and MIP warm starts. |
+| **LP, MIP, or continuous convex QP** | **HiGHS** (default) | Bundled under MIT, fast numerical solving, LP duals/slacks/reduced costs, and MIP warm starts. |
 | **Bounded-integer Constraint Programming (CP)** | **[Pumpkin](./pumpkin.md)** | Native `disjoint`, `cumulative`, `distinct`, and `unsatCore` without Cross-Origin Isolation headers. |
 | **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Exact arithmetic inside logical operators and mixed continuous/integer `unsatCore`. |
 | **GNU GLPK compatibility or benchmarking** | **[GLPK](./glpk.md)** | Optional GPL-3.0 peer dependency for cross-checking legacy GLPK models. |
@@ -54,7 +54,7 @@ console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 
 ### 2. Mixed-Integer Programming (MIP)
 
-MIP models combine continuous variables with `model.integer()` or `model.binary()` variables. HiGHS solves them via branch-and-cut and reports `objectiveBound`, `relativeGap`, and `absoluteGap`:
+MIP models include `model.integer()` or `model.binary()` variables (optionally combined with continuous variables). HiGHS solves them via branch-and-cut and reports `objectiveBound`, `relativeGap`, and `absoluteGap`:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -108,10 +108,10 @@ Pass execution options into `model.solve()` or the `HighsSolver` constructor. Hi
 | `relativeGap` | `number` | Stop when the relative MIP optimality gap falls within this tolerance. |
 | `absoluteGap` | `number` | Stop when the absolute MIP optimality gap falls within this tolerance. |
 | `presolve` | `"on" \| "off" \| "choose"` | Controls model presolve before optimization. |
-| `outputFlag` | `boolean` | Enables internal simplex and branch-and-cut logs (`false` by default). |
+| `outputFlag` | `boolean` | Enables internal solver logs (`false` by default). |
 | `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model. |
 | `useWorker` | `boolean` | Runs HiGHS in a browser Web Worker (`true` by default in browsers). |
-| `wasmUrl` | `string \| null` | Overrides the `highs.wasm` asset URL for this solve. |
+| `wasmUrl` | `string \| null` | Overrides the `highs.wasm` asset URL (`null` falls back to `setHighsWasmUrl()` or the bundled binary). |
 | `signal` | `AbortSignal` | Cooperatively cancels an in-flight solve. |
 | `onProgress` | `(ev) => void` | Receives live elapsed time, primal objective, dual bound, and gap updates. |
 
@@ -160,7 +160,7 @@ if (model.hasPrimalSolution) {
 
 ## Web Worker & WASM Configuration in Browsers
 
-In browsers, WaSHI runs HiGHS inside a dedicated Web Worker by default. This keeps UI rendering responsive and allows `onProgress` and `AbortSignal` to interrupt long solves cleanly.
+In browsers, WaSHI runs HiGHS inside a dedicated Web Worker by default. This keeps UI rendering responsive and allows `onProgress` updates and `AbortSignal` cancellation during long solves.
 
 To run on the main thread (for example, in environments that restrict Web Workers) or serve `highs.wasm` from a custom path, configure `useWorker`, `setHighsWasmUrl`, or `wasmUrl`:
 

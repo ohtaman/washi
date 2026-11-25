@@ -1,20 +1,20 @@
-# 栄養問題と感度分析 (潜在価格 Dual・スラック Slack)
+# 栄養問題と感度分析（潜在価格・スラック・被約費用）
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
 
-線形計画モデルを解いたあと、**感度分析（Sensitivity Analysis）**を確認すると、基準値・上限・単価の変化に対するコストの反応が分かります。
+線形計画モデルを解いたあとに **感度分析（Sensitivity Analysis）** を行うと、基準値・上限・単価の変化に対する最適コストの変化量が分かります。
 
-1. **潜在価格（`constr.dual` / Shadow Price）:** 制約の右辺が 1 単位変わったときの最適コストの限界変化量です。
-2. **スラック（`constr.slack`）:** 制約の余裕量で、`0` のとき境界に張り付いたボトルネックを表します。
-3. **被約費用（`var.reducedCost`）:** 下限または上限に張り付いた変数を 1 単位動かしたときの限界コスト変化です。
+1. **潜在価格（`constr.dual` / Shadow Price）:** 制約の右辺を 1 単位増やしたときの、最適コストの限界変化量です。
+2. **スラック（`constr.slack`）:** 制約の余裕量（または超過量）を表し、`0` のとき制約が等号で成立するボトルネック（活性制約）であることを示します。
+3. **被約費用（`var.reducedCost`）:** 下限または上限に張り付いた変数の値を 1 単位増やしたときの、最適コストの限界変化量です。
 
 ## 入力データ
 
-6 種類の食品から 1 日あたりの摂取量（$0 \le x_i \le 4$）を選び、1 日の食費合計を最小化します。満たすべき最低基準は、カロリー `>= 2000 kcal`、タンパク質 `>= 105 g`、カルシウム `>= 1000 mg`、鉄分 `>= 18 mg` の 4 項目です。
+6 種類の食品それぞれの 1 日あたり摂取量（$0 \le x_i \le 4$ 食分、連続値）を決定し、1 日の食費合計を最小化します。満たすべき最低基準は、カロリー `2000 kcal` 以上、タンパク質 `105 g` 以上、カルシウム `1000 mg` 以上、鉄分 `18 mg` 以上の 4 項目です。
 
-| 食品名 | 1食あたりコスト | カロリー (kcal) | タンパク質 (g) | カルシウム (mg) | 鉄分 (mg) | 1日の上限 (食) |
+| 食品名 | 1 食あたりコスト | カロリー (kcal) | タンパク質 (g) | カルシウム (mg) | 鉄分 (mg) | 1 日の上限（食） |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Oats（オートミール）** | $0.60 | 150 | 5 | 20 | 1.8 | 4.0 |
 | **Chicken（鶏肉）** | $2.40 | 220 | 32 | 15 | 1.2 | 4.0 |
@@ -42,7 +42,7 @@ const foods = [
 async function runDietSensitivity() {
   const m = new Model("DietSensitivity");
 
-  // 各食品の1日あたり摂取量 (0 〜 最大 4 食分)
+  // 各食品の 1 日あたり摂取量（0 〜 4 食分）
   const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
   const costs = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
@@ -51,10 +51,10 @@ async function runDietSensitivity() {
   const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // 目的関数: 1日の食費合計を最小化 (expr 内の dot による内積)
+  // 目的関数: 1 日の食費合計を最小化
   m.objective(minimize(expr`dot(${costs}, ${srv})`));
 
-  // 栄養基準の制約: m.constraint と expr による数式定義
+  // 栄養基準の制約
   const nutConstraints = [
     m.constraint(expr`dot(${cals}, ${srv}) >= 2000`, "min_calories"),
     m.constraint(expr`dot(${prots}, ${srv}) >= 105`,  "min_protein"),
@@ -83,28 +83,28 @@ runDietSensitivity();
 
 ## 結果の解釈
 
-HiGHS は `"Optimal"` を返し、1 日の最小食費は **`$13.66`** になります。
+HiGHS は `"Optimal"` を返し、1 日の最小食費は **`$13.66`** になります（最適摂取量は `Oats`・`Eggs`・`Milk` が各 `4.00` 食、`Chicken` が `1.55` 食、`Spinach` が `0.50` 食、`Salmon` が `0.00` 食）。
 
 ### ボトルネック制約（`slack == 0`, `dual > 0`）
 
-`min_calories` と `min_iron` が下限に張り付いており、潜在価格はカロリーが `$0.0091`、鉄分が `$0.3241` です。鉄分の必要量を `1 mg` 増やすと、最小食費は `$0.3241` 増加します。
+`min_calories` と `min_iron` が等号で成立しており、潜在価格はカロリーが `$0.0091/kcal`、鉄分が `$0.3241/mg` です。鉄分の必要量を `1 mg` 増やすと、最小食費は `$0.3241` 増加します。
 
 ### 余剰のある制約（`|slack| > 0`, `dual == 0`）
 
-`>=` 制約では HiGHS が負の `slack`（タンパク質 `-46.46`、カルシウム `-483.02`）を返すため、コードでは `Math.abs(c.slack)` を余剰量として出力しています。タンパク質は `46.46 g`、カルシウムは `483.02 mg` の余裕があるため、潜在価格はどちらも `$0` です。
+`>=` 制約では `右辺 - 左辺` として負の `slack`（タンパク質 `-46.46`、カルシウム `-483.02`）が返るため、コードでは `Math.abs(c.slack)` を余剰量として出力しています。タンパク質は `46.46 g`、カルシウムは `483.02 mg` の余裕があるため、潜在価格はどちらも `0` です。
 
-### 下限（不採用）の被約費用（`Salmon`）
+### 下限に張り付いた変数（不採用品目）の被約費用（`Salmon`）
 
-不採用（`value = 0.00`）の `Salmon` は `reducedCost = +1.5125` です。1 食あたりの価格が少なくとも `$1.51` 下がらない限り、最適メニューには採用されません。
+不採用（`value = 0.00`）の `Salmon` は `reducedCost = +1.5125` です。1 食あたりの単価が `$1.5125`（約 `$1.51`）以上下がらない限り、最適メニューには採用されません。
 
 ### 上限に張り付いた変数の負の被約費用（`Oats`, `Eggs`, `Milk`）
 
-3 品目が 1 日の上限 `ub = 4.0` に達しています。最小化 LP では、上限に張り付いた変数の負の被約費用が、`ub` を 1 単位引き上げたときのコスト減少幅を表します。
+3 品目が 1 日の上限 `ub = 4.0` に達しています。最小化 LP では、上限に張り付いた変数の被約費用は負になり、`ub` を 1 単位引き上げたときのコスト変化量（絶対値が節約額）を表します。
 
-- `Oats`: `reducedCost = -1.3546`（上限を 1 食分増やすと `$1.35/日` 節約）
-- `Eggs`: `reducedCost = -1.0307`（上限を 1 食分増やすと `$1.03/日` 節約）
-- `Milk`: `reducedCost = -0.2294`（上限を 1 食分増やすと `$0.23/日` 節約）
+- `Oats`: `reducedCost = -1.3546`（上限を 1 食分引き上げると約 `$1.35/日` 節約）
+- `Eggs`: `reducedCost = -1.0307`（上限を 1 食分引き上げると約 `$1.03/日` 節約）
+- `Milk`: `reducedCost = -0.2294`（上限を 1 食分引き上げると約 `$0.23/日` 節約）
 
-### 基底の安定範囲
+### 最適基底の有効範囲
 
-`dual` と `reducedCost` は、現在の最適基底（Optimal Basis）が保たれる範囲での局所的な変化率です。上限や基準値を大きく動かして有効な制約・境界が切り替わると、限界変化率も新しい値へ変わります。
+`dual` と `reducedCost` は、現在の最適基底（Optimal Basis）が保たれる範囲での局所的な変化率です。上限や基準値を大きく動かして活性制約や張り付く境界が切り替わると、限界変化率も新しい値に変わります。

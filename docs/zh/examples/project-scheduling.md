@@ -2,9 +2,9 @@
 
 | 问题类别 | 求解器 | 核心 API | 相关链接 |
 | :--- | :--- | :--- | :--- |
-| 约束规划 (RCPSP 与 Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (项目调度)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
+| 约束规划 (RCPSP) / Unsat Core 诊断 | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (项目调度)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
 
-**资源受限项目调度问题（RCPSP）**用于安排项目工序，目标是最小化总完工时间，即 **Makespan**。模型需要同时满足工序先后依赖、单台设备独占以及团队人力上限。
+**资源受限项目调度问题（RCPSP）** 用于安排项目工序，目标是最小化最大完工时间，即 **Makespan**。模型需要同时满足工序先后依赖、单台设备独占以及团队人力上限。
 
 借助内置的 **Pumpkin** 求解器（`@ohtaman/washi/solvers/pumpkin`）：
 1. 每道工序只需一个整数开始时间变量 `start[task]`，不必为每个 `(工序, 小时)` 组合创建 0-1 变量。
@@ -12,7 +12,7 @@
 
 ## 问题背景
 
-我们在 24 小时排程窗口内安排 **6 项硬件原型工序**。团队共有 `crewCapacity = 3` 名工程师，并共用 1 台共享测试与校准台。
+我们以 24 小时为开始时间上限（`horizon = 24`）安排 **6 项硬件原型工序**。团队同时在岗人数上限为 `crewCapacity = 3` 名工程师，并共用 1 台共享测试与校准台。
 
 | 工序 | 耗时 | 所需人数 | 前置依赖 | 共享校准台 (`disjoint`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -23,7 +23,7 @@
 | `calib` | 3h | 1人 | `board` | **是** |
 | `test` | 2h | 2人 | `assembly`, `firmware`, `calib` | **是** |
 
-若忽略人力上限，`chassis` 和 `board` 可在 `0h` 同时启动，关键路径长度为 `9h`（`chassis 4h -> assembly 3h -> test 2h`）。但在 `crewCapacity = 3` 的限制下，各需 2 人的 `chassis` 与 `board` 无法并行（`2 + 2 = 4 > 3`）。两者串行执行会将 `assembly` 推迟至 `7h` 开始，使最小总完工时间从 `9h` 增至 **`12h`**。
+若忽略人力上限，`chassis` 和 `board` 可在 `0h` 同时启动，关键路径长度为 `9h`（`chassis 4h -> assembly 3h -> test 2h`）。但在 `crewCapacity = 3` 的限制下，各需 2 人的 `chassis` 与 `board` 无法并行（`2 + 2 = 4 > 3`）。两者串行执行会将 `assembly` 推迟至 `7h` 开始，使最小最大完工时间（Makespan）从 `9h` 增至 **`12h`**。
 
 ## WaSHI 实现代码
 
@@ -82,7 +82,7 @@ async function runProjectScheduling() {
     console.log(`  ${t.id}: [${s}h, ${s + t.duration}h) crew=${t.crew}${t.usesRig ? " [Rig]" : ""}`);
   }
 
-  // 4. 追加校准台维护时段 [0, 6) 与加急交付红线 <= 13h，诊断不可满足核心
+  // 4. 追加校准台维护时段 [0, 6)（限制 firmware 与 calib 至少在 6h 启动）与加急交付红线 <= 13h，诊断不可满足核心
   m.constraint(
     and(expr`${start.firmware} >= 6`, expr`${start.calib} >= 6`),
     "rig_maintenance_window"
@@ -111,7 +111,7 @@ runProjectScheduling();
 
 ### 为何 `13h` 加急截止期无解（`unsatCore`）
 
-加入维护时段和 `13h` 截止期后，`m.check()` 返回 `"Unsat"`，并在排除无关的 `crew_limit` 后定位到真正的瓶颈：
+加入维护时段和 `<= 13h` 的截止期约束后，`m.check()` 返回 `"Unsat"`，并在排除无关的 `crew_limit` 后提取出冲突约束集合（`unsatCore`）：
 
 1. `rig_maintenance_window` 将 `firmware` 和 `calib` 的最早开始时间推迟至 `6h`。
 2. 由于 `chassis` 耗时 `4h`、`assembly` 耗时 `3h`，`assembly_after_chassis` 与 `test_after_assembly` 将 `test` 的最早开始时间推迟至 `7h`。
