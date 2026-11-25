@@ -4,29 +4,26 @@
 
 ## 数理モデル
 
-ジョブ数を $n = |\text{jobs}|$、ジョブ $i$ の運転モード数を $M_i = |\text{jobs}[i].\text{setupTimes}|$ とします。
-
 $$
 \begin{aligned}
 \min \quad & C_{\max} = \max_{i} \big(s_i + d_i + \text{post}_{i, m_i}\big) \\
-\text{s.t.} \quad & s_i \ge \text{setup}_{i, m_i} && \forall i \in \{0, \dots, n - 1\} \\
+\text{s.t.} \quad & s_i \ge \text{setup}_{i, m_i} && \forall i \\
 & s_u + d_u + \text{post}_{u, m_u} \le s_v && \forall (u, v) \in E_{\text{prec}} \\
 & \text{Disjunctive}\big(\{(s_i, d_i) \mid \text{mach}_i = k\}\big) && \forall k \\
-& \sum_{i:\, s_i \le t < s_i + d_i} p_i \le P_{\text{cap}} && \forall t \in \mathbb{Z}_{\ge 0} \\
-& (m_u, m_v) \in T_r && \forall r = (u, v, T_r) \in \mathcal{R}_{\text{mode}} \\
-& s_i \in \mathbb{Z}_{\ge 0}, \quad m_i \in \{0, \dots, M_i - 1\} && \forall i \in \{0, \dots, n - 1\}
+& \sum_{i:\, s_i \le t < s_i + d_i} p_i \le P_{\text{cap}} && \forall t \\
+& (m_u, m_v) \in T_r && \forall r = (u, v, T_r) \in \mathcal{R}_{\text{mode}}
 \end{aligned}
 $$
 
 ## ポイント
 
-- **CP と MIP の表現力・スケーラビリティ比較**: ジョブ数 $n$、計画期間（ホライズン）$H$ に対し、標準的な時刻展開 MIP 定式化では $O(n \cdot H)$ 個の時刻展開バイナリ変数 $x_{i,t}$・モード選択バイナリ $z_{i,m}$・互換タプル用補助変数・$O(H)$ 本の容量制約が必要になります。一方 WaSHI + Pumpkin の CP モデルは $O(n)$ 個の整数変数のまま、`disjoint`・`cumulative`・`allowed`・`at` の各グローバルプロパゲータを協調動作させられます。
-- **待機時間と前段取りの相乗効果**: 機械待ちや電力待ちで開始が後ろにずれるジョブでは、待機中に長い機外前段取り（`setup = 2, 3`）を済ませることで後処理（`post = 0`）を短縮し、全体のメイクスパンを縮められます。
+- **CP と MIP の表現力・スケーラビリティ比較**: この問題を MIP で書くには時刻展開変数 $x_{i,t}$・モード選択バイナリ $z_{i,m}$・互換タプル用補助変数・時刻ごとの容量式がすべて必要になります。一方 WaSHI + Pumpkin の CP モデルは $O(n)$ 個の整数変数のまま、`disjoint`・`cumulative`・`allowed`・`at` の各グローバルプロパゲータを協調動作させられます。
+- **待機時間と前段取りの相乗効果**: 機械待ちや電力待ちで開始が後ろにずれるジョブでは、待機中に長い機外前段取りを済ませることで後処理時間を短縮できます。たとえば入力例のジョブ 0 は機械 0 が空く `starts[0] = 4` まで待つ必要があるため、モード 1（`setup = 2`, `post = 0`）を選ぶことで追加コストなしに後処理遅延をなくせます。
 - 関連リファレンス: [ガイド・用語集 — モデルの基本構成要素](?view=guide&lang=ja#building-blocks) / [代表的な問題クラス](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
 
-前段取り・先行制約には `at(..., modes[i])` を、機械別の非重複には `disjoint(...)` を、電力上限には `cumulative(..., input.powerCap)` を、モード互換には `allowed(...)` をそれぞれ組み合わせて登録します。
+前段取り・先行制約には `at(..., modes[i])` を、機械別の非重複には `disjoint(...)` を、電力上限には `cumulative(..., input.powerCap)` を、モード互換には `allowed(...)` をそれぞれ組み合わせて登録し、後処理を含むメイクスパンを `max(...)` で最小化します。
 
 **WaSHI (TypeScript)**
 
@@ -42,13 +39,13 @@ m.constraint(
 );
 m.constraint(
   Array.from({ length: numMachines }, (_, mach) =>
-    disjoint(
-      input.jobs
-        .map((j, i) => ({ start: starts[i], duration: j.duration, machine: j.machine }))
-        .filter((t) => t.machine === mach)
-        .map(({ start, duration }) => ({ start, duration }))
-    )
+    input.jobs
+      .map((j, i) => ({ start: starts[i], duration: j.duration, machine: j.machine }))
+      .filter((t) => t.machine === mach)
+      .map(({ start, duration }) => ({ start, duration }))
   )
+    .filter((tasks) => tasks.length > 0)
+    .map((tasks) => disjoint(tasks))
 );
 m.constraint(
   cumulative(
@@ -58,5 +55,14 @@ m.constraint(
 );
 m.constraint(
   input.modeRules.map((r) => allowed([modes[r.jobs[0]], modes[r.jobs[1]]], r.allowedPairs))
+);
+m.objective(
+  minimize(
+    max(
+      input.jobs.map(
+        (j, i) => expr`${starts[i]} + ${j.duration} + at(${j.postTimes}, ${modes[i]})`
+      )
+    )
+  )
 );
 ```

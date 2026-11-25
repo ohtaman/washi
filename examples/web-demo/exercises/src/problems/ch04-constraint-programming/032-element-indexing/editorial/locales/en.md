@@ -1,6 +1,6 @@
 ## Approach
 
-Declare one finite-domain integer variable `assignment[i]` in `[0, m - 1]` per job, enforce `distinct(assignment)` so machines are unique, and evaluate the selected row cost directly with the Element constraint `at(input.costs[i], assignment[i])`.
+Introduce one finite-domain integer variable $a_i \in \{0, \dots, m - 1\}$ (`assignment[i]`) for each job $i \in \{0, \dots, n - 1\}$, with setup costs $c_{i,j}$ (`costs[i][j]`). Enforce an all-different constraint across all $a_i$ so no machine is shared, and minimize the total setup cost $\sum_{i=0}^{n-1} c_{i,\, a_i}$. In WaSHI on Pumpkin, this maps directly to `distinct(assignment)` and variable-indexed lookup `at(input.costs[i], assignment[i])`.
 
 ## Mathematical Model
 
@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **CP Element (`at`) vs. 0-1 assignment matrix (as in `#007`)**: A binary-matrix MIP formulation (generalizing the $n \times n$ model in `#007` to rectangular $n \times m$ instances) requires $n \times m$ binary variables $x_{i,j}$ and $n + m$ sum constraints. With `at(costs[i], assignment[i])`, you use only $n$ integer variables and index directly by the decision variable via Pumpkin's native `element` propagator.
+- **CP Element (`at`) vs. a standard 0-1 MIP assignment matrix**: A standard MIP assignment formulation requires $n \times m$ binary variables $x_{i,j}$ and $n + m$ sum constraints (one per job and one per machine). With `at(costs[i], assignment[i])`, the CP model uses only $n$ integer variables and indexes each row directly by the decision variable via Pumpkin's native `element` propagator.
 - **0-based bounds guard**: `at(array, idx)` automatically constrains $0 \le \text{idx} < \text{array.length}$ and supports rectangular $n \le m$ tables without dummy rows.
 - Related references: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 

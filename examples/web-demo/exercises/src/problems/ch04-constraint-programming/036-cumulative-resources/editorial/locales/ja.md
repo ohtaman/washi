@@ -1,6 +1,6 @@
 ## アプローチ
 
-最大完了時刻の安全な有限上界として `horizon = sum(durations)`（$H = \sum_{i=0}^{n-1} d_i$）と置きます。各作業の開始時刻を `[0, horizon - durations[i]]` の有界整数 `starts[i]` で表し、先行制約と単一の累積資源制約 `cumulative(tasks, input.capacity)` を追加して、最大完了時刻 `max(starts[i] + durations[i])` を最小化します。
+各作業の開始時刻を `[0, horizon - durations[i]]` の有界整数 `starts[i]` で表し、先行制約と単一の累積資源制約 `cumulative(tasks, input.capacity)` を追加して、最大完了時刻 `max(starts[i] + durations[i])` を最小化します。
 
 ## 数理モデル
 
@@ -21,7 +21,7 @@ $$
 
 ## 実装の勘所
 
-各作業の `{ start, duration, demand }` をまとめて `cumulative(..., input.capacity)` 制約として登録し、全作業の最大終了時刻を最小化します。
+各作業の `{ start, duration, demand }` をまとめて `cumulative(..., input.capacity)` 制約として登録し、全作業の最大完了時刻を最小化します。
 
 **WaSHI (TypeScript)**
 

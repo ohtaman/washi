@@ -1,7 +1,7 @@
 # Optimization N Exercises — Review Rubric
 
 Evaluation rubric for reviewing and authoring Optimization N exercises (`examples/web-demo/exercises/`).
-Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, `-1`, `+1`, `+5`, `+10`).
+Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, `-1`, `+1`, `+5`, `+10`). For how to conduct paragraph-level close-reading and avoid local over-formalization when applying this rubric, see `AGENTS.md` §5 ("Close-Reading & Prose Review Guidelines").
 
 ---
 
@@ -25,7 +25,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **-1** | Empty AI buzzwords | Uses hollow filler modifiers that add no concrete information (e.g., "predetermined", "seamlessly", "robust", "efficiently"). |
 | **-5** | Formulaic framing or contrast | Includes generic motivational intros/outros (e.g., "In real-world practice...") or dramatic "not just X, but Y" contrast clichés. |
 | **-5** | Generic placeholders only | Relies solely on abstract nouns ("factory", "product", "resource", "machine", "job") without concrete domain nouns or examples. |
-| **-5** | Formulas/code in scenario | Embeds explicit algebraic formulas or code recipes (e.g., `weights[i] * c`, `<=`) inside `section:scenario`. |
+| **-5** | Modeling recipes or heavy formulas in scenario | Embeds code-level constraint recipes (e.g., `weights[i] * c`, `<=`, `sum(...)`) or heavy algebraic formulations inside `section:scenario` instead of stating requirements in plain language. |
 | **-5** | Unexplained new jargon | Uses an advanced technical term for the first time in a problem or hint (e.g., "epigraph reformulation" in `#021`) without briefly explaining what it means. |
 | **-5** | Misleading false contrast | Uses phrasing that implies a false contrast or non-existent alternative (e.g., "nonlinear `max` operator" implying a linear `max` exists). |
 | **-5** | Inverted assignment phrasing | Reverses or obscures what is assigned to what (e.g., "make the upper bound the compatibility flag" instead of "use the compatibility flag as the upper bound"). |
@@ -46,8 +46,8 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | :---: | --- | --- |
 | **+5** | Self-contained I/O schema | Explicitly defines every custom, recursive, or union type referenced in `section:io` (including all allowed object variants, field names, and value domains) so the problem is solvable without inspecting `starter.ts`. |
 | **+5** | Objective calculation check | Includes an explicit arithmetic formula showing how the example output yields the objective value. |
-| **+1** | Data-first field descriptions | Describes input fields by their real-world data meaning, units, and indexing/axis order (e.g., "available stock", "minimum required total delivered value") rather than modeling roles or constraint formulas. |
-| **-5** | Modeling formulas or output-variable leaks in Input schema | Embeds constraint inequalities (`<=`, `>=`, `!=`), decision-variable definitions (e.g., "$x_i \in \{0, 1\}$"), forward references to output fields (e.g., "`starts[u] + ... <= starts[v]`", "`colors[u] != colors[v]`"), or solver/constraint jargon (e.g., "positive/negative table constraint") inside `### Input` descriptions instead of describing the domain data. |
+| **+1** | Data-first field descriptions | Describes input fields primarily by their real-world data meaning, units, and indexing/axis order (e.g., "available stock", "minimum required total delivered value") rather than modeling roles. |
+| **-5** | Decision-variable or modeling clutter in Input schema | Turns `### Input` field descriptions into mathematical formulations or modeling-role labels (e.g., defining `$x_i \in \{0, 1\}$` or pasting full constraint equations into a field row) instead of concisely describing the input data. |
 | **-10** | Undocumented custom I/O types | References a custom or recursive type (e.g., `PropFormula`, `SmtFormula`, `PolicyRule`) in `section:io` without specifying all allowed variants and shapes in the problem statement. |
 | **-10** | Optimality claims in examples | Claims or explains optimality (e.g., "achieves the minimum/maximum") inside `section:example`. |
 

@@ -1,6 +1,6 @@
 ## Approach
 
-Represent each row's queen column directly as a bounded integer variable $c_r = \text{cols}[r]$ in $\{0, \dots, N - 1\}$. Apply `distinct()` to `cols`, `cols[r] + r`, and `cols[r] - r` to forbid column and diagonal attacks simultaneously, and minimize the sum of selected board weights $C_{r, c_r}$ via `at(costMatrix[r], cols[r])` (where $C_{r, c} = \text{costMatrix}[r][c]$) on Pumpkin.
+Introduce one integer decision variable $c_r \in \{0, \dots, N - 1\}$ (`cols[r]`) per row $r$ to represent that row's queen column, with cell placement costs $C_{r,c}$ (`costMatrix[r][c]`). Enforce all-different constraints on $c_r$, $c_r + r$, and $c_r - r$ to forbid column and both diagonal attacks simultaneously, and minimize the sum of selected cell costs $\sum_{r=0}^{N-1} C_{r, c_r}$. In WaSHI on Pumpkin, these map directly to three `distinct()` calls and variable-indexed lookups `at(costMatrix[r], cols[r])`.
 
 ## Mathematical Model
 
@@ -16,7 +16,7 @@ $$
 
 ## Key Points
 
-- **Three `distinct()` calls instead of $3\binom{N}{2}$ pairwise disequalities**: Two queens at $(r_1, c_1)$ and $(r_2, c_2)$ share a column iff $c_1 = c_2$, a rising diagonal iff $c_1 + r_1 = c_2 + r_2$, and a falling diagonal iff $c_1 - r_1 = c_2 - r_2$. Replacing all $3\binom{N}{2}$ pairwise checks with three `distinct()` constraints leverages Pumpkin's global AllDifferent propagation cleanly.
+- **Three `distinct()` calls instead of $3\binom{N}{2}$ pairwise inequalities**: Two queens at $(r_1, c_1)$ and $(r_2, c_2)$ share a column iff $c_1 = c_2$, a rising diagonal iff $c_1 + r_1 = c_2 + r_2$, and a falling diagonal iff $c_1 - r_1 = c_2 - r_2$. Replacing all $3\binom{N}{2}$ pairwise disequalities with three `distinct()` constraints leverages Pumpkin's global all-different propagation cleanly.
 - **Element indexing in the objective**: Rather than introducing $N^2$ binary placement variables $x_{r,c}$, `at(costMatrix[r], cols[r])` indexes the constant row array directly by the integer decision variable `cols[r]`.
 - Related references: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 

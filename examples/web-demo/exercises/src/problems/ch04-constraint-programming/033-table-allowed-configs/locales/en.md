@@ -1,9 +1,9 @@
 # #033. Compatible System Configuration (Table Constraints)
 
 <!-- section:scenario -->
-A system designer is configuring a hardware system composed of multiple components by selecting exactly one option for each component. Each component has multiple candidate options, each with an integer component cost (in 1,000 JPY).
+A system designer is configuring a hardware system made up of multiple components—such as a CPU, motherboard, memory kit, and power supply. Each component offers several candidate options, each with its own integer cost (in 1,000 JPY).
 
-In addition, compatibility rules require the selected options for specified groups of components to match one of the allowed option tuples in a table, while conflict rules forbid them from matching any of the prohibited option tuples. Find the lowest-cost component configuration that satisfies all rules.
+In addition, compatibility rules require specified groups of components to match one of the allowed option combinations, while conflict rules forbid selecting any of the prohibited combinations. Find the lowest-cost configuration that satisfies all rules.
 
 <!-- section:io -->
 ### Input
@@ -11,8 +11,8 @@ In addition, compatibility rules require the selected options for specified grou
 | Field | Type | Description |
 | --- | --- | --- |
 | `componentCosts` | `number[][]` | Integer cost `componentCosts[c][opt]` for option `opt` of component `c` (1,000 JPY) |
-| `allowedRules` | `TableRule[]` | Compatibility rules listing allowed option combinations (target components `vars` and allowed list `tuples`) |
-| `forbiddenRules` | `TableRule[]` | Incompatibility rules listing forbidden option combinations (target components `vars` and forbidden list `tuples`) |
+| `allowedRules` | `TableRule[]` | Compatibility rules requiring the selected options for components `vars` to match one of the entries in `tuples` |
+| `forbiddenRules` | `TableRule[]` | Conflict rules prohibiting the selected options for components `vars` from matching any entry in `tuples` |
 
 Each `TableRule` object has `{ vars: number[], tuples: number[][] }`, where `vars` lists 0-based component indices and each entry in `tuples` has length `vars.length` with option indices aligned to `vars`.
 
@@ -20,7 +20,7 @@ Each `TableRule` object has `{ vars: number[], tuples: number[][] }`, where `var
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `choices` | `number[]` | Selected option index (`0` to `componentCosts[c].length - 1`) per component |
+| `choices` | `number[]` | Selected option index for each component `c` (0 to `componentCosts[c].length - 1`) |
 | `totalCost` | `number` | Minimized total configuration cost (1,000 JPY) |
 
 <!-- section:example -->
@@ -65,10 +65,10 @@ Each `TableRule` object has `{ vars: number[], tuples: number[][] }`, where `var
 }
 ```
 
-With `choices = [0, 1, 1]`, components (0, 1) select option tuple (0, 1) which is listed in `allowedRules[0]`, components (1, 2) select option tuple (1, 1) avoiding the forbidden tuples (1, 0) and (0, 0), and total cost is $10 + 18 + 14 =$ **42** (1,000 JPY).
+Choices [0, 1, 1] pick (0, 1) for components (0, 1) (included in `allowedRules[0]`), pick (1, 1) for components (1, 2) (avoiding the forbidden tuples (1, 0) and (0, 0)), and incur a total cost of $10 + 18 + 14 =$ **42** (1,000 JPY).
 
 <!-- section:hint1 -->
-Introduce one integer decision variable per component whose domain covers its available option indices. Express both positive compatibility tables and negative conflict tables directly over the corresponding component variable tuples, and sum the selected option costs as the objective.
+Introduce one integer decision variable per component whose domain covers its available option indices. Express both compatibility tables and conflict tables directly over the corresponding component variable tuples, and sum the selected option costs as the objective.
 
 <!-- section:hint2 -->
-Map each rule's `rule.vars` to the corresponding component choice variables, then apply `allowed(vars, rule.tuples)` for `input.allowedRules` and `not(allowed(vars, rule.tuples))` for `input.forbiddenRules`. Compute each component's cost with `at(input.componentCosts[c], choices[c])` and minimize their `sum(...)` using `solver: "pumpkin"`.
+Use `allowed(vars, rule.tuples)` for each rule in `input.allowedRules` and `not(allowed(vars, rule.tuples))` for each rule in `input.forbiddenRules`, mapping `rule.vars` to the component choice variables. Look up each component's option cost with `at(costs, choices[c])` and minimize their `sum(...)` using `solver: "pumpkin"`.

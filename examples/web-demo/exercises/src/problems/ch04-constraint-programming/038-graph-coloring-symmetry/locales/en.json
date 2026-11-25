@@ -1,6 +1,6 @@
 {
   "title": "#038. Graph Coloring with Symmetry Breaking",
-  "subtitle": "Assign integer colors to graph vertices so adjacent vertices differ, breaking color-permutation symmetry to minimize colors used.",
+  "subtitle": "Assign integer colors to graph nodes so adjacent nodes differ, breaking color-permutation symmetry to minimize colors used.",
   "tags": [
     "CP",
     "Symmetry Breaking",
@@ -8,17 +8,17 @@
     "Conflicts"
   ],
   "caseNames": [
-    "5-vertex triangle with tail",
-    "6-vertex complete bipartite graph",
-    "6-vertex clique with triangle",
-    "7-vertex wheel with extra triangle",
-    "8-vertex prism-like graph"
+    "5-node triangle with tail",
+    "6-node complete bipartite graph",
+    "6-node 4-clique with triangle",
+    "7-node wheel with attached triangle",
+    "8-node 5-cycle coupled with triangle"
   ],
   "judge": {
     "m0": "Output must be an object { colors, usedColors }.",
     "m1": "colors[{p0}] must be an integer (received {p1}).",
     "m2": "colors[{p0}] = {p1} is out of bounds [0, {p2}].",
-    "m3": "Adjacent vertices {p0} and {p1} share the same color ({p2}).",
+    "m3": "Adjacent nodes {p0} and {p1} share the same color ({p2}).",
     "m4": "Reported usedColors ({p0}) does not match number of distinct colors used ({p1}).",
     "m5": "Valid coloring, but usedColors ({p0}) exceeds optimal ({p1}).",
     "m6": "Optimal graph coloring found (usedColors = {p0})!"

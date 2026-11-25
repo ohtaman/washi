@@ -12,7 +12,7 @@
     "4 services across 2 balanced zones",
     "5 services across 3 zones",
     "4-service low-threshold synergy trade-off",
-    "6-service 3-zone deployment",
+    "6-service multi-zone deployment",
     "7-service 4-zone enterprise fleet"
   ],
   "judge": {

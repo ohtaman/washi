@@ -10,13 +10,13 @@ Every job-machine combination has an integer setup cost (in 1,000 JPY). Choose a
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | `n × m` integer setup cost matrix (`costs[i][j]` = cost of assigning job `i` to machine `j` in 1,000 JPY, with `1 <= n <= m`) |
+| `costs` | `number[][]` | $n \times m$ integer setup cost matrix (`costs[i][j]` is the setup cost of assigning job `i` to machine `j` in 1,000 JPY, with $1 \le n \le m$) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `assignment` | `number[]` | Length-`n` array where `assignment[i]` is the 0-based machine index (`0` to `m - 1`) assigned to job `i` |
+| `assignment` | `number[]` | Assigned machine index (0 to $m - 1$) for each job |
 | `totalCost` | `number` | Minimized total setup cost (1,000 JPY) |
 
 <!-- section:example -->
@@ -44,7 +44,7 @@ Every job-machine combination has an integer setup cost (in 1,000 JPY). Choose a
 Assigning [0, 2, 1] uses three distinct machines and sums `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42** (1,000 JPY).
 
 <!-- section:hint1 -->
-Instead of an $n \times m$ binary assignment matrix, introduce one integer variable per job representing its assigned machine index in `[0, numMachines - 1]`. Require all jobs to receive distinct machines.
+Instead of a two-dimensional binary matrix of job-machine indicators, introduce one integer variable per job representing its assigned machine index across the candidate machines. Require all jobs to be assigned to distinct machines.
 
 <!-- section:hint2 -->
-Use `distinct(assignment)` to prevent two jobs from sharing a machine. Look up each job's cost with the CP element constraint `at(row, assignment[i])`, and minimize `sum(input.costs.map((row, i) => at(row, assignment[i])))` using `solver: "pumpkin"`.
+Use `distinct(assignment)` to prevent two jobs from sharing a machine. Look up each job's setup cost with the CP element constraint `at(row, assignment[i])`, minimize their `sum(...)`, and solve using `solver: "pumpkin"`.

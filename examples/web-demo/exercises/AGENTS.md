@@ -10,8 +10,8 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
 - **Minimal Input Schema**: Avoid splitting constants into excessive scalar fields (e.g., do not expose 8 separate camelCase coefficients for a 2-variable LP). Keep inputs to the essential dimensions (`2`–`4` clean fields, concise vectors, or a single matrix).
 - **Concise Problem Tab (`locales/{en,ja,zh}.md`)**:
   - Header `# #NNN. <Title>` followed by:
-    - `<!-- section:scenario -->`: 2–4 crisp sentences (or a brief intro plus a concise bulleted list when there are 3 or more distinct conditions) stating decision quantities, rules, and objective. No fenced code blocks or constraint formulas (inline backticks are allowed for identifiers only; enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
-    - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`). Keep `### Input` strictly **data-first**: state each field's domain meaning, units, indexing/axis order, and input value bounds, and **never** embed constraint inequalities (`<=`, `>=`, `!=`), modeling-role labels (e.g., "positive table constraint"), or forward references to output/decision variables (`x_i`, `starts[u]`, `colors[u]`). State rules in plain words inside `section:scenario` and reserve mathematical formulations for `editorial`.
+    - `<!-- section:scenario -->`: 2–4 crisp sentences (or a brief intro plus a concise bulleted list when there are 3 or more distinct conditions) stating decision quantities, rules, and objective. Prefer plain language over formulas; avoid fenced code blocks and code-level constraint recipes (`<=`, `>=`, `==`, `sum(`, `dot(` — enforced by tests), as well as variable recipes, algorithm step lists, or repetitive UI/terminology tutorials. Light inline notation is fine when it genuinely removes ambiguity, as long as the scenario states *what* must hold rather than *how* to model or compute it. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
+    - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`). Keep `### Input` **data-first**: lead with each field's domain meaning, units, indexing/axis order, and input bounds. Short inline notation (such as dimension preconditions or interval ranges) is acceptable when it clarifies the data contract, but avoid stuffing decision-variable definitions, solver/constraint jargon, or full modeling equations into field descriptions—state rules in `section:scenario` and reserve mathematical formulations for `editorial`.
     - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
   - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
   - Target 3–5 test cases per exercise (with 5 cases as the standard for Chapter 1+) covering boundary, binding-constraint, rectangular/dimension-varying, and fractional/zero-activity cases.
@@ -89,3 +89,20 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
   - `REQUIRE_HIGHSPY_PYTHON=1 npx vitest run test/exercises-ch1.test.ts test/exercises-platform.test.ts test/source-language-purity.test.ts`
   - `npm test`
   - `npm run build && npm run test:site && node scripts/check-exercises-browser.mjs`
+
+---
+
+## 5. Close-Reading & Prose Review Guidelines
+
+When reviewing or polishing existing exercise text (`locales/{en,ja,zh}.md` and `editorial/locales/{en,ja,zh}.md`), align on the following criteria before editing:
+
+- **Read paragraph-by-paragraph in full-section context**: Evaluate each paragraph (or full I/O table) together with surrounding sections rather than inspecting isolated sentences or single table cells. Narrow sentence-level checks invite tunnel vision—such as patching an undefined symbol inside one table row without noticing it belongs in `editorial` or is already stated in `scenario`.
+- **Verify section ownership first**: Before rewriting awkward phrasing, check whether the content sits in the right section:
+  - `section:scenario`: *what* is decided, domain rules, and objective.
+  - `section:io`: data shapes, units, indexing, and field contracts.
+  - `section:example`: concrete sample plus a 1-sentence arithmetic check.
+  - `section:hint1` / `section:hint2`: progressive modeling guidance (structure in words first; key idea/API/pitfall second).
+  - `editorial`: full mathematical model, modeling rationale, and key code snippets.
+- **Cut, simplify, or relocate before adding**: When spotting an awkward expression or an undefined symbol, do **not** reflexively bolt on parenthetical definitions or extra clauses to make that single line "formally self-contained." First ask whether the symbol or detail should be dropped, rewritten in plain words, or moved to `section:scenario` / `editorial`.
+- **Prioritize first-read clarity over mechanical rules**: Aim for natural, idiomatic phrasing in each locale (`en`, `ja`, `zh`) with consistent terminology and units across all tabs. Judge inline math or compact bounds by whether they genuinely reduce ambiguity for a first-time reader—avoid both rigid blanket bans and unnecessary formalization.
+- **Do not toggle human review metadata**: Automated close-reading or prose cleanups must never set `"reviewed": true` in `meta.json`; that flag strictly records human review.

@@ -4,21 +4,19 @@
 
 ## 数学模型
 
-记 $N = \text{size}$，对每个区域 $k \in \{0, \dots, |\text{cages}| - 1\}$，记 $S_k = \text{cages}[k].\text{cells}$、$T_k = \text{cages}[k].\text{targetSum}$：
-
 $$
 \begin{aligned}
 \text{find} \quad & g_{r,c} \in \{1, \dots, N\} && \forall r, c \in \{0, \dots, N-1\} \\
-\text{s.t.} \quad & \text{AllDifferent}(g_{r,0}, \dots, g_{r,N-1}) && \forall r \in \{0, \dots, N-1\} \\
-& \text{AllDifferent}(g_{0,c}, \dots, g_{N-1,c}) && \forall c \in \{0, \dots, N-1\} \\
+\text{s.t.} \quad & \text{AllDifferent}(g_{r,0}, \dots, g_{r,N-1}) && \forall r \\
+& \text{AllDifferent}(g_{0,c}, \dots, g_{N-1,c}) && \forall c \\
 & g_{r,c} = v && \forall (r, c, v) \in \text{givens} \\
-& \sum_{(r,c) \in S_k} g_{r,c} = T_k, \quad \text{AllDifferent}\big((g_{r,c})_{(r,c) \in S_k}\big) && \forall k
+& \sum_{(r,c) \in S_k} g_{r,c} = T_k, \quad \text{AllDifferent}\big(\{g_{r,c} \mid (r,c) \in S_k\}\big) && \forall k
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **纯可行性 CP 求解**：在 WaSHI 中省略 `m.objective(...)` 时目标函数默认为 `0`，直接调用 `await m.solve({ solver: "pumpkin" })` 即可求解纯可行性问题。CP 在这类谜题上的优势在于定义域传播与延迟子句生成（LCG / 冲突子句学习），无需依赖目标梯度即可高效剪枝并搜出合法网格。
+- **无目标函数的纯可行性 CP 求解**：即使没有需要优化的标量目标，CP 求解器也能通过约束传播与惰性子句生成（LCG）高效求得可行解。在 WaSHI 中省去 `m.objective(...)` 并直接调用 `await m.solve({ solver: "pumpkin" })` 即可求解。
 - **`distinct` 与 `sum` 的联合传播**：区域和上下界过滤掉不可能的数字组合，同时行列 `distinct` 将已确定格的取值沿交叉区域级联传播。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [求解状态术语](?view=guide&lang=zh#solver-status)
 
