@@ -1,9 +1,14 @@
 # #060. Connected Territory Design & Hub Routing
 
 <!-- section:scenario -->
-A regional service planner must partition n zones into K contiguous sales territories, each anchored by one chosen hub zone. Every territory must form a single connected subgraph along the border adjacency graph (zero isolated exclaves), carry total zone demand within the specified balance bounds, and operate one closed routing tour visiting all zones in that territory.
+Partition $n$ zones into `numTerritories` disjoint sales territories satisfying the following rules:
 
-Partition the n zones into K contiguous territories—each anchored at one chosen hub, respecting the demand balance bounds, and served by a single closed tour through all its zones—to **minimize total hub setup plus tour routing cost**.
+- Choose exactly one hub zone in each territory.
+- Each territory must form a single connected component along `adjEdges` (no isolated exclaves).
+- The total zone demand of each territory must fall within `demandBounds`.
+- Each territory operates one closed tour starting and ending at its hub that visits all of its zones directly via `dist` (tour legs are not restricted to `adjEdges`).
+
+Find a feasible territory partition, hub selection, and set of tours to **minimize total hub setup cost plus tour distance**.
 
 <!-- section:io -->
 ### Input
@@ -15,13 +20,13 @@ Partition the n zones into K contiguous territories—each anchored at one chose
 | `demandBounds` | `number[]` | Allowed `[minDemand, maxDemand]` range per territory (`minDemand > max(demands)`) |
 | `hubCosts` | `number[]` | Fixed setup cost for choosing zone `i` as a territory hub |
 | `adjEdges` | `number[][]` | Undirected `[u, v]` geographic adjacency pairs for territory contiguity |
-| `dist` | `number[][]` | $n \times n$ travel cost matrix between zones for routing tours |
+| `dist` | `number[][]` | $n \times n$ travel distance matrix between zones for routing tours |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `territories` | `Array<{ hub, tour }>` | $K$ territories with chosen `hub` and closed cycle `[hub, ..., hub]` |
+| `territories` | `Array<{ hub: number; tour: number[] }>` | $K$ territories with chosen `hub` and closed cycle `[hub, ..., hub]` |
 | `totalCost` | `number` | Minimized sum of hub setup costs and intra-territory tour distances |
 
 <!-- section:example -->

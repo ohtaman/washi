@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 Consider a fiber-optic network between data centers where we want to send the maximum possible data flow (Gbps) from a source server (`source`) to a backup site (`sink`). The flow on each communication link (directed arc) cannot exceed its bandwidth capacity, and every relay router (intermediate node) must conserve flow with equal inflow and outflow.
 
-Compute the maximum flow that can be sent from source to sink using a linear program, and extract an accompanying minimum s-t cut edge subset whose capacities sum to that maximum flow and sever every directed source-to-sink path.
+Compute the maximum flow that can be sent from source to sink using a linear program, and extract an accompanying minimum s-t cut—a subset of arcs that severs every directed source-to-sink path and whose capacities sum to that maximum flow.
 
 <!-- section:io -->
 ### Input
@@ -13,14 +13,14 @@ Compute the maximum flow that can be sent from source to sink using a linear pro
 | `nodeCount` | `number` | Number of nodes `0 .. nodeCount - 1` |
 | `source` | `number` | Source node index |
 | `sink` | `number` | Sink node index |
-| `edges` | `Array<{ from, to, cap }>` | Directed capacitated arcs |
+| `edges` | `Array<{ from, to, cap }>` | Directed arcs from `from` to `to` with bandwidth capacity `cap` (Gbps) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `flows` | `number[]` | Non-negative flow on each arc (`0 <= flow <= cap`) |
-| `cutEdges` | `number[]` | Distinct arc indices forming a minimum s-t cut |
+| `cutEdges` | `number[]` | Distinct 0-based arc indices into `edges` forming a minimum s-t cut |
 | `maxFlow` | `number` | Maximum s-to-t flow (equals total capacity of `cutEdges`) |
 
 <!-- section:example -->

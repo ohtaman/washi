@@ -1,16 +1,16 @@
 ## アプローチ
 
-各辺の選択を表す 0-1 変数 $x_{ij}$ に対して各顧客の入次数・出次数 $= 1$、デポの出次数 $=$ 入次数 $\le K$ を課し、顧客 $i \ge 1$ の累積積載量を表す連続変数 $u_i \in [d_i, Q]$ に MTZ 型の積載伝播制約 $u_i - u_j + Q x_{ij} \le Q - d_j$ を課して容量制約と部分巡回路排除を同時に実現します。
+各辺の選択を表す 0-1 変数 $x_{ij}$（$i \ne j$、距離 $c_{ij}$ は `dist[i][j]`）に対して、各顧客の入次数・出次数を 1、デポ 0 の出次数と入次数が一致して最大 $K$（`maxVehicles`）以下となるよう制約します。さらに顧客 $i \ge 1$ の累積積載量を表す連続変数 $u_i \in [d_i, Q]$（需要量 $d_i$、積載容量 $Q$）に MTZ 型の積載伝播制約 $u_i - u_j + Q x_{ij} \le Q - d_j$ を課し、容量制約と部分巡回路排除を同時に実現します。
 
 ## 数理モデル
 
 $$
 \begin{aligned}
-\min \quad & \sum_{i=0}^{n} \sum_{j \ne i} d_{ij} x_{ij} \\
-\text{s.t.} \quad & \sum_{j \ne i} x_{ij} = 1, \quad \sum_{j \ne i} x_{ji} = 1 && \forall i \in \{1, \dots, n\} \\
-& \sum_{j=1}^{n} x_{0j} = \sum_{i=1}^{n} x_{i0} \le K \\
-& u_i - u_j + Q x_{ij} \le Q - \text{demands}[j] && \forall i \ne j \in \{1, \dots, n\} \\
-& x_{ij} \in \{0, 1\}, \quad \text{demands}[i] \le u_i \le Q
+\min \quad & \sum_{i=0}^{n-1} \sum_{j \ne i} c_{ij} x_{ij} \\
+\text{s.t.} \quad & \sum_{j \ne i} x_{ij} = 1, \quad \sum_{j \ne i} x_{ji} = 1 && \forall i \in \{1, \dots, n-1\} \\
+& \sum_{j=1}^{n-1} x_{0j} = \sum_{i=1}^{n-1} x_{i0} \le K \\
+& u_i - u_j + Q x_{ij} \le Q - d_j && \forall i \ne j \in \{1, \dots, n-1\} \\
+& x_{ij} \in \{0, 1\}, \quad d_i \le u_i \le Q
 \end{aligned}
 $$
 
@@ -43,5 +43,5 @@ m.constraint(
 for i in range(1, n):
     for j in range(1, n):
         if i != j:
-            prob += u[i] - u[j] + cap * x[i][j] <= cap - demands[j]
+            prob += u[i] - u[j] + capacity * x[i][j] <= capacity - demands[j]
 ```

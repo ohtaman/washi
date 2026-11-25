@@ -3,15 +3,15 @@
 <!-- section:scenario -->
 A directed distribution network transports coffee beans (kg) from roasting plants (supply nodes) through relay warehouses (transshipment hubs) to café stores (demand nodes). Each node has an integer net supply (positive at roasteries, negative at cafés, and 0 at warehouses), and each directed route (arc) has a capacity limit (kg) and a shipping cost per kg.
 
-Model this problem as a pure continuous linear program to find non-negative arc flows that satisfy every node balance and capacity limit while **minimizing total shipping cost**. Because the network incidence matrix is totally unimodular with integer supplies and capacities, solving the continuous LP automatically yields integer flows.
+Model this problem as a pure continuous linear program to find non-negative arc flows that satisfy every node balance and capacity limit while **minimizing total shipping cost**. Because the network incidence matrix is totally unimodular with integer supplies and capacities, every extreme-point optimal solution of the continuous LP is automatically integral.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `supplies` | `number[]` | Integer net supply at each node (`> 0` supply, `< 0` demand, `0` transshipment) |
-| `edges` | `Array<{ from, to, cap, cost }>` | Directed arcs with capacity `cap` and unit cost `cost` |
+| `supplies` | `number[]` | Integer net supply (kg) at each node `0 .. n - 1` (> 0 supply, < 0 demand, 0 transshipment) |
+| `edges` | `Array<{ from, to, cap, cost }>` | Directed arcs from `from` to `to` with capacity `cap` (kg) and unit shipping cost `cost` (per kg) |
 
 ### Output
 
@@ -45,10 +45,10 @@ Model this problem as a pure continuous linear program to find non-negative arc 
 }
 ```
 
-At node 0 outflow is $6 + 4 = 10$, nodes 1 and 2 have net balance $0$, node 3 receives $4 + 6 = 10$, and total cost is $6\times 2 + 4\times 4 + 2\times 1 + 4\times 3 + 6\times 2 =$ **54**.
+At node 0 outflow is $6 + 4 = 10$, nodes 1 and 2 have net balance 0, node 3 receives $4 + 6 = 10$, and total cost is $6\times 2 + 4\times 4 + 2\times 1 + 4\times 3 + 6\times 2 =$ **54**.
 
 <!-- section:hint1 -->
 Model one non-negative continuous flow variable per directed arc, bounded above by its capacity. Organize the network constraints per node by balancing total outgoing flow minus total incoming flow against that node's net supply, and minimize the total shipping cost across all arcs.
 
 <!-- section:hint2 -->
-Because the directed node-arc incidence matrix is totally unimodular and all supplies and capacities are integers, every extreme-point optimal solution of the pure continuous LP is guaranteed to be integral—no integer or binary variables are needed. Return the continuous `v.value!` (or `float(pulp.value(v))` in Python) directly without rounding, normalizing `-0` to `0` if needed.
+Because the directed node-arc incidence matrix is totally unimodular and all supplies and capacities are integers, every extreme-point optimal solution of the pure continuous LP is guaranteed to be integral—no integer or binary variables are needed. Return the continuous `v.value!` (or `float(pulp.value(v))` in Python) directly without rounding, normalizing -0 to 0 if needed.

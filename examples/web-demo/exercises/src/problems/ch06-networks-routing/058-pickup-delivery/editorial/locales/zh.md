@@ -1,6 +1,6 @@
 ## 解题思路
 
-建立按车辆编号的三下标 0-1 变量 $x_{ijk}$（$k \in \{0, \dots, K-1\}$）来分别施加各车流守恒、每车停靠上限以及同车配对等式 $\sum_j x_{p_r j k} = \sum_j x_{d_r j k}$；同时利用连续访问序变量 $t_i$ 约束 $t_{p_r} + 1 \le t_{d_r}$ 并消除子环，利用按 $\delta_{p_r} = +q_r, \delta_{d_r} = -q_r$ 增减的连续载重变量 $L_i \in [0, Q]$ 监控沿途载重。
+建立按车辆编号的三下标 0-1 变量 $x_{ijk}$（$k \in \{0, \dots, K-1\}$）来分别施加各车流守恒、每车停靠上限 $S_{\max}$（`maxStopsPerVehicle`）以及同车配对等式 $\sum_j x_{p_r j k} = \sum_j x_{d_r j k}$；同时利用连续访问序变量 $t_i$ 约束 $t_{p_r} + 1 \le t_{d_r}$ 并消除子环，利用按 $\delta_{p_r} = +q_r, \delta_{d_r} = -q_r$ 增减的连续载重变量 $L_i \in [0, Q]$ 监控沿途载重。
 
 ## 数学模型
 
@@ -12,8 +12,9 @@ $$
 & \sum_{j \ne p_r} x_{p_r j k} = \sum_{j \ne d_r} x_{d_r j k}, \quad t_{p_r} + 1 \le t_{d_r} && \forall r,\; k \\
 & t_i + 1 - t_j \le N\left(1 - \sum_{k=0}^{K-1} x_{ijk}\right) && \forall i \ge 1,\; j \ge 1,\; i \ne j \\
 & L_i + \delta_j - L_j \le (Q + \max(0, \delta_j))\left(1 - \sum_{k=0}^{K-1} x_{ijk}\right) && \forall i \ge 0,\; j \ge 1,\; i \ne j \\
-& \sum_{i \ge 1} \sum_{j \ne i} x_{ijk} \le S_{\max}, \quad t_0 = 0,\; 1 \le t_{i \ge 1} \le N - 1 \\
-& L_0 = 0, \quad \max(0, \delta_i) \le L_{i \ge 1} \le \min(Q, Q + \delta_i), \quad x_{ijk} \in \{0, 1\}
+& \sum_{i \ge 1} \sum_{j \ne i} x_{ijk} \le S_{\max} && \forall k \\
+& t_0 = 0,\; L_0 = 0,\quad 1 \le t_i \le N - 1,\; \max(0, \delta_i) \le L_i \le \min(Q, Q + \delta_i) && \forall i \ge 1 \\
+& x_{ijk} \in \{0, 1\} && \forall i \ne j,\; k
 \end{aligned}
 $$
 
@@ -47,9 +48,9 @@ input.requests.forEach((r) => {
 **PuLP (Python)**
 
 ```python
-for r in reqs:
+for r in requests:
     p, d = r["pickup"], r["delivery"]
-    for k in range(max_v):
+    for k in range(max_vehicles):
         prob += pulp.lpSum(x[p][j][k] for j in range(n) if j != p) == pulp.lpSum(
             x[d][j][k] for j in range(n) if j != d
         )

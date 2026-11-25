@@ -1,6 +1,6 @@
 ## Approach
 
-Solve the primal max-flow LP (`0 <= f_e <= cap_e`, conservation at intermediate nodes, maximize net flow leaving `source`), then run BFS/DFS from `source` in the residual graph to partition vertices into reachable $S$ and unreachable $V \setminus S$; edges crossing from $S$ to $V \setminus S$ form an exact minimum s-t cut.
+Solve the primal max-flow LP (enforcing arc capacity limits and flow conservation at intermediate nodes while maximizing net flow leaving `source`), then run BFS/DFS from `source` in the residual graph to partition vertices into reachable $S$ and unreachable $V \setminus S$; edges crossing from $S$ to $V \setminus S$ form an exact minimum s-t cut.
 
 ## Mathematical Model
 
@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **Residual reachability guarantees an exact cut**: An arc $e = (u, v)$ belongs to the residual graph if $f_e < u_e$ (forward) or if its reverse arc $(v, u)$ has $f_e > 0$ (backward cancellation). Because the LP optimal flow admits no augmenting s-t path, the reachable set $S$ satisfies $s \in S, t \notin S$, every outgoing edge from $S$ is saturated ($f_e = u_e$), and every incoming edge to $S$ carries zero flow ($f_e = 0$).
+- **Residual reachability guarantees an exact cut**: For each original arc $e = (u, v)$, the residual graph includes the forward arc $(u, v)$ whenever $f_e < u_e$ and the reverse arc $(v, u)$ whenever $f_e > 0$ (backward cancellation). Because the LP optimal flow admits no augmenting s-t path, the reachable set $S$ satisfies $s \in S, t \notin S$, every outgoing edge from $S$ is saturated ($f_e = u_e$), and every incoming edge to $S$ carries zero flow ($f_e = 0$)—so the cut capacity equals the maximum flow.
 - **Avoid solver-dependent dual signs**: Extracting the cut directly from residual reachability works deterministically across any LP solver without relying on dual sign conventions or tie-breaking on degenerate dual vertices.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
@@ -41,6 +41,9 @@ while (queue.length > 0) {
     }
   });
 }
+const cutEdges = input.edges
+  .map((_, i) => i)
+  .filter((i) => visited[input.edges[i].from] && !visited[input.edges[i].to]);
 ```
 
 **PuLP (Python)**
