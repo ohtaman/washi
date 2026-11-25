@@ -21,7 +21,7 @@ $$
 
 ## Key Implementation
 
-Constraint expressions can be written intuitively using template literals `expr` (WaSHI) or `prob += ...` (PuLP). Passing a constraint name such as `"butter"` as the second argument makes it easier to trace constraints when diagnosing or verifying the model later.
+Constraint expressions can be written intuitively using template literals `expr` (WaSHI) or `prob += ...` (PuLP). Attaching a constraint name such as `"butter"` makes it easier to trace constraints when diagnosing or verifying the model later.
 
 **WaSHI (TypeScript)**
 

@@ -1,6 +1,6 @@
 ## Approach
 
-Declare one non-negative continuous variable array `quantities` matching `margins.length`, map each resource row `usages[k]` to a linear `dot(...) <= capacities[k]` constraint, and maximize `dot(margins, quantities)`.
+Define a non-negative continuous decision variable $x_j$ (`quantities[j]`) for the liters produced of each flavor $j$. Given unit profit margins $c_j$ (`margins[j]`), per-liter resource usages $a_{k,j}$ (`usages[k][j]`), and capacities $b_k$ (`capacities[k]`), maximize total profit while keeping each resource's total usage within $b_k$. In WaSHI and PuLP, this matrix form maps directly to a variable array `quantities` and `dot` / `lpDot`.
 
 ## Mathematical Model
 
@@ -20,7 +20,7 @@ $$
 
 ## Key Implementation
 
-Because the number of flavors and resources varies with the input, generate constraints dynamically with `.map()` (WaSHI) or list/loop iteration (PuLP) and use `dot` / `pulp.lpDot` for concise inner products.
+Because the number of flavors and resources varies with the input, generate constraints dynamically with `.map()` (WaSHI) or a for loop (PuLP) and use `dot` / `pulp.lpDot` for concise inner products.
 
 **WaSHI (TypeScript)**
 

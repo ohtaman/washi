@@ -19,8 +19,8 @@
     "m2": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
     "m3": "Plant {p0} outbound shipment ({p1}) exceeds supply ({p2}).",
     "m4": "Store {p0} inbound shipment ({p1}) is below demand ({p2}).",
-    "m5": "Reported totalCost ({p0}) does not match computed freight cost ({p1}).",
-    "m6": "Valid shipping plan, but freight cost ({p0}) exceeds minimum ({p1}).",
+    "m5": "Reported totalCost ({p0}) does not match computed shipping cost ({p1}).",
+    "m6": "Valid shipping plan, but shipping cost ({p0}) exceeds minimum ({p1}).",
     "m7": "Optimal transportation plan found (totalCost = {p0})!"
   }
 }

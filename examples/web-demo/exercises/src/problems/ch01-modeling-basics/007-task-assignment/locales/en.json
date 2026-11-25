@@ -1,5 +1,5 @@
 {
-  "title": "#007. Courier-Zone 1-to-1 Assignment",
+  "title": "#007. 1-to-1 Delivery Zone Assignment",
   "subtitle": "Enforce exact row sums and column sums over a 0-1 decision matrix for minimum-cost matching.",
   "tags": [
     "MIP",
@@ -17,7 +17,7 @@
     "m0": "Output must be an object { assignment, totalCost }.",
     "m1": "assignment[{p0}] must be an integer delivery zone index (received {p1}).",
     "m2": "assignment[{p0}] = {p1} is out of range [0, {p2}].",
-    "m3": "Delivery zone {p0} is assigned more than once — check your column-sum == 1 constraints.",
+    "m3": "Delivery zone {p0} is assigned more than once.",
     "m4": "Reported totalCost ({p0}) does not match computed cost sum ({p1}).",
     "m5": "Valid 1-to-1 assignment, but totalCost ({p0}) exceeds optimal ({p1}).",
     "m6": "Optimal 1-to-1 assignment found (totalCost = {p0})!"

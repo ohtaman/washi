@@ -1,12 +1,12 @@
-# #002. Min-Cost Diet Blend (>= & Minimization)
+# #002. Min-Cost Diet Blend (Lower Bounds & Minimization)
 
 <!-- section:scenario -->
-Mix two non-negative ingredients (oats and beans, continuous amounts) to minimize total cost while meeting daily nutrient minimums:
+A food manufacturer is formulating a nutrition bar by blending oats and beans to minimize ingredient cost while meeting per-bar minimum nutrient targets. Choose non-negative continuous amounts of oats and beans based on the following per-unit costs and nutrients:
 
 - 1 unit of oats costs 30 and supplies 2 units of protein and 1 unit of fiber.
 - 1 unit of beans costs 50 and supplies 1 unit of protein and 3 units of fiber.
 
-Given minimum targets `minProtein` and `minFiber`, find the cheapest mix.
+Given per-bar minimum targets `minProtein` and `minFiber`, find the lowest-cost blend.
 
 <!-- section:io -->
 ### Input

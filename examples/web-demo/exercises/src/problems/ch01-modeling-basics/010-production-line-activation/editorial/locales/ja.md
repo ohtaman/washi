@@ -45,7 +45,7 @@ m.objective(
 ```python
 for i in range(n):
     prob += quantities[i] <= capacities[i] * open_vars[i]
-prob += pulp.lpDot(mat_usages, quantities) <= mat_cap
+prob += pulp.lpDot(material_usages, quantities) <= material_cap
 prob += pulp.lpDot(margins, quantities) - pulp.lpDot(fixed_costs, open_vars)
 prob.solve(pulp.HiGHS(msg=False))
 ```

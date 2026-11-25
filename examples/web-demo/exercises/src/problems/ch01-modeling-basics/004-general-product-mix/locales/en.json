@@ -1,17 +1,17 @@
 {
-  "title": "#004. General Product Mix (m x n Matrix)",
-  "subtitle": "Generalize the two-product creamery into matrix form across arbitrary numbers of products and shared resources.",
+  "title": "#004. Gelato Creamery Production Mix (m × n Matrix)",
+  "subtitle": "Model variable-size flavor mixes and shared resource limits using matrix inputs.",
   "tags": [
     "LP",
     "Product Mix",
     "Matrix Formulation"
   ],
   "caseNames": [
-    "Two-flavor creamery (2 × 2)",
-    "Three-product factory (3 × 3)",
-    "Four-resource workshop (2 × 4)",
-    "Four-product line (4 × 2)",
-    "Three-product mixed plant (3 × 3)"
+    "Creamery mix (2 resources × 2 flavors)",
+    "Expanded creamery (3 resources × 3 flavors)",
+    "Resource-constrained workshop (4 resources × 2 flavors)",
+    "Multi-flavor line (2 resources × 4 flavors)",
+    "Balanced mixed creamery (3 resources × 3 flavors)"
   ],
   "judge": {
     "m0": "Output must be an object { quantities, totalProfit }.",

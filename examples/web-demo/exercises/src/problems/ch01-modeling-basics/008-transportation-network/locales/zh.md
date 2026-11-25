@@ -18,7 +18,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `shipments` | `number[][]` | $S \times D$ 非负配送量矩阵 (kg) |
+| `shipments` | `number[][]` | 从工厂 $i$ 运往门店 $j$ 的非负配送量矩阵（kg，尺寸与 `unitCosts` 相同） |
 | `totalCost` | `number` | 最小化后的总运输成本 |
 
 <!-- section:example -->
