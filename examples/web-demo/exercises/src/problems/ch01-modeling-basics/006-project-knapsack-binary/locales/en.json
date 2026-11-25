@@ -1,5 +1,5 @@
 {
-  "title": "#006. Disaster-Prevention Equipment Selection (Binary Variables)",
+  "title": "#006. Disaster-Prevention Equipment Selection (0-1 Binary Variables)",
   "subtitle": "Model all-or-nothing disaster-prevention equipment choices using 0-1 binary decision variables.",
   "tags": [
     "MIP",

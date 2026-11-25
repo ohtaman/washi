@@ -18,7 +18,7 @@ Determine non-negative continuous shipment quantities (kg) along every route to 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `shipments` | `number[][]` | $S \times D$ matrix of non-negative shipment quantities (kg) |
+| `shipments` | `number[][]` | Non-negative shipment quantity (kg) from plant $i$ to store $j$ (same shape as `unitCosts`) |
 | `totalCost` | `number` | Minimized total shipping cost |
 
 <!-- section:example -->

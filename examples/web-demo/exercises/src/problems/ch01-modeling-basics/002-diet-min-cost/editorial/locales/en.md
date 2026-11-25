@@ -1,6 +1,6 @@
 ## Approach
 
-Declare non-negative continuous decision variables for the amounts of `oats` and `beans`, add two `>=` nutrient requirement constraints, and **minimize** total cost.
+Let $x$ and $y$ be non-negative continuous decision variables representing the amounts of `oats` and `beans`, add two `>=` nutrient requirement constraints, and **minimize** total cost.
 
 ## Mathematical Model
 

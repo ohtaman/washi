@@ -1,7 +1,5 @@
 ## Approach
 
-## Approach
-
 Define a **2D binary variable matrix** $x_{i,j} \in \{0, 1\}$ indicating whether courier $i$ covers delivery zone $j$. Constrain every row to have exactly one 1 (sum = 1: one zone per courier) and every column to have exactly one 1 (sum = 1: one courier per zone), and minimize the total cost.
 
 ## Mathematical Model
@@ -18,7 +16,7 @@ $$
 ## Key Points
 
 - **Exactly-one constraints per row and column**: Summing binary variables to 1 expresses "choose exactly one." Row sums alone allow multiple couriers in the same zone, while column sums alone allow one courier to take multiple zones; enforcing both determines a 1-to-1 permutation. (Because the assignment constraint matrix is totally unimodular, even continuous relaxation vertices are 0-1 integers.)
-- **Extracting the assignment indices**: After solving, find the column index `j` in each row `i` where `Math.round(cell.value!) === 1` (`round(pulp.value(x[i][j])) == 1` in Python).
+- **Extracting the assignment indices**: After solving, find the column index `j` in each row `i` where `cell.value! === 1` (`round(pulp.value(x[i][j])) == 1` in Python).
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
@@ -32,7 +30,7 @@ m.constraint(x.map((row) => expr`${sum(row)} == 1`));
 m.constraint(x.map((_, j) => expr`${sum(x.map((row) => row[j]))} == 1`));
 
 const assignment = x.map((row) =>
-  row.findIndex((cell) => Math.round(cell.value!) === 1)
+  row.findIndex((cell) => cell.value! === 1)
 );
 ```
 

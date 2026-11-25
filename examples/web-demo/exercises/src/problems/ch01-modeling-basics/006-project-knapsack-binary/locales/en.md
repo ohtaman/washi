@@ -18,7 +18,7 @@ Select a subset of equipment to **maximize the total score** without exceeding t
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary installation flags (`0` or `1`) for each item |
+| `selected` | `number[]` | Binary installation flags (0 or 1) for each item |
 | `totalValue` | `number` | Maximized total score |
 
 <!-- section:example -->

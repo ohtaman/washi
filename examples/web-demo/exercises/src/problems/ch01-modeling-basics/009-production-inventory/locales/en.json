@@ -7,7 +7,7 @@
     "Inventory Flow"
   ],
   "caseNames": [
-    "4-quarter seasonal demand schedule",
+    "4-period seasonal demand schedule",
     "5-period schedule with ending safety stock",
     "3-period schedule starting with surplus stock",
     "6-period cycle from empty inventory",

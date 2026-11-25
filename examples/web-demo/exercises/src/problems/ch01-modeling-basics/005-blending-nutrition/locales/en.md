@@ -1,9 +1,13 @@
 # #005. Precision Alloy Blending
 
 <!-- section:scenario -->
-A metallurgy plant must blend several raw ingot lots into an exact target total weight of specialty alloy. Each raw metal has a unit cost per kilogram, an available warehouse stock limit, and a known mass fraction for each chemical element.
+A metallurgy plant melts and blends several types of alloy ingots to produce a specialty alloy. Each alloy ingot is itself an alloy composed of multiple chemical elements (such as iron, chromium, and nickel), with a known unit cost per kg, warehouse stock limit (kg), and mass fraction for each element.
 
-Quality standards require that in the final batch, every chemical element stays within its specified minimum and maximum percentage by weight. Choose how many kilograms of each raw metal to melt so the exact batch weight and all quality bounds are satisfied at **minimum total material cost**.
+Determine how many kilograms of each alloy ingot to melt to **minimize total material cost**, subject to the following conditions:
+
+- **Warehouse stock limits**: The amount (kg) used of each alloy ingot cannot exceed its available stock.
+- **Exact target batch weight**: The total weight (kg) of all melted alloy ingots must equal the specified target batch weight.
+- **Element composition bounds**: In the final batch, the mass fraction of every chemical element must stay within its specified minimum and maximum bounds.
 
 <!-- section:io -->
 ### Input
@@ -11,17 +15,17 @@ Quality standards require that in the final batch, every chemical element stays 
 | Field | Type | Description |
 | --- | --- | --- |
 | `targetBatch` | `number` | Required exact total batch weight (kg) |
-| `costs` | `number[]` | Unit cost per kg of raw metal $i$ |
-| `availabilities` | `number[]` | Available warehouse stock (kg) of raw metal $i$ |
-| `compositions` | `number[][]` | `compositions[i][k]` is the mass fraction of element $k$ in metal $i$ |
-| `minRatios` | `number[]` | Minimum required mass fraction of element $k$ |
-| `maxRatios` | `number[]` | Maximum allowed mass fraction of element $k$ |
+| `costs` | `number[]` | Unit cost per kg of alloy ingot $i$ |
+| `availabilities` | `number[]` | Available warehouse stock (kg) of alloy ingot $i$ |
+| `compositions` | `number[][]` | `compositions[i][k]` is the mass fraction (0 to 1) of element $k$ in alloy ingot $i$ |
+| `minRatios` | `number[]` | Minimum required mass fraction (0 to 1) of element $k$ |
+| `maxRatios` | `number[]` | Maximum allowed mass fraction (0 to 1) of element $k$ |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `amounts` | `number[]` | Kilograms used of each raw metal |
+| `amounts` | `number[]` | Amount used of each alloy ingot (kg) |
 | `totalCost` | `number` | Minimized total material cost |
 
 <!-- section:example -->
@@ -51,4 +55,4 @@ Quality standards require that in the final batch, every chemical element stays 
 }
 ```
 
-Blending 62.5 kg of Metal 0 and 37.5 kg of Metal 1 totals 100 kg, yields 35% element 0, 38.75% element 1, and 21.25% element 2 (within all bounds), and costs $300 \times 62.5 + 500 \times 37.5 =$ **37,500**.
+Blending 62.5 kg of Alloy Ingot 0 and 37.5 kg of Alloy Ingot 1 totals 100 kg, yields 35% element 0, 38.75% element 1, and 21.25% element 2 (within all bounds), and costs $300 \times 62.5 + 500 \times 37.5 =$ **37,500**.

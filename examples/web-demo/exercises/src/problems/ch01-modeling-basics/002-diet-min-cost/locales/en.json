@@ -1,14 +1,14 @@
 {
-  "title": "#002. Min-Cost Diet Blend (>= & Minimization)",
-  "subtitle": "Meet daily protein and fiber minimums at minimum cost.",
+  "title": "#002. Min-Cost Diet Blend (Lower Bounds & Minimization)",
+  "subtitle": "Meet protein and fiber minimums at minimum cost.",
   "tags": [
     "LP",
     "Minimization",
     ">= Constraints"
   ],
   "caseNames": [
-    "Standard day",
-    "High-protein day",
+    "Standard blend",
+    "High-protein blend",
     "Protein-heavy target",
     "Fiber-heavy target",
     "Continuous fractional blend"

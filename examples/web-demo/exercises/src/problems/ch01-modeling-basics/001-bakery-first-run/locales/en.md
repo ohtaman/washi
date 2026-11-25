@@ -1,7 +1,7 @@
 # #001. Bakery Production LP
 
 <!-- section:scenario -->
-A bakery makes croissants and loaves (both continuous and non-negative) to maximize total profit within limited flour and butter stocks:
+A bakery decides how many croissants and loaves to bake (both non-negative continuous quantities) to maximize total profit within limited flour and butter stocks:
 
 - Each croissant yields profit 40 and uses 2 units of flour and 1 unit of butter.
 - Each loaf yields profit 70 and uses 3 units of flour and 2 units of butter.

@@ -7,8 +7,8 @@
 $$
 \begin{aligned}
 \min_{r, o, I \ge 0} \quad & \sum_{t=0}^{T-1} \left( c_r r_t + c_o o_t + c_h I_t \right) \\
-\text{s.t.} \quad & I_t = I_{t-1} + r_t + o_t - d_t && \forall t \;\; (I_{-1} = I_{\text{init}}) \\
-& 0 \le r_t \le R_t, \; 0 \le o_t \le O_t, \; 0 \le I_t \le I_{\max} && \forall t \\
+\text{s.t.} \quad & I_t = I_{t-1} + r_t + o_t - d_t && \forall t \in \{0, \dots, T-1\} \;\; (I_{-1} = I_{\text{init}}) \\
+& 0 \le r_t \le R_t, \; 0 \le o_t \le O_t, \; 0 \le I_t \le I_{\max} && \forall t \in \{0, \dots, T-1\} \\
 & I_{T-1} \ge I_{\min,\text{end}}
 \end{aligned}
 $$
@@ -43,7 +43,7 @@ m.objective(
 
 ```python
 for t in range(T):
-    prev = init_inv if t == 0 else inventory[t - 1]
+    prev = initial_inventory if t == 0 else inventory[t - 1]
     prob += prev + regular[t] + overtime[t] - inventory[t] == demands[t]
 
 prob += (

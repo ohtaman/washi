@@ -1,6 +1,6 @@
 ## Approach
 
-Compute `input.a + input.b` directly and return `{ sum }` without building a solver model.
+Compute `a + b` directly and return `{ sum }` without building a solver model.
 
 ## Mathematical Model
 
