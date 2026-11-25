@@ -13,14 +13,14 @@
 | `nodeCount` | `number` | 节点数（`0 .. nodeCount - 1`） |
 | `source` | `number` | 源点编号 $s$ |
 | `sink` | `number` | 汇点编号 $t$ |
-| `edges` | `Array<{ from, to, cap }>` | 带容量有向边列表 |
+| `edges` | `Array<{ from, to, cap }>` | 有向边列表，包含起点 `from`、终点 `to` 和带宽上限 `cap`（Gbps） |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `flows` | `number[]` | 每条边的非负流量（`0 <= flow <= cap`） |
-| `cutEdges` | `number[]` | 构成最小 s-t 割的无重复边索引数组 |
+| `cutEdges` | `number[]` | 构成最小 s-t 割的 `edges` 无重复索引数组（从 0 开始） |
 | `maxFlow` | `number` | 最大流量（等于 `cutEdges` 的容量之和） |
 
 <!-- section:example -->
@@ -57,4 +57,4 @@
 为每条有向边定义以容量为上界的非负连续流量变量。在除 `source` 和 `sink` 外的所有中间节点上施加净流量为零的守恒约束，并最大化从 `source` 净流出的总流量。
 
 <!-- section:hint2 -->
-不要盲目收集所有满载边——位于环路内或其他瓶颈之后的满载边未必属于最小割。应在最优流的残余网络中从 `source` 出发做 BFS/DFS（当 `flow < cap - 1e-6` 时沿正向 `from -> to` 遍历，当 `flow > 1e-6` 时沿反向 `to -> from` 遍历），求出可达点集 $S$，再收集所有从 $S$ 指向 $V \setminus S$ 的原始有向边。
+不要盲目收集所有满载边——位于环路内或其他瓶颈之后的满载边未必属于最小割。应在最优流的残量图中从 `source` 出发做 BFS/DFS（当 `flow < cap - 1e-6` 时沿正向 `from -> to` 遍历，当 `flow > 1e-6` 时沿反向 `to -> from` 遍历），求出可达点集 $S$，再收集所有从 $S$ 指向 $V \setminus S$ 的原始有向边。

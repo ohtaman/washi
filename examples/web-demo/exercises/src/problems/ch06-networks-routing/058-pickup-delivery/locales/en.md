@@ -1,17 +1,22 @@
 # #058. Pickup & Delivery Vehicle Routing (PDP)
 
 <!-- section:scenario -->
-Up to K identical vehicles operate out of depot 0 to serve paired pickup-and-delivery requests, each with a pickup location, a delivery location, and a load demand. Both endpoints of each request must be served by the same vehicle with pickup visited strictly before delivery, while never exceeding vehicle capacity or the per-vehicle stop limit.
+Up to `maxVehicles` identical vehicles operate out of depot 0 to serve paired pickup-and-delivery requests, each with a pickup stop, a delivery stop, and a load demand:
 
-Formulate the Pickup and Delivery Problem as a mixed-integer program to **minimize total route distance**.
+- Every active route starts and ends at depot 0, using at most `maxVehicles` vehicles in total.
+- All pickup and delivery stops across requests are distinct nodes `1..N-1`, and each stop must be visited exactly once.
+- Both endpoints of each request must be served by the same vehicle, with pickup visited strictly before delivery.
+- Along every route, the carried load must stay within vehicle `capacity`, and each vehicle may visit at most `maxStopsPerVehicle` non-depot stops.
+
+Plan the vehicle routes to **minimize total route distance**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `dist` | `number[][]` | $N \times N$ travel distance matrix (0 is depot, 1..N-1 are pickup/delivery stops) |
-| `requests` | `Array<{ pickup, delivery, demand }>` | Paired requests with pickup node, delivery node, and load `demand` |
+| `dist` | `number[][]` | $N \times N$ travel distance matrix (0 is depot, `1..N-1` are pickup/delivery stops) |
+| `requests` | `Array<{ pickup: number; delivery: number; demand: number }>` | Paired requests with pickup node, delivery node, and load `demand` (indices partition `1..N-1`) |
 | `capacity` | `number` | Vehicle load capacity $Q$ |
 | `maxVehicles` | `number` | Maximum number of active routes leaving depot 0 |
 | `maxStopsPerVehicle` | `number` | Maximum number of non-depot stops visited by any single route |
@@ -56,7 +61,7 @@ Formulate the Pickup and Delivery Problem as a mixed-integer program to **minimi
 }
 ```
 
-Route `[0, 1, 3, 2, 4, 0]` picks up request 0 (`load = 3`) and request 1 (`load = 7 <= 7`) before delivering 2 (`load = 4`) and 4 (`load = 0`), obeying pairing, precedence, and stop limits with distance $2 + 1 + 4 + 1 + 8 =$ **16**.
+Route `[0, 1, 3, 2, 4, 0]` picks up request 0 (`load = 3`) and request 1 (`load = 7 <= 7`) before delivering at stops 2 (`load = 4`) and 4 (`load = 0`), obeying pairing, precedence, and stop limits with distance $2 + 1 + 4 + 1 + 8 =$ **16**.
 
 <!-- section:hint1 -->
 Index binary arc variables by vehicle `k` so you can enforce same-vehicle pairing directly. Also introduce continuous visit-order variables and continuous cumulative-load variables per location, enforcing that every non-depot stop is visited once, flow is conserved per vehicle, and each vehicle's total stops stay within `maxStopsPerVehicle`.

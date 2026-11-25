@@ -48,4 +48,4 @@ Playing `0 -> 2 -> 1 -> 3 -> 0` covers all four tracks in one cycle with total j
 Model one binary transition variable for every ordered pair of distinct tracks, plus one continuous playback-position potential variable for each non-opener track. Enforce that every track has exactly one incoming transition and one outgoing transition, then minimize total transition cost.
 
 <!-- section:hint2 -->
-Degree constraints alone allow disconnected mini-loops. Add Miller-Tucker-Zemlin (MTZ) precedence constraints on non-opener transitions `(i, j)`—forcing $u_i + 1 \le u_j$ whenever `x[i][j] == 1` via $u_i - u_j + n x_{ij} \le n - 1$—so only a single cycle anchored at track 0 is feasible, and reconstruct `setlist` by following the chosen transitions from track 0.
+Degree constraints alone allow disconnected mini-loops. Add Miller-Tucker-Zemlin (MTZ) precedence constraints on non-opener transitions $(i, j)$—forcing $u_i + 1 \le u_j$ whenever $x_{ij} = 1$ via $u_i - u_j + n x_{ij} \le n - 1$—so only a single cycle anchored at track 0 is feasible, and reconstruct `setlist` by following the chosen transitions from track 0.

@@ -13,14 +13,14 @@
 | `nodeCount` | `number` | 頂点数（`0 .. nodeCount - 1`） |
 | `source` | `number` | 始点インデックス $s$ |
 | `sink` | `number` | 終点インデックス $t$ |
-| `edges` | `Array<{ from, to, cap }>` | 容量付き有向枝の配列 |
+| `edges` | `Array<{ from, to, cap }>` | 始点 `from`、終点 `to`、帯域幅上限 `cap`（Gbps）を持つ有向枝 |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `flows` | `number[]` | 各枝の非負フロー量（`0 <= flow <= cap`） |
-| `cutEdges` | `number[]` | 最小 s-t カットを構成する重複なしの枝インデックス配列 |
+| `cutEdges` | `number[]` | 最小 s-t カットを構成する `edges` の重複なしインデックス配列（0 始まり） |
 | `maxFlow` | `number` | 最大流量（`cutEdges` の容量合計と一致） |
 
 <!-- section:example -->

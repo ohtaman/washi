@@ -1,9 +1,14 @@
 # #059. Multi-Depot Vehicle Routing Problem (MDVRP)
 
 <!-- section:scenario -->
-A distribution network operates D regional depots (nodes 0 through D - 1) and serves C customers (nodes D through D + C - 1). Each depot has a limit on the number of vehicles it can dispatch and a total warehouse supply cap, while every vehicle has load capacity vehicleCapacity.
+A distribution network operates $D$ regional depots (`0..D-1`) serving $C$ customers (`D..D+C-1`):
 
-Assign each customer to a single route that starts and ends at the same depot—with zero open paths between distinct depots and zero disconnected subtours—to **minimize total travel distance**.
+- Every customer must be visited exactly once by a single vehicle route.
+- Each route must start and end at the same origin depot, with no travel between different depots.
+- Each depot may dispatch at most its available fleet size and supply at most its total warehouse demand capacity.
+- Every vehicle's cumulative load along its route must stay within `vehicleCapacity`.
+
+Design the delivery routes from all depots to **minimize total travel distance**.
 
 <!-- section:io -->
 ### Input
@@ -58,7 +63,7 @@ Assign each customer to a single route that starts and ends at the same depot—
 Depot 0 serves `{2, 3}` (demand `8 <= 8`, distance $4 + 6 + 3 = 13$) and depot 1 serves `{4, 5}` (demand `8 <= 10`, distance $3 + 6 + 4 = 13$), giving total distance $13 + 13 =$ **26**.
 
 <!-- section:hint1 -->
-Model depot-indexed binary arc variables restricted to each depot `d` and the customer set `{D..n-1}` (omitting inter-depot arcs), plus one continuous cumulative-load variable per customer bounded by its demand and `vehicleCapacity`. Enforce that each customer is visited once across all depots, conserve flow per `(depot, customer)` pair, and cap each depot's dispatched vehicles and total served demand.
+Model depot-indexed binary arc variables restricted to each depot `d` and the customer set `{D..D+C-1}` (omitting inter-depot arcs), plus one continuous cumulative-load variable per customer bounded by its demand and `vehicleCapacity`. Enforce that each customer is visited once across all depots, conserve flow per `(depot, customer)` pair, and cap each depot's dispatched vehicles and total served demand.
 
 <!-- section:hint2 -->
-Do not use a single unindexed arc variable `x[i][j]` across depots—that allows open paths starting at one depot and ending at another! Indexing arcs by depot `d` over `{d} ∪ Customers` ensures every route returns to its origin depot, and a single shared load-based MTZ constraint ($u_i - u_j + Q \sum_d x_{dij} \le Q - d_j$) prevents customer subtours across all depots.
+Do not use a single unindexed arc variable `x[i][j]` across depots—that allows open paths starting at one depot and ending at another! Indexing arcs by depot `d` over `{d} ∪ Customers` ensures every route returns to its origin depot, and a single shared load-based MTZ constraint ($u_i - u_j + Q \sum_d x_{ijd} \le Q - q_j$, where $q_j$ is customer $j$'s demand) prevents customer subtours across all depots.
