@@ -1,6 +1,6 @@
 ## Approach
 
-Decompose Capacitated Facility Location into a binary MIP master (`open[i]`, recourse estimator `theta >= 0`) and a continuous transportation LP subproblem evaluated inside `master.solveBenders`. When a candidate configuration $\bar{y}$ lacks capacity or fails LP feasibility, solve a Phase-I minimum-slack LP to generate a Farkas feasibility cut (`kind: "feasibility"`). Otherwise solve the shipping LP, read constraint duals, and return a tight optimality cut (`kind: "optimality"`) with `subproblemObjective`.
+Decompose Capacitated Facility Location into a binary MIP master (`open[i]`, second-stage cost estimator $\theta \ge 0$) and a continuous transportation LP subproblem evaluated inside `master.solveBenders`. When a candidate configuration $\bar{y}$ lacks capacity or fails LP feasibility, solve a Phase-I minimum-slack LP to generate a Farkas feasibility cut (`kind: "feasibility"`). Otherwise solve the shipping LP, read constraint duals, and return a tight optimality cut (`kind: "optimality"`) with `subproblemObjective`.
 
 ## Mathematical Model
 
@@ -22,13 +22,13 @@ $$
 ## Key Points
 
 - **Strong-duality optimality cut**: By LP duality, $Q(\bar{y}) = \sum_j d_j \alpha_j + \sum_i K_i \beta_i \bar{y}_i$. Valid for every $y \in \{0,1\}^I$, the optimality cut is $\theta - \sum_i K_i \beta_i y_i \ge \sum_j d_j \alpha_j$.
-- **Dual-derived feasibility cut**: Passing an infeasible subproblem directly into automatic mode omits feasibility cuts when `y` violates total capacity. Solving a Phase-I elastic LP (`min sum s_j`) produces duals $(\alpha', \beta')$ yielding the exact Farkas cut $\sum_i (-K_i \beta'_i) y_i \ge \sum_j d_j \alpha'_j$ (without supplying `subproblemObjective` so upper bounds only track feasible solutions).
+- **Dual-derived feasibility cut**: Because `solveBenders` automatic mode throws an error when a subproblem is infeasible, we use a custom `subproblem` callback and solve a Phase-I minimum-slack LP ($\min \sum_j s_j$) whenever open capacity cannot cover demand. Its duals $(\alpha', \beta')$ yield the exact Farkas feasibility cut $\sum_i (-K_i \beta'_i) y_i \ge \sum_j d_j \alpha'_j$ (without supplying `subproblemObjective`, so upper bounds only track feasible solutions).
 - **Shipping recovery**: After `solveBenders` terminates with optimal `open` values, solve the shipping LP one final time at the optimal `open` vector to obtain exact primal `shipments`.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
 
-Inside the `subproblem` callback of `master.solveBenders`, check whether open supply capacity is sufficient: if insufficient, return a `kind: "feasibility"` cut from the Phase-I elastic LP; if feasible, return a `kind: "optimality"` cut from the shipping LP duals along with `subproblemObjective`.
+Inside the `subproblem` callback of `master.solveBenders`, `buildShippingLp` builds either the Phase-I minimum-slack LP or the shipping LP while the cut-expression helpers assemble the Benders cut terms: when open supply capacity is insufficient, return a `kind: "feasibility"` cut; otherwise return a `kind: "optimality"` cut from the shipping LP duals along with `subproblemObjective`.
 
 **WaSHI (TypeScript)**
 

@@ -1,16 +1,18 @@
 ## 解题思路
 
-建立集合覆盖受限主问题（`master`），包含每日需求约束 `0 >= demands[d]` 并通过 `master.column(...)` 注入单日初始排班列。调用 `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })`，在 `pricing` 子问题中建立包含总天数限制 `1 <= sum(a) <= maxWorkDays` 与滑动窗口连班限制的 0-1 MIP，动态提取负检验数班次直至 LP 收敛后求解整数解。
+将问题分解为集合覆盖受限主问题（RMP）LP 与二元排班定价子问题：主问题决定各已有班次模式的在岗人数 $\lambda_p$ 以满足每日最低需求 $r_d$，定价子问题则在 $D$ 天的二元变量上施加总工作天数限制（$1 \le \sum_d a_d \le M_{\text{work}}$）与滑动窗口连班上限，以寻找检验数为负的合规班次。在 WaSHI 中，为 `master` 注册每日命名需求约束并通过 `master.column(...)` 注入单日初始列，随后调用 `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })` 迭代生成改进列并在收敛后求解整数方案。
 
 ## 数学模型
 
 $$
 \begin{aligned}
-\text{(RMP)} \quad \min \quad & \sum_{p \in \mathcal{P}} \left(F + \sum_{d=0}^{D-1} c_d a_{dp}\right) \lambda_p \\
+\text{(RMP LP)} \quad \min \quad & \sum_{p \in \mathcal{P}} \left(F + \sum_{d=0}^{D-1} c_d a_{dp}\right) \lambda_p \\
 \text{s.t.} \quad & \sum_{p \in \mathcal{P}} a_{dp} \lambda_p \ge r_d && \forall d \in \{0, \dots, D-1\} \quad (\text{对偶变量 } \pi_d) \\
-& \lambda_p \in \mathbb{Z}_{\ge 0} && \forall p \in \mathcal{P}
+& \lambda_p \ge 0 && \forall p \in \mathcal{P}
 \end{aligned}
 $$
+
+列生成收敛后，在最终 MIP 求解阶段施加整数约束 $\lambda_p \in \mathbb{Z}_{\ge 0}$（`finalizeAsMIP: true`）。
 
 $$
 \begin{aligned}
@@ -57,7 +59,12 @@ const result = await solveColumnGeneration<number[]>({
     const reducedCost = input.baseCost - (sub.objectiveValue ?? 0);
     if (reducedCost >= -1e-5) return null;
     const pat = a.map((v) => Math.round(v.value ?? 0));
-    return { type: "Integer", cost: patCost(pat), coefficients: toCoeffs(pat), reducedCost, meta: pat };
+    const cost =
+      input.baseCost + pat.reduce((acc, v, d) => acc + v * input.shiftCosts[d], 0);
+    const coefficients = Object.fromEntries(
+      pat.flatMap((v, d) => (v > 0 ? [[`demand_${d}`, 1]] : []))
+    );
+    return { type: "Integer", cost, coefficients, reducedCost, meta: pat };
   },
 });
 ```

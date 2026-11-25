@@ -3,7 +3,7 @@
 Chain **Z3 SMT** policy conflict diagnosis with **HiGHS MIP** operational rescheduling:
 
 1. **Phase 1 (IHS Weighted MaxSAT Repair)**: Name every hard and active soft rule in Z3 (`smt.constraint(expr, rule.id)`) alongside capacity coverage $\sum_i C_i u_i \ge D$. Whenever `smt.check({ solver: "z3" })` returns `"Unsat"`, record the soft rule IDs in `res.unsatCore` as a hitting-set cut for a small HiGHS binary MIP minimizing dropped policy weight, and iterate until Z3 returns `"Sat"`.
-2. **Phase 2 (Minimum-Disruption MIP)**: Fix the repaired rule set and solve a linear MIP over binary activations `y[i]`, continuous production `q[i]`, and deviation `delta[i] >= |y[i] - baselineActive[i]|` to minimize total fixed, production, and disruption costs.
+2. **Phase 2 (Minimum-Disruption MIP)**: Fix the repaired rule set and solve a linear MIP over binary activations $y_i$, continuous production $q_i$, and deviation $\delta_i \ge |y_i - b_i|$ to minimize total fixed, production, and disruption costs.
 
 ## Mathematical Model
 
@@ -25,13 +25,13 @@ $$
 ## Key Points
 
 - **Implicit Hitting Set completeness**: Unlike dropping the single cheapest rule inside one core greedily, resolving a hitting-set MIP over *all* accumulated Z3 cores guarantees globally minimum drop weight across overlapping or nested conflicts.
-- **Exact `implies` linearization**: In Phase 2, `ifLine => thenLine` becomes `y[ifLine] - y[thenLine] <= 0`, whereas `ifLine => !thenLine` becomes `y[ifLine] + y[thenLine] <= 1`.
-- **Linear disruption term**: Using auxiliary continuous bounds $\delta_i \ge y_i - b_i$ and $\delta_i \ge b_i - y_i$ avoids any constant offset in the linear objective while remaining exact at binary $y_i \in \{0, 1\}$.
+- **Exact `implies` linearization**: In Phase 2, `ifLine => thenLine` becomes $y_{\text{if}} - y_{\text{then}} \le 0$, whereas `ifLine => !thenLine` becomes $y_{\text{if}} + y_{\text{then}} \le 1$.
+- **Linear disruption term**: Using auxiliary linear constraints $\delta_i \ge y_i - b_i$ and $\delta_i \ge b_i - y_i$ avoids any constant offset in the linear objective while remaining exact at binary $y_i \in \{0, 1\}$.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Solver Status](?view=guide&lang=en#solver-status).
 
 ## Key Implementation
 
-In the Phase 1 Implicit Hitting Set loop, extract only the soft rules from the UNSAT core returned by `checkPolicyWithZ3`, append them to `hittingSets`, and iterate while updating the minimum-weight `droppedSet` via `solveHittingSetMip` until `"Sat"` is reached.
+In the Phase 1 Implicit Hitting Set loop, extract only the soft rules from the UNSAT core returned by `checkPolicyWithZ3` (falling back to `activeSoftIds(droppedSet)`, which returns the currently active soft rule IDs, if the core contains none), append them to `hittingSets`, and iterate while updating the minimum-weight `droppedSet` via `solveHittingSetMip` until `"Sat"` is reached.
 
 **WaSHI (TypeScript)**
 

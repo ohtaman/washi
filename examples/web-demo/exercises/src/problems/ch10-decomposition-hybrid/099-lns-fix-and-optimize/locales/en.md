@@ -1,9 +1,12 @@
 # #099. Fix-and-Optimize Matheuristic (Rolling-Window MIP)
 
 <!-- section:scenario -->
-At an injection-molding parts manufacturer's plant, plan multi-period production of plastic parts (in cases). Each period has a demand (in cases), a 0-1 setup decision (such as mold changeover) that unlocks production capacity while incurring a fixed setup cost, a unit production cost (JPY/case), and an end-of-period inventory holding cost (JPY/case). Over long horizons, a single monolithic MIP can stall in branch-and-bound.
+At an injection-molding parts manufacturer's plant, plan multi-period production of plastic parts (in cases) across a planning horizon:
+- Starting from zero initial inventory, meet each period's demand from prior ending inventory plus current production with no backorders, carrying any surplus into the next period.
+- Production in a period requires an active 0-1 setup (such as mold changeover) and cannot exceed that period's capacity; otherwise production must be 0.
+- Minimize total fixed setup, unit production, and end-of-period inventory holding costs (in JPY).
 
-Starting from the given initial setup plan and window width, run rolling-window Fix-and-Optimize to iteratively improve the lot-sizing plan until a full sweep yields no cost reduction, and return the final setups, production quantities, inventory levels, and total cost.
+Because a single monolithic MIP can stall over long horizons, start from the given initial setup plan and window width, run rolling-window Fix-and-Optimize until a full sweep yields no cost reduction, and return the final setups, production quantities, inventory levels, and total cost.
 
 <!-- section:io -->
 ### Input
@@ -53,7 +56,7 @@ Starting from the given initial setup plan and window width, run rolling-window 
 }
 ```
 
-Consolidating 6 setups down to 3 gives setup cost $120 \times 3 = 360$ + production cost $4 \times 135 = 540$ + holding cost $1 \times (40 + 15 + 0 + 20 + 0 + 0) = 75 =$ **975**.
+Production stays within active capacities (`60`, `50`, `25` $\le 60$) and balances inventory in every period, yielding setup cost $120 \times 3 = 360$, production cost $4 \times 135 = 540$, and holding cost $1 \times (40 + 15 + 0 + 20 + 0 + 0) = 75$, totaling $360 + 540 + 75 =$ **975**.
 
 <!-- section:hint1 -->
 Maintain a current best binary setup vector initialized from `initialPlan` and sweep overlapping windows of length `windowSize` across the horizon. In each subproblem, only the setup decisions inside the active window are free binary variables while outside setups stay fixed and continuous production and inventory variables remain free across all periods.

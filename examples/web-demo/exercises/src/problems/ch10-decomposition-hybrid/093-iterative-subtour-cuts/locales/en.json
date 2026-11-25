@@ -9,8 +9,8 @@
   ],
   "caseNames": [
     "6-city two-cluster network",
-    "5-city connected baseline",
-    "6-city asymmetric bridge network",
+    "5-city baseline network",
+    "6-city uneven-bridge network",
     "7-city 3-plus-4 cluster network",
     "8-city dual-quad network"
   ],
