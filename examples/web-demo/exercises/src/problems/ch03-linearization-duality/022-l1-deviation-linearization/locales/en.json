@@ -10,7 +10,7 @@
   "caseNames": [
     "3-unit power dispatch rebalancing",
     "4-unit demand expansion",
-    "4-unit exact target feasibility",
+    "4-unit ample-budget dispatch",
     "5-unit capacity-constrained dispatch",
     "6-unit budget contraction rebalancing"
   ],

@@ -1,6 +1,6 @@
 ## Approach
 
-Introduce an auxiliary continuous variable $z_i$ representing the bilinear product $b_i x_i$ where $b_i \in \{0, 1\}$ and $L_i \le x_i \le U_i$. Enforce all four Glover/McCormick envelope inequalities so $z_i = 0$ whenever $b_i = 0$ (even though $x_i \ge L_i > 0$) and $z_i = x_i$ whenever $b_i = 1$.
+Introduce a binary contract decision $b_i \in \{0, 1\}$, a continuous order quantity $x_i \in [L_i, U_i]$, and an auxiliary continuous variable $z_i$ representing the bilinear product $b_i x_i$. Enforce all four Glover/McCormick envelope inequalities so $z_i = 0$ whenever $b_i = 0$ (even when $x_i > 0$) and $z_i = x_i$ whenever $b_i = 1$, subject to meeting total demand while minimizing total base cost plus contract fees minus discounts.
 
 ## Mathematical Model
 
@@ -16,7 +16,7 @@ $$
 
 ## Key Points
 
-- **Difference from capacity gating ($x_i \le U_i b_i$)**: Here $x_i$ can still be strictly positive ($x_i \ge L_i > 0$) even when $b_i = 0$, because uncontracted suppliers are still purchased at full base price! Only the discounted term $z_i = b_i x_i$ turns off when $b_i = 0$.
+- **Difference from capacity gating ($x_i \le U_i b_i$)**: Here $x_i$ can still be strictly positive ($x_i > 0$) even when $b_i = 0$, because uncontracted suppliers are still purchased at full base price! Only the discounted term $z_i = b_i x_i$ turns off when $b_i = 0$.
 - **Exact convex hull**: Over $b_i \in \{0, 1\}$ and $x_i \in [L_i, U_i]$, these four linear inequalities describe the exact convex hull of $\{(b_i, x_i, z_i) : z_i = b_i x_i\}$, tightening the LP relaxation.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 

@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每个周期引入非负松弛变量 $s_t \ge 0$ 表示需求缺口 $\max(0, d_t - x_t)$，加入不等式 $s_t \ge d_t - x_t$，并在单期上下界与总常规产能上限下最小化 $\sum_t (r_t x_t + p_t s_t)$。
+为每个周期引入非负松弛变量 $s_t \ge 0$ 表示需求缺口 $\max(0, d_t - x_t)$，加入不等式 $s_t \ge d_t - x_t$，并在各周期上下界与常规工时总上限下最小化 $\sum_t (r_t x_t + p_t s_t)$。
 
 ## 数学模型
 
@@ -40,9 +40,9 @@ m.objective(
 **PuLP (Python)**
 
 ```python
-prob += pulp.lpSum(regular) <= total_cap
+prob += pulp.lpSum(regular) <= total_regular_cap
 for t in range(T):
     prob += shortage[t] >= demands[t] - regular[t]
-prob += pulp.lpDot(reg_costs, regular) + pulp.lpDot(penalties, shortage)
+prob += pulp.lpDot(regular_costs, regular) + pulp.lpDot(overtime_penalties, shortage)
 prob.solve(pulp.HiGHS(msg=False))
 ```

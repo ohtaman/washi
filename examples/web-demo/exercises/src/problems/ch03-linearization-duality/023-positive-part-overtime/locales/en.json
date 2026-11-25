@@ -19,7 +19,7 @@
     "m1": "regular[{p0}] ({p1}) must lie in [{p2}, {p3}].",
     "m2": "shortage[{p0}] cannot be negative (received {p1}).",
     "m3": "shortage[{p0}] ({p1}) must be at least max(0, demand - regular) = {p2}.",
-    "m4": "Total regular output ({p0}) exceeds totalRegularCap ({p1}).",
+    "m4": "Total regular hours ({p0}) exceed totalRegularCap ({p1}).",
     "m5": "Reported totalCost ({p0}) does not match computed regular plus penalty cost ({p1}).",
     "m6": "Feasible schedule, but totalCost ({p0}) exceeds optimal ({p1}).",
     "m7": "Optimal staffing and overtime plan found (totalCost = {p0})!"

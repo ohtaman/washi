@@ -8,9 +8,9 @@
     "Bilinear Product"
   ],
   "caseNames": [
-    "3-supplier single-contract discount",
-    "4-supplier dual-contract procurement",
-    "4-supplier high-fee base procurement",
+    "3-supplier procurement",
+    "4-supplier procurement",
+    "4-supplier high contract fees",
     "5-supplier mixed volume commitment",
     "6-supplier multi-tier sourcing"
   ],

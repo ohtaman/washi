@@ -1,28 +1,28 @@
 # #024. Linear-Fractional Efficiency Ratio (Charnes-Cooper)
 
 <!-- section:scenario -->
-A precision parts factory production planner is deciding non-negative production quantities (in units) for multiple precision parts subject to shared resource capacities (such as raw materials and machining hours) and per-part production upper bounds. Rather than maximizing raw profit, the planner wants to **maximize the investment efficiency ratio**—the ratio of total net return including fixed income (in 10k JPY) to total input cost including base maintenance cost (in 10k JPY).
+A production planner at a precision parts factory is deciding non-negative continuous production quantities (in units; fractional amounts allowed) for multiple precision parts, subject to shared resource capacities (such as raw materials and machining hours) and per-part production upper bounds. Rather than maximizing raw profit, the planner wants to **maximize the investment efficiency ratio**—total net return (including a signed fixed offset in 10k JPY: positive for fixed income, negative for fixed overhead) divided by total input cost (including a positive base maintenance cost in 10k JPY).
 
-Using the Charnes-Cooper transformation, which scales the entire problem by the reciprocal of the denominator to linearize it, find the production quantities and maximum ratio that satisfy all resource constraints and production upper bounds while **maximizing the efficiency ratio**.
+Using the Charnes-Cooper transformation, find the production quantities and maximum efficiency ratio that satisfy all resource limits and per-part production upper bounds.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `numCoeffs` | `number[]` | Numerator net return per unit vector $c$ (10k JPY/unit) |
-| `numConst` | `number` | Numerator fixed income term $c_0$ (10k JPY) |
-| `denCoeffs` | `number[]` | Non-negative denominator input cost per unit vector $d$ (10k JPY/unit) |
-| `denConst` | `number` | Strictly positive denominator base maintenance cost $d_0 > 0$ (10k JPY) |
-| `usages` | `number[][]` | Resource consumption per part matrix $A$ |
-| `capacities` | `number[]` | Shared resource capacity limit vector $b$ |
-| `upperBounds` | `number[]` | Production upper bound $u$ for each part (units) |
+| `numCoeffs` | `number[]` | Net return per unit $c_j$ for each part $j$ (10k JPY/unit) |
+| `numConst` | `number` | Signed fixed net-return offset $c_0$ (10k JPY; positive for fixed income, negative for fixed overhead) |
+| `denCoeffs` | `number[]` | Non-negative input cost per unit $d_j$ for each part $j$ (10k JPY/unit) |
+| `denConst` | `number` | Strictly positive base maintenance cost $d_0 > 0$ (10k JPY) |
+| `usages` | `number[][]` | Resource consumption matrix $A$, where `usages[k][j]` is the consumption of resource $k$ per unit of part $j$ |
+| `capacities` | `number[]` | Capacity limit $b_k$ for each shared resource $k$ |
+| `upperBounds` | `number[]` | Production upper bound $u_j$ for each part $j$ (units) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `x` | `number[]` | Part production quantities in original scale (units) |
+| `x` | `number[]` | Production quantity for each part (units) |
 | `maxRatio` | `number` | Maximized efficiency ratio $(c^\top x + c_0) / (d^\top x + d_0)$ |
 
 <!-- section:example -->
@@ -55,7 +55,7 @@ When `x` is [0, 6], resource consumption $0 + 6 \le 8$ and individual upper boun
 
 
 <!-- section:hint1 -->
-Instead of solving directly in the original activity variables, apply the Charnes-Cooper transformation: introduce a non-negative scalar homogenization variable representing the reciprocal of the denominator, together with scaled non-negative activity variables representing their product with that scalar.
+Instead of solving directly in the original part production variables, apply the Charnes-Cooper transformation: introduce a non-negative scalar scaling variable representing the reciprocal of the denominator, together with non-negative scaled production variables representing each part's quantity multiplied by that scalar.
 
 <!-- section:hint2 -->
-The main pitfall is forgetting to homogenize the original per-activity upper bounds: in the scaled model, every upper bound and resource limit must be multiplied by the scalar denominator variable rather than kept constant. Also check that the denominator's constant offset keeps the scaling factor strictly positive so the original activities can be recovered by division.
+The main pitfall is forgetting to scale the per-part upper bounds: in the transformed model, both the shared resource capacities and every per-part upper bound must be multiplied by the scaling variable $t$ rather than kept constant, alongside normalizing the denominator to 1. Because the original domain is bounded ($0 \le x \le u$) and the denominator stays strictly positive ($d \ge 0, d_0 > 0$), every feasible transformed solution satisfies $t > 0$, allowing exact recovery via $x = y / t$.
