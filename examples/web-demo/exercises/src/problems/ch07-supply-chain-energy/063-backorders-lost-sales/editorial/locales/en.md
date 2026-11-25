@@ -1,6 +1,6 @@
 ## Approach
 
-Split each period's net stock evolution into two coupled linear conservation equations: one tracking physical warehouse inventory $I_t \ge 0$ and the other tracking unfilled customer backorders $b_t \ge 0$ alongside actual shipments $s_t$ and permanent lost sales $l_t$, requiring $b_{T-1} = 0$ so accepted orders eventually ship.
+Over $T$ periods with customer demands $d_t$, production capacities $C_t$, unit production costs $c_t$, selling price $r$, holding cost $h$, backorder cost $p_b$, lost-sale penalty $p_l$, and initial inventory $I_{\text{init}}$, we introduce non-negative continuous variables for production $x_t$, actual shipments $s_t$, ending physical inventory $I_t$, ending backlog $b_t$, and permanent lost sales $l_t$. We enforce two coupled linear conservation equations per period—one for physical inventory and one for customer backlog—along with capacity bounds, demand bounds on lost sales, and $b_{T-1} = 0$ so all accepted orders eventually ship. Maximizing total shipment revenue minus production, holding, backorder, and lost-sale costs yields a pure linear program.
 
 ## Mathematical Model
 
@@ -44,7 +44,7 @@ m.constraint(
 
 ```python
 for t in range(T):
-    prev_inv = init_inv if t == 0 else inventory[t - 1]
+    prev_inv = initial_inventory if t == 0 else inventory[t - 1]
     prev_back = 0 if t == 0 else backlog[t - 1]
     prob += prev_inv + production[t] - sales[t] == inventory[t]
     prob += prev_back + demands[t] - sales[t] - lost_sales[t] == backlog[t]

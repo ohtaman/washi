@@ -1,35 +1,40 @@
 # #069. Battery Storage Arbitrage & Peak Shaving
 
 <!-- section:scenario -->
-A facility operates an on-site battery storage system across multiple periods to lower its electricity bill under time-of-use (TOU) energy prices and a peak-demand charge on the maximum net grid import across the horizon. In each period, the battery may either charge or discharge (not both simultaneously) up to its power rating, and net grid import equals base load plus charging minus discharging (required to remain non-negative, without grid export).
+A facility operates an on-site battery storage system over a horizon of 1-hour periods (so power in kW equals energy in kWh per period) to reduce its electricity bill under time-of-use (TOU) energy prices and a peak-demand charge.
 
-Charging adds energy scaled by the charging efficiency while discharging drains energy scaled by the reciprocal of the discharging efficiency, keeping the state of charge (SOC) within its minimum and maximum bounds at every step and meeting a terminal SOC floor at the end of the horizon. Choose charging, discharging, SOC trajectory, and peak grid load to **minimize total electricity plus demand cost**.
+- **Power & mode limits**: In each period, the battery may either charge or discharge—never both simultaneously—up to its rated power limit.
+- **Net grid import**: Net grid import equals base load plus charging minus discharging and must remain non-negative (no export to the grid).
+- **Efficiency & SOC bounds**: Charging increases the state of charge (SOC) by charging power multiplied by charging efficiency, while discharging reduces SOC by discharging power divided by discharging efficiency; SOC must stay within its lower and upper limits in every period and meet the terminal SOC floor at the end of the horizon.
+- **Peak-demand charge**: A demand charge applies to the maximum net grid import across all periods.
+
+Choose hourly charging, discharging, SOC trajectory, and peak grid load to **minimize total energy plus peak-demand cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `baseLoads` | `number[]` | Facility electricity demand $L_t$ in each period $t$ |
-| `prices` | `number[]` | TOU grid electricity price $\pi_t$ per kWh in period $t$ |
-| `demandCharge` | `number` | Ratchet charge $\gamma$ per kW of peak grid import $\max_t g_t$ |
-| `capacity` | `number` | Maximum battery energy capacity $E_{\max}$ |
-| `minSoc` | `number` | Minimum allowed state of charge $E_{\min}$ |
-| `initSoc` | `number` | Initial battery energy $E_{\text{init}}$ before period 0 |
-| `minFinalSoc` | `number` | Required minimum ending SOC $E_{\text{end}}$ after period $T-1$ |
-| `maxPower` | `number` | Charge and discharge power rating $P_{\max}$ per period |
-| `etaCharge` | `number` | Charging efficiency $\eta_c \in (0, 1]$ |
-| `etaDischarge` | `number` | Discharging efficiency $\eta_d \in (0, 1]$ |
+| `baseLoads` | `number[]` | Facility electricity demand in each 1-hour period (kW, equal to kWh per period) |
+| `prices` | `number[]` | TOU grid electricity price per kWh in each period |
+| `demandCharge` | `number` | Peak-demand charge per kW of maximum net grid import across the horizon |
+| `capacity` | `number` | Maximum battery energy capacity (kWh) |
+| `minSoc` | `number` | Minimum allowed state of charge (kWh) |
+| `initSoc` | `number` | Initial battery energy before period 0 (kWh) |
+| `minFinalSoc` | `number` | Required minimum ending SOC after the final period (kWh) |
+| `maxPower` | `number` | Charge and discharge power rating per period (kW) |
+| `etaCharge` | `number` | Charging efficiency in (0, 1] |
+| `etaDischarge` | `number` | Discharging efficiency in (0, 1] |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `charge` | `number[]` | Power drawn from grid to charge battery ($0 \dots P_{\max}$) |
-| `discharge` | `number[]` | Power delivered by battery to facility ($0 \dots P_{\max}$) |
-| `soc` | `number[]` | End-of-period state of charge ($E_{\min} \dots E_{\max}$) |
-| `peakLoad` | `number` | Peak net grid import $\max_t (L_t + c_t - d_t)$ |
-| `totalCost` | `number` | Minimized TOU energy bill plus peak demand charge |
+| `charge` | `number[]` | Power drawn from the grid to charge the battery in each period (kW, 0 to `maxPower`) |
+| `discharge` | `number[]` | Power delivered by the battery to the facility in each period (kW, 0 to `maxPower`) |
+| `soc` | `number[]` | End-of-period state of charge (kWh, `minSoc` to `capacity`) |
+| `peakLoad` | `number` | Peak net grid import across all periods (kW) |
+| `totalCost` | `number` | Minimized TOU energy bill plus peak-demand charge |
 
 <!-- section:example -->
 **Input**
@@ -61,11 +66,11 @@ Charging adds energy scaled by the charging efficiency while discharging drains 
 }
 ```
 
-Charging off-peak up to `soc = 78` and discharging during periods 3–4 caps net grid loads at [70, 80, 80, 80, 70.6, 80] (`peakLoad = 80`) while ending at final SOC 30, giving total cost $93.968 + 8 \times 80 =$ **733.968**.
+Charging off-peak up to `soc = 78` and discharging during periods 3–4 caps net grid loads at [70, 80, 80, 80, 70.6, 80] (`peakLoad = 80`) while ending at final SOC 30, giving TOU energy cost 93.968 plus demand charge $8 \times 80$ for total cost $93.968 + 8 \times 80 =$ **733.968**.
 
 
 <!-- section:hint1 -->
 Create per-period continuous variables for charging power, discharging power, end-of-period state of charge (SOC), and net grid import, plus a binary mode indicator per period to prevent simultaneous charging and discharging and a single scalar variable for peak grid load.
 
 <!-- section:hint2 -->
-In the SOC transition equation, charging adds $\eta_c c_t$ while discharging subtracts $d_t / \eta_d$, and net grid import equals `baseLoads[t] + charge[t] - discharge[t] >= 0`. Link charge and discharge to the binary mode (`charge[t] <= maxPower * mode[t]` and `discharge[t] <= maxPower * (1 - mode[t])`), bound the final SOC by $\max(\text{minSoc}, \text{minFinalSoc})$, and linearize the peak demand charge with `peakLoad >= gridLoad[t]` for all $t$.
+In the SOC transition equation, charging adds `etaCharge * charge[t]` while discharging subtracts `discharge[t] / etaDischarge`. Introduce auxiliary variables `gridLoad[t]` for non-negative net grid import (`baseLoads[t] + charge[t] - discharge[t]`) and binary `mode[t]` to exclude simultaneous charging and discharging (`charge[t] <= maxPower * mode[t]` and `discharge[t] <= maxPower * (1 - mode[t])`), bound the final SOC by `max(minSoc, minFinalSoc)`, and linearize the peak-demand charge with `peakLoad >= gridLoad[t]` for every period.

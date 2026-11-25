@@ -8,9 +8,9 @@
     "Inventory Flow"
   ],
   "caseNames": [
-    "4-period peak capacity spike",
+    "4-period demand spike",
     "5-period demand surge exceeding capacity",
-    "4-period high-cost peak avoidance",
+    "4-period high-cost period",
     "5-period high starting stock",
     "6-period fractional multi-tradeoff"
   ],

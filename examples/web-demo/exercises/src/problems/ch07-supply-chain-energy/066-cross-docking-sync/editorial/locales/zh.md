@@ -1,23 +1,28 @@
 ## 解题思路
 
-为避免泊位指派二进制变量 $(x_{i,r}, y_{j,s})$ 与车对车货流 $(f_{i,j,k})$ 的三线性乘积，引入按泊位对拆解的连续转运流量 $w_{i,j,r,s} \ge 0$，并借助连线指示变量 $z_{i,j} \in \{0, 1\}$ 对到站时间加转运耗时约束进行大 M 线性化。
+引入进出站卡车泊位指派二元变量 $x_{i,r}, y_{j,s}$、车对转运指示变量 $z_{i,j}$、品类连续货流 $f_{i,j,k}$、按泊位对拆解的连续货流 $w_{i,j,r,s}$，以及出站卡车的发车时刻 $t_j$ 与延迟量 $T_j$。将车对总货流拆解为 $w_{i,j,r,s}$ 可在无二次乘积项的前提下线性化泊位指派与货流的三线性耦合，再结合泊位容量、供货上限与需求满足、基于 Big-M 的发车时间同步以及延迟约束，最小化总搬运成本与延迟罚金之和。
 
 ## 数学模型
 
 $$
 \begin{aligned}
 \min \quad & \sum_{i,j,r,s} c_{r,s} w_{i,j,r,s} + \gamma_{\text{delay}} \sum_{j} T_j \\
-\text{s.t.} \quad & \sum_{r} x_{i,r} = 1, \quad \sum_{i} x_{i,r} \le C^{\text{in}}_r && \forall i, r \\
-& \sum_{s} y_{j,s} = 1, \quad \sum_{j} y_{j,s} \le C^{\text{out}}_s && \forall j, s \\
-& \sum_{j} f_{i,j,k} \le A_{i,k}, \quad \sum_{i} f_{i,j,k} = B_{j,k} && \forall i, j, k \\
+\text{s.t.} \quad & \sum_{r} x_{i,r} = 1 && \forall i \\
+& \sum_{i} x_{i,r} \le C^{\text{in}}_r && \forall r \\
+& \sum_{s} y_{j,s} = 1 && \forall j \\
+& \sum_{j} y_{j,s} \le C^{\text{out}}_s && \forall s \\
+& \sum_{j} f_{i,j,k} \le A_{i,k} && \forall i, k \\
+& \sum_{i} f_{i,j,k} = B_{j,k} && \forall j, k \\
 & \sum_{r,s} w_{i,j,r,s} = \sum_{k} f_{i,j,k} \le M_{i,j} z_{i,j} && \forall i, j \\
-& \sum_{s} w_{i,j,r,s} \le M_{i,j} x_{i,r}, \quad \sum_{r} w_{i,j,r,s} \le M_{i,j} y_{j,s} && \forall i, j, r, s \\
+& \sum_{s} w_{i,j,r,s} \le M_{i,j} x_{i,r} && \forall i, j, r \\
+& \sum_{r} w_{i,j,r,s} \le M_{i,j} y_{j,s} && \forall i, j, s \\
 & t_j \ge a_i + \tau_{r,s} - M_T (3 - x_{i,r} - y_{j,s} - z_{i,j}) && \forall i, j, r, s \\
-& T_j \ge t_j - d_j, \quad T_j \ge 0 && \forall j
+& T_j \ge t_j - d_j && \forall j \\
+& x_{i,r}, y_{j,s}, z_{i,j} \in \{0, 1\}, \quad f_{i,j,k}, w_{i,j,r,s}, t_j, T_j \ge 0
 \end{aligned}
 $$
 
-其中 $M_{i,j} = \sum_k \min(A_{i,k}, B_{j,k})$，$M_T = \max_i a_i + \max_{r,s} \tau_{r,s}$。
+其中 $A_{i,k} = \text{supplies}[i][k]$、$B_{j,k} = \text{demands}[j][k]$、$C^{\text{in}}_r = \text{inDoorCaps}[r]$、$C^{\text{out}}_s = \text{outDoorCaps}[s]$、$c_{r,s} = \text{handlingCosts}[r][s]$、$\tau_{r,s} = \text{transferTimes}[r][s]$、$a_i = \text{arrivalTimes}[i]$、$d_j = \text{dueTimes}[j]$、$\gamma_{\text{delay}} = \text{delayCost}$，且取 $M_{i,j} = \sum_k \min(A_{i,k}, B_{j,k})$、$M_T = \max_i a_i + \max_{r,s} \tau_{r,s}$。
 
 ## 核心要点
 
@@ -63,5 +68,5 @@ for s in range(S):
     prob += pulp.lpSum(w[i][j][r][s] for r in range(R)) <= m_ij * y[j][s]
 for r in range(R):
     for s in range(S):
-        prob += dep[j] >= arrivals[i] + transfer_times[r][s] - big_m_t * (3 - x[i][r] - y[j][s] - z[i][j])
+        prob += dep[j] >= arrival_times[i] + transfer_times[r][s] - big_m_t * (3 - x[i][r] - y[j][s] - z[i][j])
 ```

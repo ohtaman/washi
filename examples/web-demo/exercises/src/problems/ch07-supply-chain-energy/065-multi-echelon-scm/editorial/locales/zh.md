@@ -1,6 +1,6 @@
 ## 解题思路
 
-将工厂启用 0-1 变量 $u_p$、DC 启用 0-1 变量 $w_d$ 与两级连续运输流量 $f_{p,d}, g_{d,c}$ 联立，对各开启节点施加产能门控，对各 DC 施加严格流入等于流出的中转守恒，从而最小化总建设与运输成本。
+引入工厂启用 0-1 变量 $u_p$、DC 启用 0-1 变量 $w_d$，以及工厂至 DC 和 DC 至客户的两级非负连续运输量矩阵 $f_{p,d}, g_{d,c}$。对每个工厂与 DC 施加产能门控约束，对每个 DC 施加严格流入等于流出的流量守恒约束，并保证每位客户的需求均被满足，以最小化固定开设成本与两级运输总成本。
 
 ## 数学模型
 
@@ -13,6 +13,8 @@ $$
 & \sum_{d} g_{d,c} \ge D_c && \forall c
 \end{aligned}
 $$
+
+其中 $F^P_p = \text{plantFixedCosts}[p]$、$C^P_p = \text{plantCaps}[p]$、$F^D_d = \text{dcFixedCosts}[d]$、$C^D_d = \text{dcCaps}[d]$、$D_c = \text{demands}[c]$、$c_{p,d} = \text{plantDcCosts}[p][d]$、$c'_{d,c} = \text{dcCustomerCosts}[d][c]$。
 
 ## 核心要点
 
@@ -45,7 +47,7 @@ for p in range(n_plants):
     prob += pulp.lpSum(plant_to_dc[p]) <= plant_caps[p] * open_plants[p]
 for d in range(n_dcs):
     inflow = pulp.lpSum(plant_to_dc[p][d] for p in range(n_plants))
-    outflow = pulp.lpSum(dc_to_cust[d])
+    outflow = pulp.lpSum(dc_to_customer[d])
     prob += inflow <= dc_caps[d] * open_dcs[d]
     prob += inflow == outflow
 ```

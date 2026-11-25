@@ -1,6 +1,6 @@
 ## 解题思路
 
-将单品目批量模型扩展到物料×周期网格：在 $t$ 期投产父件 $x_{j,t}$ 会于当期 $t$ 立即扣减子件 $i$ 的库存（即相关需求 $\sum_j r_{i,j} x_{j,t}$），而物料 $i$ 自身的投产则延迟 $L_i$ 期、作为 $x_{i, t-L_i}$ 计入第 $t$ 期的入库平衡中。
+在物料×周期网格上引入二元开机变量 $y_{i,t}$、非负整数投产量 $x_{i,t}$ 以及非负连续期末库存 $I_{i,t}$。通过单期产能门控将投产量与开机决策关联，并以含提前期错位的 BOM 库存平衡方程衔接各层级——父件投产 $x_{j,t}$ 于当期立即产生子件相关需求 $\sum_j r_{i,j} x_{j,t}$，而物料 $i$ 自身的投产延迟 $L_i$ 期作为 $x_{i, t-L_i}$ 入库——以最小化开机、生产与库存持有总成本。
 
 ## 数学模型
 
@@ -12,17 +12,17 @@ $$
 \end{aligned}
 $$
 
-其中当 $t < L_i$ 时约定 $x_{i, t - L_i} \equiv 0$，且 $I_{i,-1} = \text{initialInventory}[i]$。
+其中 $r_{i,j} = \text{bom}[i][j]$、$D_{i,t} = \text{externalDemands}[i][t]$、$L_i = \text{leadTimes}[i]$、$I_{i,-1} = \text{initialInventory}[i]$、$F_i = \text{setupCosts}[i]$、$c_i = \text{prodCosts}[i]$、$h_i = \text{holdCosts}[i]$、$C_i = \text{capacities}[i]$，且当 $t < L_i$ 时约定 $x_{i, t - L_i} \equiv 0$。
 
 ## 核心要点
 
 - **错位入库与当期齐套耗料**：父件在 $t$ 期投产时立即消耗 $t$ 期的子件库存，而其产出在 $t + L_j$ 期才可用。仅凭这一时间下标偏移即可串联任意深度的有向无环 BOM。
-- **批量决策沿供应链向上游传导**：下游合并批次节省开机费 $F_0$ 会造成投产期对上游物料的脉冲式需求，进而促使上游半成品在更早期提前备库平滑产能。
+- **批量决策沿供应链向上游传导**：下游合并批次节省下游物料的开机费 $F_j$ 会造成投产期对上游物料的脉冲式需求，进而促使上游半成品在更早期提前备库平滑产能。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
 
-为每个品目和周期构建开机关联约束，以及包含提前期错位入库与 BOM 展开相关需求的库存平衡方程。在 WaSHI 中从 `bom[i]` 提取非零父件项并用 `sum()` 求和，在 PuLP 中则用列表推导式表达相关需求。
+为每个物料和周期构建开机关联约束，以及包含提前期错位入库与 BOM 展开相关需求的库存平衡方程。在 WaSHI 中从 `bom[i]` 提取非零父件项并用 `sum()` 求和，在 PuLP 中则用列表推导式表达相关需求。
 
 **WaSHI (TypeScript)**
 
@@ -49,10 +49,10 @@ for i in range(n_items):
     L = lead_times[i]
     for t in range(T):
         prob += production[i][t] <= capacities[i] * setups[i][t]
-        prev_inv = init_inv[i] if t == 0 else inventory[i][t - 1]
+        prev_inv = initial_inventory[i] if t == 0 else inventory[i][t - 1]
         arrival = production[i][t - L] if t >= L else 0
         dep_demand = pulp.lpSum(
             bom[i][j] * production[j][t] for j in range(n_items) if bom[i][j] != 0
         )
-        prob += prev_inv + arrival - dep_demand - inventory[i][t] == ext_demands[i][t]
+        prob += prev_inv + arrival - dep_demand - inventory[i][t] == external_demands[i][t]
 ```
