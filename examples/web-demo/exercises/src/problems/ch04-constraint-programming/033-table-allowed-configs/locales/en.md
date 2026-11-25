@@ -11,8 +11,8 @@ In addition, compatibility rules require the selected options for specified grou
 | Field | Type | Description |
 | --- | --- | --- |
 | `componentCosts` | `number[][]` | Integer cost `componentCosts[c][opt]` for option `opt` of component `c` (1,000 JPY) |
-| `allowedRules` | `TableRule[]` | Positive table constraints requiring the selected options of components `vars` to match one of `tuples` |
-| `forbiddenRules` | `TableRule[]` | Negative table constraints forbidding the selected options of components `vars` from matching any of `tuples` |
+| `allowedRules` | `TableRule[]` | Compatibility rules listing allowed option combinations (target components `vars` and allowed list `tuples`) |
+| `forbiddenRules` | `TableRule[]` | Incompatibility rules listing forbidden option combinations (target components `vars` and forbidden list `tuples`) |
 
 Each `TableRule` object has `{ vars: number[], tuples: number[][] }`, where `vars` lists 0-based component indices and each entry in `tuples` has length `vars.length` with option indices aligned to `vars`.
 

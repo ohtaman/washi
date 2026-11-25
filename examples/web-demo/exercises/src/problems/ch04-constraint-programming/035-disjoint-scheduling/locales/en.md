@@ -13,14 +13,14 @@ Tasks sharing the same machine cannot overlap in time, and for any pair of tasks
 | `durations` | `number[]` | Processing duration of each task (integer, minutes) |
 | `releaseTimes` | `number[]` | Earliest allowed start time (release time) for each task (non-negative integer, minutes) |
 | `machines` | `number[]` | Assigned machine index (`0` to `M - 1`, where `M` is the number of machines) for each task |
-| `precedences` | `number[][]` | Precedence pairs `[u, v]` of 0-based task indices requiring `starts[u] + durations[u] <= starts[v]` |
+| `precedences` | `number[][]` | 0-based precedence pairs `[u, v]` (task `u` must finish before task `v` starts) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `starts` | `number[]` | Start time of each task (integer, minutes) |
-| `makespan` | `number` | Minimized maximum completion time `max(starts[i] + durations[i])` (minutes) |
+| `makespan` | `number` | Minimized maximum completion time / makespan (minutes) |
 
 <!-- section:example -->
 **Input**

@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `numNodes` | `number` | 基站（顶点）数量（`0` 到 `numNodes - 1`） |
 | `maxColors` | `number` | 可用信道（颜色）编号的数量（`0` 到 `maxColors - 1`） |
-| `edges` | `number[][]` | 要求 `colors[u] != colors[v]` 的干扰对（无向边 `[u, v]`）列表 |
+| `edges` | `number[][]` | 相互干扰的基站对列表（从 0 开始的无向边 `[u, v]`） |
 
 ### 输出
 

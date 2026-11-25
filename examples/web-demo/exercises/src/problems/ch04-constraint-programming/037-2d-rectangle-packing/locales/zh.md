@@ -11,16 +11,16 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `stripWidth` | `number` | 条带区域的固定横宽（整数，mm） |
-| `widths` | `number[]` | 各矩形的横宽（整数，`<= stripWidth`，mm） |
+| `widths` | `number[]` | 各矩形的横宽（整数，不超过 `stripWidth`，mm） |
 | `heights` | `number[]` | 各矩形的高度（整数，mm） |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `x` | `number[]` | 各矩形左下角 x 坐标（`0 <= x[i] <= stripWidth - widths[i]`，mm） |
-| `y` | `number[]` | 各矩形左下角 y 坐标（`y[i] >= 0`，mm） |
-| `height` | `number` | 最小化后的条带高度 `max(y[i] + heights[i])`（mm） |
+| `x` | `number[]` | 各矩形左下角 x 坐标（非负整数，且矩形完全位于条带宽度内，mm） |
+| `y` | `number[]` | 各矩形左下角 y 坐标（非负整数，mm） |
+| `height` | `number` | 最小化后所需的条带高度（mm） |
 
 <!-- section:example -->
 **输入示例**

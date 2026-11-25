@@ -19,12 +19,12 @@
 | --- | --- | --- |
 | `powerCap` | `number` | 工場全体で同時に消費できる電力の上限（kW） |
 | `jobs` | `JobSpec[]` | 各ジョブの仕様（`duration`, `power`, `machine`, `setupTimes`, `postTimes`） |
-| `precedences` | `number[][]` | `starts[u] + jobs[u].duration + jobs[u].postTimes[modes[u]] <= starts[v]` を要求する 0 始まりの先行ペア `[u, v]` |
+| `precedences` | `number[][]` | 0 始まりの先行ペア `[u, v]` のリスト（ジョブ `u` の加工と後処理の完了後にジョブ `v` を開始） |
 | `modeRules` | `ModeRule[]` | ジョブ組 `{ jobs: [u, v], allowedPairs }` の許可モード対テーブル |
 
 型定義:
-- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（時間は分、`power` は kW、`machine` は 0 始まり、`setupTimes[m]`・`postTimes[m]` はモード `m` における機械外の前段取り・後処理時間で、`starts[i] >= jobs[i].setupTimes[modes[i]]` を満たす必要があります）
-- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }`（`jobs` は 0 始まりのジョブ番号対 `[u, v]`、`allowedPairs` の各要素は `[modes[u], modes[v]]` に対して許容される `[modeA, modeB]` ペア）
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（`duration` は加工時間［分］、`power` は稼働電力［kW］、`machine` は 0 始まりの担当機械番号、`setupTimes[m]`・`postTimes[m]` はモード `m` の機械外前段取り時間・後処理時間［分］）
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }`（`jobs` は 0 始まりのジョブ番号ペア `[u, v]`、`allowedPairs` は許可される運転モードの組 `[modeA, modeB]` のリスト）
 
 ### 出力
 
@@ -32,7 +32,7 @@
 | --- | --- | --- |
 | `starts` | `number[]` | 各ジョブの整数開始時刻（分） |
 | `modes` | `number[]` | 各ジョブの 0 始まり整数運転モード番号（`0 .. jobs[i].setupTimes.length - 1`） |
-| `makespan` | `number` | 最小化された最大完了時刻 `max(starts[i] + jobs[i].duration + jobs[i].postTimes[modes[i]])`（分） |
+| `makespan` | `number` | 最小化された最大完了時刻（後処理完了まで、分） |
 
 <!-- section:example -->
 **入力例**

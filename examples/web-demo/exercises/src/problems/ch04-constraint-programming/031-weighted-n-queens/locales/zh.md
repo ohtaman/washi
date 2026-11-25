@@ -17,7 +17,7 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `cols` | `number[]` | 每行皇后所分配的列号（位于 `[0, N - 1]`） |
-| `totalCost` | `number` | 最小化的所选格子权重之和 |
+| `totalCost` | `number` | 最小化的所选格子总代价 |
 
 <!-- section:example -->
 **输入示例**

@@ -17,7 +17,7 @@ Choose the immediate successor node visited right after each node so that all no
 | Field | Type | Description |
 | --- | --- | --- |
 | `next` | `number[]` | Immediate successor node (`0` to `n - 1`) visited directly after node `i` |
-| `totalDistance` | `number` | Minimized total tour distance `sum(distances[i][next[i]])` (km) |
+| `totalDistance` | `number` | Minimized total travel distance (km) |
 
 <!-- section:example -->
 **Input**

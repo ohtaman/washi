@@ -12,7 +12,7 @@ Pre-specified cells must be fixed to their given digits, and within each region 
 | --- | --- | --- |
 | `size` | `number` | Grid dimension `N` (`1..N` digits per row and column) |
 | `givens` | `number[][]` | Pre-filled cell clues `[row, col, value]` (`0`-based row/col) |
-| `cages` | `CageClue[]` | Cage clues `{ cells, targetSum }` with distinct cell values summing to `targetSum` |
+| `cages` | `CageClue[]` | List of cages `{ cells, targetSum }` specifying each cage's cells and target sum |
 
 Each `CageClue` object has `{ cells: number[][], targetSum: number }`, where each entry of `cells` is a 0-based `[row, col]` coordinate pair in the cage.
 

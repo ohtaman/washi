@@ -11,16 +11,16 @@
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `stripWidth` | `number` | 帯領域の固定横幅（整数、mm） |
-| `widths` | `number[]` | 各矩形の横幅（整数、`<= stripWidth`、mm） |
+| `widths` | `number[]` | 各矩形の横幅（整数、`stripWidth` 以下、mm） |
 | `heights` | `number[]` | 各矩形の高さ（整数、mm） |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `x` | `number[]` | 各矩形の左下 x 座標（`0 <= x[i] <= stripWidth - widths[i]`、mm） |
-| `y` | `number[]` | 各矩形の左下 y 座標（`y[i] >= 0`、mm） |
-| `height` | `number` | 最小化された帯高さ `max(y[i] + heights[i])`（mm） |
+| `x` | `number[]` | 各矩形の左下 x 座標（0 以上の整数、帯幅内に収まる値、mm） |
+| `y` | `number[]` | 各矩形の左下 y 座標（0 以上の整数、mm） |
+| `height` | `number` | 最小化された必要な帯高さ（mm） |
 
 <!-- section:example -->
 **入力例**

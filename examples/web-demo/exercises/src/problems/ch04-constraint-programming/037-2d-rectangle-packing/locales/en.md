@@ -11,16 +11,16 @@ Choose integer bottom-left coordinates for every rectangle so that all rectangle
 | Field | Type | Description |
 | --- | --- | --- |
 | `stripWidth` | `number` | Fixed horizontal width of the strip (integer, mm) |
-| `widths` | `number[]` | Width of each rectangle (integer, `<= stripWidth`, mm) |
+| `widths` | `number[]` | Width of each rectangle (integer, at most `stripWidth`, mm) |
 | `heights` | `number[]` | Height of each rectangle (integer, mm) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `x` | `number[]` | Bottom-left x-coordinate of each rectangle (`0 <= x[i] <= stripWidth - widths[i]`, mm) |
-| `y` | `number[]` | Bottom-left y-coordinate of each rectangle (`y[i] >= 0`, mm) |
-| `height` | `number` | Minimized strip height `max(y[i] + heights[i])` (mm) |
+| `x` | `number[]` | Bottom-left x-coordinate of each rectangle (non-negative integer fitting within the strip width, mm) |
+| `y` | `number[]` | Bottom-left y-coordinate of each rectangle (non-negative integer, mm) |
+| `height` | `number` | Minimized required strip height (mm) |
 
 <!-- section:example -->
 **Input**

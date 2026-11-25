@@ -46,7 +46,8 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | :---: | --- | --- |
 | **+5** | Self-contained I/O schema | Explicitly defines every custom, recursive, or union type referenced in `section:io` (including all allowed object variants, field names, and value domains) so the problem is solvable without inspecting `starter.ts`. |
 | **+5** | Objective calculation check | Includes an explicit arithmetic formula showing how the example output yields the objective value. |
-| **+1** | Data-first field descriptions | Describes input fields by their real-world data meaning (e.g., "available stock", "maximum count on hand") rather than modeling roles (e.g., "upper-bound constraint"). |
+| **+1** | Data-first field descriptions | Describes input fields by their real-world data meaning, units, and indexing/axis order (e.g., "available stock", "minimum required total delivered value") rather than modeling roles or constraint formulas. |
+| **-5** | Modeling formulas or output-variable leaks in Input schema | Embeds constraint inequalities (`<=`, `>=`, `!=`), decision-variable definitions (e.g., "$x_i \in \{0, 1\}$"), forward references to output fields (e.g., "`starts[u] + ... <= starts[v]`", "`colors[u] != colors[v]`"), or solver/constraint jargon (e.g., "positive/negative table constraint") inside `### Input` descriptions instead of describing the domain data. |
 | **-10** | Undocumented custom I/O types | References a custom or recursive type (e.g., `PropFormula`, `SmtFormula`, `PolicyRule`) in `section:io` without specifying all allowed variants and shapes in the problem statement. |
 | **-10** | Optimality claims in examples | Claims or explains optimality (e.g., "achieves the minimum/maximum") inside `section:example`. |
 

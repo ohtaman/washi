@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `size` | `number` | 网格阶数 `N`（单元格填入 `1..N`） |
 | `givens` | `number[][]` | 已知提示格 `[row, col, value]`（行列索引从 `0` 开始） |
-| `cages` | `CageClue[]` | 区域和线索 `{ cells, targetSum }`（区域内数字互异且求和等于 `targetSum`） |
+| `cages` | `CageClue[]` | 各区域的单元格列表与目标和 `{ cells, targetSum }` 列表 |
 
 每个 `CageClue` 对象为 `{ cells: number[][], targetSum: number }`，其中 `cells` 的每个元素为区域内从 `0` 开始的 `[row, col]` 坐标对。
 

@@ -19,12 +19,12 @@
 | --- | --- | --- |
 | `powerCap` | `number` | 全厂同时消耗功率的上限（kW） |
 | `jobs` | `JobSpec[]` | 各作业的规格（`duration`, `power`, `machine`, `setupTimes`, `postTimes`） |
-| `precedences` | `number[][]` | 要求 `starts[u] + jobs[u].duration + jobs[u].postTimes[modes[u]] <= starts[v]` 的从 `0` 开始的先后作业对 `[u, v]` |
+| `precedences` | `number[][]` | 从 0 开始的先后顺序作业对 `[u, v]` 列表（作业 `u` 的加工与后处理全部完成后才能开始作业 `v`） |
 | `modeRules` | `ModeRule[]` | 作业对 `{ jobs: [u, v], allowedPairs }` 的允许模式二元组表 |
 
 类型定义：
-- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（时间单位为分钟，`power` 为 kW，`machine` 从 `0` 开始；`setupTimes[m]` 与 `postTimes[m]` 分别为模式 `m` 下的机外前段准备与后处理冷却时间，需满足 `starts[i] >= jobs[i].setupTimes[modes[i]]`）
-- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }`（`jobs` 为从 `0` 开始的作业索引对 `[u, v]`，`allowedPairs` 的每个元素为 `[modes[u], modes[v]]` 所允许的 `[modeA, modeB]` 二元组）
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（`duration` 为加工时长［分钟］，`power` 为运行功率［kW］，`machine` 为从 0 开始的负责机器编号，`setupTimes[m]` 与 `postTimes[m]` 分别为模式 `m` 下的机外前段准备时间与后处理冷却时间［分钟］）
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }`（`jobs` 为从 0 开始的作业编号对 `[u, v]`，`allowedPairs` 为允许的运行模式组合 `[modeA, modeB]` 列表）
 
 ### 输出
 
@@ -32,7 +32,7 @@
 | --- | --- | --- |
 | `starts` | `number[]` | 各作业的整数开始时间（分钟） |
 | `modes` | `number[]` | 各作业从 `0` 开始的整数运行模式编号（`0 .. jobs[i].setupTimes.length - 1`） |
-| `makespan` | `number` | 最小化后的最大完工时间 `max(starts[i] + jobs[i].duration + jobs[i].postTimes[modes[i]])`（分钟） |
+| `makespan` | `number` | 最小化后的最大完工时间（含机外后处理，分钟） |
 
 <!-- section:example -->
 **输入示例**

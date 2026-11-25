@@ -17,7 +17,7 @@
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `next` | `number[]` | 拠点 `i` の直後に訪問する後継拠点番号（0 〜 `n - 1`） |
-| `totalDistance` | `number` | 最小化された総巡回距離 `sum(distances[i][next[i]])`（km） |
+| `totalDistance` | `number` | 最小化された総移動距離（km） |
 
 <!-- section:example -->
 **入力例**

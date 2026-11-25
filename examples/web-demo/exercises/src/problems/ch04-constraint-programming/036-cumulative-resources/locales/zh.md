@@ -13,14 +13,14 @@
 | `capacity` | `number` | 共享可再生资源的上限容量（整数） |
 | `durations` | `number[]` | 各作业的处理时间（整数，小时） |
 | `demands` | `number[]` | 各作业运行期间的资源消耗量（整数） |
-| `precedences` | `number[][]` | 需满足 `starts[u] + durations[u] <= starts[v]` 的 0 起始先后作业对 `[u, v]` |
+| `precedences` | `number[][]` | 从 0 开始的先后顺序作业对 `[u, v]` 列表（作业 `u` 完成后才能开始作业 `v`） |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `starts` | `number[]` | 各作业的非负整数开始时间（小时） |
-| `makespan` | `number` | 最小化后的最大完工时间 `max(starts[i] + durations[i])`（小时） |
+| `makespan` | `number` | 最小化后的最大完工时间（小时） |
 
 <!-- section:example -->
 **输入示例**

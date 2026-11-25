@@ -19,12 +19,12 @@ Minimize the overall completion time (makespan, in minutes), including off-machi
 | --- | --- | --- |
 | `powerCap` | `number` | Maximum simultaneous power consumption across the factory (kW) |
 | `jobs` | `JobSpec[]` | Job specifications (`duration`, `power`, `machine`, `setupTimes`, `postTimes`) |
-| `precedences` | `number[][]` | Precedence pairs `[u, v]` (0-based) requiring `starts[u] + jobs[u].duration + jobs[u].postTimes[modes[u]] <= starts[v]` |
+| `precedences` | `number[][]` | 0-based precedence pairs `[u, v]` (job `u`'s machining and post-processing must finish before job `v` starts) |
 | `modeRules` | `ModeRule[]` | Allowed mode pair tables `{ jobs: [u, v], allowedPairs }` |
 
 Type definitions:
-- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }` (times in minutes, `power` in kW, `machine` 0-based; `setupTimes[m]` and `postTimes[m]` give off-machine pre-staging setup and post-processing cooldown for mode `m`, requiring `starts[i] >= jobs[i].setupTimes[modes[i]]`).
-- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }`, where `jobs` is a pair `[u, v]` of 0-based job indices and each entry of `allowedPairs` is a permitted `[modeA, modeB]` pair for `[modes[u], modes[v]]`.
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }` (`duration` is machining duration in minutes, `power` is operating power in kW, `machine` is the 0-based assigned machine index, and `setupTimes[m]` and `postTimes[m]` are the off-machine pre-staging setup and post-processing cooldown times in minutes for mode `m`).
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: number[][] }` (`jobs` is a 0-based pair `[u, v]` of job indices, and `allowedPairs` lists the permitted operating mode pairs `[modeA, modeB]`).
 
 ### Output
 
@@ -32,7 +32,7 @@ Type definitions:
 | --- | --- | --- |
 | `starts` | `number[]` | Integer start time for each job (minutes) |
 | `modes` | `number[]` | Selected 0-based integer operating mode index in `0 .. jobs[i].setupTimes.length - 1` for each job |
-| `makespan` | `number` | Minimized maximum completion time `max(starts[i] + jobs[i].duration + jobs[i].postTimes[modes[i]])` (minutes) |
+| `makespan` | `number` | Minimized maximum completion time including post-processing (minutes) |
 
 <!-- section:example -->
 **Input**

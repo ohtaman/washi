@@ -17,7 +17,7 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `next` | `number[]` | 节点 `i` 之后紧接着访问的后继节点编号（`0` 到 `n - 1`） |
-| `totalDistance` | `number` | 最小化后的总巡回距离 `sum(distances[i][next[i]])`（km） |
+| `totalDistance` | `number` | 最小化后的总移动距离（km） |
 
 <!-- section:example -->
 **输入示例**

@@ -13,14 +13,14 @@ Determine non-negative integer start times so that for every pair with a precede
 | `capacity` | `number` | Capacity limit of the shared renewable resource (integer) |
 | `durations` | `number[]` | Processing duration of each task (integer, hours) |
 | `demands` | `number[]` | Resource consumption of each task while active (integer) |
-| `precedences` | `number[][]` | Precedence pairs `[u, v]` of 0-based task indices requiring `starts[u] + durations[u] <= starts[v]` |
+| `precedences` | `number[][]` | 0-based precedence pairs `[u, v]` (task `u` must finish before task `v` starts) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `starts` | `number[]` | Non-negative integer start time for each task (hours) |
-| `makespan` | `number` | Minimized maximum completion time `max(starts[i] + durations[i])` (hours) |
+| `makespan` | `number` | Minimized maximum completion time / makespan (hours) |
 
 <!-- section:example -->
 **Input**

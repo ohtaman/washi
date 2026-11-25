@@ -4,6 +4,8 @@ Combine three Chapter 3 linearization idioms inside one MIP over binary deployme
 
 ## Mathematical Model
 
+Let $c_i = \text{baseCosts}[i]$, $v_i = \text{values}[i]$, $a_{ri} = \text{loads}[r][i]$, $\tau_r = \text{targets}[r]$, $\beta_r = \text{devWeights}[r]$, $\alpha = \text{peakWeight}$, and $(i_k, j_k, s_k) = \text{pairs}[k]$ (with $n$ services, $m$ zones, and $P$ pairs):
+
 $$
 \begin{aligned}
 \min \quad & \sum_{i=0}^{n-1} c_i x_i + \sum_{k=0}^{P-1} s_k w_k + \alpha \, t + \sum_{r=0}^{m-1} \beta_r (d_r^+ + d_r^-) \\

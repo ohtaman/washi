@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `size` | `number` | 盤面のサイズ `N`（各マスは `1..N`） |
 | `givens` | `number[][]` | 初期固定ヒント `[row, col, value]`（`row`, `col` は 0 始まり） |
-| `cages` | `CageClue[]` | 重複なしで和が `targetSum` になるべきケージ領域 `{ cells, targetSum }` |
+| `cages` | `CageClue[]` | 各ケージのマス一覧と目標和 `{ cells, targetSum }` のリスト |
 
 各 `CageClue` は `{ cells: number[][], targetSum: number }` の形式で、`cells` の各要素はケージ内の 0 始まり `[row, col]` 座標ペアです。
 

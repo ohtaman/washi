@@ -13,14 +13,14 @@
 | `durations` | `number[]` | 各作業の処理時間（整数、分） |
 | `releaseTimes` | `number[]` | 各作業のリリース時刻（非負整数、分） |
 | `machines` | `number[]` | 各作業が使用する機械番号（`0` 〜 `M - 1`、`M` は機械数） |
-| `precedences` | `number[][]` | `starts[u] + durations[u] <= starts[v]` を要求する 0 始まりの先行作業ペア `[u, v]` |
+| `precedences` | `number[][]` | 0 始まりの先行作業ペア `[u, v]` のリスト（作業 `u` の完了後に作業 `v` を開始） |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `starts` | `number[]` | 各作業の開始時刻（整数、分） |
-| `makespan` | `number` | 最小化された最大完了時刻 `max(starts[i] + durations[i])`（分） |
+| `makespan` | `number` | 最小化された最大完了時刻（分） |
 
 <!-- section:example -->
 **入力例**

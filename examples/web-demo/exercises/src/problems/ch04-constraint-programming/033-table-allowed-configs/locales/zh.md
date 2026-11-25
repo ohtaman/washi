@@ -11,8 +11,8 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `componentCosts` | `number[][]` | 各组件 `c` 的选项 `opt` 对应的整数成本 `componentCosts[c][opt]`（千日元） |
-| `allowedRules` | `TableRule[]` | 正表约束，要求指定组件列 `vars` 的所选选项匹配 `tuples` 中的某一项 |
-| `forbiddenRules` | `TableRule[]` | 负表约束，禁止指定组件列 `vars` 的所选选项匹配 `tuples` 中的任意一项 |
+| `allowedRules` | `TableRule[]` | 允许的选项组合规则（目标组件 `vars` 与允许列表 `tuples`） |
+| `forbiddenRules` | `TableRule[]` | 禁止的选项组合规则（目标组件 `vars` 与禁止列表 `tuples`） |
 
 每个 `TableRule` 对象为 `{ vars: number[], tuples: number[][] }`，其中 `vars` 为从 0 开始的组件索引列表，`tuples` 中的每个元组长度与 `vars` 相同，按顺序对应各组件的选项编号。
 

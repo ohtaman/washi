@@ -13,14 +13,14 @@
 | `capacity` | `number` | 共有再生可能資源の上限容量（整数） |
 | `durations` | `number[]` | 各作業の処理時間（整数、時間） |
 | `demands` | `number[]` | 各作業の稼働中の資源消費量（整数） |
-| `precedences` | `number[][]` | `starts[u] + durations[u] <= starts[v]` を満たすべき 0 始まりの先行作業ペア `[u, v]` |
+| `precedences` | `number[][]` | 0 始まりの先行作業ペア `[u, v]` のリスト（作業 `u` の完了後に作業 `v` を開始） |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `starts` | `number[]` | 各作業の非負整数開始時刻（時間） |
-| `makespan` | `number` | 最小化された最大完了時刻 `max(starts[i] + durations[i])`（時間） |
+| `makespan` | `number` | 最小化された最大完了時刻（時間） |
 
 <!-- section:example -->
 **入力例**

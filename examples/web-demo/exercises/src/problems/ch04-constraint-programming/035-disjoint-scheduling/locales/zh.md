@@ -13,14 +13,14 @@
 | `durations` | `number[]` | 各任务的加工时长（整数，分钟） |
 | `releaseTimes` | `number[]` | 各任务的释放时间（非负整数，分钟） |
 | `machines` | `number[]` | 各任务使用的机器编号（`0` 到 `M - 1`，`M` 为机器数量） |
-| `precedences` | `number[][]` | 需满足 `starts[u] + durations[u] <= starts[v]` 的 0 起始前后序任务对 `[u, v]` |
+| `precedences` | `number[][]` | 从 0 开始的先后顺序任务对 `[u, v]` 列表（任务 `u` 完成后才能开始任务 `v`） |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `starts` | `number[]` | 各任务的开始时间（整数，分钟） |
-| `makespan` | `number` | 最小化后的最大完工时间 `max(starts[i] + durations[i])`（分钟） |
+| `makespan` | `number` | 最小化后的最大完工时间（分钟） |
 
 <!-- section:example -->
 **输入示例**
