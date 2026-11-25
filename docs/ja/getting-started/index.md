@@ -1,12 +1,12 @@
 # インストールと入門
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、TypeScript / JavaScript 向けの数理最適化ライブラリです。Python の PuLP のような代数形式で、タグ付きテンプレート（`expr`）を使って線形・二次・論理の数式を記述できます。同梱の WebAssembly ソルバーにより、**Node.js 18+** やモダンブラウザ上でネイティブビルドなしに求解できます。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、TypeScript / JavaScript 向けの数理最適化ライブラリです。Python の PuLP のように直感的な代数形式で、タグ付きテンプレート（`expr`）を使って数式を記述でき、**Node.js (18+)** やモダンブラウザ上で数理最適化・制約プログラミングのモデリングができます。
 
 ---
 
 ## 📦 インストール
 
-`@ohtaman/washi` には外部依存ゼロの 2 つのソルバーが同梱されており、さらに 2 つのソルバーをオプションのピア依存パッケージとして追加できます。
+`@ohtaman/washi` には外部依存ゼロの 2 つのソルバーが同梱されており、さらに 2 つのソルバーをオプションの依存パッケージとして追加できます。
 
 | ソルバー | 導入方法 | 対応する問題クラスと特徴 |
 | --- | --- | --- |
@@ -14,8 +14,6 @@
 | **Pumpkin** | `@ohtaman/washi` に同梱（`@ohtaman/washi/solvers/pumpkin` から読み込み） | 制約プログラミング（`CP`）と、有界整数・真偽値モデルでの厳密な `unsatCore` 抽出に対応。 |
 | **Z3** | オプション（`z3-solver`） | SMT（Satisfiability Modulo Theories）、連続変数の論理制約、連続変数を含むモデルでの厳密な `unsatCore` 抽出に対応。 |
 | **GLPK** | オプション（`glpk.js`） | GPL-3.0 ライセンスの代替ソルバー（`LP` / `MIP` に対応）。 |
-
-**充足不能コア（`unsatCore`）** とは、同時には満たせない制約の部分集合を指します（名前を付けておくと原因箇所を特定しやすくなります）。`m.check()` は標準の HiGHS で矛盾する制約を `conflicts` に報告し、Pumpkin と Z3 ではさらに厳密な `unsatCore` を抽出します。
 
 ::: code-group
 
@@ -37,7 +35,7 @@ bun add @ohtaman/washi
 
 :::
 
-**Z3** または **GLPK** が必要な場合は、オプションのピア依存パッケージを追加します：
+**Z3** または **GLPK** が必要な場合は、オプションの依存パッケージを追加します：
 
 ```bash
 npm install z3-solver   # オプション: SMT 論理制約および連続変数を含むモデルの unsatCore 診断用

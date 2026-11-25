@@ -1,6 +1,6 @@
 ## アプローチ
 
-単一品目ロットサイズを品目×期間のグリッドへ拡張し、親品目の投入量 $x_{j,t}$ が即座に子部品 $i$ の従属需要 $\sum_j r_{i,j} x_{j,t}$ を生み、自身の完成品はリードタイム $L_i$ だけ遅れて入庫する $x_{i, t - L_i}$ として在庫収支式に組み込みます。
+各品目・各期に対してバイナリ段取り変数 $y_{i,t}$、非負整数の生産投入量 $x_{i,t}$、および非負連続の期末在庫 $I_{i,t}$ を導入します。生産能力上限による段取り連結制約と、親品目の投入 $x_{j,t}$ が即座に子部品 $i$ の従属需要 $\sum_j r_{i,j} x_{j,t}$ を生みつつ自身の完成品がリードタイム $L_i$ だけ遅れて $x_{i, t - L_i}$ として入庫する在庫収支式を連立させ、段取り費・生産費・保管費の合計を最小化します。
 
 ## 数理モデル
 
@@ -12,12 +12,12 @@ $$
 \end{aligned}
 $$
 
-ただし $t < L_i$ のとき $x_{i, t - L_i} \equiv 0$、$I_{i,-1} = \text{initialInventory}[i]$ とします。
+ここで $r_{i,j} = \text{bom}[i][j]$、$D_{i,t} = \text{externalDemands}[i][t]$、$L_i = \text{leadTimes}[i]$、$I_{i,-1} = \text{initialInventory}[i]$、$F_i = \text{setupCosts}[i]$、$c_i = \text{prodCosts}[i]$、$h_i = \text{holdCosts}[i]$、$C_i = \text{capacities}[i]$ とし、$t < L_i$ のときは $x_{i, t - L_i} \equiv 0$ とします。
 
 ## ポイント
 
 - **時間シフトされた入庫と即時引当**: 親品目の投入 $x_{j,t}$ は同じ期 $t$ の子部品在庫を引当消費する一方、完成品入庫は $L_j$ 期後に現れます。この添字シフトだけで多段階 BOM の時間展開が過不足なく記述できます。
-- **上流工程へのロット波及**: 下流の段取り費節約のためにロットをまとめると、投入期の上流需要がスパイク状になるため、上流部品をさらに前倒し生産して在庫で平準化する動きが自然に現れます。
+- **上流工程へのロット波及**: 下流品目の段取り費 $F_j$ を節約するためにロットをまとめると、投入期の上流需要がスパイク状になるため、上流部品をさらに前倒し生産して在庫で平準化する動きが自然に現れます。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
@@ -49,10 +49,10 @@ for i in range(n_items):
     L = lead_times[i]
     for t in range(T):
         prob += production[i][t] <= capacities[i] * setups[i][t]
-        prev_inv = init_inv[i] if t == 0 else inventory[i][t - 1]
+        prev_inv = initial_inventory[i] if t == 0 else inventory[i][t - 1]
         arrival = production[i][t - L] if t >= L else 0
         dep_demand = pulp.lpSum(
             bom[i][j] * production[j][t] for j in range(n_items) if bom[i][j] != 0
         )
-        prob += prev_inv + arrival - dep_demand - inventory[i][t] == ext_demands[i][t]
+        prob += prev_inv + arrival - dep_demand - inventory[i][t] == external_demands[i][t]
 ```

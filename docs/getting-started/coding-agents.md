@@ -10,12 +10,12 @@ Setting up WaSHI with a coding agent has two parts. First, install the runtime l
 
 ### Install the Runtime Library
 
-Installing `@ohtaman/washi` bundles **HiGHS** for linear, mixed-integer, and convex quadratic programming (`LP`/`MIP`/`QP`). It also bundles **Pumpkin** at `@ohtaman/washi/solvers/pumpkin` for Constraint Programming (`CP`), with zero external dependencies:
+Installing `@ohtaman/washi` bundles **HiGHS** for linear, mixed-integer, and convex quadratic programming (`LP`/`MIP`/`QP`), along with **Pumpkin** for Constraint Programming (`CP`), with zero external dependencies:
 
 ```bash
 npm install @ohtaman/washi
 
-# Optional peer dependencies for Z3 (SMT / continuous logic) or GLPK:
+# Optional dependencies for Z3 (SMT / continuous logic) or GLPK:
 # npm install z3-solver
 # npm install glpk.js
 ```
@@ -30,7 +30,7 @@ Choose the integration method that matches your tool:
 | **IDE `@Docs` Index** | Cursor, Windsurf | Add `https://washi.ohtaman.dev/llms.txt` or `https://washi.ohtaman.dev/llms-full.txt` |
 | **Context7 MCP** | MCP-enabled agents | Reference library ID `/ohtaman/washi` |
 
-The Agent Skill installs the `washi` skill from `skills/washi/SKILL.md` (also packaged at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`) into your agent's skills directory. It teaches your agent solver selection, `expr` modeling, and debugging with `m.toLpString()`, `m.verify()`, and `m.check()`.
+Installing the Agent Skill places `SKILL.md` into your agent's skills directory. It teaches your agent solver selection, `expr` modeling, and debugging with `m.toLpString()`, `m.verify()`, and `m.check()`.
 
 ---
 

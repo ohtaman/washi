@@ -1,7 +1,7 @@
 # #053. Resource-Constrained Shortest Path (RCSP)
 
 <!-- section:scenario -->
-A packet must travel from a source node to a sink node across a directed network. Each directed arc has both a positive traversal cost and a resource consumption (such as delay or energy), and the selected simple path cannot exceed an overall resource budget.
+A packet must travel from a source node to a sink node across a directed network. Each directed arc has a positive traversal cost and a non-negative resource consumption (such as delay or energy), and the selected simple path cannot exceed an overall resource budget.
 
 Select a simple directed path from source to sink whose total resource consumption does not exceed the budget, **minimizing total path cost**.
 
@@ -11,10 +11,10 @@ Select a simple directed path from source to sink whose total resource consumpti
 | Field | Type | Description |
 | --- | --- | --- |
 | `nodeCount` | `number` | Number of nodes `0 .. nodeCount - 1` |
-| `source` | `number` | Origin node index |
-| `sink` | `number` | Destination node index |
+| `source` | `number` | Source node index |
+| `sink` | `number` | Sink node index |
 | `maxResource` | `number` | Maximum total resource consumption allowed |
-| `edges` | `Array<{ from, to, cost, resource }>` | Directed arcs with traversal `cost` and `resource` usage |
+| `edges` | `Array<{ from, to, cost, resource }>` | Directed arcs from `from` to `to` with positive traversal `cost` and non-negative `resource` usage |
 
 ### Output
 
@@ -53,10 +53,10 @@ Select a simple directed path from source to sink whose total resource consumpti
 }
 ```
 
-Following arcs `0 -> 2 -> 3 -> 4` consumes $3 + 4 + 3 = 10 \le 10$ resource units and incurs a total cost of $4 + 3 + 2 =$ **9**.
+Following the path `0 -> 2 -> 3 -> 4` consumes $3 + 4 + 3 = 10 \le 10$ resource units and incurs a total cost of $4 + 3 + 2 =$ **9**.
 
 <!-- section:hint1 -->
 Model one binary decision variable per directed arc indicating whether it is included in the path. Organize the flow-conservation constraints per node to send one unit of flow from `source` to `sink`, add a global resource budget constraint, and minimize total traversal cost.
 
 <!-- section:hint2 -->
-Unlike unconstrained shortest paths, adding the resource knapsack constraint breaks total unimodularity, so binary variables (not continuous LP) are required to avoid fractional path splitting. Also, because all arc costs are positive, any disconnected cycle that could satisfy unit flow conservation would strictly increase the objective—making simple s-to-t paths automatically optimal without extra cycle-elimination constraints.
+Unlike unconstrained shortest paths, adding the resource knapsack constraint breaks total unimodularity, so binary variables (not continuous LP) are required to avoid fractional path splitting. Also, because all arc costs are strictly positive ($c_e > 0$) and resource consumptions are non-negative ($r_e \ge 0$), removing any directed cycle (whether isolated or attached to the path) preserves feasibility while strictly reducing cost—so minimizing cost automatically yields a simple s-t path without extra cycle-elimination constraints.

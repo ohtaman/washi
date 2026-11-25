@@ -1,6 +1,6 @@
 ## 解题思路
 
-采用 Rockafellar-Uryasev (2000) 对 $\text{CVaR}_\alpha$ 的线性等价重构：声明**无上下界限制的自由变量** $\eta \in \mathbb{R}$（`lb: -Infinity`）和非负超额变量 $u_s \ge L_s(w) - \eta$，在纯 LP 框架下最小化期望损失与 $\lambda \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$ 之和。
+采用 Rockafellar-Uryasev (2000) 对 $\text{CVaR}_\alpha$ 的线性等价重构：记情景 $s$ 的投资组合损失为 $L_s(w) = -\sum_j r_{s,j} w_j$，声明**无上下界限制的自由变量** $\eta \in \mathbb{R}$（`lb: -Infinity`）和非负超额变量 $u_s \ge L_s(w) - \eta$，在纯 LP 框架下最小化期望损失与 $\lambda \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$ 之和。
 
 ## 数学模型
 
@@ -14,7 +14,7 @@ $$
 
 ## 核心要点
 
-- **必须将 $\eta$ 设为自由变量（`lb: -Infinity` / `lowBound=None`）**：WaSHI 与 PuLP 的默认变量下界均为 0。当所有情景均盈利导致损失为负（如用例 1 中 $\eta^* = -0.0428$）时，若遗漏 `lb: -Infinity`，$\eta$ 被截断在 0 处会求出错误的风险值与次优解（-0.0596 对比 -0.1742）。
+- **必须保持 $\eta$ 为自由变量（WaSHI 用 `lb: -Infinity`，PuLP 用 `lowBound=None`）**：WaSHI 的 `m.continuous` 默认下界 `lb` 为 0，因此无约束阈值必须显式传入 `{ lb: -Infinity }`；而 PuLP 的 `pulp.LpVariable` 默认 `lowBound` 本就是 `None`（无界），切勿把 `lowBound=0` 误复制到 `eta` 上，显式写出 `lowBound=None` 更能清晰表达意图。当所有情景均盈利导致损失为负（如用例 1 中 $\eta^* = -0.0428$）时，若将 $\eta$ 限制为非负，CVaR 会失真并导致次优解（-0.0596 对比 -0.1742）。
 - **CVaR 的凸性优势**：直接约束分位数 VaR 需要离散 0-1 变量，而 CVaR 通过极小化上镜图化为完全连续的凸线性规划。
 - 概念参考：[指南与术语表 — 上下界](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 

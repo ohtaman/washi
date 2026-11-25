@@ -9,7 +9,7 @@ $$
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} = 0 && \forall i, \; d \in \text{Off}_i \\
 & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, \; d \notin \text{Off}_i \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s} && \forall d, s \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s} && \forall d, s \\
 & L_i \le \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} x_{i,d,s} \le U_i && \forall i \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
@@ -17,7 +17,7 @@ $$
 
 ## 核心要点
 
-- **含休息选项的独热不等式（`<= 1`）**：使用 $\sum_s x_{i,d,s} \le 1$ 即可自然表示“任选一班或当日休息”，配合 `findIndex` 即可在休息时返回 `-1`、上班时返回班次编号 `0..S-1`。
+- **含休息选项的独热不等式（$\le 1$）**：使用 $\sum_s x_{i,d,s} \le 1$ 即可自然表示“任选一班或当日休息”，配合 `findIndex` 即可在休息时返回 -1、上班时返回班次编号 0 至 $S-1$。
 - **提前封锁指定休假日**：对休息日施加和为零的等式约束，消除不可用班次选择。
 - **工作量下限保障公平排班**：`minShifts[i]` 防止成本偏高的员工被长期闲置，在成本与均衡出勤之间取得平衡。
 - 概念参考：[指南与术语表 — 基本建模要素](?view=guide&lang=zh#building-blocks) / [变量类型](?view=guide&lang=zh#variable-types)
@@ -58,4 +58,7 @@ for i in range(num_staff):
     total_i = pulp.lpSum(x[i][d][s] for d in range(num_days) for s in range(num_shifts))
     prob += total_i >= min_shifts[i]
     prob += total_i <= max_shifts[i]
+for d in range(num_days):
+    for s in range(num_shifts):
+        prob += pulp.lpSum(x[i][d][s] for i in range(num_staff)) >= demands[d][s]
 ```

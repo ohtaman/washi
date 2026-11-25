@@ -41,6 +41,9 @@ while (queue.length > 0) {
     }
   });
 }
+const cutEdges = input.edges
+  .map((_, i) => i)
+  .filter((i) => visited[input.edges[i].from] && !visited[input.edges[i].to]);
 ```
 
 **PuLP (Python)**

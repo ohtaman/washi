@@ -1,6 +1,6 @@
 ## アプローチ
 
-非負変数 $x_j \ge 0$（`lb: 0`、上界なし）で標準の最小化 LP を構築して HiGHS で解き、各変数の被約費用を WaSHI では `v.reducedCost`、PuLP では `v.dj` から読み取ります。
+各プロセスの稼働量を表す非負の連続決定変数 $x_j \ge 0$（`lb: 0`、上界なし）を導入し、各要求の最低生産要求制約 $\sum_j A_{kj} x_j \ge r_k$ のもとで総コスト $\sum_j c_j x_j$ を最小化する LP として定式化します。この LP を HiGHS で解き、各変数の被約費用を WaSHI では `v.reducedCost`、PuLP では `v.dj` から読み取ります。
 
 ## 数理モデル
 
@@ -14,13 +14,13 @@ $$
 
 ## ポイント
 
-- **被約費用の双対公式**: 制約の双対変数 $\pi \ge 0$ を用いると、各変数の被約費用は $\bar{c}_j = c_j - \sum_k \pi_k A_{kj}$ で表されます。最適基底に入る変数（$x_j > 0$）では $\bar{c}_j = 0$ となり、非退化な最小化 LP で $x_j = 0$ に留まる非基底変数では $\bar{c}_j > 0$ となります。
-- **感度分析と価格付けの意味**: $\bar{c}_j$ は「プロセス $j$ の単価がどれだけ下がれば最適解に参入できるか」の閾値であり、同時に $x_j$ を $0$ から 1 単位増やしたときの総コスト増加率でもあります。この評価は後半の章の**列生成法**で中心的な役割を果たします。
+- **被約費用の双対公式と最適性条件**: 制約の双対変数 $\pi \ge 0$ を用いると、各変数の被約費用は $\bar{c}_j = c_j - \sum_k \pi_k A_{kj}$ で表されます。$x_j \ge 0$ の最小化 LP の KKT 最適性条件により、基底変数（および稼働中の $x_j > 0$ の変数）では $\bar{c}_j = 0$、下界（$x_j = 0$）に留まる変数では $\bar{c}_j \ge 0$ となり、**双対非退化**のもとでは非基底変数について厳密に $\bar{c}_j > 0$ となります。
+- **感度・符号の一般化と価格付け**: 主問題が非退化な最適解の近傍では、現在の最適基底内において $\bar{c}_j$ は「プロセス $j$ の単位コストがどれだけ下がれば最適基底に参入できるか」の閾値であり、同時に $x_j$ を $0$ から増やしたときの局所的な総コストの限界増加率でもあります。より一般には、最小化 LP で有限上界に張り付く非基底変数では $\bar{c}_j \le 0$ となり、最大化 LP で下界に留まる非基底変数でも $\bar{c}_j \le 0$（利益係数が $\lvert\bar{c}_j\rvert$ 以上上がれば参入）となります。この価格付け条件は後半の章の**列生成法**で中心的な役割を果たします。
 - 用語の確認: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所
 
-各プロセスの非負変数 `quantities` で最低要求制約と目的関数を登録して `m.solve()` を呼び出し、各変数から `.reducedCost`（PuLP では `.dj`）を抽出します。
+各プロセスの非負変数 `quantities` で最低生産要求制約と目的関数を登録して `m.solve()` を呼び出し、各変数から `.reducedCost`（PuLP では `.dj`）を抽出します。
 
 **WaSHI (TypeScript)**
 
@@ -38,7 +38,7 @@ const reducedCosts = quantities.map((v) => v.reducedCost!);
 **PuLP (Python)**
 
 ```python
-for k, req in enumerate(min_reqs):
+for k, req in enumerate(min_requirements):
     prob += pulp.lpDot(yields[k], quantities) >= req
 prob += pulp.lpDot(costs, quantities)
 prob.solve(pulp.HiGHS(msg=False))

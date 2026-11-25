@@ -1,6 +1,6 @@
 ## Approach
 
-Assign one finite-domain integer start variable $S_i \in [0, H - d_i]$ to each task, enforce every DAG precedence edge $S_u + d_u \le S_v$, express each renewable resource pool via Pumpkin's `cumulative(tasks, capacity)` global constraint, and minimize `max(...)` completion time.
+Let $H = \sum_i d_i$ be a safe scheduling horizon and $E$ be the set of precedence edges. Assign one finite-domain integer start variable $S_i \in [0, H - d_i]$ to each task, enforce every DAG precedence edge $S_u + d_u \le S_v$ for $(u, v) \in E$, express each renewable resource pool via Pumpkin's `cumulative(tasks, capacity)` global constraint, and minimize `max(...)` completion time.
 
 ## Mathematical Model
 
@@ -16,7 +16,7 @@ $$
 ## Key Points
 
 - **Horizon-independent CP `cumulative` vs. time-indexed MIP**: A time-indexed MIP creates $O(n \cdot H)$ binary variables $x_{i,t}$ and capacity rows for every time instant $t \in [0, H)$, which grows linearly with the horizon $H$ (and rapidly as durations or task counts scale). Pumpkin's `cumulative` constraint uses only $n$ integer start variables regardless of $H$ and applies time-table filtering.
-- **Resource contention shifts the critical path**: In the example, the unconstrained DAG critical path is only $8$, yet limited resource capacity ($C_0 = 3$) forces task 2 and task 1 to run sequentially, raising makespan to $12$.
+- **Resource contention shifts the critical path**: In the example, the unconstrained DAG critical path is only 8, yet tasks 0, 1, 2, and 4 each require 2 units of resource 0 against capacity $C_0 = 3$ ($2 + 2 > 3$), so none of those four can overlap, giving makespan $3 + 3 + 4 + 2 = 12$ (while task 3, with demand 1, overlaps task 2).
 - **Filter zero-demand tasks cleanly**: Passing only tasks with `demand > 0` keeps each `cumulative(...)` propagator compact when multiple resource pools are sparse.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).
 
@@ -28,6 +28,7 @@ Declare integer start-time variables with the Pumpkin solver, then register the 
 
 ```ts
 const m = new Model("RcpspProjectCP", { solver: "pumpkin" });
+const horizon = input.durations.reduce((a, b) => a + b, 0);
 const starts = input.durations.map((d, i) =>
   m.integer(`s_${i}`, { lb: 0, ub: horizon - d })
 );

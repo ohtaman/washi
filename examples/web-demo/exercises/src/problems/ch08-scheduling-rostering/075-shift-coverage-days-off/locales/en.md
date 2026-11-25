@@ -1,9 +1,12 @@
 # #075. Staff Shift Coverage with Workload Bounds & Days Off
 
 <!-- section:scenario -->
-A large cafe schedules $N$ baristas (staff) across $D$ days and $S$ daily shift types (such as early and late shifts). Each staff member can work at most one shift per day, cannot work on their pre-approved required days off, and must work a total number of shifts within their personal minimum and maximum bounds.
+A large cafe schedules $N$ baristas (staff) across $D$ days and $S$ daily shift types (such as early and late shifts) to minimize total staffing cost subject to the following rules:
 
-Every day and shift type has a minimum staffing demand and a staff-specific assignment cost. Assign shifts (or off) to minimize total staffing cost while meeting all coverage demands and personal constraints.
+- Each staff member can work at most one shift per day (or take the day off).
+- No staff member may work on any of their pre-approved required days off.
+- Each staff member's total shifts over the $D$-day horizon must stay within their personal minimum and maximum bounds.
+- Every day and shift type must be covered by at least its minimum required headcount; assigning a given staff member to a given shift type incurs a fixed cost independent of the day.
 
 <!-- section:io -->
 ### Input
@@ -14,7 +17,7 @@ Every day and shift type has a minimum staffing demand and a staff-specific assi
 | `shiftCosts` | `number[][]` | Cost of assigning staff $i$ to shift $s$ ($N \times S$) |
 | `minShifts` | `number[]` | Minimum total shifts required for each staff member |
 | `maxShifts` | `number[]` | Maximum total shifts allowed for each staff member |
-| `daysOff` | `number[][]` | List of day indices where each staff member must be off |
+| `daysOff` | `number[][]` | List of 0-based day indices (0 to $D-1$) where each staff member must be off |
 
 ### Output
 

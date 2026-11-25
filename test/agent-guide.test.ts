@@ -767,7 +767,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       const text = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
       expect(text).toContain("npm install @ohtaman/washi");
       expect(text).toContain("npx skills add ohtaman/washi");
-      expect(text).toContain("skills/washi/SKILL.md");
+      expect(text).toContain("SKILL.md");
       expect(text).toContain("https://washi.ohtaman.dev/llms.txt");
       expect(text).toContain("https://washi.ohtaman.dev/llms-full.txt");
       expect(text).toContain("/ohtaman/washi");

@@ -1,16 +1,21 @@
 # #056. Capacitated Vehicle Routing Problem (CVRP)
 
 <!-- section:scenario -->
-A fleet of up to K identical delivery vehicles is stationed at depot 0, each carrying a uniform load capacity. Every customer location has a positive delivery demand and must be visited exactly once by a single route that begins and ends at depot 0, without exceeding the vehicle capacity along any route.
+A fleet of identical delivery vehicles stationed at depot 0 must serve a set of customers, each with a positive delivery demand. Plan a set of delivery routes subject to the following rules:
 
-Formulate the Capacitated Vehicle Routing Problem as a mixed-integer program to eliminate subtours, satisfy vehicle capacity and fleet limits, and **minimize total travel distance**.
+- At most `maxVehicles` routes may leave depot 0.
+- Every route starts and ends at depot 0.
+- Every customer is visited exactly once.
+- The total demand served along any route cannot exceed the vehicle capacity.
+
+Choose the routes to **minimize total travel distance**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `dist` | `number[][]` | $(n+1) \times (n+1)$ distance matrix (0 is depot, `1..n` are customers) |
+| `dist` | `number[][]` | $n \times n$ distance matrix (node 0 is depot, `1 .. n - 1` are customers) |
 | `demands` | `number[]` | Demand at each node (`demands[0] = 0`, positive for customers) |
 | `capacity` | `number` | Load capacity $Q$ of each vehicle |
 | `maxVehicles` | `number` | Maximum number of routes leaving depot 0 |

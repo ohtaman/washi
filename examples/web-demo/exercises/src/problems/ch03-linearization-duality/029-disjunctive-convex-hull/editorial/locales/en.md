@@ -1,6 +1,6 @@
 ## Approach
 
-Disaggregate each unit's output $x_i$ across its bands into $x_{ik} \ge 0$ paired with binary mode selector $y_{ik} \in \{0, 1\}$, enforcing $\sum_k y_{ik} = 1$ and $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$. This convex-hull formulation models both forbidden gaps and band-specific slopes $c_{ik}$ directly without Big-M slack.
+Disaggregate each unit's output $x_i$ across its bands into $x_{ik} \ge 0$ paired with binary band selector $y_{ik} \in \{0, 1\}$, enforcing $\sum_k y_{ik} = 1$, $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$, and total demand $\sum_{i,k} x_{ik} \ge \text{demand}$, while minimizing $\sum_{i,k} (F_{ik} y_{ik} + c_{ik} x_{ik})$. This convex-hull formulation models forbidden gaps, band-specific fixed costs $F_{ik}$, and variable slopes $c_{ik}$ directly without Big-M slack.
 
 ## Mathematical Model
 
@@ -16,7 +16,7 @@ $$
 
 ## Key Points
 
-- **Why disaggregation beats a single $x_i$ with Big-M**: First, different operating bands carry different linear cost slopes $c_{ik}$, so the objective needs separate $x_{ik}$ variables per band. Second, even with uniform slopes, the disaggregated inequalities $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$ (with $\sum_k y_{ik} = 1$) generate the **exact convex hull** of the union of disjoint regimes in the lifted $(x, y)$ space, avoiding weak Big-M LP relaxations.
+- **Why disaggregation beats a single $x_i$ with Big-M**: First, different operating bands carry different linear cost slopes $c_{ik}$, so the objective needs separate $x_{ik}$ variables per band. Second, even with uniform slopes, the disaggregated inequalities $L_{ik} y_{ik} \le x_{ik} \le U_{ik} y_{ik}$ with $\sum_k y_{ik} = 1$ and $y_{ik} \ge 0$ generate the **exact convex hull** (Balas) of each individual unit $i$'s union of bounded disjoint bands in the lifted $(x, y)$ space; once the cross-unit demand constraint $\sum_{i,k} x_{ik} \ge \text{demand}$ couples units, the overall LP relaxation is no longer guaranteed integral on its own, yet remains far tighter than Big-M.
 - **Idle band uniformity**: Representing idle as band $k=0$ with $[L_{i0}, U_{i0}] = [0, 0]$ and $F_{i0} = c_{i0} = 0$ lets $\sum_k y_{ik} = 1$ treat idle and active modes cleanly in a single structure.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 

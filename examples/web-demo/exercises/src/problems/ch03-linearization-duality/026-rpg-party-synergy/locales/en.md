@@ -1,26 +1,30 @@
 # #026. RPG Party Synergy Maximization
 
 <!-- section:scenario -->
-An adventurer is recruiting a dungeon party from a roster of candidate heroes. Each hero has a base power rating and a gold recruitment cost, and the party must stay within both a total gold budget and a maximum party slot limit. Certain hero pairs also interact when recruited together: synergistic combos grant a positive bonus, whereas rival pairs impose a negative penalty.
+An adventurer is recruiting a dungeon party from a roster of candidate heroes, each with a base power rating and a gold recruitment cost:
 
-Choose which heroes to recruit and report the exact pairwise activation indicators so that total cost stays within the budget, party size stays within the slot cap, and **total party power (individual power plus pairwise bonuses and penalties) is maximized**.
+- **Budget cap**: total recruitment cost must stay within the available gold budget.
+- **Party size cap**: the number of recruited heroes cannot exceed the maximum party slot limit.
+- **Pairwise interactions**: recruiting both heroes of a listed pair triggers a synergy bonus (positive) or a rivalry penalty (negative).
+
+Choose which heroes to recruit and report the pairwise activation indicators so as to **maximize total party power (individual power plus pairwise bonuses and penalties)**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `power` | `number[]` | Base power $p_i$ of hero $i$ |
-| `costs` | `number[]` | Gold recruitment cost $c_i$ of hero $i$ |
-| `budget` | `number` | Available gold budget $B$ |
-| `maxPartySize` | `number` | Maximum number of heroes $K$ allowed in the party |
-| `pairs` | `number[][]` | Interaction list `[i, j, s]` where `s > 0` is a synergy bonus and `s < 0` is a rivalry penalty |
+| `power` | `number[]` | Base power of each hero |
+| `costs` | `number[]` | Recruitment cost of each hero (gold) |
+| `budget` | `number` | Available total budget (gold) |
+| `maxPartySize` | `number` | Maximum number of heroes allowed in the party |
+| `pairs` | `number[][]` | Interaction list `[i, j, s]`, where `i` and `j` are 0-based hero indices, $s > 0$ is a synergy bonus, and $s < 0$ is a rivalry penalty |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary (`0` or `1`) hero recruitment choices $x_i$ |
+| `selected` | `number[]` | Binary (0 or 1) hero recruitment choices $x_i$ |
 | `pairProducts` | `number[]` | Binary pair indicators $w_k = x_i x_j$ for each entry in `pairs` |
 | `totalValue` | `number` | Maximized total party power (individual plus pair interactions) |
 
@@ -55,7 +59,7 @@ Choose which heroes to recruit and report the exact pairwise activation indicato
 Recruiting heroes 0 and 1 ([1, 1, 0, 0]) uses $2 \le 2$ slots, spends $25 + 25 = 50 \le 60$ gold, activates only pair (0, 1) (`pairProducts` is [1, 0, 0, 0]), and yields $40 + 35 + 25 =$ **100**.
 
 <!-- section:hint1 -->
-Declare one binary decision variable per candidate hero and one continuous auxiliary variable in $[0, 1]$ per listed hero pair. Because the hero choices are binary, the McCormick inequalities force the pair variables to take exact integer values 0 or 1 without needing extra binary declarations.
+Model one binary choice per candidate hero indicating whether that hero is recruited, and one continuous auxiliary variable bounded between 0 and 1 for each listed hero pair indicating whether both heroes are recruited together. Even though the pair variables are declared continuous, linear coupling constraints with the binary hero choices will force them to take exact 0 or 1 values.
 
 <!-- section:hint2 -->
-Enforce the budget and party-size caps, then apply the exact McCormick envelope for $w_k = x_i x_j$: two upper bounds ($w_k \le x_i$ and $w_k \le x_j$) prevent $w_k$ from turning on unless both heroes are recruited, and one lower bound ($w_k \ge x_i + x_j - 1$) forces $w_k$ to 1 whenever both are recruited. Both directions are essential here because pair weights $s$ can be positive (synergy, where the solver would otherwise overstate $w_k$) or negative (rivalry, where the solver would otherwise understate $w_k$). Round `pairProducts` cleanly when returning integer outputs.
+Enforce the budget and party-size caps, then linearize each pair product $w_k = x_i x_j$ with the three-inequality McCormick (Fortet) envelope: two upper bounds tying $w_k$ to each individual hero prevent claiming an unearned synergy bonus ($s > 0$) when either hero is omitted, while a lower bound forces $w_k = 1$ whenever both heroes are recruited so a rivalry penalty ($s < 0$) cannot be dodged. Both directions are essential when interaction weights have mixed signs. Round `pairProducts` cleanly when returning integer outputs.

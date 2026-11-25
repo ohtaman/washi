@@ -1,12 +1,12 @@
 ## Approach
 
-Construct the WaSHI `Model` with every Boolean variable (`m.bool`), bounded integer variable (`m.integer`), and named rule (`m.constraint(..., rule.id)`), then call `m.verify({ values: input.candidateValues })` directly in JavaScript—no solver invocation required—and collect every reported violation name sorted lexicographically.
+Evaluate each named rule directly against the recorded assignment $\hat{v}$ and collect every rule ID whose formula evaluates to false. In WaSHI, construct a `Model` with every Boolean variable (`m.bool`), bounded integer variable (`m.integer`), and named rule (`m.constraint(..., r.id)`), then call `m.verify({ values: input.candidateValues })` directly in JavaScript—no solver invocation required—and sort every reported violation name lexicographically.
 
 ## Mathematical Model
 
 $$
 \begin{aligned}
-\text{Violated} &= \bigl\{\, r.\text{id} \in R \;\big|\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
+\text{Violated} &= \bigl\{\, r.\text{id} \;\big|\; r \in R,\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
 \text{valid} &\iff \text{Violated} = \emptyset
 \end{aligned}
 $$

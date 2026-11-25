@@ -1,9 +1,9 @@
 # #072. Single-Machine Scheduling with Sequence-Dependent Setups
 
 <!-- section:scenario -->
-A single automotive parts painting line processes a batch of part lots (jobs) starting at time zero with no initial setup required before the first job. Whenever the line switches from job $i$ to job $j$, it incurs a sequence-dependent changeover time before job $j$ can begin.
+A single automotive parts painting line processes a batch of part lots (jobs) starting at time zero with no initial setup required before the first job. Each job has a strictly positive processing time and a due date, and whenever the line switches from job $i$ to job $j$, it incurs a sequence-dependent changeover time before job $j$ can begin; all processing times, changeover times, and due dates may be fractional.
 
-Choose a permutation of all jobs and their completion times to minimize the total tardiness across all jobs.
+Finishing past a job's due date incurs tardiness equal to the overrun past the due date, or 0 if finished on time. Choose a permutation of all jobs and their completion times to minimize the total tardiness across all jobs.
 
 <!-- section:io -->
 ### Input
@@ -19,7 +19,7 @@ Choose a permutation of all jobs and their completion times to minimize the tota
 | Field | Type | Description |
 | --- | --- | --- |
 | `order` | `number[]` | Permutation of job indices `0..n-1` from first to last |
-| `completions` | `number[]` | Completion time $C_j$ for each job $j$ |
+| `completions` | `number[]` | Completion time $C_j$ for each job $j$, indexed by original job index (not position in `order`) |
 | `totalTardiness` | `number` | Minimized total tardiness $\sum_j \max(0, C_j - d_j)$ |
 
 <!-- section:example -->
@@ -47,7 +47,7 @@ Choose a permutation of all jobs and their completion times to minimize the tota
 }
 ```
 
-Processing jobs in sequence $0 \to 2 \to 1$ gives $C_0 = 3$ ($T_0 = 0$), $C_2 = 3 + 1 + 2 = 6$ ($T_2 = 1$), and $C_1 = 6 + 1 + 4 = 11$ ($T_1 = 3$), for a total tardiness of $0 + 1 + 3 =$ **4**.
+Processing jobs in sequence $0 \to 2 \to 1$ gives $C_0 = 3$ (tardiness 0), $C_2 = 3 + 1 + 2 = 6$ (tardiness 1), and $C_1 = 6 + 1 + 4 = 11$ (tardiness 3), for a total tardiness of $0 + 1 + 3 =$ **4**.
 
 <!-- section:hint1 -->
 Model the job sequence as a single directed tour through all jobs plus a dummy depot node representing the start and end of the schedule. Alongside binary arc-selection variables between nodes, track continuous completion-time and non-negative tardiness variables for every job.

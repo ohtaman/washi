@@ -7,7 +7,8 @@
 $$
 \begin{aligned}
 \min \quad & \sum_{g,t} \left( K_g v_{g,t} + c_g p_{g,t} \right) \\
-\text{s.t.} \quad & \sum_{g} p_{g,t} = D_t, \quad P^{\min}_g u_{g,t} \le p_{g,t} \le P^{\max}_g u_{g,t} && \forall g, t \\
+\text{s.t.} \quad & \sum_{g} p_{g,t} = D_t && \forall t \\
+& P^{\min}_g u_{g,t} \le p_{g,t} \le P^{\max}_g u_{g,t} && \forall g, t \\
 & v_{g,t} - w_{g,t} = u_{g,t} - u_{g,t-1} && \forall g, t \;\; (u_{g,-1} = 0) \\
 & \sum_{\tau=\max(0, t-U_g+1)}^{t} v_{g,\tau} \le u_{g,t}, \quad \sum_{\tau=\max(0, t-D^{\text{down}}_g+1)}^{t} w_{g,\tau} \le 1 - u_{g,t} && \forall g, t \\
 & p_{g,t} - p_{g,t-1} \le R_g u_{g,t-1} + S_g (1 - u_{g,t-1}) && \forall g, t \ge 1 \\
@@ -15,7 +16,7 @@ $$
 \end{aligned}
 $$
 
-ただし $S_g = \max(P^{\min}_g, R_g)$、$p_{g,0} \le S_g$ とします。
+ただし $S_g = \max(P^{\min}_g, R_g)$、$p_{g,0} \le S_g$、$u_{g,t}, v_{g,t} \in \{0, 1\}$、$w_{g,t} \in [0, 1]$ とし、各パラメータは $D_t$（`demands[t]`）、$P^{\min}_g$（`pMin[g]`）、$P^{\max}_g$（`pMax[g]`）、$R_g$（`rampLimit[g]`）、$U_g$（`minUp[g]`）、$D^{\text{down}}_g$（`minDown[g]`）、$K_g$（`startupCosts[g]`）、$c_g$（`fuelCosts[g]`）に対応します。
 
 ## ポイント
 

@@ -16,16 +16,16 @@ Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mix
 | `fixedCosts` | `number[]` | Fixed operating cost of running line $i$ |
 | `prodCosts` | `number[]` | Unit production cost on line $i$ |
 | `demand` | `number` | Aggregate customer demand to satisfy |
-| `baselineActive` | `number[]` | Baseline binary operating plan ($0$ or $1$) |
+| `baselineActive` | `number[]` | Baseline binary operating plan (0 or 1) |
 | `disruptionPenalty` | `number` | Penalty incurred for each line whose active status differs from baseline |
 | `hardRules` | `PolicyRule[]` | Mandatory non-negotiable operational constraints |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | Negotiable management rules with relaxation weights |
 
 Each `PolicyRule` is a tagged object with `id: string` and one of the following `type` variants (where `line`, `lines`, `ifLine`, `thenLine` are 0-based line indices):
-- `"must_run"`: `{ id, type: "must_run", line: number }` — requires `active[line] === 1`
-- `"must_idle"`: `{ id, type: "must_idle", line: number }` — requires `active[line] === 0`
-- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — requires at least one `idx` in `lines` to satisfy `active[idx] === 1`
-- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — requires `active[ifLine] === 1 => active[thenLine] === (thenActive ? 1 : 0)`
+- `"must_run"`: `{ id, type: "must_run", line: number }` — requires `activeAssignments[line] === 1`
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — requires `activeAssignments[line] === 0`
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — requires at least one `idx` in `lines` to satisfy `activeAssignments[idx] === 1`
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — requires `activeAssignments[ifLine] === 1 => activeAssignments[thenLine] === (thenActive ? 1 : 0)`
 
 ### Output
 
@@ -67,7 +67,7 @@ Each `PolicyRule` is a tagged object with `id: string` and one of the following 
 }
 ```
 
-Dropping the lowest-weight `soft_idle_2` ($10 < 18$) resolves the contradiction with `hard_min_backup`. Line activations `[1, 1, 1, 0]` provide total capacity $40 + 50 + 45 = 135 \ge 90$, incurring fixed cost $120 + 150 + 130 = 400$, production cost $8 \times 50 + 9 \times 40 = 760$, and one line-flip penalty $40 \times 1 = 40$, for a total cost of $400 + 760 + 40 =$ **1,200**.
+Dropping `soft_idle_2` (weight 10) leaves all retained rules satisfied by `[1, 1, 1, 0]`, with production `[0, 50, 40, 0]` staying within active capacities (`[40, 50, 45, 0]`) and meeting demand ($50 + 40 = 90 \ge 90$), while fixed cost ($120 + 150 + 130 = 400$), production cost ($8 \times 50 + 9 \times 40 = 760$), and 1 line-change penalty (40) total $400 + 760 + 40 =$ **1,200**.
 
 <!-- section:hint1 -->
 Split the problem into two sequential stages. Stage 1 finds a minimum-weight subset of soft rules to drop so that the remaining rules and total capacity can satisfy demand. Stage 2 fixes the surviving rule set and solves a production-rescheduling MIP for binary line activations, continuous production quantities, and deviations from `baselineActive`.

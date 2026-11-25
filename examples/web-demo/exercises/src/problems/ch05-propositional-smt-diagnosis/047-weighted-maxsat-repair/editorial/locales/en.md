@@ -4,11 +4,14 @@ Enforce all `hardRules` directly on Boolean variables `m.bool(input.vars)`. For 
 
 ## Mathematical Model
 
+Let $m = |\text{softRules}|$ be the number of soft rules:
+
 $$
 \begin{aligned}
 \min \quad & \sum_{k=0}^{m-1} w_k v_k \\
 \text{s.t.} \quad & H_j(x) = \text{true} && \forall j \\
-& S_k(x) \lor (v_k = 1) && \forall k \\
+& S_k(x) \lor (v_k = 1) && \forall k \in \{0, \dots, m-1\} \\
+& S_k(x) \implies (v_k = 0) && \forall k \in \{0, \dots, m-1\} \\
 & x_i \in \{\text{false}, \text{true}\}, \quad v_k \in \{0, 1\}
 \end{aligned}
 $$

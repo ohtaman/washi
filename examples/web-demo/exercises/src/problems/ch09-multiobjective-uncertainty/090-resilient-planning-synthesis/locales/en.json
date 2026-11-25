@@ -11,7 +11,7 @@
     "4-unit single-outage resilient synthesis",
     "5-unit fractional robust budget with dual outages",
     "5-unit high switching-cost pre-positioning",
-    "6-unit elastic shortfall vs reserve trade-off",
+    "6-unit high-demand outage scenarios",
     "7-unit multi-shock network recovery"
   ],
   "judge": {

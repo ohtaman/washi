@@ -1,6 +1,6 @@
 ## Approach
 
-Assign a binary choice `tierSelected[s][k]` and a continuous quantity `tierQuantities[s][k]` to each supplier-tier bracket, allow at most one tier per supplier (`sum <= 1`), enforce semi-continuous tier intervals `minQty * y <= q <= maxQty * y`, require total purchases to meet `demand`, and minimize total cost.
+Assign a binary choice $y_{s,k}$ (`tierSelected[s][k]`) and a continuous quantity $q_{s,k}$ (`tierQuantities[s][k]`) to each supplier-tier bracket with unit price $p_{s,k}$ and bounds $[L_{s,k}, U_{s,k}]$, allow at most one tier per supplier ($\sum_k y_{s,k} \le 1$), enforce semi-continuous tier intervals $L_{s,k} y_{s,k} \le q_{s,k} \le U_{s,k} y_{s,k}$, require total purchases to meet $D$ (`demand`), and minimize total cost.
 
 ## Mathematical Model
 
@@ -17,12 +17,12 @@ $$
 ## Key Points
 
 - **Why volume discounts require MIP (non-convexity)**: When minimizing cost, pure LP only models **convex** piecewise-linear functions with *increasing* marginal prices (e.g., tiered overtime surcharges). Both incremental volume discounts (decreasing marginal prices, which are concave) and all-units volume discounts (which drop earlier units' prices too, creating downward jumps at thresholds $L_{s,k}$) are non-convex and require binary variables.
-- **Strategic over-purchasing and tier splitting**: Using `>= demand` allows buying slightly above `demand` when hitting the next tier threshold lowers the total bill (as in Case 1: buying 50 at 7.0 costs 350 vs. 414 for 45 at 9.2), and using `<= 1` lets unused suppliers stay completely off even when `minQty > 0`.
+- **Strategic over-purchasing and tier splitting**: Using `>= demand` allows buying slightly above `demand` when hitting the next tier threshold lowers the total bill (for example, when demand is 45 and a tier starting at 50 drops the unit price from 9.2 to 7.0, buying 50 costs 350 vs. 414 for 45), and using `<= 1` lets unused suppliers stay completely off even when `minQty > 0`.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
 
-Cap the sum of selected tiers per supplier at 1, and sandwich each tier's order quantity `tierQuantities[s][k]` between `minQty` and `maxQty` multiplied by the binary selection variable `tierSelected[s][k]`.
+Cap the sum of selected tiers per supplier at 1, sandwich each tier's order quantity `tierQuantities[s][k]` between `minQty` and `maxQty` multiplied by the binary selection variable `tierSelected[s][k]`, and require total purchases across all tiers to meet `demand`.
 
 **WaSHI (TypeScript)**
 

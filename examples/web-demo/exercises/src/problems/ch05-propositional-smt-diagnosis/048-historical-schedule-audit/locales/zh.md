@@ -1,9 +1,9 @@
-# #048. 历史调度记录合规审计 (m.verify)
+# #048. 历史分配记录合规审计 (m.verify)
 
 <!-- section:scenario -->
-在部署新规或复盘历史调度事件时，审计系统无需执行求解搜索，而是直接对照形式化布尔与线性整数规则对既有记录进行确定性校验。
+在部署新规或复盘历史事件时，合规团队需要对照形式化的布尔与线性整数约束，对夜班排班、作业人数、加班时长、生产部署日志等既有运营记录进行审核。
 
-给定布尔变量、有界整数变量、命名合规规则以及历史变量赋值，在不调用求解器搜索的情况下对该赋值执行确定性审计，返回是否全部合规以及按字典序排列的违规规则 ID 列表。
+给定布尔变量、有界整数变量、命名合规规则以及历史变量赋值，在不调用求解器搜索的情况下对该历史记录执行确定性审计，返回是否全部合规以及按字典序排列的违规规则 ID 列表。
 
 <!-- section:io -->
 ### 输入
@@ -13,10 +13,11 @@
 | `boolVars` | `string[]` | 布尔变量名列表 |
 | `intVars` | `Array<{ name: string; lb: number; ub: number }>` | 有界整数变量定义 |
 | `rules` | `Array<{ id: string; expr: SmtFormula }>` | 命名合规规则列表 |
-| `candidateValues` | `Record<string, boolean / number>` | 待审计的历史赋值记录 |
+| `candidateValues` | `Record<string, StateValue>` | 待审计的历史赋值记录 |
 
 `SmtFormula` 是由布尔变量名（`string`）、线性整数比较（`SmtCmp`）及逻辑连接词组成的递归联合类型：
 ```ts
+type StateValue = boolean | number;
 type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
 type SmtFormula =
   | string
@@ -27,6 +28,8 @@ type SmtFormula =
   | { xor: SmtFormula[] }
   | SmtCmp;
 ```
+
+裸字符串（`string`）叶节点引用 `boolVars` 中的布尔变量，`SmtCmp` 在 `intVars` 上求值线性比较 $\sum_k c_k v_k \mathrel{\text{sense}} \text{rhs}$（`terms` 将变量 $v_k$ 映射至系数 $c_k$），`implies: [a, b]` 表示 $a \implies b$，`xor` 当且仅当其操作数中有奇数个为真时成立。
 
 ### 输出
 

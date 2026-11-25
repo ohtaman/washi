@@ -1,6 +1,6 @@
-## 解法のアプローチ
+## アプローチ
 
-バイナリ決定変数 `take[j]` を宣言し、負荷区分 `caps[k]` ごとに線形容量制約を課します。さらに前提科目制約 `take[course] <= take[prereq]` と時間割重複制約 `take[a] + take[b] <= 1` を追加し、興味スコアの合計を最大化します。
+バイナリ決定変数 $x_j$（`take[j]`）を宣言し、各負荷区分の負荷量 $w_{k,j}$（`requirements[k][j]`）と上限 $C_k$（`caps[k]`）による線形容量制約、前提ペア集合 $\mathcal{P}$（`prerequisites`）の順序制約、時間割重複ペア集合 $\mathcal{T}$（`timeConflicts`）の排反制約を課して、興味スコア $v_j$（`interest[j]`）の合計を最大化します。
 
 ## 数理モデル
 

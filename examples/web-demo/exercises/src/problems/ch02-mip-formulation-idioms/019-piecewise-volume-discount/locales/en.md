@@ -17,7 +17,7 @@ Alternatively, the company may skip a supplier completely by selecting zero tier
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `tierSelected` | `number[][]` | Binary (`0` or `1`) choice per supplier $s$ and tier $k$ |
+| `tierSelected` | `number[][]` | Binary (0 or 1) choice per supplier $s$ and tier $k$ |
 | `tierQuantities` | `number[][]` | Continuous quantity ordered in each supplier-tier bracket |
 | `totalCost` | `number` | Minimized total procurement cost |
 
@@ -50,10 +50,10 @@ Alternatively, the company may skip a supplier completely by selecting zero tier
 }
 ```
 
-Selecting tier 1 for both suppliers orders 35 in `[35, 50]` from supplier 0 and 25 in `[25, 45]` from supplier 1, meeting $35 + 25 = 60 \ge 60$ for total cost $35 \times 8.5 + 25 \times 8.8 =$ **517.5**.
+Selecting tier 1 for both suppliers orders 35 in $[35, 50]$ from supplier 0 and 25 in $[25, 45]$ from supplier 1, meeting $35 + 25 = 60 \ge 60$ for total cost $35 \times 8.5 + 25 \times 8.8 =$ **517.5**.
 
 <!-- section:hint1 -->
 Each supplier-tier pair $(s, k)$ has a binary selection indicator and a continuous order quantity. The model allows at most one active tier per supplier, couples each tier's quantity to its indicator, and requires total purchases across all suppliers and tiers to meet demand.
 
 <!-- section:hint2 -->
-Treat each tier $(s, k)$ as a semi-continuous segment: bounding `tierQuantities[s][k]` between `minQty` and `maxQty` times `tierSelected[s][k]` forces the quantity to $0$ when unselected and inside the bracket when selected. Because at most one tier per supplier can be active, summing `unitPrice * tierQuantities[s][k]` over all $(s, k)$ gives the exact all-units discount cost linearly.
+Treat each tier $(s, k)$ as a semi-continuous segment: bounding `tierQuantities[s][k]` between `minQty` and `maxQty` times `tierSelected[s][k]` forces the quantity to 0 when unselected and inside the bracket when selected. Because at most one tier per supplier can be active, summing `unitPrice * tierQuantities[s][k]` over all $(s, k)$ gives the exact all-units discount cost linearly.

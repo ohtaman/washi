@@ -1,6 +1,6 @@
 ## Approach
 
-Introduce an auxiliary variable $w_k \in [0, 1]$ for each hero pair $(i_k, j_k)$ representing the binary product $x_{i_k} x_{j_k}$. Enforce the budget cap, the party-size cap, and all three McCormick inequalities ($w_k \le x_{i_k}$, $w_k \le x_{j_k}$, and $w_k \ge x_{i_k} + x_{j_k} - 1$) so both positive synergy bonuses and negative rivalry penalties remain exact.
+Define a binary variable $x_i \in \{0, 1\}$ for whether hero $i$ is recruited, and maximize total individual power plus pairwise interaction effects. Introduce an auxiliary variable $w_k \in [0, 1]$ for each hero pair $(i_k, j_k)$ representing the binary product $x_{i_k} x_{j_k}$. Enforce the budget cap, the party-size cap, and all three McCormick inequalities ($w_k \le x_{i_k}$, $w_k \le x_{j_k}$, and $w_k \ge x_{i_k} + x_{j_k} - 1$) so both positive synergy bonuses and negative rivalry penalties remain exact.
 
 ## Mathematical Model
 

@@ -11,8 +11,8 @@
   "caseNames": [
     "2x2 mine-count conflict with safe cells",
     "2x3 overlapping region cap conflict",
-    "Shortcut clue inside non-minimal core",
-    "Odd-parity difference cycle with decoys",
+    "3x2 board with implication chains",
+    "5-cell board with parity clues",
     "3x3 board equality and count conflict"
   ],
   "judge": {

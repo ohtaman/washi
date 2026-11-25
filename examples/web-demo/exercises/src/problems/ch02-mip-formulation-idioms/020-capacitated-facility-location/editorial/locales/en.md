@@ -1,6 +1,6 @@
 ## Approach
 
-Pair a binary vector `open[i]` for roastery activation with a continuous matrix `shipments[i][j]` for café store deliveries, gate total outflow per roastery with `sum(shipments[i]) <= capacities[i] * open[i]`, satisfy every café store's demand, and minimize fixed operating plus shipping cost.
+Pair binary opening variables $y_i$ (`open[i]`) with continuous shipment quantities $x_{i,j}$ (`shipments[i][j]`), gate each roastery's total outflow at its capacity $C_i$ (`capacities[i]`) via $\sum_j x_{i,j} \le C_i y_i$, meet every café store's demand $d_j$ (`demands[j]`), and minimize fixed operating costs $f_i$ (`fixedCosts[i]`) plus unit shipping costs $c_{i,j}$ (`unitCosts[i][j]`).
 
 ## Mathematical Model
 
@@ -21,7 +21,7 @@ $$
 
 ## Key Implementation
 
-Add the linking constraints capping each roastery `i`'s total outflow at `capacities[i] * open[i]` and the column-sum constraints meeting each café store `j`'s demand, and minimize the sum of fixed operating costs and shipping costs.
+Add the linking constraints capping each roastery `i`'s total outflow at `capacities[i] * open[i]` and the demand-satisfaction constraints meeting each café store `j`'s demand, and minimize the sum of fixed operating costs and shipping costs.
 
 **WaSHI (TypeScript)**
 

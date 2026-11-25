@@ -1,6 +1,6 @@
 ## 解题思路
 
-将表示产线开启状态的 0-1 变量 `open` 与非负连续产量 `quantities` 配对，通过 `quantities[i] <= capacities[i] * open[i]` 联动开关与产能上限，在树脂颗粒库存上限约束下最大化净利润（毛利之和减去固定成本之和）。
+为每条产线配对表示开启状态的 **0-1 变量** $y_i \in \{0, 1\}$ 与表示产量的非负连续变量 $q_i \ge 0$，通过**产能关联约束** $q_i \le C_i y_i$ 联动开关与产能上限，在树脂颗粒库存上限约束下最大化净利润（总毛利减去总固定成本）。
 
 ## 数学模型
 
@@ -16,7 +16,7 @@ $$
 ## 核心要点
 
 - **0-1 开关控制连续容量（Big-M 基础）**：用产能上限 $C_i$ 乘以二进制开关 $y_i$ 写成 $q_i \le C_i y_i$，即可同时刻画“停机强制零产出（$y_i=0 \implies q_i=0$）”和“开机产能封顶（$y_i=1 \implies q_i \le C_i$）”，也是第 2 章 Big-M 与固定费用网络的基础构件。
-- **分离固定开机成本与边际利润**：目标函数写成 `dot(margins, quantities) - dot(fixedCosts, open)`，使每条已开机产线（`open[i] = 1`）无论实际生产多少单位，都恰好只扣除一次固定成本。
+- **分离固定开机成本与边际利润**：目标函数写成 `dot(margins, quantities) - dot(fixedCosts, open)`，使每条已开机产线（$y_i = 1$）无论实际生产多少，都恰好只扣除一次固定成本。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
@@ -45,7 +45,7 @@ m.objective(
 ```python
 for i in range(n):
     prob += quantities[i] <= capacities[i] * open_vars[i]
-prob += pulp.lpDot(mat_usages, quantities) <= mat_cap
+prob += pulp.lpDot(material_usages, quantities) <= material_cap
 prob += pulp.lpDot(margins, quantities) - pulp.lpDot(fixed_costs, open_vars)
 prob.solve(pulp.HiGHS(msg=False))
 ```

@@ -10,14 +10,16 @@ $$
 \text{s.t.} \quad & E_t = E_{t-1} + \eta_c c_t - \frac{1}{\eta_d} d_t && \forall t \;\; (E_{-1} = E_{\text{init}}) \\
 & g_t = L_t + c_t - d_t \ge 0, \quad P_{\text{peak}} \ge g_t && \forall t \\
 & 0 \le c_t \le P_{\max} z_t, \quad 0 \le d_t \le P_{\max} (1 - z_t) && \forall t \\
-& E_{\min} \le E_t \le E_{\max}, \quad E_{T-1} \ge E_{\text{end}}, \quad z_t \in \{0, 1\}
+& E_{\min} \le E_t \le E_{\max}, \quad E_{T-1} \ge E_{\text{end}}, \quad z_t \in \{0, 1\} && \forall t
 \end{aligned}
 $$
+
+其中 $L_t$（`baseLoads[t]`）、$\pi_t$（`prices[t]`）、$\gamma$（`demandCharge`）、$E_{\max}$（`capacity`）、$E_{\min}$（`minSoc`）、$E_{\text{init}}$（`initSoc`）、$E_{\text{end}}$（`minFinalSoc`）、$P_{\max}$（`maxPower`）、$\eta_c$（`etaCharge`）与 $\eta_d$（`etaDischarge`）分别对应各输入字段。
 
 ## 核心要点
 
 - **上镜图法（Epigraph）处理需量棘轮费**：将目标中的非线性极大值 $\gamma \max_t g_t$ 改写为最小化 $\gamma P_{\text{peak}}$ 辅以线性不等式 $P_{\text{peak}} \ge g_t$，即可直接纳入 LP/MIP 求解。
-- **LP 自动互斥与 MIP 显式开关**：当电价严格为正且 $\eta_c \eta_d < 1$ 时，同时充放电只会白白损耗能量而无法改善目标，纯 LP 即可给出合法解；引入 $z_t \in \{0,1\}$ 则可在零/负电价或理想无损情形下依然严格保证充放互斥。
+- **LP 自动互斥与 MIP 显式开关**：当电价严格为正且 $\eta_c \eta_d < 1$ 时，同时充放电只会损耗能量而绝不会改善目标（且只要 $g_t > 0$ 就严格次优）；引入 $z_t \in \{0,1\}$ 则可在 $g_t = 0$、零/负电价或理想无损情形下依然严格保证充放互斥。
 - 概念参考：[指南与术语表 — 核心建模要素](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
@@ -45,9 +47,9 @@ input.baseLoads.forEach((base, t) => {
 ```python
 for t in range(T):
     prev_soc = init_soc if t == 0 else soc[t - 1]
-    prob += soc[t] == prev_soc + eta_c * charge[t] - discharge[t] / eta_d
+    prob += soc[t] == prev_soc + eta_charge * charge[t] - discharge[t] / eta_discharge
     prob += grid_load[t] == base_loads[t] + charge[t] - discharge[t]
     prob += peak_load >= grid_load[t]
-    prob += charge[t] <= p_max * mode[t]
-    prob += discharge[t] <= p_max * (1 - mode[t])
+    prob += charge[t] <= max_power * mode[t]
+    prob += discharge[t] <= max_power * (1 - mode[t])
 ```

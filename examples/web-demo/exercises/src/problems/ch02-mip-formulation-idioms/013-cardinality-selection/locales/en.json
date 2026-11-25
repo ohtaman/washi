@@ -12,7 +12,7 @@
     "7-project overlapping group constraints",
     "5-project exact-zero and exact-one mix",
     "8-project multi-group selection",
-    "10-project multi-tier portfolio"
+    "10-project multi-group portfolio"
   ],
   "judge": {
     "m0": "Output must be an object { selected, totalValue }.",

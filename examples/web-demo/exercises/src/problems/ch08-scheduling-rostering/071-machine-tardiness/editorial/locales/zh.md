@@ -7,18 +7,20 @@
 $$
 \begin{aligned}
 \min \quad & \sum_{j=0}^{n-1} w_j T_j \\
-\text{s.t.} \quad & S_j \ge r_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
+\text{s.t.} \quad & r_j \le S_j \le H - p_j, \quad T_j \ge S_j + p_j - d_j, \quad T_j \ge 0 && \forall j \\
 & S_i + p_i \le S_j + M(1 - y_{ij}) && \forall i < j \\
 & S_j + p_j \le S_i + M y_{ij} && \forall i < j \\
 & y_{ij} \in \{0, 1\} && \forall i < j
 \end{aligned}
 $$
 
+其中 $H = \max_k r_k + \sum_k p_k$，$M = H$。
+
 ## 核心要点
 
 - **无需离散化的析取模型**：$y_{ij}=1$ 强制作业 $i$ 先于 $j$，反之强制 $j$ 先于 $i$；相比时间索引 0-1 变量，析取模型可直接处理带小数的释放时间与工期。
-- **紧凑的合法 Big-M**：压缩无效空闲后的最优调度必在 $H = \max_k r_k + \sum_k p_k$ 内完工，配合 $S_j \le H - p_j$ 可取 $M = H$，既保证安全又避免松弛过弱。
-- **主动等待（Inserted Idle Time）**：带释放时间时，在机器空闲时刻刻意等待即将到达的高权重作业往往优于立即加工的局部启发式策略。
+- **紧凑的合法 Big-M**：压缩无效空闲后的最优调度必在 $H = \max_k r_k + \sum_k p_k$ 内完工。在 $r_j \ge 0$ 且 $S_j \le H - p_j$ 的条件下，取 $M = H$ 即可得到合法的统一上界，使线性松弛远比随意取极大常数时更紧凑。
+- **主动等待（Inserted Idle Time）**：带释放时间时，在设备空闲时刻刻意等待即将到达的高权重作业，往往优于立即开工的非延迟贪心策略。例如在示例中，从 $t = 0$ 空闲等待至 $t = 2$ 优先加工权重 $w_1 = 5$ 的作业 1，可显著降低加权总延迟。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点

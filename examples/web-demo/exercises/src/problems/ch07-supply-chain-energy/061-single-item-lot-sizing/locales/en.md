@@ -49,11 +49,11 @@ Every unit produced incurs a period-specific unit production cost, and any surpl
 }
 ```
 
-Setting up only in periods 0 and 2 yields ending inventories [50, 0, 40, 0] within capacities 80, for total cost $(180 \times 2) + (70 \times 10 + 50 \times 10) + (50 \times 2 + 40 \times 2) =$ **1,740**.
+Setting up only in periods 0 and 2 yields ending inventories [50, 0, 40, 0] within the per-period capacity of 80, for total cost $(180 \times 2) + (70 \times 10 + 50 \times 10) + (50 \times 2 + 40 \times 2) =$ **1,740**.
 
 
 <!-- section:hint1 -->
 Model a binary setup variable, a continuous production quantity, and a non-negative ending inventory variable for each period across the planning horizon. Alternatively, you can disaggregate production by which future period's demand it serves, then recover total production and ending inventory from those flow variables.
 
 <!-- section:hint2 -->
-Link production in period $t$ to its setup indicator via the period capacity (`production[t] <= capacities[t] * setups[t]`), and enforce period-by-period inventory flow conservation starting from zero initial inventory. Tightening the setup-linking constraint—or using the facility-location disaggregation $w_{t,k} \le d_k y_t$—significantly strengthens the LP relaxation.
+Link production in period $t$ to its setup indicator via the period capacity (`production[t] <= capacities[t] * setups[t]`), and enforce period-by-period inventory flow conservation starting from zero initial inventory. Tightening the setup-linking constraint—or using a facility-location disaggregation that bounds each period-$t$-to-period-$k$ flow by period $k$'s demand times period $t$'s setup binary—significantly strengthens the LP relaxation.

@@ -19,8 +19,8 @@ Because the station limit may prevent covering every zone simultaneously, choose
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `number[]` | Binary (`0` or `1`) opening choices per candidate site |
-| `covered` | `number[]` | Binary (`0` or `1`) coverage indicators per demand zone |
+| `open` | `number[]` | Binary (0 or 1) opening choices per candidate site |
+| `covered` | `number[]` | Binary (0 or 1) coverage indicators per demand zone |
 | `totalCoveredDemand` | `number` | Maximized sum of demands of covered zones |
 
 <!-- section:example -->

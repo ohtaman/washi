@@ -1,6 +1,6 @@
 ## 解题思路
 
-在节点 0-1 变量 $y_v$（固定 $y_0 = 1$）与无向边变量 $w_e$ 之上，为每条边引入正反两个方向的有向开关 $z_e^{\to}, z_e^{\leftarrow}$ 与连续流量 $f_e^{\to}, f_e^{\leftarrow} \le (n-1) z$。通过从根节点 0 向每个被选节点 $v \ge 1$ 输送 1 单位虚拟流，用纯粹线性约束严格保证连通性并杜绝孤立子图。
+在节点 0-1 变量 $y_v$（固定 $y_0 = 1$）与无向边变量 $w_e$ 之上，为每条边引入正反两个方向的有向开关 $z_e^{\to}, z_e^{\leftarrow}$（通过 $z_e^{\to} + z_e^{\leftarrow} \le w_e$ 将每条已建边的流量限制在至多一个方向上）以及非负连续流量 $f_e^{\to} \le (n-1) z_e^{\to}$ 与 $f_e^{\leftarrow} \le (n-1) z_e^{\leftarrow}$。通过从根节点 0 向每个被选节点 $v \ge 1$ 输送 1 单位虚拟流，用纯粹线性约束严格保证连通性并杜绝孤立子图。
 
 ## 数学模型
 
@@ -9,13 +9,14 @@ $$
 \max \quad & \sum_{v=0}^{n-1} p_v y_v - \sum_{e \in E} c_e w_e \\
 \text{s.t.} \quad & y_0 = 1, \quad w_e \le y_u, \quad w_e \le y_v, \quad z_e^{\to} + z_e^{\leftarrow} \le w_e && \forall e=(u,v) \in E \\
 & 0 \le f_e^{\to} \le (n-1) z_e^{\to}, \quad 0 \le f_e^{\leftarrow} \le (n-1) z_e^{\leftarrow} && \forall e \in E \\
-& \text{outflow}(0) - \text{inflow}(0) = \sum_{v=1}^{n-1} y_v, \quad \text{inflow}(v) - \text{outflow}(v) = y_v && \forall v \ge 1
+& \text{outflow}(0) - \text{inflow}(0) = \sum_{v=1}^{n-1} y_v, \quad \text{inflow}(v) - \text{outflow}(v) = y_v && \forall v \ge 1 \\
+& y_v \in \{0, 1\} \;\; \forall v, \quad w_e, z_e^{\to}, z_e^{\leftarrow} \in \{0, 1\} \;\; \forall e \in E
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **局部度数约束无法保证全局连通**：仅有 $w_e \le y_u, y_v$ 或要求入选节点度数 $\ge 1$ 时，求解器仍可挑出脱离根节点 0 的孤立高效益小团（例如只连结 `{3, 4}`）。
+- **局部度数约束无法保证全局连通**：仅有 $w_e \le y_u, y_v$ 或要求入选节点度数 $\ge 1$ 时，求解器仍可挑出脱离根节点 0 的孤立高效益小团（例如示例中的孤立节点对 `{3, 4}`）。
 - **单商品流即连通性证明**：因为只有根节点 0 能产生流量且流量只能沿着已启用边流动，任何满足净流入等于 1 的选中节点必存在一条由已启用边构成的从 0 出发的可达路径。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 

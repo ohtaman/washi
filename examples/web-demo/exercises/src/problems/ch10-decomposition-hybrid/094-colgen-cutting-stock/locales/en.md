@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 A paper mill cuts standard stock rolls of fixed width into smaller item widths to satisfy customer demands while minimizing the total number of stock rolls consumed. Because the number of valid cutting patterns grows combinatorially with item types, enumerating every pattern upfront does not scale.
 
-Use WaSHI column generation to dynamically discover profitable cutting patterns from a Restricted Master Problem and finalize an integer cutting plan that minimizes total stock rolls consumed.
+Starting from a small initial set of cutting patterns, use WaSHI column generation to dynamically discover improving patterns and finalize an integer cutting plan that minimizes total stock rolls consumed.
 
 <!-- section:io -->
 ### Input
@@ -18,7 +18,7 @@ Use WaSHI column generation to dynamically discover profitable cutting patterns 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `patterns` | `number[][]` | Selected integer cutting patterns (each of length `widths.length`) |
+| `patterns` | `number[][]` | Selected cutting patterns (`patterns.length === counts.length`), where `patterns[p][i]` is the non-negative integer count of item $i$ cut per roll in pattern $p$ |
 | `counts` | `number[]` | Non-negative integer roll counts used for each selected pattern |
 | `totalRolls` | `number` | Total number of stock rolls consumed (`sum(counts)`) |
 
@@ -53,4 +53,4 @@ Each pattern fits within 100 ($88, 97, 100 \le 100$), producing `[10, 15, 23] >=
 Decompose into a Restricted Master Problem (choosing how many rolls to cut of each active pattern to cover item demands) and a bounded knapsack pricing subproblem (generating a new valid pattern within `rollWidth` that reduces the master objective). Seed the master with simple feasible single-item patterns so its initial LP is always feasible.
 
 <!-- section:hint2 -->
-Build the master with named `demand_${i}` constraints and `master.column(...)` variables of unit cost `1`, then call `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })`. Inside `pricing({ getDual })`, maximize $\sum_i \pi_i a_i$ subject to $\sum_i w_i a_i \le W$ with integer $a_i \in [0, \lfloor W / w_i \rfloor]$; propose the new column whenever its reduced cost $1 - \sum_i \pi_i a_i < -10^{-5}$.
+Build the master with named `demand_${i}` constraints and `master.column(...)` variables of unit cost 1, then call `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })`. Inside `pricing({ getDual })`, maximize $\sum_i \pi_i a_i$ subject to $\sum_i w_i a_i \le W$ with integer $a_i \in [0, \lfloor W / w_i \rfloor]$; propose the new column whenever its reduced cost $1 - \sum_i \pi_i a_i < -10^{-5}$.

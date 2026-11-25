@@ -1,9 +1,15 @@
 # #049. SMT-LIRA Mode Selection & Time Windows
 
 <!-- section:scenario -->
-A logistics hub schedules incoming shipments at a single unloading dock. Each shipment uses either Standard mode or Express mode: Express mode incurs an express fee and unlocks its own continuous time window and shorter fractional processing duration, while at most a bounded integer number of shipments may use Express mode.
+A logistics hub schedules incoming shipments at a single unloading dock, deciding each shipment's delivery mode and continuous unloading interval `[start, end]`:
 
-Every shipment must avoid a scheduled dock maintenance blackout interval, no two shipments may overlap on the dock, and finishing past a shipment's due time incurs a continuous tardiness penalty per unit time. Choose each shipment's mode and continuous start and end times to minimize total express fees plus tardiness penalties.
+- **Mode selection & time windows**: Each shipment uses either Standard mode (no mode fee) or Express mode (incurs `expFee`, unlocking `expWindow` and `expDuration`). Its entire unloading interval `[start, end]` with `end = start + duration` must lie within the chosen mode's `[earliestStart, latestEnd]` window.
+- **Express quota**: At most `maxExpress` shipments may use Express mode.
+- **Blackout avoidance**: Every shipment must avoid the dock maintenance blackout `[bStart, bEnd]`, either finishing at or before `bStart` or starting at or after `bEnd`.
+- **Single-dock non-overlap**: No two shipments may overlap on the dock (one must finish at or before the other starts).
+- **Tardiness penalty**: Finishing past a shipment's `dueTime` incurs a continuous linear penalty of `tardinessPenalty` per unit of lateness.
+
+Choose each shipment's mode and continuous start and end times to minimize total express fees plus tardiness penalties.
 
 <!-- section:io -->
 ### Input
@@ -14,7 +20,7 @@ Every shipment must avoid a scheduled dock maintenance blackout interval, no two
 | `blackout` | `[number, number]` | Unavailable dock maintenance window `[bStart, bEnd]` |
 | `maxExpress` | `number` | Maximum integer number of Express shipments allowed |
 
-Each `ShipmentSpec` object has `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }`.
+Each `ShipmentSpec` object has `{ stdWindow: [number, number], expWindow: [number, number], stdDuration: number, expDuration: number, expFee: number, dueTime: number, tardinessPenalty: number }`, where `stdWindow` and `expWindow` give `[earliestStart, latestEnd]` bounds containing the shipment's entire unloading interval.
 
 ### Output
 
@@ -66,11 +72,11 @@ Each `ShipmentSpec` object has `{ stdWindow: [number, number], expWindow: [numbe
 }
 ```
 
-Shipment 0 runs in Standard mode over `[0, 2.5]` before the `[3, 4]` blackout (0 tardiness), and Shipment 1 switches to Express mode over `[4, 5]` with fee 15 and tardiness `12 * (5 - 3) = 24`, totaling 39.
+Shipment 0 runs in Standard mode over [0, 2.5] before the [3, 4] blackout (0 tardiness), and Shipment 1 switches to Express mode over [4, 5] with fee 15 and tardiness 12 × (5 - 3) = 24, totaling 39.
 
 
 <!-- section:hint1 -->
 For each shipment, model a Boolean mode choice (Express vs. Standard) together with continuous start, end, and non-negative tardiness variables. Express mode unlocks a shorter duration and its own time window, while all shipments must avoid the dock blackout interval and never overlap each other.
 
 <!-- section:hint2 -->
-Pair each `m.bool(...)` mode variable with an `m.binary(...)` flag for arithmetic sums and objective terms (`sum(expFlag) <= maxExpress` and express fees). Use `implies(...)` and `not(...)` to enforce mode-dependent windows and durations, and use `or(...)` directly for both blackout avoidance (`end[i] <= blackout[0]` or `start[i] >= blackout[1]`) and pairwise non-overlap (`end[i] <= start[j]` or `end[j] <= start[i]`), solving with `await m.solve({ solver: "z3" })`.
+Pair each `m.bool(...)` mode variable with an `m.binary(...)` flag for arithmetic sums and objective terms (`sum(expFlag).le(input.maxExpress)` and express fees). Use `implies(...)` and `not(...)` to enforce mode-dependent windows and durations, and use `or(...)` with `expr` inequalities for both blackout avoidance ($\text{end}_i \le b_{\text{start}}$ or $\text{start}_i \ge b_{\text{end}}$) and pairwise non-overlap ($\text{end}_i \le \text{start}_j$ or $\text{end}_j \le \text{start}_i$), solving with `await m.solve({ solver: "z3" })`.

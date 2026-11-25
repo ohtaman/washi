@@ -15,8 +15,8 @@ $$
 
 ## Key Points
 
-- **Elasticizing infeasibility**: Replacing hard `q_j == T_j` constraints with `q_j + s_j^- - s_j^+ == T_j` ensures the model stays feasible whenever `H_cap` or `Q_min` conflicts with targets, while tiered penalties $w_j^-$ automatically sacrifice the lowest-priority targets first.
-- **Zero-overlap guarantee**: Because $w_j^- > 0$ and $w_j^+ > 0$ (specifically $w_j^- + w_j^+ > 0$), an optimal LP solution will never make both $s_j^- > 0$ and $s_j^+ > 0$ simultaneously, since subtracting $\min(s_j^-, s_j^+)$ from both strictly lowers cost without changing $q_j$.
+- **Elasticizing infeasibility**: Replacing hard $q_j = T_j$ constraints with $q_j + s_j^- - s_j^+ = T_j$ keeps the model feasible whenever the hard constraints (`machineCap` and `minTotal`) are mutually compatible—even when $H_{\text{cap}}$ or $Q_{\min}$ conflicts with the targets—while tiered penalties $w_j^-$ automatically sacrifice the lowest-priority targets first.
+- **Zero-overlap guarantee**: Because $w_j^-, w_j^+ \ge 0$ with $w_j^- + w_j^+ > 0$, an optimal LP solution will never make both $s_j^- > 0$ and $s_j^+ > 0$ simultaneously, since subtracting $\min(s_j^-, s_j^+)$ from both strictly lowers cost without changing $q_j$.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Verdicts](?view=guide&lang=en#verdicts).
 
 ## Key Implementation

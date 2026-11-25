@@ -8,11 +8,11 @@
     "Uniqueness"
   ],
   "caseNames": [
-    "4-variable unique chain",
-    "4-variable multi-solution rules",
-    "4-variable unsatisfiable parity cycle",
-    "6-variable forced cascade",
-    "6-variable symmetric alternatives"
+    "4-variable implication and XOR chain",
+    "4-variable disjunction and XOR rules",
+    "4-variable 3-way XOR cycle",
+    "6-variable cascading rules",
+    "6-variable paired branch rules"
   ],
   "judge": {
     "m0": "Output must be an object { satisfiable, assignment, unique }.",
@@ -23,7 +23,7 @@
     "m5": "Returned unique = true, but at least two distinct satisfying assignments exist.",
     "m6": "Returned unique = false, but the satisfying assignment is provably unique.",
     "m7": "Verified unsatisfiable (unique = false).",
-    "m8": "Verified unique satisfying assignment (no-good cut returned Unsat)!",
+    "m8": "Verified unique satisfying assignment!",
     "m9": "Verified satisfiable with multiple distinct solutions (unique = false)."
   }
 }

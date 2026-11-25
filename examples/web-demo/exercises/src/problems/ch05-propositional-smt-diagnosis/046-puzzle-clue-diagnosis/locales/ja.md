@@ -14,14 +14,14 @@
 | `clues` | `PuzzleClue[]` | 名前付きヒント集合（`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`） |
 
 各 `PuzzleClue` は `id: string` と以下のいずれかの `type` バリアントを持ちます:
-- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }`（`sum(cells) === count`）
-- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }`（`sum(cells) >= count`）
-- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }`（`sum(cells) <= count`）
-- `"safe"`: `{ id, type: "safe", cell: string }`（`cell === 0`）
-- `"mine"`: `{ id, type: "mine", cell: string }`（`cell === 1`）
-- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }`（`ifMine <= thenMine`）
-- `"same"`: `{ id, type: "same", a: string, b: string }`（`a === b`）
-- `"different"`: `{ id, type: "different", a: string, b: string }`（`a + b === 1`）
+- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }` — `cells` のうちちょうど `count` 個が地雷
+- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }` — `cells` のうち少なくとも `count` 個が地雷
+- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }` — `cells` のうち最大 `count` 個が地雷
+- `"safe"`: `{ id, type: "safe", cell: string }` — `cell` は安全（地雷なし）
+- `"mine"`: `{ id, type: "mine", cell: string }` — `cell` は地雷
+- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }` — `ifMine` が地雷ならば `thenMine` も必ず地雷
+- `"same"`: `{ id, type: "same", a: string, b: string }` — `a` と `b` は両方とも地雷、または両方とも安全
+- `"different"`: `{ id, type: "different", a: string, b: string }` — `a` と `b` のうちちょうど一方が地雷
 
 ### 出力
 
@@ -30,7 +30,7 @@
 | `coreRules` | `string[]` | 極小充足不能部分集合となるヒント ID の配列（辞書順） |
 
 <!-- section:example -->
-**入力**
+**入力例**
 
 ```json
 {
@@ -46,7 +46,7 @@
 }
 ```
 
-**出力**
+**出力例**
 
 ```json
 {
@@ -61,4 +61,4 @@
 まずソルバーが返す初期の矛盾コアなどの充足不能なヒント部分集合から始め、各ヒントを1つずつ仮に除いて矛盾が残るかどうかを調べます。除いても矛盾が解消しないヒントは不要なので、候補集合から取り除きます。
 
 <!-- section:hint2 -->
-各マスを `m.integer(cell, { lb: 0, ub: 1 })` で表し、`m.constraint(..., clue.id)` のように制約名へヒント ID を付けると、`await m.check({ solver: "z3" })` が `"Unsat"` のときに `res.unsatCore` が得られます。各候補集合ごとに新しい `Model` を作って `"Unsat"` なら `res.unsatCore`（または候補集合）へ縮小し、最後に `coreRules` をソートしてください。
+各マスを `m.integer(cell, { lb: 0, ub: 1 })` で表し、`m.constraint(..., clue.id)` のように制約名へヒント ID を付けると、`await m.check({ solver: "z3" })` が `"Unsat"` のときに `res.unsatCore` が得られます。削除縮小では、`clueId` を除いた各候補部分集合ごとに新しい `Model` を作って `"Unsat"` なら `res.unsatCore`（または候補集合）へ縮小し、最後に `coreRules` をソートしてください。

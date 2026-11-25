@@ -171,7 +171,7 @@ Pumpkin や Z3 バックエンドを利用する場合は、`@ohtaman/washi/solv
 > [!IMPORTANT]
 > **ソルバーの前提条件**:
 > - **Pumpkin**: すべての数値変数が有限の `lb`・`ub` を持つ `Integer` または `Binary` 変数である必要があります。
-> - **Z3**: オプションのピア依存パッケージ `z3-solver` のインストール（`npm install z3-solver`）が必要です。ブラウザ環境では `SharedArrayBuffer` 用の `COOP`/`COEP` レスポンスヘッダーも必要になります。
+> - **Z3**: オプションの依存パッケージ `z3-solver` のインストール（`npm install z3-solver`）が必要です。ブラウザ環境では `SharedArrayBuffer` 用の `COOP`/`COEP` レスポンスヘッダーも必要になります。
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";

@@ -1,9 +1,9 @@
 # #045. デッドルール・冗長ルールの検出
 
 <!-- section:scenario -->
-アクセス制御や業務承認などのルールベースを保守・監査する際、条件部が決して満たされないデッドルールや、先行するルールの帰結としてすでに成り立つ冗長ルールを特定する必要があります。
+アクセス制御や業務承認などのルールベースを保守・監査する際、発動条件が決して満たされないデッドルールや、先行するルールの帰結としてすでに成り立つ冗長ルールを特定する必要があります。
 
-基本ルールと先行ルールを順次蓄積した文脈のもとで各ルールを先頭から順に検査し、発動条件が充足不能なルールをデッドルール、それ以外で含意が先行ルールからすでに導かれるルールを冗長ルールとして検出し、両方の ID リストを辞書順に返してください。
+各トリガールールは「`condition` ならば `effect`」を表します。基本ルールと先行ルールを順次蓄積した文脈のもとで各ルールを先頭から順に検査し、発動条件が充足不能なルールをデッドルール、それ以外で含意が先行ルールからすでに導かれるルールを冗長ルールとして検出し、両方の ID リストを辞書順に返してください。
 
 <!-- section:io -->
 ### 入力
@@ -12,9 +12,9 @@
 | --- | --- | --- |
 | `vars` | `string[]` | 真偽値変数名の一覧 |
 | `baseRules` | `PropFormula[]` | 常に成り立つ基本制約ルール |
-| `rules` | `Array<{ id: string; condition: PropFormula; effect: PropFormula }>` | 順序付きの条件・帰結ルール一覧 |
+| `rules` | `Array<{ id: string; condition: PropFormula; effect: PropFormula }>` | 順序付きの発動条件・帰結ルール一覧 |
 
-`PropFormula` は再帰的な直和型です:
+`PropFormula` は再帰的なユニオン型です:
 ```ts
 type PropFormula =
   | string
@@ -24,6 +24,7 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+文字列（`string`）は `vars` の真偽値変数を参照し、`{ implies: [p, q] }` は $p \to q$、`{ xor: [...] }` は真となる引数が奇数個のとき真を表します。
 
 ### 出力
 
@@ -63,7 +64,7 @@ type PropFormula =
 
 
 <!-- section:hint1 -->
-`baseRules` と先行するトリガールールの含意を蓄積したポリシーを保持しながら、`input.rules` を先頭から順に処理します。各ルールについて、まず蓄積ポリシーのもとでトリガー条件が到達可能かを調べ、到達可能であればトリガー発火時に帰結が破られ得るかを調べます。
+`baseRules` と先行するトリガールールの含意を蓄積したポリシーを保持しながら、`input.rules` を先頭から順に処理します。各ルールについて、まず蓄積ポリシーのもとで発動条件が到達可能かを調べ、到達可能であれば発動時に帰結が破られ得るかを調べます。
 
 <!-- section:hint2 -->
-Z3 判定（`await m.check({ solver: "z3" })`）ごとに `m.bool(input.vars)` を持つ新しい `Model` を作成します。`prior` と `r.condition` が `"Unsat"` なら dead、そうでなければ `prior`・`r.condition`・`not(r.effect)` の組が `"Unsat"` なら redundant です。次のルールへ進む前に `implies(r.condition, r.effect)` を `prior` に追加し、両配列を辞書順にソートして返してください。
+Z3 判定（`await m.check({ solver: "z3" })`）ごとに `m.bool(input.vars)` を持つ新しい `Model` を作成し、検査対象の `PropFormula` をすべて `compileFormula` で制約に変換します。`prior` に `r.condition` を加えた組が `"Unsat"` ならデッドルール、そうでなければ `prior`・`r.condition`・`{ not: r.effect }` の組が `"Unsat"` なら冗長ルールです。次のルールへ進む前に `{ implies: [r.condition, r.effect] }` を `prior` に追加し、両配列を辞書順にソートして返してください。

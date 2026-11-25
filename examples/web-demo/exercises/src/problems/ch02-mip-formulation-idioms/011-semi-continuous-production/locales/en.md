@@ -20,8 +20,8 @@ Each beer style has a known gross profit margin per liter and malt consumption p
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `active` | `number[]` | Binary (`0` or `1`) choice of whether to brew each style |
-| `quantities` | `number[]` | Continuous brewing quantities (0 or in `[minBatches[i], maxBatches[i]]`) |
+| `active` | `number[]` | Binary (0 or 1) choice of whether to brew each style |
+| `quantities` | `number[]` | Continuous brewing quantities (liters): 0 or in `[minBatches[i], maxBatches[i]]` |
 | `totalMargin` | `number` | Maximized total gross margin |
 
 <!-- section:example -->

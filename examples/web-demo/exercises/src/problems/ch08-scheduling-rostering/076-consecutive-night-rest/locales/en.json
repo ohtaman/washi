@@ -1,6 +1,6 @@
 {
   "title": "#076. Rostering with Consecutive Workday Limits & Night-to-Day Rest",
-  "subtitle": "Enforce rolling-window consecutive workday caps and forbid hazardous night-to-morning shift transitions in staff scheduling.",
+  "subtitle": "Enforce rolling-window consecutive workday caps and forbid hazardous night-to-day shift transitions in staff scheduling.",
   "tags": [
     "MIP",
     "Staff Rostering",
@@ -12,7 +12,7 @@
     "6-staff 5-day 3-consecutive cap",
     "6-staff 6-day strict 2-day cap",
     "8-staff 6-day double-night demand",
-    "9-staff 7-day weekly cycle"
+    "9-staff 7-day weekly roster"
   ],
   "judge": {
     "m0": "Output must be an object { schedule, totalCost }.",

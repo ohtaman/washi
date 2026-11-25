@@ -1,6 +1,6 @@
 ## アプローチ
 
-全シナリオ共通の第 1 段階発注変数 `orders` ($x_j \ge 0$) と、シナリオ別の第 2 段階リコース変数 `shortage` ($u_{s,j} \ge 0$)・`leftover` ($v_{s,j} \ge 0$) を導入して確定的等価 LP を構築し、収支等式 $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ と確率重み付き期待費用を解きます。
+全シナリオ共通の第 1 段階発注変数 `orders`（$x_j \ge 0$）と、シナリオ別の第 2 段階リコース変数 `shortage`（$u_{s,j} \ge 0$）・`leftover`（$v_{s,j} \ge 0$）を導入して確定的等価 LP を構築します。`orderCosts`・`shortageCosts`・`salvageValues`・`warehouseCap` をそれぞれ $c_j, q_j, r_j, W_{\text{cap}}$ で表し、収支等式 $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ のもとで確率重み $p_s$ 付きの期待総費用を最小化します。
 
 ## 数理モデル
 
@@ -14,7 +14,7 @@ $$
 
 ## ポイント
 
-- **確率解の価値（VSS: Value of the Stochastic Solution）**: 平均需要 $\bar{d}_j = \sum_s p_s d_{s,j}$ に置き換えた決定論的モデルでは欠品費と残存回収の非対称性や倉庫配分優先度を見誤り、期待総コストが高くなります（Case 0 で `196.5` 対 `184`）。
+- **確率解の価値（VSS: Value of the Stochastic Solution）**: 平均需要 $\bar{d}_j = \sum_s p_s d_{s,j}$ に置き換えた決定論的モデルでは欠品費と残存回収の非対称性や倉庫配分優先度を見誤り、期待総コストが高くなります（Case 0 で 196.5 対 184）。
 - **非予見性と相補性**: 第 1 段階変数 $x_j$ を全シナリオで共有することで「未来を知らずに今決める」非予見性を表し、また $q_j > r_j$ により最適解では同一 $(s, j)$ で欠品と余剰が同時に正になりません。
 - 用語の確認: [ガイド・用語集 — 基本要素](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 

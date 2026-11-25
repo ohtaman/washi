@@ -10,9 +10,9 @@
   "caseNames": [
     "2 units with 3 operating bands",
     "3 units under moderate load",
-    "Zero-demand idle baseline",
+    "Zero-demand boundary case",
     "3 units across 4 operating bands",
-    "4 units with mixed mid-band dispatch"
+    "4 units under high load"
   ],
   "judge": {
     "m0": "Output must be an object { modes, outputs, totalCost }.",

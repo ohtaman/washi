@@ -1,23 +1,28 @@
 ## アプローチ
 
-トラックのドック割当 0-1 変数 ($x_{i,r}, y_{j,s}$) と積替フロー ($f_{i,j,k}$) の三重積を避けるため、ドック対に分解した連続フロー変数 $w_{i,j,r,s} \ge 0$ を導入し、さらに便間の積み替え有無を表す $z_{i,j} \in \{0, 1\}$ を用いて到着＋移動時間の出発同期制約を線形化します。
+入出荷トラックのドック割当 0-1 変数 $x_{i,r}, y_{j,s}$、便間の積み替え有無を表す 0-1 変数 $z_{i,j}$、品目別の連続フロー $f_{i,j,k}$、ドック対に分解した連続フロー $w_{i,j,r,s}$、および出荷トラックの出発時刻 $t_j$ と遅延時間 $T_j$ を導入します。トラック対の総フローを $w_{i,j,r,s}$ へ分解することでドック割当とフローの三重積を線形化し、ドック収容台数・供給上限と需要充足・Big-M による到着＋移動時間の出発同期・遅延計算の制約を課して、総荷役コストと遅延ペナルティの和を最小化します。
 
 ## 数理モデル
 
 $$
 \begin{aligned}
 \min \quad & \sum_{i,j,r,s} c_{r,s} w_{i,j,r,s} + \gamma_{\text{delay}} \sum_{j} T_j \\
-\text{s.t.} \quad & \sum_{r} x_{i,r} = 1, \quad \sum_{i} x_{i,r} \le C^{\text{in}}_r && \forall i, r \\
-& \sum_{s} y_{j,s} = 1, \quad \sum_{j} y_{j,s} \le C^{\text{out}}_s && \forall j, s \\
-& \sum_{j} f_{i,j,k} \le A_{i,k}, \quad \sum_{i} f_{i,j,k} = B_{j,k} && \forall i, j, k \\
+\text{s.t.} \quad & \sum_{r} x_{i,r} = 1 && \forall i \\
+& \sum_{i} x_{i,r} \le C^{\text{in}}_r && \forall r \\
+& \sum_{s} y_{j,s} = 1 && \forall j \\
+& \sum_{j} y_{j,s} \le C^{\text{out}}_s && \forall s \\
+& \sum_{j} f_{i,j,k} \le A_{i,k} && \forall i, k \\
+& \sum_{i} f_{i,j,k} = B_{j,k} && \forall j, k \\
 & \sum_{r,s} w_{i,j,r,s} = \sum_{k} f_{i,j,k} \le M_{i,j} z_{i,j} && \forall i, j \\
-& \sum_{s} w_{i,j,r,s} \le M_{i,j} x_{i,r}, \quad \sum_{r} w_{i,j,r,s} \le M_{i,j} y_{j,s} && \forall i, j, r, s \\
+& \sum_{s} w_{i,j,r,s} \le M_{i,j} x_{i,r} && \forall i, j, r \\
+& \sum_{r} w_{i,j,r,s} \le M_{i,j} y_{j,s} && \forall i, j, s \\
 & t_j \ge a_i + \tau_{r,s} - M_T (3 - x_{i,r} - y_{j,s} - z_{i,j}) && \forall i, j, r, s \\
-& T_j \ge t_j - d_j, \quad T_j \ge 0 && \forall j
+& T_j \ge t_j - d_j && \forall j \\
+& x_{i,r}, y_{j,s}, z_{i,j} \in \{0, 1\}, \quad f_{i,j,k}, w_{i,j,r,s}, t_j, T_j \ge 0
 \end{aligned}
 $$
 
-ただし $M_{i,j} = \sum_k \min(A_{i,k}, B_{j,k})$、$M_T = \max_i a_i + \max_{r,s} \tau_{r,s}$ とします。
+ここで $A_{i,k} = \text{supplies}[i][k]$、$B_{j,k} = \text{demands}[j][k]$、$C^{\text{in}}_r = \text{inDoorCaps}[r]$、$C^{\text{out}}_s = \text{outDoorCaps}[s]$、$c_{r,s} = \text{handlingCosts}[r][s]$、$\tau_{r,s} = \text{transferTimes}[r][s]$、$a_i = \text{arrivalTimes}[i]$、$d_j = \text{dueTimes}[j]$、$\gamma_{\text{delay}} = \text{delayCost}$ とし、$M_{i,j} = \sum_k \min(A_{i,k}, B_{j,k})$、$M_T = \max_i a_i + \max_{r,s} \tau_{r,s}$ とします。
 
 ## ポイント
 
@@ -63,5 +68,5 @@ for s in range(S):
     prob += pulp.lpSum(w[i][j][r][s] for r in range(R)) <= m_ij * y[j][s]
 for r in range(R):
     for s in range(S):
-        prob += dep[j] >= arrivals[i] + transfer_times[r][s] - big_m_t * (3 - x[i][r] - y[j][s] - z[i][j])
+        prob += dep[j] >= arrival_times[i] + transfer_times[r][s] - big_m_t * (3 - x[i][r] - y[j][s] - z[i][j])
 ```

@@ -6,18 +6,20 @@
 
 $$
 \begin{aligned}
-\min \quad & \sum_{j=0}^{n-1} F_j y_j + \sum_{s=0}^{S-1} p_s \left( C_{\text{sw}} \sum_{j=0}^{n-1} d_{s,j} + C_{\text{sh}} u_s \right) \\
-\text{s.t.} \quad & \sum_{j=0}^{n-1} C_j y_j - \Gamma z - \sum_{j=0}^{n-1} p_j \ge C_{\text{rob}}, \quad z + p_j \ge \delta_j y_j && \forall j \\
+\min \quad & \sum_{j=0}^{n-1} F_j y_j + \sum_{s=0}^{S-1} \pi_s \left( C_{\text{sw}} \sum_{j=0}^{n-1} d_{s,j} + C_{\text{sh}} u_s \right) \\
+\text{s.t.} \quad & \sum_{j=0}^{n-1} C_j y_j - \Gamma z - \sum_{j=0}^{n-1} p_j \ge C_{\text{rob}} \\
+& z + p_j \ge \delta_j y_j && \forall j \\
 & w_{s,j} = 0 && \forall (s,j): \text{offline}_{s,j} = 1 \\
 & d_{s,j} \ge w_{s,j} - y_j, \quad d_{s,j} \ge y_j - w_{s,j} && \forall s, j \\
-& \sum_{j=0}^{n-1} C_j w_{s,j} + u_s \ge D_s, \quad y_j, w_{s,j} \in \{0, 1\},\; z, p_j, d_{s,j}, u_s \ge 0
+& \sum_{j=0}^{n-1} C_j w_{s,j} + u_s \ge D_s && \forall s \\
+& y_j, w_{s,j} \in \{0, 1\},\; z, p_j, d_{s,j}, u_s \ge 0 && \forall s, j
 \end{aligned}
 $$
 
 ## ポイント
 
-- **2つの決定変数ベクトルのハミング距離の線形化**: `#085` と異なり基準側 $y_j$ も決定変数であるため、各セルの絶対値差を $d_{s,j} \ge w_{s,j} - y_j$ と $d_{s,j} \ge y_j - w_{s,j}$ の 2 本の線形不等式で表現します（$C_{\text{sw}} > 0$ より最適解で正確に一致します）。
-- **ロバスト＋確率＋弾力制約の相乗効果**: Bertsimas-Sim 制約が脆い事前構成を排除し、確率リコースが切替コストと予備投資の釣り合いを決め（Case 2）、弾力欠品変数が稀な極端需要への過剰投資を抑えます（Case 3）。
+- **2つの決定変数ベクトルのハミング距離の線形化**: 基準計画が定数として固定された単段階リスケジューリングと異なり、ここでは基準側 $y_j$ と復旧側 $w_{s,j}$ の双方が決定変数です。各セルの絶対値差を $d_{s,j} \ge w_{s,j} - y_j$ と $d_{s,j} \ge y_j - w_{s,j}$ の 2 本の線形不等式で表現すれば、$C_{\text{sw}} > 0$ のもとで最適解において正確に一致します。
+- **ロバスト＋確率＋弾力制約の相乗効果**: Bertsimas-Sim 制約が脆い事前構成を排除し、確率リコースが切替コストと予備投資の釣り合いを決め（Case 2）、弾力欠品変数が稀な極端需要への過剰投資を抑えます。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
 ## 実装の勘所

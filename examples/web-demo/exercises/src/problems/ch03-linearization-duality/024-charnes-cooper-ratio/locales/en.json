@@ -8,11 +8,11 @@
     "Efficiency Ratio"
   ],
   "caseNames": [
-    "2-activity single-resource ratio",
-    "3-activity dual-resource with fixed overhead",
-    "3-activity tight capacity ratio",
-    "4-activity multi-resource portfolio",
-    "5-activity regional efficiency mix"
+    "2-part single-resource ratio",
+    "3-part dual-resource with fixed overhead",
+    "3-part tight capacity ratio",
+    "4-part multi-resource production mix",
+    "5-part 3-resource production mix"
   ],
   "judge": {
     "m0": "Output must be an object { x, maxRatio }.",

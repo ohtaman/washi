@@ -1,6 +1,6 @@
 ## Approach
 
-Declare continuous raw-metal amounts bounded by `[0, availabilities[i]]`, enforce the exact batch total `sum(amounts) == targetBatch`, rewrite each percentage bound into an absolute mass bound using `targetBatch`, and minimize `dot(costs, amounts)`.
+Let $x_i$ (`amounts[i]`) be the kilograms used of alloy ingot $i$, bounded by $0 \le x_i \le A_i$ where $A_i$ (`availabilities[i]`) is its warehouse stock. Enforce the exact total batch weight $\sum_i x_i = B$ (`targetBatch`), multiply each element $k$'s composition bounds $L_k$ (`minRatios[k]`) and $U_k$ (`maxRatios[k]`) by $B$ to express absolute mass bounds over $p_{i,k}$ (`compositions[i][k]`), and minimize the total material cost $\sum_i c_i x_i$ (`costs[i]`).
 
 ## Mathematical Model
 
@@ -16,12 +16,12 @@ $$
 ## Key Points
 
 - **Linearizing ratio constraints with fixed batch weight**: Writing $\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$ directly looks nonlinear, because variables appear in the denominator. Since the equality constraint fixes $\sum_i x_i = B$ (`targetBatch`), multiplying both sides by $B$ keeps every constraint linear (**LP**). (Variable-denominator fractional blending is covered in Chapter 2.)
-- **Extracting a column vector**: Because `compositions[i][k]` is indexed by `(rawMetal, element)`, `input.compositions.map((row) => row[k])` extracts element $k$'s share across all raw metals for `dot(...)`.
+- **Extracting a column vector**: Because `compositions[i][k]` is indexed by `(ingot, element)`, `input.compositions.map((row) => row[k])` extracts element $k$'s share across all alloy ingots for `dot(...)`.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
 
-Since `compositions[i][k]` has raw metals as rows and elements as columns, extract each element's column vector, take its dot product with `amounts`, and construct both the lower- and upper-bound constraints together.
+Since `compositions[i][k]` has alloy ingots as rows and elements as columns, extract each element's column vector, take its dot product with `amounts`, and construct both the lower- and upper-bound constraints together.
 
 **WaSHI (TypeScript)**
 
@@ -42,10 +42,10 @@ m.constraint(
 **PuLP (Python)**
 
 ```python
-prob += pulp.lpSum(amounts) == target
+prob += pulp.lpSum(amounts) == target_batch
 
 for k in range(n_elem):
     elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
-    prob += elem_expr >= min_ratios[k] * target
-    prob += elem_expr <= max_ratios[k] * target
+    prob += elem_expr >= min_ratios[k] * target_batch
+    prob += elem_expr <= max_ratios[k] * target_batch
 ```

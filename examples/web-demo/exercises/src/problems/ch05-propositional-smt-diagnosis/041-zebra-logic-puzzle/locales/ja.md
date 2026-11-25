@@ -1,14 +1,14 @@
 # #041. ゼブラパズル（ロジックグリッド）
 
 <!-- section:scenario -->
-左から右へ並んだ各位置に対して、属性を割り当てるロジックパズルです。
+左から右へ並んだ各位置に対して、属性（家の色・ペット・飲み物など）を割り当てるロジックパズルです。
 
-割り当ては次の条件をすべて満たす必要があります。
-- **各位置への割り当て**: すべての位置に、各カテゴリからちょうど 1 つずつ属性値を割り当てる
+割当は次の条件をすべて満たす必要があります。
+- **各位置への割当**: すべての位置に、各カテゴリからちょうど 1 つずつ属性値を割り当てる
 - **値の重複禁止**: 同じカテゴリ内の各値は、ちょうど 1 つの位置にだけ現れる
 - **ヒントの充足**: 与えられたヒント（特定位置の指定、同じ位置、含意、同じ位置の禁止、左右・隣接の位置関係）をすべて満たす
 
-位置数、カテゴリごとの値リスト、ヒント一覧が与えられたとき、すべての条件を満たす割り当てが存在するかを判定し、充足可能なら完全な割り当てを 1 つ返してください。
+位置数、カテゴリごとの値リスト、ヒント一覧が与えられたとき、すべての条件を満たす割当が存在するかを判定し、充足可能なら完全な割当を 1 つ返してください。
 
 <!-- section:io -->
 ### 入力
@@ -20,22 +20,22 @@
 | `clues` | `ZebraClue[]` | 構造化ヒント（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
 
 `CategoryValue` を `[category: string, value: string]` として、各 `ZebraClue` は以下のいずれかです:
-- `{ type: "at", position: number, category: string, value: string }`（`position` は 0 始まり）
-- `{ type: "same", a: CategoryValue, b: CategoryValue }`
-- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
-- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
-- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` なら `pos(right) === pos(left) + 1`、それ以外は `pos(left) < pos(right)`）
+- `{ type: "at", position: number, category: string, value: string }`（0 始まりの位置 `position` に `category` の `value` を置く）
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`（`a` と `b` が同じ位置にある）
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`（`a` が置かれた位置には `b` も置かれる）
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`（`a` と `b` は同じ位置には置かれない）
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` なら `pos(right) === pos(left) + 1`、それ以外・既定 `false` なら `pos(left) < pos(right)`）
 - `{ type: "nextTo", a: CategoryValue, b: CategoryValue }`（`|pos(a) - pos(b)| === 1`）
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `satisfiable` | `boolean` | すべてのヒントを満たす割り当てが存在すれば `true`、そうでなければ `false` |
-| `assignment` | `Array<Record<string, string>>` or `null` | 各位置のカテゴリ別割り当てを表す長さ `n` の配列（充足不能なら `null`） |
+| `satisfiable` | `boolean` | すべてのヒントを満たす割当が存在すれば `true`、そうでなければ `false` |
+| `assignment` | `Array<Record<string, string>>` または `null` | 各位置のカテゴリ別割当を表す長さ `n` の配列（充足不能なら `null`） |
 
 <!-- section:example -->
-**入力**
+**入力例**
 
 ```json
 {
@@ -56,7 +56,7 @@
 }
 ```
 
-**出力**
+**出力例**
 
 ```json
 {
@@ -69,11 +69,11 @@
 }
 ```
 
-位置 0 が red/cat/tea、位置 1 が green/bird/water、位置 2 が blue/dog/coffee となり、各カテゴリ・位置への重複ない割り当てとすべての位置ヒントを満たします。
+位置 0 が red/cat/tea、位置 1 が green/bird/water、位置 2 が blue/dog/coffee となり、各カテゴリ・位置への重複ない割当とすべてのヒントを満たします。
 
 
 <!-- section:hint1 -->
 「ある位置にあるカテゴリの特定の値が割り当てられるか」を表す Boolean 決定変数を用意します。各位置・各カテゴリで値が1つだけ選ばれる制約と、各値が1つの位置にだけ現れる制約を課し、各ヒントを位置ごとの論理関係へ変換してください。
 
 <!-- section:hint2 -->
-`m.bool(...)` で Boolean 変数を宣言し、`or(...)`（少なくとも1つ）とペアごとの `not(and(...))`（高々1つ）で exact-one 制約を記述します。`same`・`implies`・`leftOf`・`nextTo` には `implies(...)` を使い、`await m.check({ solver: "z3" })` で `"Sat"` を判定してください。
+`m.bool(...)` で Boolean 変数を宣言し、`or(...)`（少なくとも 1 つ）とペアごとの `not(and(...))`（高々 1 つ）でちょうど 1 つ（exact-one）制約を記述します。`same`・`implies`・`leftOf`・`nextTo` には `implies(...)` を使い、`await m.check({ solver: "z3" })` で `"Sat"` を判定してください。

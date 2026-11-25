@@ -9,7 +9,7 @@ $$
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} = 0 && \forall i, \; d \in \text{Off}_i \\
 & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, \; d \notin \text{Off}_i \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s} && \forall d, s \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s} && \forall d, s \\
 & L_i \le \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} x_{i,d,s} \le U_i && \forall i \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
@@ -17,8 +17,8 @@ $$
 
 ## ポイント
 
-- **休みを含む排他割当（`<= 1`）**: 等式 `== 1` ではなく不等式 $\sum_s x_{i,d,s} \le 1$ にすることで「いずれか 1 シフトに入る、または休み」を簡潔に表現でき、`findIndex` で休みなら `-1`、勤務ならシフト番号 `0..S-1` に変換できます。
-- **指定休日の固定**: 休日 `d` に対して `sum(dayVars) == 0` を置くことで、禁止日の割当を確実に排除できます。
+- **休みを含む排他割当（$\le 1$）**: 等式 $= 1$ ではなく不等式 $\sum_s x_{i,d,s} \le 1$ にすることで「いずれか 1 シフトに入る、または休み」を簡潔に表現でき、`findIndex` で休みなら -1、勤務ならシフト番号 0〜$S-1$ に変換できます。
+- **指定休日の固定**: 休日 $d$ に対して $\sum_s x_{i,d,s} = 0$（コード上は `dayVars` の和を 0 に固定）を置くことで、禁止日の割当を確実に排除できます。
 - **最小勤務回数による稼働平準化**: `minShifts[i]` があることで、単価の高いスタッフが一切シフトに入らない偏りを防ぎつつ総コストを最適化します。
 - 用語の確認: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [変数の種類](?view=guide&lang=ja#variable-types)
 
@@ -58,4 +58,7 @@ for i in range(num_staff):
     total_i = pulp.lpSum(x[i][d][s] for d in range(num_days) for s in range(num_shifts))
     prob += total_i >= min_shifts[i]
     prob += total_i <= max_shifts[i]
+for d in range(num_days):
+    for s in range(num_shifts):
+        prob += pulp.lpSum(x[i][d][s] for i in range(num_staff)) >= demands[d][s]
 ```

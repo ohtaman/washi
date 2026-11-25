@@ -17,14 +17,14 @@ $$
 
 ## 押さえるべきポイント
 
-- **選択的編成（`<= 1`）により延長時間が費用対効果の判断になる**: すべての試合を実施する必要がないため、視聴スコア増分 $p_m$ が延長コスト $c_{\text{ot}} \cdot \Delta o$ を上回る場合のみ延長枠へ追加されます（例題で延長単価 25 に対し試合 4 のスコア 18 が見送られる理由です）。
+- **選択的編成（$\le 1$）により延長時間が費用対効果の判断になる**: すべての試合を実施する必要がないため、視聴スコア増分 $p_m$ が延長コスト $c_{\text{ot}} \cdot \Delta o$ を上回る場合のみ延長枠へ追加されます（例題で配信時間 2・スコア 18 の試合 4 を追加すると延長 1 単位が必要になり、延長コスト 25 > スコア 18 となるため見送られます）。
 - **連続スラック変数 $o_{v,s}$ による弾力的な枠拡張**: 固定上限 $B$ を $B + o_{v,s}$（$0 \le o_{v,s} \le O_{\max}$）に置き換えることで、余分なバイナリ変数なしに区分線形なペナルティを表現できます。
 - **会場適合マスクによる設備制約の表現**: 不適合な `(m, v)` の割当を 0 に固定することで、専用ステージ要件を満たしつつ分枝限定法の探索空間を削減できます。
 - 関連用語: [ガイド＆用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [変数の種類](?view=guide&lang=ja#variable-types)
 
 ## 実装のポイント
 
-各試合の高々 1 回の割当制約・会場適合制約に加え、各会場・スロット枠の合計配信時間を通常枠長と延長時間の和で抑えます。WaSHI では `forEach` と `flatMap` で制約配列を構築し、PuLP ではループと `pulp.lpSum` で記述します。
+各試合の高々 1 回の割当制約・会場適合制約に加え、各会場・スロット枠の合計配信時間を通常配信時間と延長時間の和で抑えます。WaSHI では `forEach` と `flatMap` で制約配列を構築し、PuLP ではループと `pulp.lpSum` で記述します。
 
 **WaSHI (TypeScript)**
 
@@ -57,5 +57,5 @@ for m in range(num_matches):
             prob += pulp.lpSum(x[m][v]) == 0
 for v in range(num_venues):
     for s in range(num_slots):
-        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= reg_len + overtime[v][s]
+        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= regular_length + overtime[v][s]
 ```

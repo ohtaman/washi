@@ -3,21 +3,21 @@
 <!-- section:scenario -->
 A delivery depot has an equal number of couriers and delivery zones (such as North, East, and South), and assigning each courier to a zone incurs a known delivery cost (in thousand yen).
 
-Find a **1-to-1 assignment** where **every courier is assigned to exactly one zone** and **every zone is assigned to exactly one courier**, **minimizing total cost**.
+Find a 1-to-1 assignment where every courier is assigned to exactly one zone and every zone is assigned to exactly one courier, **minimizing total cost**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[][]` | Square $n \times n$ assignment cost matrix (`costs[i][j]` is the cost for courier $i$ to cover zone $j$) |
+| `costs` | `number[][]` | Square $n \times n$ assignment cost matrix (`costs[i][j]` is the cost in thousand yen for courier $i$ to cover zone $j$) |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
 | `assignment` | `number[]` | Array of length $n$ where `assignment[i]` is the zone index assigned to courier $i$ |
-| `totalCost` | `number` | Minimized total cost |
+| `totalCost` | `number` | Minimized total cost (thousand yen) |
 
 <!-- section:example -->
 **Input**

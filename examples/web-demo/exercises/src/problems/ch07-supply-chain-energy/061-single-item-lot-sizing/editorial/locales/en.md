@@ -1,6 +1,6 @@
 ## Approach
 
-While standard lot sizing uses aggregated variables $(x_t, I_t, y_t)$ linked by $x_t \le C_t y_t$, disaggregating production into $w_{t,k} \ge 0$ (units produced in period $t$ to serve demand in period $k \ge t$) yields the **facility-location reformulation**, tightening the LP relaxation dramatically while sharing the exact same integer optimum.
+Over a $T$-period horizon with demands $d_k$, fixed setup costs $F_t$, unit production costs $c_t$, holding costs $h_t$, and capacities $C_t$, we decide binary setup indicators $y_t$ and disaggregated production flows $w_{t,k} \ge 0$ (units produced in period $t$ to serve demand in period $k \ge t$). Enforcing demand satisfaction, disaggregated setup-linking bounds, and per-period capacity limits yields the **facility-location reformulation**, which minimizes total setup, production, and holding cost while sharing the exact same integer optimum as the standard aggregated model $(x_t, I_t, y_t)$ with a much tighter LP relaxation.
 
 ## Mathematical Model
 
@@ -15,8 +15,8 @@ $$
 
 ## Key Points
 
-- **Why disaggregation strengthens the LP bound**: In the aggregated Big-M model $x_t \le C_t y_t$, a large capacity $C_t$ lets the LP relaxation set $y_t = x_t / C_t \ll 1$, charging only a small fraction of $F_t$. Disaggregating to $w_{t,k} \le d_k y_t$ forces $y_t \ge w_{t,k} / d_k$, giving the convex hull of uncapacitated lot sizing and cutting branch-and-bound nodes sharply.
-- **Recovering $(x_t, I_t)$ from $w_{t,k}$**: Period production is $x_t = \sum_{k=t}^{T-1} w_{t,k}$, and ending inventory is $I_t = \sum_{\tau=0}^t \sum_{k=t+1}^{T-1} w_{\tau,k}$ (automatically satisfying $I_t = I_{t-1} + x_t - d_t$ and $I_{T-1} = 0$).
+- **Why disaggregation strengthens the LP bound**: In the aggregated Big-M model $x_t \le C_t y_t$, a large capacity $C_t$ lets the LP relaxation set $y_t = x_t / C_t \ll 1$, charging only a small fraction of $F_t$. Disaggregating to $w_{t,k} \le d_k y_t$ forces $y_t \ge w_{t,k} / d_k$ (for $d_k > 0$), giving the convex hull of uncapacitated lot sizing and cutting branch-and-bound nodes sharply.
+- **Recovering $(x_t, I_t)$ from $w_{t,k}$**: Period production is $x_t = \sum_{k=t}^{T-1} w_{t,k}$, and ending inventory is $I_t = \sum_{\tau=0}^t \sum_{k=t+1}^{T-1} w_{\tau,k}$ (automatically satisfying $I_t = I_{t-1} + x_t - d_t$ with $I_{-1} = 0$, as well as $I_{T-1} = 0$).
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

@@ -1,6 +1,6 @@
 {
   "title": "#080. Integrated Staff, Slot & Shared Equipment Scheduling",
-  "subtitle": "Chapter 8 synthesis: jointly schedule procedures to timeslots, certified staff shifts, and shared limited equipment minimizing cost and overtime.",
+  "subtitle": "Chapter 8 synthesis: jointly schedule procedures to timeslots, certified staff shifts, and shared limited equipment, minimizing total staffing, overtime, and slot penalty cost.",
   "tags": [
     "MIP",
     "Integrated Scheduling",

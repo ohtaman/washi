@@ -1,5 +1,5 @@
 {
-  "title": "#044. Security Policy Counterexample Search",
+  "title": "#044. Security Policy Counterexample Search (SMT)",
   "subtitle": "Prove a safety invariant by refutation: assert all policy rules together with not(safeInvariant) in Z3 to find a concrete violation.",
   "tags": [
     "SMT",
@@ -8,9 +8,9 @@
     "Security"
   ],
   "caseNames": [
-    "Firewall SSH rule with missing MFA check",
-    "Patched firewall SSH policy",
-    "API burst-quota privilege loophole",
+    "SSH access policy (variant A)",
+    "SSH access policy (variant B)",
+    "API burst-quota policy",
     "Database export clearance policy",
     "Cloud IAM cross-account role assumption"
   ],

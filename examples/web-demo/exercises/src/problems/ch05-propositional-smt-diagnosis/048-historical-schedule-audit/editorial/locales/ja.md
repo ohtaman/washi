@@ -1,12 +1,12 @@
 ## アプローチ
 
-真偽値変数 `m.bool`、有界整数変数 `m.integer`、およびルール ID を付けた制約 `m.constraint(..., r.id)` でモデルを構築し、探索を実行せずに `m.verify({ values: input.candidateValues })` を呼び出します。`report.violations` から違反ルール名を重複排除・辞書順ソートして返します。
+記録された実績割当 $\hat{v}$ に対して各名前付きルールを直接評価し、偽となるすべてのルール ID を収集します。WaSHI では真偽値変数 `m.bool`、有界整数変数 `m.integer`、およびルール ID を付けた制約 `m.constraint(..., r.id)` でモデルを構築し、探索を実行せずに `m.verify({ values: input.candidateValues })` を呼び出して、`report.violations` から違反ルール名を重複排除・辞書順ソートして返します。
 
 ## 数理モデル
 
 $$
 \begin{aligned}
-\text{Violated} &= \bigl\{\, r.\text{id} \in R \;\big|\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
+\text{Violated} &= \bigl\{\, r.\text{id} \;\big|\; r \in R,\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
 \text{valid} &\iff \text{Violated} = \emptyset
 \end{aligned}
 $$

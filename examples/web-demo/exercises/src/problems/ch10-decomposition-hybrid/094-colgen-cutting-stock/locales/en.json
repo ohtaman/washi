@@ -8,11 +8,11 @@
     "LP / MIP"
   ],
   "caseNames": [
-    "Classic 3-width 100-cm stock roll",
-    "Compact 3-width 50-cm stock roll",
-    "4-width 120-cm industrial roll",
-    "4-width 80-cm medium roll",
-    "5-width 100-cm multi-cut stock"
+    "Classic 3-item width-100 stock roll",
+    "Compact 3-item width-50 stock roll",
+    "4-item width-120 industrial roll",
+    "4-item width-80 medium roll",
+    "5-item width-100 multi-cut stock"
   ],
   "judge": {
     "m0": "Output must be an object { patterns, counts, totalRolls }.",

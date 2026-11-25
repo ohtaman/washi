@@ -10,15 +10,15 @@ Select a subset of monitoring packages so that every component is monitored by *
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `numElements` | `number` | Number of components indexed `0` through `numElements - 1` |
-| `costs` | `number[]` | Cost of selecting each candidate package |
-| `sets` | `number[][]` | Components covered by each candidate package $j$ |
+| `numElements` | `number` | Number of components indexed 0 through `numElements - 1` |
+| `costs` | `number[]` | Licensing cost of selecting each candidate package |
+| `sets` | `number[][]` | Components covered by each candidate package |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `selected` | `number[]` | Binary (`0` or `1`) choices for each candidate package |
+| `selected` | `number[]` | Binary (0 or 1) choices for each candidate package |
 | `totalCost` | `number` | Minimized total licensing cost |
 
 <!-- section:example -->
@@ -50,7 +50,7 @@ Select a subset of monitoring packages so that every component is monitored by *
 Selecting packages 1 (`[0, 3]`) and 2 (`[1, 2, 4]`) covers every component `{0, 1, 2, 3, 4}` at least once for total cost $4 + 5 =$ **9**.
 
 <!-- section:hint1 -->
-Model each candidate package with a binary selection variable. The model has one coverage constraint per element, ensuring that at least one package containing that element is chosen, while minimizing total cost.
+Model each candidate package with a binary selection variable. The model has one coverage constraint per component, ensuring that at least one package covering that component is chosen, while minimizing total licensing cost.
 
 <!-- section:hint2 -->
-Transpose the incidence relationship: instead of iterating over `sets[j]`, iterate over each element $i \in \{0, \dots, \text{numElements} - 1\}$ and collect the binary variables `selected[j]` for all packages $j$ that include $i$, constraining their sum to be $\ge 1$.
+Transpose the incidence relationship: instead of iterating over `sets[j]`, iterate over each component $i \in \{0, \dots, \text{numElements} - 1\}$ and collect the binary variables `selected[j]` for all packages $j$ that include $i$, constraining their sum to be $\ge 1$.

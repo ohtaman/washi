@@ -9,7 +9,7 @@
   "caseNames": [
     "3-team interior trade-off",
     "4-team pure cost baseline (zero fairness weight)",
-    "4-team bound-saturated allocation",
+    "4-team heterogeneous bounds and costs",
     "5-team high fairness weight",
     "6-team mild fairness balancing"
   ],

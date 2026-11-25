@@ -1,6 +1,6 @@
 ## 解题思路
 
-在二进制变量 $x_{i,d,s} \in \{0, 1\}$ 上施加每人每天至多一班约束，针对每个有效 `(d, s)` 班次依次添加总人数、资深负责人及各项技能的覆盖不等式，再对所有互斥对 $(a, b)$ 施加同班互斥约束 $x_{a,d,s} + x_{b,d,s} \le 1$，最小化总成本。
+在二进制变量 $x_{i,d,s} \in \{0, 1\}$ 上施加每人每天至多一班约束，针对每个有效 `(d, s)` 班次依次添加总人数、资深带班及各项技能的覆盖不等式，再对所有互斥对 $(a, b)$ 施加同班互斥约束 $x_{a,d,s} + x_{b,d,s} \le 1$，最小化总成本。
 
 ## 数学模型
 
@@ -8,8 +8,8 @@ $$
 \begin{aligned}
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, d \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : D_{d,s} > 0 \\
-& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : D_{d,s} > 0, \; \forall k \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : r_{d,s} > 0 \\
+& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : r_{d,s} > 0, \; \forall k \\
 & x_{a,d,s} + x_{b,d,s} \le 1 && \forall (a, b) \in \text{NG}, \; \forall d, s \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
@@ -24,7 +24,7 @@ $$
 
 ## 实现要点
 
-针对每个有效 `(d, s)` 班次的员工指派列向量 `col`，施加总人数、资深负责人及各技能需求人数的点积约束，再为所有互斥对添加同班互斥约束。在 WaSHI 中使用 `forEach` 和 `flatMap` 构建约束数组，在 PuLP 中则通过循环与 `pulp.lpDot` 实现。
+针对每个有效 `(d, s)` 班次的员工指派列向量 `col`，施加总人数、资深带班及各技能需求人数的点积约束，再为所有互斥对添加同班互斥约束。在 WaSHI 中使用 `forEach` 和 `flatMap` 构建约束数组，在 PuLP 中则通过循环与 `pulp.lpDot` 实现。
 
 **WaSHI (TypeScript)**
 

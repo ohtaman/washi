@@ -23,6 +23,6 @@
     "m5": "Realized cost ({p0}) deviates below the rolling-horizon MPC cost ({p1}); check that each step plans only over windowLen using forecastDemands.",
     "m6": "Realized cost ({p0}) exceeds the rolling-horizon MPC cost ({p1}).",
     "m7": "Rolling-horizon MPC schedule verified (totalCost = {p0}).",
-    "m8": "Period {p0} action produced[{p0}] = {p1} is not optimal for the {p0}-th forecast window (window cost {p2} vs optimum {p3})."
+    "m8": "Period {p0} action produced[{p0}] = {p1} is not optimal for the period {p0} forecast window (window cost {p2} vs optimum {p3})."
   }
 }

@@ -9,7 +9,7 @@
   ],
   "caseNames": [
     "4-variable protocol preference tradeoff",
-    "4-variable conflict-free soft policy",
+    "4-variable CDN & caching policy",
     "5-variable branch penalty tradeoff",
     "6-variable multi-soft conflict",
     "8-variable enterprise security repair"

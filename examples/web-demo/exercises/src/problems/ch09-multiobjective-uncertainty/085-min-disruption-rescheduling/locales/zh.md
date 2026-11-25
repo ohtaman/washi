@@ -10,18 +10,18 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `baseline` | `number[][]` | 基准 0-1 排班矩阵（$m \times T$） |
-| `unavailable` | `number[][]` | 不可出勤掩码（1 表示员工 $i$ 在时段 $t$ 不可分配） |
-| `demands` | `number[]` | 各时段 $t$ 要求恰好满足的所需人数 |
-| `maxShifts` | `number[]` | 每位员工 $i$ 的最大班次上限 |
-| `workerCosts` | `number[]` | 每位员工 $i$ 每班次的分配成本 |
+| `baseline` | `number[][]` | 基准 0-1 排班矩阵（`[员工][时段]`，$m \times T$） |
+| `unavailable` | `number[][]` | 不可出勤掩码（`[员工][时段]`，$m \times T$；1 表示不可分配） |
+| `demands` | `number[]` | 各时段的恰好在岗人数 |
+| `maxShifts` | `number[]` | 每位员工的班次上限 |
+| `workerCosts` | `number[]` | 每位员工每班次的分配成本 |
 | `disruptionWeight` | `number` | 相对基准排班每变动一个单元格的惩罚权重 |
 
 ### 输出
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `schedule` | `number[][]` | 修复后的 0-1 排班矩阵（$m \times T$） |
+| `schedule` | `number[][]` | 修复后的 0-1 排班矩阵（`[员工][时段]`，$m \times T$） |
 | `hammingDistance` | `number` | 与基准排班不同的单元格总数 |
 | `totalObjective` | `number` | 最小化后的汉明扰动惩罚与人力成本之和 |
 

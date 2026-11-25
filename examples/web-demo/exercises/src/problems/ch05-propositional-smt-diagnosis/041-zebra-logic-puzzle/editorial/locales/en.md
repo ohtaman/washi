@@ -1,6 +1,6 @@
 ## Approach
 
-Declare a Boolean variable $x_{c,v,p} \in \{\text{false}, \text{true}\}$ via `m.bool()` for every category $c$, attribute value $v \in V_c$, and position $p \in \{0, \dots, n-1\}$. Enforce exact-one constraints per `(position, category)` row and per `(category, value)` column using `or(...)` and pairwise `not(and(...))`, translate each structured clue into propositional constraints, and solve with `await m.check({ solver: "z3" })`.
+Model the grid with Boolean decision variables $x_{c,v,p} \in \{\text{false}, \text{true}\}$ indicating whether category $c$ takes attribute value $v \in V_c$ at position $p \in \{0, \dots, n-1\}$. Enforce exact-one constraints for every `(position, category)` pair and every `(category, value)` pair, and express each structured clue as a propositional constraint over these variables. In WaSHI, declare the variables with `m.bool()`, encode exact-one using `or(...)` and pairwise `not(and(...))`, and check satisfiability with `await m.check({ solver: "z3" })`.
 
 ## Mathematical Model
 

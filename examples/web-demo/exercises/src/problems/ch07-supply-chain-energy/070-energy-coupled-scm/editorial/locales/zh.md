@@ -11,11 +11,11 @@ $$
 & E_t = E_{t-1} + \eta_c c_t - \frac{1}{\eta_d} d_t && \forall t \;\; (E_{-1} = E_{\text{init}},\; E_{T-1} \ge E_{\text{init}}) \\
 & g_t = L_t + p_{\text{idle}} y_t + p_{\text{unit}} x_t + c_t - d_t \ge 0, \quad P_{\text{peak}} \ge g_t && \forall t \\
 & 0 \le c_t \le P_{\max} z_t, \quad 0 \le d_t \le P_{\max} (1 - z_t) && \forall t \\
-& y_t, z_t \in \{0, 1\}, \quad I_t \ge 0, \quad 0 \le E_t \le E_{\max}
+& y_t, z_t \in \{0, 1\}, \quad I_t \ge 0, \quad 0 \le E_t \le E_{\max} && \forall t
 \end{aligned}
 $$
 
-其中 $D_t$（`demands[t]`）表示给定的产品需求量，$d_t$（`discharge[t]`）表示可控的电池放电功率。
+其中 $D_t$（`demands[t]`）表示给定的产品需求量，$d_t$（`discharge[t]`）表示可控的电池放电功率；其余参数分别对应 $F$（`setupCost`）、$h$（`holdCost`）、$C_{\text{prod}}$（`prodCap`）、$p_{\text{idle}}$（`setupPower`）、$p_{\text{unit}}$（`unitPower`）、$L_t$（`baseLoads[t]`）、$\pi_t$（`prices[t]`）、$\gamma$（`demandCharge`）、$E_{\max}$（`batteryCap`）、$E_{\text{init}}$（`initSoc`）、$P_{\max}$（`maxPower`）、$\eta_c$（`etaCharge`）与 $\eta_d$（`etaDischarge`）。
 
 ## 核心要点
 
@@ -30,15 +30,20 @@ $$
 **WaSHI (TypeScript)**
 
 ```ts
-m.constraint(expr`${production[t]} <= ${input.prodCap} * ${setups[t]}`);
-m.constraint(expr`${prevInv} + ${production[t]} - ${inventory[t]} == ${demand}`);
-m.constraint(
-  expr`${soc[t]} - ${prevSoc} - ${input.etaCharge} * ${charge[t]} + ${invEtaD} * ${discharge[t]} == 0`
-);
-m.constraint(
-  expr`${gridLoad[t]} - ${input.setupPower} * ${setups[t]} - ${input.unitPower} * ${production[t]} - ${charge[t]} + ${discharge[t]} == ${input.baseLoads[t]}`
-);
-m.constraint(expr`${peakLoad} >= ${gridLoad[t]}`);
+const invEtaD = 1 / input.etaDischarge;
+input.demands.forEach((demand, t) => {
+  const prevInv = t === 0 ? 0 : inventory[t - 1];
+  const prevSoc = t === 0 ? input.initSoc : soc[t - 1];
+  m.constraint(expr`${production[t]} <= ${input.prodCap} * ${setups[t]}`);
+  m.constraint(expr`${prevInv} + ${production[t]} - ${inventory[t]} == ${demand}`);
+  m.constraint(
+    expr`${soc[t]} - ${prevSoc} - ${input.etaCharge} * ${charge[t]} + ${invEtaD} * ${discharge[t]} == 0`
+  );
+  m.constraint(
+    expr`${gridLoad[t]} - ${input.setupPower} * ${setups[t]} - ${input.unitPower} * ${production[t]} - ${charge[t]} + ${discharge[t]} == ${input.baseLoads[t]}`
+  );
+  m.constraint(expr`${peakLoad} >= ${gridLoad[t]}`);
+});
 ```
 
 **PuLP (Python)**
@@ -46,7 +51,7 @@ m.constraint(expr`${peakLoad} >= ${gridLoad[t]}`);
 ```python
 prob += production[t] <= prod_cap * setups[t]
 prob += prev_inv + production[t] - inventory[t] == demands[t]
-prob += soc[t] == prev_soc + eta_c * charge[t] - discharge[t] / eta_d
+prob += soc[t] == prev_soc + eta_charge * charge[t] - discharge[t] / eta_discharge
 prob += grid_load[t] == base_loads[t] + setup_power * setups[t] + unit_power * production[t] + charge[t] - discharge[t]
 prob += peak_load >= grid_load[t]
 ```

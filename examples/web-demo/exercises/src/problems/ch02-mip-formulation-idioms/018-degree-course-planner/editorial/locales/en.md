@@ -1,6 +1,6 @@
 ## Approach
 
-Declare binary decision variables `take[j]`, enforce one linear capacity inequality per workload category `caps[k]`, add prerequisite inequalities `take[course] <= take[prereq]` and time-conflict inequalities `take[a] + take[b] <= 1`, and maximize total interest.
+Declare binary decision variables $x_j$ (`take[j]`), enforce one linear capacity inequality per workload category using requirements $w_{k,j}$ (`requirements[k][j]`) and caps $C_k$ (`caps[k]`), add prerequisite inequalities for pairs in $\mathcal{P}$ (`prerequisites`) and time-conflict inequalities for pairs in $\mathcal{T}$ (`timeConflicts`), and maximize total interest weighted by $v_j$ (`interest[j]`).
 
 ## Mathematical Model
 

@@ -1,7 +1,7 @@
 # #091. Tight Big-M & Formulation Scaling
 
 <!-- section:scenario -->
-A beverage manufacturer's production planner must decide which bottling plants to operate and how much to produce at each plant (in cases) to satisfy total demand (in cases) while minimizing fixed plus variable production costs. When some plants have physical capacities far exceeding total demand, using an arbitrary huge constant or raw plant capacity as Big-M severely weakens the continuous LP relaxation lower bound.
+A beverage manufacturer's production planner must decide which bottling plants to operate and how much to produce at each plant (in cases) to satisfy total demand (in cases) while minimizing fixed plus variable production costs. A closed plant produces nothing, while an open plant cannot exceed its physical capacity. When some plants have physical capacities far exceeding total demand, using an arbitrary huge constant or raw plant capacity as Big-M severely weakens the continuous LP relaxation lower bound.
 
 Formulate the linking constraints between plant activation and production quantity using the tightest upper bound (tight Big-M) derivable from the input data for each plant, and return both the optimal integer solution and the LP relaxation objective value of that tight formulation.
 
@@ -47,7 +47,7 @@ Formulate the linking constraints between plant activation and production quanti
 }
 ```
 
-Opening plant 2 yields $60 \le 80$ output meeting demand $60$ at total cost $450 + 11 \times 60 =$ **1,110**, while the tight Big-M LP relaxation achieves lower bound **1,050**.
+Opening plant 2 yields $60 \le 80$ output meeting demand 60 at total cost $450 + 11 \times 60 =$ **1,110**, while the tight Big-M LP relaxation yields an LP lower bound of **1,050**.
 
 <!-- section:hint1 -->
 Model a binary open/close decision and a continuous non-negative production quantity for each plant. Minimize total fixed setup costs plus variable production costs subject to meeting total demand and linking each plant's output to its open indicator.

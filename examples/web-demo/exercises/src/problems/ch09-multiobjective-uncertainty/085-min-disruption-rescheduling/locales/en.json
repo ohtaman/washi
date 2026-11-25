@@ -10,9 +10,9 @@
   "caseNames": [
     "3-worker ripple swap after single outage",
     "4-worker dual disruption recovery",
-    "4-worker zero-disruption baseline retention",
+    "4-worker outage-free baseline",
     "5-worker multi-slot cascading shifts",
-    "6-worker cost-driven reassignment"
+    "6-worker low disruption weight and wide wage gap"
   ],
   "judge": {
     "m0": "Output must be an object { schedule, hammingDistance, totalObjective }.",

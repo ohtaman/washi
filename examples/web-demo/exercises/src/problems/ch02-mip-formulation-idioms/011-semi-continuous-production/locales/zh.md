@@ -21,7 +21,7 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `active` | `number[]` | 是否酿造各品种的选择（0 或 1） |
-| `quantities` | `number[]` | 各品种的酿造量（0 或区间 `[minBatches[i], maxBatches[i]]`） |
+| `quantities` | `number[]` | 各品种的酿造量（升）：0 或区间 `[minBatches[i], maxBatches[i]]` |
 | `totalMargin` | `number` | 最大化后的总毛利润 |
 
 <!-- section:example -->

@@ -1,6 +1,6 @@
 ## 解题思路
 
-将每个周期的库存动态拆分为两条耦合的线性守恒等式：一条刻画物理库存 $I_t \ge 0$，另一条将当期需求拆解为实际交付 $s_t$、延期积压 $b_t \ge 0$ 与永久流失 $l_t \in [0, d_t]$，并设定边界条件 $b_{T-1} = 0$，构成纯连续线性规划最大化净利润。
+在 $T$ 个周期内，给定各期客户需求 $d_t$、产能上限 $C_t$、单位生产成本 $c_t$、销售单价 $r$、库存持有成本 $h$、延期积压惩罚 $p_b$、缺货损失惩罚 $p_l$ 以及期初库存 $I_{\text{init}}$，我们为每期引入非负连续决策变量：生产量 $x_t$、实际交付量 $s_t$、期末物理库存 $I_t$、期末延期积压 $b_t$ 与缺货损失 $l_t$。通过两条耦合的线性守恒等式分别刻画物理库存与延期积压演变，并施加产能上限、缺货损失不超过需求以及末期清零条件 $b_{T-1} = 0$。以总交付收入减去生产、持有、延期积压与缺货损失成本作为目标，即构成纯连续线性规划最大化净利润。
 
 ## 数学模型
 
@@ -44,7 +44,7 @@ m.constraint(
 
 ```python
 for t in range(T):
-    prev_inv = init_inv if t == 0 else inventory[t - 1]
+    prev_inv = initial_inventory if t == 0 else inventory[t - 1]
     prev_back = 0 if t == 0 else backlog[t - 1]
     prob += prev_inv + production[t] - sales[t] == inventory[t]
     prob += prev_back + demands[t] - sales[t] - lost_sales[t] == backlog[t]

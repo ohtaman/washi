@@ -3,7 +3,11 @@
 <!-- section:scenario -->
 An electric bicycle assembly plant plans regular production, overtime production, and end-of-period inventory across multiple consecutive periods (months), starting from a known initial inventory (units).
 
-In every period, regular and overtime production cannot exceed their respective period capacities, warehouse storage cannot exceed the holding cap, and beginning inventory plus regular and overtime output minus demand must equal ending inventory (all non-negative). Furthermore, ending inventory after the final period must meet or exceed a required safety stock threshold. Schedule regular production, overtime production, and inventory levels to **minimize total production and holding cost**.
+- In every period, regular production, overtime production, and ending inventory are non-negative continuous quantities that cannot exceed their respective period capacities and warehouse holding cap.
+- In every period, beginning inventory plus regular and overtime output minus demand must equal ending inventory.
+- Ending inventory after the final period must meet or exceed the required safety stock threshold.
+
+Schedule regular production, overtime production, and inventory levels to **minimize total production and holding cost**.
 
 <!-- section:io -->
 ### Input
@@ -24,9 +28,9 @@ In every period, regular and overtime production cannot exceed their respective 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `regular` | `number[]` | Regular production schedule across periods |
-| `overtime` | `number[]` | Overtime production schedule across periods |
-| `inventory` | `number[]` | End-of-period inventory schedule across periods |
+| `regular` | `number[]` | Regular production schedule across periods (units) |
+| `overtime` | `number[]` | Overtime production schedule across periods (units) |
+| `inventory` | `number[]` | End-of-period inventory schedule across periods (units) |
 | `totalCost` | `number` | Minimized total production and holding cost |
 
 <!-- section:example -->

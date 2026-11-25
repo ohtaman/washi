@@ -15,7 +15,7 @@ $$
 ## Key Points
 
 - **Why binary variables are required**: While unconstrained shortest path is totally unimodular (integral under LP), adding a single side constraint ($\sum_e r_e x_e \le R$) breaks total unimodularity—an LP relaxation can split flow fractionally between a cheap resource-heavy path and a costlier resource-light path.
-- **Cycle-freeness**: With strictly positive arc costs ($c_e > 0$), minimizing cost automatically excludes isolated cycles alongside the s-to-t path.
+- **Cycle-freeness**: With strictly positive arc costs ($c_e > 0$) and non-negative resource consumptions ($r_e \ge 0$), removing any directed cycle (whether isolated or attached to the path) preserves flow conservation and the resource budget while strictly lowering total cost—so minimizing cost automatically yields a simple s-t path without extra cycle-elimination constraints.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

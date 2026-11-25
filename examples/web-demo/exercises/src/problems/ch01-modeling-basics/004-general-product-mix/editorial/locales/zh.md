@@ -1,6 +1,6 @@
 ## 解题思路
 
-创建长度为 `margins.length` 的非负连续变量数组 `quantities`，将每一行资源消耗 `usages[k]` 映射为 `dot(...) <= capacities[k]` 约束，并最大化总利润 `dot(margins, quantities)`。
+将每种口味 $j$ 的产量（升）定义为非负连续变量 $x_j$（`quantities[j]`）。结合各口味的单位利润 $c_j$（`margins[j]`）、每升对原料或设备 $k$ 的消耗量 $a_{k,j}$（`usages[k][j]`）以及可用上限 $b_k$（`capacities[k]`），在所有原料或设备的总消耗不超过 $b_k$ 的约束下最大化总利润。在 WaSHI 和 PuLP 中，可以借助**变量数组 `quantities`** 与 **`dot` / `lpDot`** 简洁地表达该矩阵模型。
 
 ## 数学模型
 

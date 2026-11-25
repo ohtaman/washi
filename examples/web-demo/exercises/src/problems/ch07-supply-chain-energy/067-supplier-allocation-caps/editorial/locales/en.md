@@ -14,6 +14,8 @@ $$
 \end{aligned}
 $$
 
+Here $F_s$ (`fixedCosts[s]`), $c_{s,p}$ (`unitCosts[s][p]`), $L_s$ (`minOrders[s]`), $U_s$ (`maxOrders[s]`), $D_p$ (`demands[p]`), $\alpha$ (`maxShare`), and $K_{\min}, K_{\max}$ (`minSuppliers`, `maxSuppliers`) correspond to the input fields.
+
 ## Key Points
 
 - **Variable bounds encode diversification cleanly**: Placing $q_{s,p} \le \alpha D_p$ directly in the variable declaration avoids $S \times P$ explicit constraint rows while forcing every plant to split orders across at least $\lceil 1 / \alpha \rceil$ suppliers.
@@ -44,6 +46,13 @@ allocations.forEach((row, s) => {
 **PuLP (Python)**
 
 ```python
+allocations = [
+    [
+        pulp.LpVariable(f"q_{s}_{p}", lowBound=0, upBound=max_share * demands[p])
+        for p in range(n_plants)
+    ]
+    for s in range(n_sup)
+]
 prob += pulp.lpSum(active) >= min_suppliers
 prob += pulp.lpSum(active) <= max_suppliers
 for s in range(n_sup):

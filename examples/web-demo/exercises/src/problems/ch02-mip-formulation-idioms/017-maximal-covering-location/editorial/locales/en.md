@@ -1,6 +1,6 @@
 ## Approach
 
-Introduce binary facility variables `open[j]` and binary coverage indicators `covered[i]`, limit total open sites to `maxFacilities`, link each zone's coverage to open sites within `coverageRadius`, and maximize covered demand.
+Introduce binary opening variables $y_j$ (`open[j]`) and binary coverage indicators $z_i$ (`covered[i]`), cap total open sites at $p$ (`maxFacilities`), link each zone's coverage to open sites within radius $R$ (`coverageRadius`), and maximize total covered demand weighted by $d_i$ (`demands[i]`).
 
 ## Mathematical Model
 
@@ -15,8 +15,8 @@ $$
 
 ## Key Points
 
-- **Why `covered[i] <= sum(...)` suffices without lower-bound OR constraints**: Because each `covered[i]` is binary and has a positive objective weight `demands[i] >= 0`, the solver naturally sets `z_i = 1` whenever at least one nearby site is open, while forcing `z_i = 0` when none is open (including unreachable zones where the neighborhood is empty).
-- **MCLP vs. Set Covering**: Set Covering requires covering 100% of elements and minimizes cost; MCLP fixes the facility budget `p` and maximizes the covered demand when complete coverage is impossible or too costly.
+- **Why $z_i \le \sum y_j$ suffices without lower-bound OR constraints**: Because $z_i \in \{0, 1\}$ and demand weights are non-negative ($d_i \ge 0$), whenever at least one nearby site is open, maximization naturally sets $z_i = 1$ for any zone with $d_i > 0$ (while any zone with $d_i = 0$ does not affect the objective), and $z_i \le 0$ forces $z_i = 0$ when no reachable site is open (including unreachable zones where the neighborhood is empty).
+- **MCLP vs. Set Covering**: Set Covering requires covering 100% of elements and minimizes cost; MCLP fixes the facility budget $p$ and maximizes the covered demand when complete coverage is impossible or too costly.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation

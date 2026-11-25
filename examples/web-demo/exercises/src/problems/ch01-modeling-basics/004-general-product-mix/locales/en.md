@@ -1,24 +1,24 @@
-# #004. General Product Mix (m x n Matrix)
+# #004. Gelato Creamery Production Mix (m × n Matrix)
 
 <!-- section:scenario -->
-Now let's generalize **#001** from two fixed products to any number of products and shared resource limits.
+An artisan creamery manufactures multiple flavors of gelato. Each liter of a flavor earns a fixed profit margin and consumes set amounts of shared ingredients (such as milk and cream) and equipment capacity (such as freezer time).
 
-An artisan creamery manufactures bulk gelato across multiple flavors in non-negative continuous quantities. Each batch draws from several shared ingredients and kitchen resources, where every liter of a flavor earns a unit profit margin and consumes a specific amount of each resource. Without exceeding any resource capacity, determine how many liters of each flavor to produce in order to **maximize total profit**.
+The number of flavors and shared resources varies with the input. Without exceeding any ingredient or equipment capacity, determine the production volume of each flavor (in liters, as a non-negative continuous quantity) to **maximize total profit**.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `margins` | `number[]` | Unit profit margin of each product $j$ |
-| `usages` | `number[][]` | Resource usage matrix where `usages[k][j]` is resource $k$ per unit of product $j$ |
-| `capacities` | `number[]` | Available capacity of each resource $k$ |
+| `margins` | `number[]` | Profit margin per liter of flavor $j$ |
+| `usages` | `number[][]` | Resource usage matrix where `usages[k][j]` is the amount of ingredient/resource $k$ used per liter of flavor $j$ |
+| `capacities` | `number[]` | Available capacity of ingredient/resource $k$ |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `quantities` | `number[]` | Non-negative continuous production amounts of length $n$ |
+| `quantities` | `number[]` | Non-negative continuous production volume (in liters) for each flavor |
 | `totalProfit` | `number` | Maximized total profit |
 
 <!-- section:example -->
@@ -44,4 +44,4 @@ An artisan creamery manufactures bulk gelato across multiple flavors in non-nega
 }
 ```
 
-Producing `[20, 30]` uses $3 \times 20 + 1 \times 30 = 90$ of resource 0 and $1 \times 20 + 2 \times 30 = 80$ of resource 1 (within both capacities), giving total profit $500 \times 20 + 300 \times 30 =$ **19,000**.
+Producing `[20, 30]` liters uses $3 \times 20 + 1 \times 30 = 90$ of ingredient/resource 0 and $1 \times 20 + 2 \times 30 = 80$ of ingredient/resource 1 (within both capacities), giving total profit $500 \times 20 + 300 \times 30 =$ **19,000**.

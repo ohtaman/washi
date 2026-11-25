@@ -1,16 +1,18 @@
 ## Approach
 
-Build a set-covering Restricted Master Problem (`master`) with daily demand rows `0 >= demands[d]` and single-day starter shift columns registered via `master.column(...)`. Call `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })`, where `pricing` solves a binary MIP subproblem over the $D$ days enforcing `1 <= sum(a) <= maxWorkDays` and sliding-window consecutive limits to find shift vectors with negative reduced cost.
+Formulate the shift-rostering Restricted Master Problem (RMP) as a set-covering LP choosing headcounts $\lambda_p$ for active shift patterns to meet each day's minimum staffing demand $r_d$, paired with a binary pricing subproblem over the $D$ days enforcing total work-day bounds ($1 \le \sum_d a_d \le M_{\text{work}}$) and sliding-window consecutive limits to find legal shifts with negative reduced cost. In WaSHI, seed `master` with named daily demand constraints and single-day starter columns via `master.column(...)`, then call `solveColumnGeneration({ master, finalizeAsMIP: true, pricing })` to generate improving patterns from LP duals and finalize an integer schedule.
 
 ## Mathematical Model
 
 $$
 \begin{aligned}
-\text{(RMP)} \quad \min \quad & \sum_{p \in \mathcal{P}} \left(F + \sum_{d=0}^{D-1} c_d a_{dp}\right) \lambda_p \\
+\text{(RMP LP)} \quad \min \quad & \sum_{p \in \mathcal{P}} \left(F + \sum_{d=0}^{D-1} c_d a_{dp}\right) \lambda_p \\
 \text{s.t.} \quad & \sum_{p \in \mathcal{P}} a_{dp} \lambda_p \ge r_d && \forall d \in \{0, \dots, D-1\} \quad (\text{dual } \pi_d) \\
-& \lambda_p \in \mathbb{Z}_{\ge 0} && \forall p \in \mathcal{P}
+& \lambda_p \ge 0 && \forall p \in \mathcal{P}
 \end{aligned}
 $$
+
+Integrality ($\lambda_p \in \mathbb{Z}_{\ge 0}$) is enforced after column generation converges when finalizing the MIP (`finalizeAsMIP: true`).
 
 $$
 \begin{aligned}
@@ -57,7 +59,12 @@ const result = await solveColumnGeneration<number[]>({
     const reducedCost = input.baseCost - (sub.objectiveValue ?? 0);
     if (reducedCost >= -1e-5) return null;
     const pat = a.map((v) => Math.round(v.value ?? 0));
-    return { type: "Integer", cost: patCost(pat), coefficients: toCoeffs(pat), reducedCost, meta: pat };
+    const cost =
+      input.baseCost + pat.reduce((acc, v, d) => acc + v * input.shiftCosts[d], 0);
+    const coefficients = Object.fromEntries(
+      pat.flatMap((v, d) => (v > 0 ? [[`demand_${d}`, 1]] : []))
+    );
+    return { type: "Integer", cost, coefficients, reducedCost, meta: pat };
   },
 });
 ```

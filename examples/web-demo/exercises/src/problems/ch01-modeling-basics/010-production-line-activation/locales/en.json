@@ -18,8 +18,8 @@
     "m0": "Output must be an object { open, quantities, netProfit }.",
     "m1": "open[{p0}] must be binary 0 or 1 (received {p1}).",
     "m2": "quantities[{p0}] cannot be negative (received {p1}).",
-    "m3": "Line {p0} produced {p1} units exceeding allowed capacity {p2} for open[{p0}] = {p3}. Check your linking constraints!",
-    "m4": "Total material usage ({p0}) exceeds supply ({p1}).",
+    "m3": "Line {p0} production ({p1}) exceeds allowed capacity ({p2}) for open[{p0}] = {p3}.",
+    "m4": "Total resin pellet usage ({p0}) exceeds supply ({p1}).",
     "m5": "Reported netProfit ({p0}) does not match computed margin minus fixed costs ({p1}).",
     "m6": "Valid production schedule, but netProfit ({p0}) is below optimal ({p1}).",
     "m7": "Optimal line activation and production mix found (netProfit = {p0})!"

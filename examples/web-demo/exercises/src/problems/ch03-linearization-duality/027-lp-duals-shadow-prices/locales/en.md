@@ -1,27 +1,32 @@
 # #027. LP Shadow Prices (Dual Variables)
 
 <!-- section:scenario -->
-An operations analyst at an electric power utility is solving a generation dispatch problem to minimize total generation cost (in 10k JPY) across multiple generators, each with a non-negative continuous output up to its rated capacity (in MW). Each generator has a unit generation cost (10k JPY/MW) and a maximum output limit, and the combined output must meet each region's minimum electricity demand (MW) while staying within fuel consumption and emissions allowance caps.
+An operations analyst at an electric power utility is solving a generation dispatch problem to minimize total generation cost (in 10k JPY) across multiple generators, choosing each generator's non-negative continuous output (in MW). Each generator has a unit generation cost (10k JPY/MW) and contributes to each region's electricity demand while consuming each fuel/emissions cap at generator-specific per-MW rates.
 
-Beyond finding the minimum-cost generation quantities, the utility also needs the shadow price (marginal cost change per unit increase in the right-hand side) for every minimum demand constraint and every fuel/emissions cap constraint. Solve the minimization LP and return each generator's output, the shadow prices ordered as minimum demand constraints followed by resource cap constraints, and the minimum total cost.
+The dispatch plan must satisfy three operating conditions:
+- **Generator capacity**: Each generator's output is non-negative and cannot exceed its rated capacity (MW).
+- **Regional minimum demands**: Combined contributions from all generators must meet or exceed every region's minimum electricity demand (MW).
+- **Fuel/emissions caps**: Combined consumption across all generators must stay within every fuel/emissions cap.
+
+Beyond finding the minimum-cost generation outputs, the utility also needs the shadow price (marginal cost change per unit increase in each demand target or cap limit, the constraint's right-hand side) for every minimum demand constraint and every fuel/emissions cap constraint. Solve the minimization LP and return each generator's output, the shadow prices ordered as minimum demand constraints followed by fuel/emissions cap constraints, and the minimum total cost.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `costs` | `number[]` | Unit generation cost $c_i$ for generator $i$ (10k JPY/MW) |
-| `capacities` | `number[]` | Output upper bound $u_i$ for generator $i$ ($0 \le x_i \le u_i$, MW) |
-| `yields` | `number[][]` | Contribution coefficient matrix $A$ for minimum demand constraints |
-| `minRequirements` | `number[]` | Minimum electricity demand $r_k$ for each region ($\sum_i A_{ki} x_i \ge r_k$, MW) |
-| `resourceUsages` | `number[][]` | Consumption coefficient matrix $E$ for fuel/emissions cap constraints |
-| `maxResources` | `number[]` | Fuel/emissions cap $b_l$ ($\sum_i E_{li} x_i \le b_l$) |
+| `costs` | `number[]` | Unit generation cost for each generator (10k JPY/MW) |
+| `capacities` | `number[]` | Rated output upper bound for each generator (MW) |
+| `yields` | `number[][]` | Per-MW demand contribution matrix indexed as `[region][generator]` |
+| `minRequirements` | `number[]` | Minimum electricity demand for each region (MW) |
+| `resourceUsages` | `number[][]` | Per-MW cap consumption matrix indexed as `[cap][generator]` |
+| `maxResources` | `number[]` | Upper limit for each fuel/emissions cap |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `quantities` | `number[]` | Optimal generation output $x_i$ for each generator (MW) |
+| `quantities` | `number[]` | Optimal generation output for each generator (MW) |
 | `duals` | `number[]` | Shadow prices $\partial z^* / \partial \text{rhs}$ (`minRequirements` then `maxResources`) |
 | `optimalCost` | `number` | Minimized total generation cost $z^*$ (10k JPY) |
 

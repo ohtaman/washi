@@ -4,7 +4,7 @@
 You are organizing a dinner party and deciding which candidate guests to invite and how much gift budget to allocate to each invited guest. Inviting a guest brings a base enjoyment score plus an extra enjoyment bonus per dollar spent on their gift.
 
 Your invitation plan must satisfy all of the following rules:
-- **Gift budget bounds**: Each invited guest must receive a gift budget between their minimum and maximum spending limits (uninvited guests receive `0`).
+- **Gift budget bounds**: Each invited guest must receive a gift budget between their minimum and maximum spending limits (uninvited guests receive 0).
 - **Total budget cap**: The sum of gift budgets across all guests cannot exceed the total party budget.
 - **Pairing requirements**: Certain pairs require inviting the second guest whenever the first guest is invited.
 - **Conflicts**: Certain pairs of guests cannot both be invited.
@@ -17,12 +17,12 @@ Choose who to invite and how much to spend on each guest to **maximize total enj
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `budget` | `number` | Maximum total gift budget across all guests |
-| `baseEnjoyment` | `number[]` | Base enjoyment gained by inviting each guest |
-| `bonusRates` | `number[]` | Additional enjoyment per unit of gift budget spent on each guest |
-| `minSpend` | `number[]` | Minimum gift budget required when a guest is invited |
-| `maxSpend` | `number[]` | Maximum gift budget allowed when a guest is invited |
-| `implications` | `number[][]` | Pairs `[a, b]` requiring guest `b` to be invited whenever guest `a` is invited |
+| `budget` | `number` | Maximum total gift budget across all guests (in dollars) |
+| `baseEnjoyment` | `number[]` | Base enjoyment gained by inviting each of the $n$ guests (indexed 0 to $n - 1$) |
+| `bonusRates` | `number[]` | Additional enjoyment per dollar of gift budget spent on each guest |
+| `minSpend` | `number[]` | Minimum gift budget in dollars required when a guest is invited |
+| `maxSpend` | `number[]` | Maximum gift budget in dollars allowed when a guest is invited |
+| `implications` | `number[][]` | Pairs `[a, b]` of guest indices requiring guest `b` to be invited whenever guest `a` is invited |
 | `conflicts` | `number[][]` | Pairs `[u, v]` of guests who cannot both be invited |
 | `groupRules` | `{ guests: number[]; minCount: number }[]` | Group quotas requiring at least `minCount` guests invited from `guests` |
 
@@ -30,8 +30,8 @@ Choose who to invite and how much to spend on each guest to **maximize total enj
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `invite` | `number[]` | Binary (`0` or `1`) invitation decision per guest |
-| `giftBudget` | `number[]` | Continuous gift budget allocated to each guest |
+| `invite` | `number[]` | Binary (0 or 1) invitation decision per guest |
+| `giftBudget` | `number[]` | Continuous gift budget allocated to each guest (in dollars) |
 | `totalEnjoyment` | `number` | Maximized total enjoyment |
 
 <!-- section:example -->
@@ -62,10 +62,10 @@ Choose who to invite and how much to spend on each guest to **maximize total enj
 }
 ```
 
-Inviting guests `{0, 1, 2, 3}` with `giftBudget = [8, 19, 18, 10, 0]` satisfies implication `1 -> 0`, avoids the `[2, 4]` conflict, includes 3 guests (at least 1) from `{0, 2, 3}`, spends $8 + 19 + 18 + 10 = 55 \le 55$, and achieves enjoyment $(10 + 25 + 30 + 15) + (16 + 95 + 108 + 30) =$ **329**.
+Inviting guests `{0, 1, 2, 3}` with `giftBudget = [8, 19, 18, 10, 0]` satisfies implication `1 -> 0`, avoids the `[2, 4]` conflict, includes 3 guests (at least 1) from `{0, 2, 3}`, spends $8 + 19 + 18 + 10 = 55 \le 55$ dollars, and achieves enjoyment $(10 + 25 + 30 + 15) + (2 \cdot 8 + 5 \cdot 19 + 6 \cdot 18 + 3 \cdot 10) =$ **329**.
 
 <!-- section:hint1 -->
 Each guest combines a binary invitation decision with a continuous gift budget variable. The model couples each guest's gift range to their invitation flag, caps total gift spending by the party budget, and expresses the three social rules (implications, conflicts, and group quotas) as linear inequalities over the binary variables.
 
 <!-- section:hint2 -->
-Use tight instance bounds (`minSpend[i]` and `maxSpend[i]`) to link `giftBudget[i]` to `invite[i]`. For logical rules, an implication $a \implies b$ becomes $y_a \le y_b$, a conflict becomes $y_u + y_v \le 1$, and an at-least-$k$ group rule sums the binary variables in `rule.guests` to be at least `rule.minCount`.
+Use tight instance bounds (`minSpend[i]` and `maxSpend[i]`) to link `giftBudget[i]` to the binary invitation variable $y_i$ (`invite[i]`). For logical rules, an implication $a \implies b$ becomes $y_a \le y_b$, a conflict becomes $y_u + y_v \le 1$, and an at-least-$k$ group rule sums the variables $y_i$ in `rule.guests` to be at least `rule.minCount`.

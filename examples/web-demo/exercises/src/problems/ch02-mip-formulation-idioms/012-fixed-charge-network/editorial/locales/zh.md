@@ -1,23 +1,23 @@
 ## 解题思路
 
-建立 $S \times D$ 的 0-1 开关矩阵 `open` 与连续流量矩阵 `shipments`，在所有弧上添加 `shipments[i][j] <= capacities[i][j] * open[i][j]` 容量关联约束，配合仓库供应与门店需求约束最小化固定成本与运费之和。
+建立 $m \times n$ 的 0-1 开关矩阵 `open` 与连续流量矩阵 `shipments`，在所有路线上添加 `shipments[i][j] <= capacities[i][j] * open[i][j]` 容量关联约束，配合集货中心供货与超市需求约束最小化固定成本与运费之和。
 
 ## 数学模型
 
 $$
 \begin{aligned}
-\min \quad & \sum_{i=0}^{S-1} \sum_{j=0}^{D-1} \left( F_{i,j} y_{i,j} + c_{i,j} x_{i,j} \right) \\
-\text{s.t.} \quad & 0 \le x_{i,j} \le C_{i,j} y_{i,j} && \forall i, j \\
-& \sum_{j=0}^{D-1} x_{i,j} \le S_i && \forall i \\
-& \sum_{i=0}^{S-1} x_{i,j} \ge D_j && \forall j \\
+\min \quad & \sum_{i=0}^{m-1} \sum_{j=0}^{n-1} \left( F_{i,j} y_{i,j} + c_{i,j} x_{i,j} \right) \\
+\text{s.t.} \quad & 0 \le x_{i,j} \le C_{i,j} y_{i,j} && \forall i \in \{0, \dots, m-1\},\; j \in \{0, \dots, n-1\} \\
+& \sum_{j=0}^{n-1} x_{i,j} \le S_i && \forall i \in \{0, \dots, m-1\} \\
+& \sum_{i=0}^{m-1} x_{i,j} \ge D_j && \forall j \in \{0, \dots, n-1\} \\
 & y_{i,j} \in \{0, 1\} && \forall i, j
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **与纯线性运输模型（LP）的差异**：引入固定开启费用 $F_{i,j} y_{i,j}$ 后会产生流向合并效应，即使某条线路单位运费最低，若固定费用过高也可能被舍弃。
-- **紧致弧上界关联**：使用线路真实容量 $C_{i,j}$ 而非随意巨大的常数乘以 $y_{i,j}$，既能得到紧致的 LP 松弛，又能自然封堵 `capacities[i][j] = 0` 的不可用线路。
+- **与纯线性运输模型（LP）的差异**：引入固定开启费用 $F_{i,j} y_{i,j}$ 后会产生流向合并效应，即使某条路线每吨运费最低，若固定费用过高也可能被舍弃。
+- **紧致路线容量关联**：使用路线真实容量 $C_{i,j}$ 而非随意巨大的常数乘以 $y_{i,j}$，既能得到紧致的 LP 松弛，又能自然封堵 `capacities[i][j] = 0` 的不可用路线。
 - 概念参考：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点

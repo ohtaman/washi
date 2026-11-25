@@ -10,7 +10,7 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `distances` | `number[][]` | 对称的 $n \times n$ 城市距离矩阵（$n \in [5, 8]$） |
+| `distances` | `number[][]` | 对称的 $n \times n$ 城市距离矩阵（$5 \le n \le 8$） |
 
 ### 输出
 

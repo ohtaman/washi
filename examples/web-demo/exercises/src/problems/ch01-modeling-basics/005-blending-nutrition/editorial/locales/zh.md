@@ -1,6 +1,6 @@
 ## 解题思路
 
-声明带库存上界的连续变量 `amounts`（`0 <= x_i <= availabilities[i]`），加入总重量等式 `sum(amounts) == targetBatch`，再把各元素比例上下限换算为绝对重量上下限，最后最小化总成本 `dot(costs, amounts)`。
+将每种合金原料锭 $i$ 的投入重量（kg）定义为连续变量 $x_i$（`amounts[i]`），受限于库存上限 $A_i$（`availabilities[i]`），即 $0 \le x_i \le A_i$。先施加总重量等式 $\sum_i x_i = B$（`targetBatch`），再将各元素 $k$ 的含量比例下限 $L_k$（`minRatios[k]`）与上限 $U_k$（`maxRatios[k]`）乘以 $B$，从而针对质量分数 $p_{i,k}$（`compositions[i][k]`）建立绝对重量上下界约束，最终最小化以单价 $c_i$（`costs[i]`）计算的总材料成本。
 
 ## 数学模型
 
@@ -16,12 +16,12 @@ $$
 ## 核心要点
 
 - **借助固定总重线性化比例约束**：$\frac{\sum_i p_{i,k} x_i}{\sum_i x_i} \ge L_k$ 表面看是分式；但由于总重等式已将分母固定为常数 $B$（`targetBatch`），两边同乘 $B$ 即可消去分母，保持纯线性规划（LP）形式（分母可变的分式情形见第 2 章）。
-- **提取元素列向量**：`compositions[i][k]` 以原料为行、元素为列，用 `input.compositions.map((row) => row[k])` 提取元素 $k$ 的列向量后即可直接传给 `dot(...)`。
+- **提取元素列向量**：`compositions[i][k]` 以合金原料锭为行、元素为列，用 `input.compositions.map((row) => row[k])` 提取元素 $k$ 的列向量后即可直接传给 `dot(...)`。
 - 概念参考：[指南与术语表 — 核心建模要素](?view=guide&lang=zh#building-blocks) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
 
-由于 `compositions[i][k]` 以原料为行、元素为列，提取各元素的列向量并与 `amounts` 求内积，即可成对构建上下界约束。
+由于 `compositions[i][k]` 以合金原料锭为行、元素为列，提取各元素的列向量并与 `amounts` 求内积，即可成对构建上下界约束。
 
 **WaSHI (TypeScript)**
 
@@ -42,10 +42,10 @@ m.constraint(
 **PuLP (Python)**
 
 ```python
-prob += pulp.lpSum(amounts) == target
+prob += pulp.lpSum(amounts) == target_batch
 
 for k in range(n_elem):
     elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
-    prob += elem_expr >= min_ratios[k] * target
-    prob += elem_expr <= max_ratios[k] * target
+    prob += elem_expr >= min_ratios[k] * target_batch
+    prob += elem_expr <= max_ratios[k] * target_batch
 ```

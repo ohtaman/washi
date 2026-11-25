@@ -8,10 +8,10 @@
     "Unsat"
   ],
   "caseNames": [
-    "4-variable access policy with dead and redundant rules",
-    "4-variable clean policy with no anomalies",
+    "4-variable access control rulebase",
+    "4-variable VPN and TLS access rules",
     "5-variable cascading environment rules",
-    "4-variable mutually exclusive mode dead rules",
+    "4-variable day/night alarm mode rules",
     "7-variable compliance rulebase audit"
   ],
   "judge": {

@@ -14,6 +14,8 @@ $$
 \end{aligned}
 $$
 
+ここで $F_s$（`fixedCosts[s]`）、$c_{s,p}$（`unitCosts[s][p]`）、$L_s$（`minOrders[s]`）、$U_s$（`maxOrders[s]`）、$D_p$（`demands[p]`）、$\alpha$（`maxShare`）、$K_{\min}, K_{\max}$（`minSuppliers`, `maxSuppliers`）は各入力フィールドに対応します。
+
 ## ポイント
 
 - **シェア上限は変数の上界だけで表現可能**: $q_{s,p} \le \alpha D_p$ を変数宣言の `ub` に設定すれば $S \times P$ 本の制約行を増やさずにリスク分散を表現でき、各工場で最低 $\lceil 1 / \alpha \rceil$ 社からの分散調達が自動的に保証されます。
@@ -44,6 +46,13 @@ allocations.forEach((row, s) => {
 **PuLP (Python)**
 
 ```python
+allocations = [
+    [
+        pulp.LpVariable(f"q_{s}_{p}", lowBound=0, upBound=max_share * demands[p])
+        for p in range(n_plants)
+    ]
+    for s in range(n_sup)
+]
 prob += pulp.lpSum(active) >= min_suppliers
 prob += pulp.lpSum(active) <= max_suppliers
 for s in range(n_sup):

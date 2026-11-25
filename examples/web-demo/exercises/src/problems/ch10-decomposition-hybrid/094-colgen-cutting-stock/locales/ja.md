@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 製紙工場において、一定幅の標準原反ロールを指定された複数の小幅品目へと切り出し、各品目の需要本数を満たしながら消費する原反ロール総数を最小化します。実行可能な切断パターンの総数は品目数に対して爆発的に増大するため、全パターンを事前に列挙する定式化は実用的ではありません。
 
-WaSHI の列生成法を用いて制約付き主問題から有望な切断パターンを動的に生成し、整数計画として確定することで消費する原反ロール総数を最小化してください。
+少数の初期パターンから始めて、WaSHI の列生成法により有望な切断パターンを動的に生成し、整数計画として確定することで消費する原反ロール総数を最小化してください。
 
 <!-- section:io -->
 ### 入力
@@ -18,7 +18,7 @@ WaSHI の列生成法を用いて制約付き主問題から有望な切断パ�
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `patterns` | `number[][]` | 採用した整数切断パターンの配列（各要素の長さは `widths.length`） |
+| `patterns` | `number[][]` | 採用した切断パターンの配列（`patterns.length === counts.length`）。`patterns[p][i]` はパターン $p$ で原反 1 本から切り出す品目 $i$ の非負整数本数 |
 | `counts` | `number[]` | 各パターンを切り出す原反本数（非負整数） |
 | `totalRolls` | `number` | 使用した原反ロールの合計本数（`sum(counts)`） |
 
@@ -53,4 +53,4 @@ WaSHI の列生成法を用いて制約付き主問題から有望な切断パ�
 各需要を満たすようパターンの使用本数を決める制約付き主問題（RMP）と、原反幅 `rollWidth` 以内で目的値を改善する新規パターンを探す有界ナップサック価格付け子問題に分解します。初期 LP が必ず実行可能になるよう、単一品目のみを切り出す初期パターンを主問題に入れておきます。
 
 <!-- section:hint2 -->
-主問題には名前付き制約 `demand_${i}` とコスト `1` の列変数 `master.column(...)` を登録し、`solveColumnGeneration({ master, finalizeAsMIP: true, pricing })` を呼び出します。`pricing({ getDual })` では $\sum_i w_i a_i \le W$（整数 $a_i \in [0, \lfloor W / w_i \rfloor]$）のもとで $\sum_i \pi_i a_i$ を最大化し、被約費用 $1 - \sum_i \pi_i a_i < -10^{-5}$ のとき新しい列を提案します。
+主問題には名前付き制約 `demand_${i}` とコスト 1 の列変数 `master.column(...)` を登録し、`solveColumnGeneration({ master, finalizeAsMIP: true, pricing })` を呼び出します。`pricing({ getDual })` では $\sum_i w_i a_i \le W$（整数 $a_i \in [0, \lfloor W / w_i \rfloor]$）のもとで $\sum_i \pi_i a_i$ を最大化し、被約費用 $1 - \sum_i \pi_i a_i < -10^{-5}$ のとき新しい列を提案します。

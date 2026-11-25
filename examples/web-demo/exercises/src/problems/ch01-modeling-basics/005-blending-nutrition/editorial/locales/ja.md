@@ -1,6 +1,6 @@
 ## アプローチ
 
-各地金の投入量を在庫上限つき連続変数（`0 <= x_i <= availabilities[i]`）として定義し、総重量 `sum(amounts) == targetBatch` と**成分ごとの絶対量上下限**を加え、総材料費を最小化します。
+各地金 $i$ の投入量 (kg) を連続変数 $x_i$（`amounts[i]`）とし、在庫上限 $A_i$（`availabilities[i]`）のもとで $0 \le x_i \le A_i$ とします。総重量の等式 $\sum_i x_i = B$（`targetBatch`）を課したうえで、各成分 $k$ の含有率 $p_{i,k}$（`compositions[i][k]`）に対する下限 $L_k$（`minRatios[k]`）・上限 $U_k$（`maxRatios[k]`）に $B$ を掛けて絶対量の上下限とし、単価 $c_i$（`costs[i]`）による総材料費を最小化します。
 
 ## 数理モデル
 
@@ -42,10 +42,10 @@ m.constraint(
 **PuLP (Python)**
 
 ```python
-prob += pulp.lpSum(amounts) == target
+prob += pulp.lpSum(amounts) == target_batch
 
 for k in range(n_elem):
     elem_expr = pulp.lpSum(compositions[i][k] * amounts[i] for i in range(n_raw))
-    prob += elem_expr >= min_ratios[k] * target
-    prob += elem_expr <= max_ratios[k] * target
+    prob += elem_expr >= min_ratios[k] * target_batch
+    prob += elem_expr <= max_ratios[k] * target_batch
 ```
