@@ -10,8 +10,8 @@
   "caseNames": [
     "4-package version-conflict graph",
     "5-package multi-version dependency graph",
-    "4-package diamond version conflict",
-    "5-package dual-root conflict resolution",
+    "4-package dual-root shared-dependency graph",
+    "5-package dual-root dependency graph",
     "6-package transitive dependency cascade"
   ],
   "judge": {
@@ -25,7 +25,7 @@
     "m7": "Conflict violated: {p0}@{p1} and {p2}@{p3} cannot both be installed.",
     "m8": "installedCount must be an integer matching the number of installed packages ({p0} vs {p1}).",
     "m9": "Valid dependency installation, but installedCount ({p0}) exceeds minimum ({p1}).",
-    "m10": "Verified unsatisfiable dependency graph (diamond conflict).",
+    "m10": "Verified unsatisfiable dependency graph.",
     "m11": "Optimal dependency installation found ({p0} packages)!"
   }
 }

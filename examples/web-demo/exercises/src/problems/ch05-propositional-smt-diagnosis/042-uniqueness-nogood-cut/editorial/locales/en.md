@@ -1,13 +1,15 @@
 ## Approach
 
-Run `await m.check({ solver: "z3" })` to test initial satisfiability. If `"Sat"`, record the truth vector $x^*$, append a single no-good blocking clause ruling out $x^*$, and call `await m.check({ solver: "z3" })` a second time; the solution is unique if and only if the second check returns `"Unsat"`.
+Introduce a Boolean variable $x_i \in \{\text{false}, \text{true}\}$ for each $i \in \text{vars}$ and solve in two satisfiability stages. First check whether the conjunction of all rules has a satisfying truth vector $x^*$; if it does, conjoin a single blocking clause (no-good cut) that forbids $x^*$ and check satisfiability again—the solution is unique if and only if the second stage is unsatisfiable. In WaSHI, run `await m.check({ solver: "z3" })` for each stage and test `second.status === "Unsat"`.
 
 ## Mathematical Model
 
 $$
 \begin{aligned}
+\text{Variables:} \quad & x_i \in \{\text{false}, \text{true}\} && \forall i \in \text{vars} \\
 \text{Check 1:} \quad & \bigwedge_{r \in \text{rules}} \phi_r(x) \\
-\text{No-Good Cut:} \quad & \bigvee_{i : x^*_i = \text{true}} \neg x_i \;\lor\; \bigvee_{i : x^*_i = \text{false}} x_i
+\text{No-Good Cut:} \quad & \psi_{\text{cut}}(x) \equiv \bigvee_{i : x^*_i = \text{true}} \neg x_i \;\lor\; \bigvee_{i : x^*_i = \text{false}} x_i \\
+\text{Check 2:} \quad & \biggl(\bigwedge_{r \in \text{rules}} \phi_r(x)\biggr) \land \psi_{\text{cut}}(x)
 \end{aligned}
 $$
 

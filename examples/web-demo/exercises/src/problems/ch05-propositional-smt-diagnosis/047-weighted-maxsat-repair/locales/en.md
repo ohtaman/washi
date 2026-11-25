@@ -12,7 +12,7 @@ Given Boolean configuration variables, mandatory hard rules, and soft rules with
 | --- | --- | --- |
 | `vars` | `string[]` | Boolean variable names |
 | `hardRules` | `PropFormula[]` | Mandatory propositional rules that must all hold |
-| `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | Optional preference rules with violation penalty weights |
+| `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | Optional preference rules with non-negative penalty weights (`weight >= 0`) |
 
 `PropFormula` is a recursive union:
 ```ts
@@ -24,6 +24,8 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+
+A bare `string` references a Boolean variable in `vars`, `implies: [p, q]` means $p \implies q$, and `xor` holds iff an odd number of its operands are true.
 
 ### Output
 
@@ -66,11 +68,11 @@ type PropFormula =
 }
 ```
 
-Setting `tls = true, legacyApi = false, fastMode = false, audit = true` satisfies both hard rules and violates only `S2` for a total penalty of 2 (compared to violating `S1` at cost 5).
+Setting `tls = true, legacyApi = false, fastMode = false, audit = true` satisfies both hard rules and violates only `S2` for a total penalty of 2.
 
 
 <!-- section:hint1 -->
 Model the system state with Boolean variables for `vars`, and pair each soft rule with a binary relaxation indicator that is 1 when that soft rule is allowed to be violated. Enforce every hard rule unconditionally, and minimize the weighted sum of the relaxation indicators.
 
 <!-- section:hint2 -->
-Declare `m.bool(input.vars)` and `m.binary(...)` indicators `viol[k]` for each soft rule `k`. Guard each soft rule with `or(softExpr, expr\`${viol[k]} == 1\`)`—minimizing `dot(weights, viol)` with positive weights naturally keeps `viol[k] = 0` whenever the soft rule can hold—and solve via `minimize(dot(weights, viol))` and `await m.solve({ solver: "z3" })`.
+Declare `m.bool(input.vars)` and `m.binary(...)` indicators `viol[k]` for each soft rule `k`. Guard each soft rule with ``or(softExpr, expr`${viol[k]} == 1`)``—minimizing `dot(weights, viol)` with positive weights naturally keeps `viol[k] = 0` whenever the soft rule can hold—and solve via `minimize(dot(weights, viol))` and `await m.solve({ solver: "z3" })`.

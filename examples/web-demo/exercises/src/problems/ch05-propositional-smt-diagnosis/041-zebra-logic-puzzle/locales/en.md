@@ -1,7 +1,7 @@
 # #041. Zebra Logic Grid Puzzle
 
 <!-- section:scenario -->
-This is a logic grid puzzle where attributes are assigned to positions ordered from left to right.
+This is a logic grid puzzle where attributes (such as house colors, pets, and drinks) are assigned to positions ordered from left to right.
 
 A valid assignment must satisfy all of the following rules:
 - **One value per category at each position**: Every position receives exactly one attribute value from each category.
@@ -20,11 +20,11 @@ Given the number of positions, the category value lists, and the clue list, deci
 | `clues` | `ZebraClue[]` | Structured clues (`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`) |
 
 Where `CategoryValue` is `[category: string, value: string]`, each `ZebraClue` is one of:
-- `{ type: "at", position: number, category: string, value: string }` (`position` is 0-based)
-- `{ type: "same", a: CategoryValue, b: CategoryValue }`
-- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
-- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
-- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }` (`immediate: true` means `pos(right) === pos(left) + 1`, otherwise `pos(left) < pos(right)`)
+- `{ type: "at", position: number, category: string, value: string }` (`value` of `category` is placed at 0-based `position`)
+- `{ type: "same", a: CategoryValue, b: CategoryValue }` (`a` and `b` occupy the same position)
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }` (if `a` appears at a position, `b` also appears at that position)
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }` (`a` and `b` cannot occupy the same position)
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }` (`immediate: true` means `pos(right) === pos(left) + 1`; otherwise—default `false`—`pos(left) < pos(right)`)
 - `{ type: "nextTo", a: CategoryValue, b: CategoryValue }` (`|pos(a) - pos(b)| === 1`)
 
 ### Output
@@ -69,7 +69,7 @@ Where `CategoryValue` is `[category: string, value: string]`, each `ZebraClue` i
 }
 ```
 
-Position 0 is red with cat and tea, position 1 is green with bird and water, and position 2 is blue with dog and coffee, satisfying every exact-one and positional clue.
+Position 0 is red with cat and tea, position 1 is green with bird and water, and position 2 is blue with dog and coffee, satisfying every exact-one rule and all six clues.
 
 
 <!-- section:hint1 -->

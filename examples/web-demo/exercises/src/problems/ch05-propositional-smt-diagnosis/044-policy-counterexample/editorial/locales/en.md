@@ -1,12 +1,12 @@
 ## Approach
 
-Declare `m.bool()` for Boolean flags and `m.integer()` with bounds `{ lb, ub }` for integer attributes, assert every rule in `input.rules`, and additionally assert `not(safeInvariant)`. Calling `await m.check({ solver: "z3" })` yields `"Sat"` with a concrete counterexample if a loophole exists, or `"Unsat"` when the safety property is universally valid.
+We search for an assignment to the Boolean flags and bounded integer attributes that satisfies every policy rule while falsifying the safety invariant. Representing the flags with `m.bool()` and the attributes with bounded `m.integer({ lb, ub })`, we assert all `input.rules` together with `not(safeInvariant)` and call `await m.check({ solver: "z3" })`, yielding `"Sat"` with a concrete counterexample if a loophole exists or `"Unsat"` when the safety property holds universally.
 
 ## Mathematical Model
 
 $$
 \begin{aligned}
-\text{find} \quad & (b, z) \in \{\text{false}, \text{true}\}^{|B|} \times \prod_j [\text{lb}_j, \text{ub}_j] \\
+\text{find} \quad & (b, z) \in \{\text{false}, \text{true}\}^{|\text{boolVars}|} \times \prod_{j \in \text{intVars}} \bigl([\text{lb}_j, \text{ub}_j] \cap \mathbb{Z}\bigr) \\
 \text{s.t.} \quad & \bigwedge_{r \in \text{rules}} \phi_r(b, z) \;\land\; \neg\,\psi_{\text{safe}}(b, z)
 \end{aligned}
 $$
@@ -14,7 +14,7 @@ $$
 ## Key Points
 
 - **Proof by refutation**: Checking satisfiability of `rules && safeInvariant` only shows *one* safe case; asserting `rules && not(safeInvariant)` exhaustively searches all combinations for a counterexample, so `"Unsat"` proves safety across the entire state space.
-- **Mixed Boolean-arithmetic predicates**: Z3 natively combines Boolean connectives with linear integer comparisons (`<=`, `>=`, `==`, `!=`) inside antecedents and negations.
+- **Mixed Boolean-arithmetic predicates**: Z3 natively combines Boolean connectives with linear integer comparisons (`<=`, `>=`, `==`, `!=`) inside antecedents and negations without manual big-M linearization.
 - Related definitions: [Guide & Glossary — Solver Statuses](?view=guide&lang=en#solver-status) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

@@ -1,13 +1,15 @@
 ## 解题思路
 
-先运行 `await m.check({ solver: "z3" })` 求得第一组满足赋值 $x^*$；若存在解，则添加排除 $x^*$ 的 No-Good 阻塞子句后再次调用 `m.check({ solver: "z3" })`，当且仅当第二次返回 `"Unsat"` 时解唯一。
+为每个变量 $i \in \text{vars}$ 引入布尔变量 $x_i \in \{\text{false}, \text{true}\}$，并分两阶段检查可满足性。第一阶段求解所有规则的合取以寻找一组可行赋值 $x^*$；若存在解，则在原规则上加入一条排除 $x^*$ 的阻塞子句（No-Good 割）并进行第二阶段求解——当且仅当第二阶段不可满足时，解唯一。在 WaSHI 中，两阶段分别调用 `await m.check({ solver: "z3" })`，以第二次返回 `"Unsat"` 判定唯一性。
 
 ## 数学模型
 
 $$
 \begin{aligned}
+\text{变量:} \quad & x_i \in \{\text{false}, \text{true}\} && \forall i \in \text{vars} \\
 \text{初次求解:} \quad & \bigwedge_{r \in \text{rules}} \phi_r(x) \\
-\text{No-Good 割:} \quad & \bigvee_{i : x^*_i = \text{true}} \neg x_i \;\lor\; \bigvee_{i : x^*_i = \text{false}} x_i
+\text{No-Good 割:} \quad & \psi_{\text{cut}}(x) \equiv \bigvee_{i : x^*_i = \text{true}} \neg x_i \;\lor\; \bigvee_{i : x^*_i = \text{false}} x_i \\
+\text{二次求解:} \quad & \biggl(\bigwedge_{r \in \text{rules}} \phi_r(x)\biggr) \land \psi_{\text{cut}}(x)
 \end{aligned}
 $$
 

@@ -1,7 +1,7 @@
 # #050. 矛盾診断と最小コスト修復
 
 <!-- section:scenario -->
-ガバナンス基盤では、真偽値と有界整数の状態変数に対して、変更できないハードルールと、違反時の重みが付いたソフトルール（希望条件）が定義されています。
+企業のポリシーガバナンス基盤では、真偽値と有界整数の状態変数（本番稼働、MFA、レガシー互換モード、監査ログ、サービスティアなど）に対して、変更できないハードルールと、違反時の重みが付いたソフトルール（希望条件）が定義されています。`hardRules` は常に同時充足可能（ソフトルールの緩和による修復解が必ず存在する）であり、ルール ID は `hardRules` と `softRules` を通じて一意です。
 
 次の手順で診断と修復を行ってください。
 - **整合性の判定**: まず、すべてのハードルールとソフトルールを同時に満たせるかを判定する
@@ -20,6 +20,7 @@
 
 `SmtFormula` は真偽値変数名（`string`）、線形整数比較（`SmtCmp`）、論理結合子からなる再帰的な直和型です:
 ```ts
+type StateValue = boolean | number;
 type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
 type SmtFormula =
   | string
@@ -31,15 +32,17 @@ type SmtFormula =
   | SmtCmp;
 ```
 
+文字列（`string`）の葉は `boolVars` の真偽値変数を参照し、`SmtCmp` は `intVars` 上の線形和 $\sum_k c_k v_k \mathrel{\text{sense}} \text{rhs}$（`terms` が変数 $v_k$ と係数 $c_k$ の対応）を評価します。また `implies: [a, b]` は $a \implies b$ を表し、`xor` は真となる部分式が奇数個のとき成立します。
+
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `consistent` | `boolean` | ハード＋ソフト全ルールが同時に充足可能なら `true` |
-| `minimalCore` | `string[]` | 矛盾時の極小充足不能コア ID 一覧（整合時は `[]`） |
+| `consistent` | `boolean` | ハードルールとソフトルール全体が同時に充足可能なら `true` |
+| `minimalCore` | `string[]` | 矛盾時の極小充足不能コア（MUS）の ID 一覧（辞書順、整合時は `[]`） |
 | `relaxedRules` | `string[]` | 緩和されたソフトルール ID 一覧（辞書順、整合時は `[]`） |
 | `repairCost` | `number` | 緩和されたソフトルール重みの最小合計 |
-| `repairedAssignment` | `Record<string, boolean / number>` | 全ハードルールと残存ソフトルールを満たす修復後割当 |
+| `repairedAssignment` | `Record<string, StateValue>` | 全ハードルールと残存ソフトルールを満たす修復後割当 |
 
 <!-- section:example -->
 **入力例**
@@ -79,11 +82,11 @@ type SmtFormula =
 }
 ```
 
-`{ H1, H2, S1, S2 }` が極小矛盾コアを構成しており、最安価なソフトルール `S2`（重み 2）を緩和することで全ハード制約と残りのソフト制約をすべて満たせます。
+`{ H1, H2, S1, S2 }` が極小充足不能コア（MUS）を構成しており、ソフトルール `S2`（重み 2）を緩和すると `repairCost = 2` となり、`prod = mfa = audit = true, legacy = false, tier = 2` ですべてのハードルールと残りのソフトルールを満たします。
 
 
 <!-- section:hint1 -->
-同じ真偽値変数・有界整数変数のうえで 2 段階の処理を組みます。まずハードルールとソフトルールの全集合が同時に充足可能かを判定し、充足不能であれば全名前付きルールから極小矛盾コア（MUS）を抽出するとともに、別モデルで重み付きソフトルール緩和問題を解きます。
+同じ真偽値変数・有界整数変数のうえで 3 段階の処理を組みます。(1) まずハードルールとソフトルールの全集合が同時に充足可能かを判定し、(2) 充足不能であれば全名前付きルールから極小充足不能コア（MUS）を抽出し、(3) 別モデルで重み付きソフトルール緩和問題を解いて最小コストの修復案を求めます。
 
 <!-- section:hint2 -->
-整合性判定と MUS 抽出では、すべてのハード・ソフトルールをそれぞれの `id` で名前付き制約として登録し、`await m.check({ solver: "z3" })` と `res.unsatCore` を使った削除縮約を行います。最小重み修復では、ハードルールを無条件で課したうえで各ソフトルールに二値緩和指示変数 `viol[k]` を `or(softExpr, expr\`${viol[k]} == 1\`)` で結びつけ、`minimize(dot(weights, viol))` を `await m.solve({ solver: "z3" })` で解いてください。
+整合性判定と MUS 抽出では、すべてのハードルール・ソフトルールをそれぞれの `id` で名前付き制約として登録し、`await m.check({ solver: "z3" })` と `res.unsatCore` を使った削除縮約を行います。最小重み修復では、ハードルールを無条件で課したうえで各ソフトルールに二値緩和指示変数 `viol[k]` を ``or(softExpr, expr`${viol[k]} == 1`)`` で結びつけ、`minimize(dot(weights, viol))` を `await m.solve({ solver: "z3" })` で解いてください。

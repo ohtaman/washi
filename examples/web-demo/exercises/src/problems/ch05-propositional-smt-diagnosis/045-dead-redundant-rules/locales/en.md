@@ -3,7 +3,7 @@
 <!-- section:scenario -->
 When maintaining or auditing rulebases for access control or business approvals, you need to identify dead rules whose trigger conditions can never be satisfied and redundant rules whose effects are already guaranteed by earlier rules.
 
-Evaluate the ordered list of trigger rules sequentially on top of the base rules and all preceding rules. Classify each rule as dead if its trigger condition is unsatisfiable alongside the accumulated policy, or otherwise as redundant if its implication already holds in every state allowed by the accumulated policy, and return both rule ID lists sorted lexicographically.
+Evaluate the ordered list of trigger rules (each asserting that `condition` implies `effect`) sequentially on top of the base rules and all preceding rules. Classify each rule as dead if its trigger condition is unsatisfiable alongside the accumulated policy, or otherwise as redundant if its implication already holds in every state allowed by the accumulated policy, and return both rule ID lists sorted lexicographically.
 
 <!-- section:io -->
 ### Input
@@ -24,6 +24,7 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+A bare `string` references a Boolean variable in `vars`, `{ implies: [p, q] }` encodes $p \to q$, and `{ xor: [...] }` holds when an odd number of its operands are true.
 
 ### Output
 
@@ -66,4 +67,4 @@ type PropFormula =
 Process `input.rules` in order, maintaining the accumulated policy built from `baseRules` and all earlier trigger rules as implications. For each rule, first test whether its trigger condition is ever reachable under the accumulated policy, and if it is reachable, test whether its effect can ever fail when the trigger fires.
 
 <!-- section:hint2 -->
-Create a fresh `Model` with `m.bool(input.vars)` for each Z3 check (`await m.check({ solver: "z3" })`). A rule is dead if `prior` plus `r.condition` is `"Unsat"`; otherwise it is redundant if `prior` plus `r.condition` plus `not(r.effect)` is `"Unsat"`. Always append `implies(r.condition, r.effect)` to `prior` before moving to the next rule, and sort both output arrays lexicographically.
+Create a fresh `Model` with `m.bool(input.vars)` for each Z3 check (`await m.check({ solver: "z3" })`), compiling every `PropFormula` in the checked list via `compileFormula`. A rule is dead if `prior` plus `r.condition` is `"Unsat"`; otherwise it is redundant if `prior` plus `r.condition` plus `{ not: r.effect }` is `"Unsat"`. Always append `{ implies: [r.condition, r.effect] }` to `prior` before moving to the next rule, and sort both output arrays lexicographically.

@@ -14,14 +14,14 @@ Find an irreducible minimal unsatisfiable subset of clue IDs—a subset that is 
 | `clues` | `PuzzleClue[]` | Named clues (`mineCount`, `atLeast`, `atMost`, `safe`, `mine`, `impliesMine`, `same`, `different`) |
 
 Each `PuzzleClue` has `id: string` and one of the following `type` variants:
-- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }` (`sum(cells) === count`)
-- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }` (`sum(cells) >= count`)
-- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }` (`sum(cells) <= count`)
-- `"safe"`: `{ id, type: "safe", cell: string }` (`cell === 0`)
-- `"mine"`: `{ id, type: "mine", cell: string }` (`cell === 1`)
-- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }` (`ifMine <= thenMine`)
-- `"same"`: `{ id, type: "same", a: string, b: string }` (`a === b`)
-- `"different"`: `{ id, type: "different", a: string, b: string }` (`a + b === 1`)
+- `"mineCount"`: `{ id, type: "mineCount", cells: string[], count: number }` — exactly `count` of `cells` contain a mine
+- `"atLeast"`: `{ id, type: "atLeast", cells: string[], count: number }` — at least `count` of `cells` contain a mine
+- `"atMost"`: `{ id, type: "atMost", cells: string[], count: number }` — at most `count` of `cells` contain a mine
+- `"safe"`: `{ id, type: "safe", cell: string }` — `cell` is safe (no mine)
+- `"mine"`: `{ id, type: "mine", cell: string }` — `cell` contains a mine
+- `"impliesMine"`: `{ id, type: "impliesMine", ifMine: string, thenMine: string }` — if `ifMine` contains a mine, then `thenMine` must also contain a mine
+- `"same"`: `{ id, type: "same", a: string, b: string }` — `a` and `b` are either both mines or both safe
+- `"different"`: `{ id, type: "different", a: string, b: string }` — exactly one of `a` and `b` contains a mine
 
 ### Output
 

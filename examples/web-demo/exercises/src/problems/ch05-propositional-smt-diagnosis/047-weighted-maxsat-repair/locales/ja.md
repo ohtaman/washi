@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `vars` | `string[]` | 真偽値変数名の一覧 |
 | `hardRules` | `PropFormula[]` | 必ずすべて満たすべきハードルール一覧 |
-| `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | 違反ペナルティ重み付きのソフトルール一覧 |
+| `softRules` | `Array<{ id: string; weight: number; expr: PropFormula }>` | 非負の違反ペナルティ重み（`weight >= 0`）付きのソフトルール一覧 |
 
 `PropFormula` は再帰的な直和型です:
 ```ts
@@ -24,6 +24,8 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+
+文字列（`string`）は `vars` 内の真偽値変数を参照し、`implies: [p, q]` は $p \implies q$ を表し、`xor` は真となる部分式が奇数個のとき成立します。
 
 ### 出力
 
@@ -66,11 +68,11 @@ type PropFormula =
 }
 ```
 
-`tls` = true、`legacyApi` = false、`fastMode` = false、`audit` = true とするとすべてのハードルールを満たし、違反するソフトルールは `S2` のみで、`totalPenalty` は 2 となります。
+`tls = true, legacyApi = false, fastMode = false, audit = true` とするとすべてのハードルールを満たし、違反するソフトルールは `S2` のみで、`totalPenalty` は 2 となります。
 
 
 <!-- section:hint1 -->
 `vars` に対応する真偽値変数でシステム状態を表現し、各ソフトルールにはそのルールを緩和（違反）することを許す二値緩和指示変数を 1 つずつ対応づけます。すべてのハードルールを無条件に課し、緩和指示変数の重み付き和を最小化します。
 
 <!-- section:hint2 -->
-`m.bool(input.vars)` と各ソフトルール `k` 用の `m.binary(...)` 指示変数 `viol[k]` を宣言し、ソフトルールは `or(softExpr, expr\`${viol[k]} == 1\`)` として登録します。正の重みのもとで `minimize(dot(weights, viol))` を `await m.solve({ solver: "z3" })` で解けば、満たせるソフトルールでは自然に `viol[k] = 0` になります。
+`m.bool(input.vars)` と各ソフトルール `k` 用の `m.binary(...)` 指示変数 `viol[k]` を宣言し、ソフトルールは ``or(softExpr, expr`${viol[k]} == 1`)`` として登録します。正の重みのもとで `minimize(dot(weights, viol))` を `await m.solve({ solver: "z3" })` で解けば、満たせるソフトルールでは自然に `viol[k] = 0` になります。

@@ -1,9 +1,9 @@
 # #042. Solution Uniqueness via No-Good Cuts
 
 <!-- section:scenario -->
-When verifying operational rules for security configurations or feature flags (such as authentication methods, encryption, and audit logging), finding one valid setting is not enough—you also need to verify that no unintended alternative remains (that the configuration is uniquely determined).
+Operational rules for security configurations and feature flags (such as authentication methods, encryption, and audit logging) often require verifying both that a valid configuration exists and that no alternative valid configuration remains.
 
-Imagine a system administrator validating a configuration: given Boolean variables and a list of propositional rules, first determine whether a satisfying assignment exists, and if so, determine and report whether that assignment is unique.
+Given a list of Boolean variable names and a list of propositional rules, determine whether a satisfying assignment exists and, if so, return one satisfying assignment together with whether it is the unique solution.
 
 <!-- section:io -->
 ### Input
@@ -23,6 +23,8 @@ type PropFormula =
   | { implies: [PropFormula, PropFormula] }
   | { xor: PropFormula[] };
 ```
+
+A bare `string` references a variable name in `vars`, `{ implies: [p, q] }` denotes $p \to q$, and `{ xor: [...] }` holds if and only if an odd number of its subformulas evaluate to `true`.
 
 ### Output
 

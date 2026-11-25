@@ -1,12 +1,12 @@
 ## 解题思路
 
-用 `m.bool`、`m.integer` 与带规则 ID 的 `m.constraint(..., r.id)` 构建模型后，无需启动求解器，直接调用 `m.verify({ values: input.candidateValues })` 对历史记录进行同步检验，再将所有报告的违规规则名去重并按字典序返回。
+将已记录的历史赋值 $\hat{v}$ 直接代入每条命名规则进行求值，收集所有求值为假的规则 ID。在 WaSHI 中，用 `m.bool`、`m.integer` 与带规则 ID 的 `m.constraint(..., r.id)` 构建模型后，无需启动求解器，直接调用 `m.verify({ values: input.candidateValues })` 对历史记录进行同步检验，再将所有报告的违规规则名去重并按字典序返回。
 
 ## 数学模型
 
 $$
 \begin{aligned}
-\text{Violated} &= \bigl\{\, r.\text{id} \in R \;\big|\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
+\text{Violated} &= \bigl\{\, r.\text{id} \;\big|\; r \in R,\; \text{eval}\bigl(r.\text{expr},\, \hat{v}\bigr) = \text{false} \,\bigr\} \\
 \text{valid} &\iff \text{Violated} = \emptyset
 \end{aligned}
 $$
