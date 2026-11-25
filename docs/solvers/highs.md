@@ -2,7 +2,7 @@
 
 **HiGHS** is an open-source mathematical optimization solver started at the University of Edinburgh ([highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It solves Linear Programming (LP), Mixed-Integer Programming (MIP), and convex Quadratic Programming (QP) problems.
 
-In `@ohtaman/washi`, HiGHS is the built-in default solver. It ships as a bundled WebAssembly binary with zero external dependencies and runs in Node.js, browsers, and Web Workers.
+In `@ohtaman/washi`, HiGHS is the built-in default solver under the MIT license. It ships as a single-threaded WebAssembly binary with zero external dependencies, runs in Node.js and browser Web Workers, and requires no `SharedArrayBuffer` or `COOP`/`COEP` headers (see [Cross-Origin Isolation](../getting-started/cross-origin.md)).
 
 ---
 
@@ -17,16 +17,6 @@ In `@ohtaman/washi`, HiGHS is the built-in default solver. It ships as a bundled
 
 > [!TIP]
 > Start with **HiGHS** for almost all numerical optimization models. Switch to **Pumpkin** or **Z3** when you need native CP propagation or Satisfiability Modulo Theories (SMT) conflict diagnosis.
-
----
-
-## Key Features in WaSHI
-
-- **Built-in & zero-config**: Bundled directly inside `@ohtaman/washi` under the MIT license with no extra packages to install.
-- **No `COOP`/`COEP` headers needed**: Runs single-threaded WebAssembly without `SharedArrayBuffer` or [Cross-Origin Isolation](../getting-started/cross-origin.md) headers.
-- **Background Web Worker execution**: Offloads solving to a dedicated Web Worker in browsers by default so UI rendering stays responsive.
-- **Warm-start hints (`initialValue`)**: Accepts starting variable values on `model.continuous()`, `model.integer()`, and `model.binary()` variables.
-- **LP relaxation (`relax: true`)**: Solves the continuous relaxation of a MIP model without rewriting variable declarations.
 
 ---
 
@@ -54,7 +44,7 @@ console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 
 ### 2. Mixed-Integer Programming (MIP)
 
-MIP models include `model.integer()` or `model.binary()` variables (optionally combined with continuous variables). HiGHS solves them via branch-and-cut and reports `objectiveBound`, `relativeGap`, and `absoluteGap`:
+MIP models include `model.integer()` or `model.binary()` variables (optionally combined with continuous variables) and accept warm-start hints via `initialValue`. HiGHS solves them via branch-and-cut and reports `objectiveBound`, `relativeGap`, and `absoluteGap`:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -109,10 +99,10 @@ Pass execution options into `model.solve()` or the `HighsSolver` constructor. Hi
 | `absoluteGap` | `number` | Stop when the absolute MIP optimality gap falls within this tolerance. |
 | `presolve` | `"on" \| "off" \| "choose"` | Controls model presolve before optimization. |
 | `outputFlag` | `boolean` | Enables internal solver logs (`false` by default). |
-| `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model. |
-| `useWorker` | `boolean` | Runs HiGHS in a browser Web Worker (`true` by default in browsers). |
-| `wasmUrl` | `string \| null` | Overrides the `highs.wasm` asset URL (`null` falls back to `setHighsWasmUrl()` or the bundled binary). |
-| `signal` | `AbortSignal` | Cooperatively cancels an in-flight solve. |
+| `relax` | `boolean` | Solves the continuous LP relaxation of a MIP model without modifying variable declarations. |
+| `useWorker` | `boolean` | Runs HiGHS in a browser Web Worker (`true` by default in browsers; falls back to `false` on `file:` URLs or opaque origins). Passing `useWorker: true` in Node.js throws an `Error`. |
+| `wasmUrl` | `string` | Overrides the `highs.wasm` asset URL for this call (call `setHighsWasmUrl(null)` to reset to the bundled binary). |
+| `signal` | `AbortSignal` | Cancels an in-flight solve. In a browser Web Worker, aborts preemptively and returns the last captured MIP incumbent if available; on the main thread or in Node.js, cancels cooperatively. |
 | `onProgress` | `(ev) => void` | Receives live elapsed time, primal objective, dual bound, and gap updates. |
 
 HiGHS also accepts these passthrough limit keys: `mip_max_nodes`, `mip_max_improving_sols`, `mip_max_leaves`, `simplex_iteration_limit`, and `ipm_iteration_limit`.

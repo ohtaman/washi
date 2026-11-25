@@ -55,7 +55,7 @@ async function solveScenario(label: string, cap: typeof supplies) {
   // 1. 2次元決定変数の生成: ship[factory][store] >= 0
   const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
-  // 2. 目的関数: 総輸送コストの最小化（2 次元配列の要素積の和）
+  // 2. 目的関数: 総輸送コストの最小化（2 次元行列の要素積の和）
   m.objective(minimize(expr`dot(${shippingCost}, ${ship})`));
 
   // 3. 供給上限（行方向の合計）: 各工場からの総出荷量 <= cap[f]

@@ -60,7 +60,7 @@ console.log("Shadow price:", cap.dual);          // 2
 
 ## ソルバーオプションと実行モデル
 
-GLPK は WaSHI の `useWorker: true` オプションに対応しておらず、指定すると `Error` を投げます（ブラウザでは `glpk.js` 独自の内部 Web Worker で実行され、Node.js ではメインスレッド上で同期実行されます）。いずれの環境でも `signal` は求解開始前にのみ確認され、実行中の中断はできません。
+GLPK は WaSHI の `useWorker: true` オプションに対応しておらず、指定すると `Error` を投げます。ブラウザでは `glpk.js` 独自の内部 Web Worker で自動実行され（明示的に終了する場合は `@ohtaman/washi/solvers/glpk` の `terminateGlpk()` を呼び出します）、Node.js ではメインスレッド上で同期実行されます。いずれの環境でも `signal` は求解開始前にのみ確認され、実行中の中断はできません。
 
 ### 対応オプション
 
@@ -68,7 +68,7 @@ GLPK は WaSHI の `useWorker: true` オプションに対応しておらず、�
 | :--- | :--- | :--- |
 | `timeLimit` | `number` | 最大実行時間（秒。GLPK の `tmlim` に対応）。 |
 | `relativeGap` | `number` | 相対 MIP ギャップ許容値（`mipgap`）。 |
-| `presolve` | `"on" \| "off" \| "choose"` | GLPK の前処理を制御（`"off"` で無効、`"on"` / `"choose"` で有効）。 |
+| `presolve` | `"on" \| "off" \| "choose"` | GLPK の前処理を制御（既定で有効。`"off"` で無効、`"on"` / `"choose"` で有効）。 |
 | `verbose` | `boolean` | GLPK のコンソールログ出力を有効化（既定は `false`）。 |
 | `relax` | `boolean` | MIP モデルの連続 LP 緩和問題を求解。 |
 | `signal` | `AbortSignal` | 求解開始前に中断状態を確認（実行中の求解は中断不可）。 |

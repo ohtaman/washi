@@ -89,12 +89,13 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ## Dual Values, Shadow Prices & Lookups
 
-For continuous Linear Programming (LP) models solved by HiGHS, each linear constraint exposes two sensitivity properties after `m.solve()` (GLPK populates `dual` only and leaves `slack` as `null`):
+For continuous Linear Programming (LP) models—or LP relaxations solved via `m.relax()`—on HiGHS, each linear constraint exposes two sensitivity properties (GLPK populates `dual` only and leaves `slack` as `null`):
 
 - **`dual` (shadow price)**: The marginal signed change in the optimal objective value per unit increase in the constraint's right-hand side (while the optimal basis remains unchanged).
-- **`slack`**: The unused margin between the constraint's left-hand side and right-hand side at the optimal solution (`0` when the constraint is tight).
+- **`slack`**: Defined as `rhs - lhs` at the optimal solution (`>= 0` for `<=` constraints, `<= 0` for `>=` constraints, and `0` when the constraint is tight).
 
-Both properties have type `number | null` and are `null` before solving, when no optimal LP solution is found, or on MIP, CP, SMT, and logical constraints.
+Both properties have type `number | null`.
+They are `null` before solving, when no optimal LP solution is found, on MIP models solved with `m.solve()`, and on CP, SMT, and logical constraints.
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -111,8 +112,11 @@ console.log("Total constraints:", m.constraints.size);
 
 ## Conditional / Indicator Constraints (`m.indicator`)
 
-Use `m.indicator()` when a linear constraint should only apply if a binary variable (`m.binary()`) equals `1` or `0`.
-In MIP formulations, this conditional rule is encoded via the **Big-M method**—for example, $a^\top x \le b + M(1 - y)$ enforces $a^\top x \le b$ when $y = 1$, and relaxes it with a large constant $M$ when $y = 0$:
+Use `m.indicator()` when a linear constraint should only apply if a binary variable (`m.binary()`) equals `activeValue` (`1` by default, or `0`).
+In MIP formulations, this conditional rule is encoded via the **Big-M method**.
+For example, $a^\top x \le b + M(1 - y)$ enforces $a^\top x \le b$ when $y = 1$, and relaxes it with a large constant $M$ when $y = 0$.
+
+The target constraint must be linear with `<=`, `>=`, or `==`—discrete `!=`, nonlinear atoms (`max`, `min`, `abs`, `at`), and referencing `binVar` inside the constrained expression are rejected:
 
 ```typescript
 const useDiscount = m.binary("use_discount");
@@ -153,7 +157,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **Prefer Finite Variable Bounds Over Arbitrary Large `M`**: Too small an $M$ can cut off valid solutions, while an excessively large $M$ (such as $10^9$) weakens LP relaxations and harms MIP numerical stability.
+> **Prefer Finite Variable Bounds Over Arbitrary Large `M`**: Too small an $M$ can cut off valid solutions, while an excessively large $M$ (such as `1e9`) weakens LP relaxations and harms MIP numerical stability.
 > Setting realistic `lb` and `ub` bounds lets WaSHI compute the tightest safe Big-M automatically.
 
 ---

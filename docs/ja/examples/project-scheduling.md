@@ -111,7 +111,7 @@ runProjectScheduling();
 
 ### 納期 `<= 13h` の制約で実行不能になる理由（`unsatCore`）
 
-リグ点検と `<= 13h` の納期制約を追加すると、`m.check()` は `"Unsat"` を返し、無関係な `crew_limit` を除いた矛盾原因（`unsatCore`）を抽出します。
+リグ点検と `<= 13h` の納期制約を追加すると、`m.check()` は `"Unsat"` を返し、矛盾に関わる 5 つの制約だけを `unsatCore` として抽出します。前半ではボトルネックだった `crew_limit` など、この矛盾に無関係なルールは除外されます。
 
 1. `rig_maintenance_window` により、`firmware` と `calib` の開始は `6h` 以降になります。
 2. `chassis` は `4h`、`assembly` は `3h` かかるため、`assembly_after_chassis` と `test_after_assembly` により `test` の開始は `7h` 以降になります。

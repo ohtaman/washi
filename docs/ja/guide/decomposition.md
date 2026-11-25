@@ -7,6 +7,8 @@
 | **列生成法** | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) | パターン・配送ルート・シフト案が多すぎて列挙できない問題（カッティングストック問題、配送計画問題 (VRP)、乗務員スケジューリング）。 |
 | **Benders 分解** | [`master.solveBenders()`](#benders-分解-solvebenders) | 2 段階の意思決定（施設配置＋輸送計画）や、候補解が制約に違反したときだけ遅延制約を追加する問題（TSP の部分巡回路除去など）。 |
 
+これら 2 つの機能は `Model` メソッドのほか、スタンドアロン関数 `solveColumnGeneration({ master, ... })` および `solveBenders({ master, ... })` としてもエクスポートされています。
+
 ---
 
 ## 列生成法 (`solveColumnGeneration`)
@@ -22,7 +24,7 @@
 1. RMP の LP 緩和（`master.relax()`）を解き、各制約の **双対値（潜在価格）** を取得します。
 2. 取得した双対値（`duals`, `getDual`）を `pricing` コールバックに渡します。
 3. 返された各 `ColumnProposal` について、**被約費用**（`reducedCost` 省略時は $\bar{c} = \text{cost} - \sum_i \pi_i a_i$ を自動計算）が `reducedCostTolerance` を超えて目的関数を改善するかを自動で判定します。
-4. 目的関数を改善する列（許容誤差 $\varepsilon = \text{reducedCostTolerance}$ に対し、最小化では $\bar{c} < -\varepsilon$、最大化では $\bar{c} > \varepsilon$）があれば RMP に追加し、`pricing` が `null` / `[]` を返すか改善列がなくなる（または `maxIterations` に達する）まで反復します。
+4. 許容誤差 $\varepsilon$（`reducedCostTolerance`）に対し、最小化で $\bar{c} < -\varepsilon$（最大化で $\bar{c} > \varepsilon$）となる改善列があれば RMP に追加します。`pricing` が `null` / `[]` を返すか、改善列がなくなるか、`maxIterations` に達するまで反復します。
 5. 最後に、`finalizeAsMIP: true`（デフォルト）の場合は集まった全列を含む RMP を整数計画（MIP）として解き直します。
 
 > [!IMPORTANT]
@@ -185,7 +187,7 @@ console.log("主問題の解:", result.values);
 > [!IMPORTANT]
 > **自動 `sub.link()` モードの前提条件**:
 > - **最適性カットのみ対応**: 連続 LP 子問題が実行不能になるとエラーになります。`total_capacity_floor` のような主問題制約で実行可能性を保つか、手動カット生成で `kind: "feasibility"` の実行可能性カットを返してください。
-> - **`Maximize` 主問題や子問題コストが負になり得る場合は `theta` を明示**: 自動生成される `theta` は `Minimize` かつ下限 `lb: 0` を前提とするため、`Maximize` 主問題ではエラーになり、負の子問題目的値も正しく表現できません。`master` 上に適切な上下界で `theta` を宣言して目的関数に含め、`{ theta }` を渡してください。
+> - **`Maximize` や負の子問題コストでは `theta` を明示**: 自動 `theta` は `Minimize`・`lb: 0` 専用です。該当する場合は `master` に適切な上下界の `theta` を追加して目的関数に含め、`{ theta }` を渡してください。
 > - **LP の双対値を返せるソルバーが必須**: 連続 LP 子問題の双対値取得には HiGHS または GLPK が必要です。
 
 ### 手動カット生成 (`BendersCut` / 遅延制約)

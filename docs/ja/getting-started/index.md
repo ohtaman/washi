@@ -6,7 +6,7 @@
 
 ## 📦 インストール
 
-`@ohtaman/washi` をインストールすると、外部依存ゼロの 2 つのソルバーが同梱されています。さらに 2 つのソルバーをオプションの依存パッケージとして追加できます。
+`@ohtaman/washi` には外部依存ゼロの 2 つのソルバーが同梱されており、さらに 2 つのソルバーをオプションの依存パッケージとして追加できます。
 
 | ソルバー | 導入方法 | 対応する問題クラスと特徴 |
 | --- | --- | --- |
@@ -44,15 +44,11 @@ npm install glpk.js     # オプション: GLPK ソルバー用（GPL-3.0）
 
 ブラウザで Z3 を使う場合は、セキュアコンテキストと Cross-Origin Isolation ヘッダーが必要です。対象ヘッダーは `Cross-Origin-Opener-Policy` と `Cross-Origin-Embedder-Policy`（略称 `COOP`/`COEP`）で、設定手順は [Cross-Origin Isolation 設定](./cross-origin.md) にまとめています。
 
-AI コーディングエージェントを利用する場合は、[AI コーディングエージェントでの開発](./coding-agents.md) で `npx skills add ohtaman/washi` によるスキル導入、`llms.txt` の登録方法、実用プロンプト集を紹介しています。
-
 ---
 
 ## 🚀 クイックスタート
 
-WaSHI でのモデリングと求解は、基本的に 3 ステップで進みます。決定変数を定義し、目的関数と名前付き制約を登録したうえで、求解と解の検証を行います。
-
-以下の生産計画の例では、木材と労働時間の上限のもとで机と椅子の生産台数を決め、総利益を最大化します：
+以下の生産計画モデルでは、木材と労働時間の上限のもとで机と椅子の生産台数を決め、総利益を最大化します：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -77,9 +73,9 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **決定変数を定義する**: `m.continuous()`・`m.integer()`・`m.binary()` で変数を定義します。連続変数や整数変数で範囲が分かっている場合は、有限の `lb`・`ub` を指定します。
-2. **目的関数と制約を記述する**: `` expr`...` `` で数式を記述し、`m.objective()` と `m.constraint()` でモデルに登録します。制約に分かりやすい名前を付けておくと、実行不能時の原因特定が容易になります。
-3. **求解して検証する**: `await m.solve()` で同梱の HiGHS を実行します。`m.hasPrimalSolution` を確認してから `.value` を参照し、`m.verify()` で上下限・整数性・制約の充足を検証します。
+- **有限の上下限**: `m.continuous()`・`m.integer()` で範囲が分かっている場合は有限の `lb`・`ub` を指定します。MIP 定式化を引き締め、`M` を省略した `m.indicator()` でも必須になります。
+- **明示的な登録と命名**: `` expr`...` `` で数式を作るだけではモデルに追加されず、`m.objective()` や `m.constraint()` の呼び出しが必要です。制約に名前を付けておくと `m.check()` の矛盾診断が読みやすくなります。
+- **安全な読み出しと検証**: `.value` を参照する前に必ず `m.hasPrimalSolution` を確認し、`m.verify()` で上下限・整数性・制約の充足を独立に検証します。
 
 ---
 
@@ -88,10 +84,10 @@ if (m.hasPrimalSolution) {
 ### 開発スタイルを選ぶ
 
 - **AI エージェントでモデルを構築**: [AI コーディングエージェントでの開発](./coding-agents.md) — `npx skills add ohtaman/washi`、`llms.txt` / Context7 連携、実用プロンプト集
-- **TypeScript で直接モデルを書く**: [モデリングガイド](../guide/variables.md) — 配列・辞書変数、`sum` / `dot` 集計、論理制約、競合診断
+- **TypeScript で直接モデルを書く**: [モデリングガイド](../guide/variables.md) — 配列・辞書変数、`sum` / `dot` 集計、論理制約、矛盾診断
 
 ### リファレンスと実践例
 
-- **[実践例・サンプル集](../examples/)**: シフト作成からポートフォリオ最適化（QP）まで、12 の実践レシピと API 逆引き
+- **[実践例・サンプル集](../examples/)**: シフト作成からポートフォリオ最適化（QP）まで、数理最適化・CP・SMT の 12 の実践レシピと API 逆引き
 - **[ソルバーの比較と切り替え](../solvers/)**: 同梱の HiGHS・Pumpkin とオプションの Z3・GLPK の比較表
 - **[ランタイム環境とデプロイ構成](./runtimes.md)**: Node.js、Vite / Next.js、CDN、単一 HTML、デスクトップ・モバイル WebView での構成例

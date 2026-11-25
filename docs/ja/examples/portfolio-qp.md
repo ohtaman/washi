@@ -4,9 +4,11 @@
 | :--- | :--- | :--- | :--- |
 | 凸二次計画問題 (Convex QP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">ソースコード</a></li></ul> |
 
-マーコウィッツの平均・分散モデルを用いた資産配分の最適化問題です。目標期待リターン以上という条件と、投資比率の合計が 100% という制約を満たしながら、ポートフォリオ全体の分散 $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$ を最小化します。
+マーコウィッツの平均・分散モデルを用いた資産配分の最適化問題です。目標期待リターン以上という条件と、投資比率の合計が 100% という制約を満たしながら、ポートフォリオ全体の分散（リスク）を最小化します。
 
 <PortfolioQpDemo />
+
+上のインタラクティブデモは 1 資産あたり `60%` の上限付きプリセットを使いますが、以下の定式化とコードでは上限なしの空売り禁止モデル（$0 \le w_i \le 1$）を解きます。
 
 ## 数理モデルの定式化
 
@@ -85,6 +87,8 @@ solvePortfolio();
 </CodeRunner>
 
 ## 実務上のポイント
+
+目標リターン `8.50%` での最適分散は `0.014229`（ボラティリティ `11.93%`）です。`Tech` の `52.68%` と `Bonds` の `30.57%` でリターンとリスクのバランスを取りつつ、`Tech` と共分散が高い `GlobalEq` は `0.00%` になります。
 
 ### 有効フロンティアの描画
 

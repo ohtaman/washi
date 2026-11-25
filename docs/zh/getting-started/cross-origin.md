@@ -3,7 +3,7 @@
 在浏览器中运行 Z3 求解器需要同时满足两项浏览器安全前提：**安全上下文**与**跨源隔离**。只有两者同时成立，浏览器才会为 Z3 的多线程 WebAssembly 启用 `SharedArrayBuffer`。
 
 > [!TIP]
-> **HiGHS、Pumpkin、GLPK 与 Node.js 无需此配置**：内置的 HiGHS 与 Pumpkin，以及 GLPK 插件均不使用 `SharedArrayBuffer`，在普通浏览器上下文中即可运行。在 Node.js 中运行 Z3 也无需任何 HTTP 响应头。仅当在浏览器中使用 `@ohtaman/washi/solvers/z3` 时需要参考本页。
+> **HiGHS、Pumpkin、GLPK 与 Node.js 无需此配置**：内置的 HiGHS 与 Pumpkin，以及 GLPK 插件均不使用 `SharedArrayBuffer`，在普通浏览器上下文中即可运行。在 Node.js 中运行 Z3 也无需任何 HTTP 响应头。仅当在浏览器中使用 Z3 时需要参考本页。
 
 ---
 
@@ -13,7 +13,7 @@ Z3 的 WebAssembly 二进制文件依赖由 `SharedArrayBuffer` 与 Web Worker �
 
 只有在顶层文档同时满足以下两个条件时，浏览器才会重新启用 `SharedArrayBuffer`：
 
-1. **安全上下文**：页面必须通过 `https://` 或 `http://localhost` 加载（`window.isSecureContext === true`）。普通的 `http://` 局域网 IP 地址不满足条件。
+1. **安全上下文**：页面必须通过 `https://` 或 `http://localhost`（包括 `127.0.0.1` 与 `[::1]`）加载，使 `window.isSecureContext === true`。普通的 `http://` 局域网 IP 地址不满足条件。
 2. **跨源隔离**：文档必须附带隔离响应头，使 `window.crossOriginIsolated === true`。
 
 ---
@@ -124,5 +124,5 @@ GitHub Pages 等平台不允许直接修改 HTTP 响应头。您可以使用 **`
 
 | 检测项 | 失败条件 | 行为 |
 | --- | --- | --- |
-| **安全上下文** | `!window.isSecureContext` 且主机名非 `localhost` / `127.0.0.1` / `[::1]` | `solve()` 与 `check()` 立即抛出错误，提示需要 HTTPS 或 `localhost`。 |
-| **跨源隔离** | `SharedArrayBuffer` 不可用或 `window.crossOriginIsolated !== true` | 立即报错并列出所需的 `COOP` 与 `COEP` 响应头，而不会静默挂起。 |
+| **安全上下文** | `!window.isSecureContext` 且主机名非 `localhost` / `127.0.0.1` / `[::1]` | `solve()` 与 `check()` 返回的 Promise 会立即 reject，并提示需要 HTTPS 或 `localhost`。 |
+| **跨源隔离** | `SharedArrayBuffer` 不可用或 `window.crossOriginIsolated !== true` | `solve()` 与 `check()` 返回的 Promise 会立即 reject，列出所需的 `COOP` 与 `COEP` 响应头，而不会静默挂起。 |

@@ -23,7 +23,7 @@
 | `calib` | 3h | 1人 | `board` | **是** |
 | `test` | 2h | 2人 | `assembly`, `firmware`, `calib` | **是** |
 
-若忽略人力上限，`chassis` 和 `board` 可在 `0h` 同时启动，关键路径长度为 `9h`（`chassis 4h -> assembly 3h -> test 2h`）。但在 `crewCapacity = 3` 的限制下，各需 2 人的 `chassis` 与 `board` 无法并行（`2 + 2 = 4 > 3`）。两者串行执行会将 `assembly` 推迟至 `7h` 开始，使最小最大完工时间（Makespan）从 `9h` 增至 **`12h`**。
+若忽略人力上限，`chassis` 和 `board` 可在 `0h` 同时启动，关键路径长度为 `9h`（`chassis 4h -> assembly 3h -> test 2h`）。但在 `crewCapacity = 3` 的限制下，各需 2 人的 `chassis` 与 `board` 无法并行（`2 + 2 = 4 > 3`）。两者串行执行会将 `assembly` 推迟至 `7h` 开始，使最短完工时间（Makespan）从 `9h` 增至 **`12h`**。
 
 ## WaSHI 实现代码
 
@@ -111,7 +111,7 @@ runProjectScheduling();
 
 ### 为何 `13h` 加急截止期无解（`unsatCore`）
 
-加入维护时段和 `<= 13h` 的截止期约束后，`m.check()` 返回 `"Unsat"`，并在排除无关的 `crew_limit` 后提取出冲突约束集合（`unsatCore`）：
+加入维护时段和 `<= 13h` 的截止期约束后，`m.check()` 返回 `"Unsat"`，并在 `unsatCore` 中隔离出构成冲突的 5 条约束。即使 `crew_limit` 在前半部分是瓶颈，这类与本次冲突无关的规则也会被排除：
 
 1. `rig_maintenance_window` 将 `firmware` 和 `calib` 的最早开始时间推迟至 `6h`。
 2. 由于 `chassis` 耗时 `4h`、`assembly` 耗时 `3h`，`assembly_after_chassis` 与 `test_after_assembly` 将 `test` 的最早开始时间推迟至 `7h`。

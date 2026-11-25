@@ -79,7 +79,7 @@ if (status === "Infeasible") {
 ```
 
 > [!TIP]
-> **Why HiGHS / GLPK are scale-sensitive**: In MIP solvers (HiGHS and GLPK), `m.check()` diagnoses infeasibility by introducing non-negative relaxation slack variables to each named constraint (subtracting slack on `<=`, adding on `>=`, and both on `==`) and minimizing the **unweighted sum of relaxations**.
+> **Why HiGHS / GLPK are scale-sensitive**: In HiGHS and GLPK, `m.check()` introduces non-negative relaxation slacks to each constraint (including auto-named ones)—subtracting on `<=`, adding on `>=`, and both on `==`—and minimizes their **unweighted sum**.
 > When constraints mix very different numeric scales—such as headcount $\le 8$ alongside budget $\le 50{,}000$—relaxing the smaller-scale constraint adds far less to the total slack, so HiGHS/GLPK tends to flag it first.
 > Normalize your constraint units to reduce scale bias in elastic relaxation, or use `pumpkin` or `z3` when you need a scale-invariant Unsat Core.
 
@@ -88,7 +88,7 @@ if (status === "Infeasible") {
 ## Verifying Solutions (`m.verify()`)
 
 After solving a model, call `m.verify()` to check that every bound, integrality rule, linear constraint, and logical constraint holds within tolerance.
-You can also pass a custom `values` map to validate an externally produced assignment:
+You can also pass a plain object via `values` (not a `Map`), such as `m.verify({ values: { x: 1, y: 2 } })`, to validate an externally produced assignment:
 
 ```typescript
 const status = await m.solve();
@@ -128,7 +128,8 @@ if (m.hasPrimalSolution) {
 
 ## Inspecting the LP Formulation (`m.toLpString()`)
 
-To inspect coefficients, signs, or constraint names, call `m.toLpString()` to export the model in standard CPLEX `.lp` format:
+To inspect coefficients, signs, or constraint names, call `m.toLpString()` to export the model in standard CPLEX `.lp` format.
+It exports numeric variables, linear/quadratic objectives, linear constraints, and lowered `max`/`min`/`abs`/`at`/`!=` expressions, while omitting propositional `BoolVar`s and logical constraints:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";

@@ -80,7 +80,7 @@ if (status === "Infeasible") {
 ```
 
 > [!TIP]
-> **为什么 HiGHS / GLPK 会受数值尺度影响**：MIP 求解器（HiGHS 和 GLPK）的 `m.check()` 会为每条命名约束引入非负松弛变量（`<=` 减去松弛、`>=` 加上松弛、`==` 两侧同时引入），并最小化**无权重的总松弛量**。
+> **为什么 HiGHS / GLPK 会受数值尺度影响**：在 HiGHS 与 GLPK 中，`m.check()` 会为包括自动命名在内的每条约束引入非负松弛变量（`<=` 减去、`>=` 加上、`==` 两侧同时引入），并最小化**无权重的总松弛量**。
 > 当模型同时包含数量级差异悬殊的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，放宽数值较小的约束所增加的总松弛量远小于放宽大数值约束，因此 HiGHS/GLPK 更容易优先标记前者。
 > 若要减轻弹性松弛中的量纲偏差，请先统一约束的数值尺度；若需要与尺度无关的严格不可满足核心（Unsat Core），请使用 `pumpkin` 或 `z3`。
 
@@ -89,7 +89,7 @@ if (status === "Infeasible") {
 ## 独立验证解 (`m.verify()`) {#verifying-solutions-m-verify}
 
 求解完成后，调用 `m.verify()` 可独立检查所有变量上下界、整数条件、线性约束和逻辑约束是否在容差范围内成立。
-您也可以通过 `values` 选项传入自定义赋值来验证外部解：
+您也可以通过 `values` 选项传入普通对象（而非 `Map`），例如 `m.verify({ values: { x: 1, y: 2 } })`，以验证外部生成的解：
 
 ```typescript
 const status = await m.solve();
@@ -129,7 +129,8 @@ if (m.hasPrimalSolution) {
 
 ## 查看 LP 建模形式 (`m.toLpString()`)
 
-如需核对系数、正负号或约束名称，可调用 `m.toLpString()` 导出标准 CPLEX `.lp` 格式文本：
+如需核对系数、正负号或约束名称，可调用 `m.toLpString()` 导出标准 CPLEX `.lp` 格式文本。
+该方法会导出数值变量、线性/二次目标函数、线性约束以及已线性化的 `max`、`min`、`abs`、`at`、`!=` 表达式，但不包含命题布尔变量（`BoolVar`）与逻辑约束：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";

@@ -70,7 +70,7 @@ Classic `<script>` tags load immediately invoked function expression (`IIFE`) bu
 
 - **Automatic resolution**: In Node.js and bundler builds, WaSHI resolves `.wasm` assets relative to the module with no CDN fallback.
 - **Browser self-hosting**: Deploy `dist/browser/` intact (entry scripts, sibling chunks, Web Worker scripts, and `.wasm` files). Requests that hit missing URLs or HTML SPA fallbacks fail immediately and report the attempted URL.
-- **Custom browser URLs**: Call `setHighsWasmUrl(url)` or `setPumpkinWasmUrl(url)`, or pass `{ wasmUrl }` to `m.solve()` / `m.check()`. This override is ignored for HiGHS in Node.js, while Pumpkin accepts `file://` URLs in Node.js. For Z3, pass `{ z3JsUrl, z3WasmUrl }`.
+- **Custom browser URLs**: Call `setHighsWasmUrl(url)` or `setPumpkinWasmUrl(url)`, or pass `{ wasmUrl }` to `m.solve()` / `m.check()`. This override is ignored for HiGHS in Node.js, while Pumpkin accepts `file://` URLs in Node.js. For Z3, call `setZ3Assets({ jsUrl, wasmUrl })` (from `@ohtaman/washi/solvers/z3`) or pass `{ z3JsUrl, z3WasmUrl }`.
 
 #### Browser Security & Cross-Origin Isolation
 
@@ -82,7 +82,8 @@ Classic `<script>` tags load immediately invoked function expression (`IIFE`) bu
 #### Web Workers & Cancellation (`AbortSignal`)
 
 - **Default Workers**: On standard browser origins (`window.origin !== "null"`), HiGHS and Pumpkin default to Web Workers (`useWorker: true`). On opaque origins (`window.origin === "null"`, such as `file://` pages or sandboxed iframes without `allow-same-origin`), both default to `useWorker: false`.
-- **Cancellation behavior**: Pre-solve cancellation (`signal.aborted`) works on all solvers, and `{ signal }` terminates in-flight Worker runs immediately. On the browser main thread or in Node.js, HiGHS checks `signal` inside `onProgress` callbacks, Pumpkin polls `signal` at search checkpoints, and GLPK/Z3 only check `signal` before starting (no mid-solve cancellation).
+- **Worker cancellation**: Pre-solve cancellation (`signal.aborted`) works on all solvers, and `{ signal }` terminates in-flight HiGHS and Pumpkin Workers immediately.
+- **Main-thread & Node.js cancellation**: HiGHS checks `signal` during `onProgress` callbacks, Pumpkin polls `signal` at search checkpoints, and GLPK/Z3 only check `signal` before starting.
 
 #### Solver Capabilities, Options, & Validation Errors
 
@@ -93,7 +94,7 @@ Classic `<script>` tags load immediately invoked function expression (`IIFE`) bu
 | **Z3** | Satisfiability Modulo Theories (`SMT`), continuous/discrete `unsatCore` | `signal`, `onProgress`, `z3JsUrl`, `z3WasmUrl` | `relax: true`, `useWorker: true`, `timeLimit`, `presolve`, `relativeGap`, `absoluteGap`, `threads`, `verbose`, `outputFlag`, unknown keys, `QuadExpr`, variable `initialValue` |
 | **GLPK** | `LP`, `MIP` | `timeLimit`, `presolve`, `relativeGap`, `verbose`, `relax`, `signal`, `onProgress` | `useWorker: true`, `absoluteGap`, `threads`, `outputFlag` (use `verbose`), unknown keys, `QuadExpr`, variable `initialValue` |
 
-Warm-start hints are configured on variables (`m.integer(..., { initialValue })` or `v.initialValue`), not via `solve()`/`check()` options; HiGHS and Pumpkin support variable-level warm starts, whereas Z3 and GLPK throw if any variable has `initialValue` set.
+Warm-start hints live on variables (`initialValue`), not `solve()`/`check()` options; see Step 1 below for solver support.
 
 ---
 
@@ -133,7 +134,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 | Form | Examples | Notes |
 | --- | --- | --- |
 | Linear (`LinExpr`) | `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` `` | Also supports `` expr`sum((${price} - ${cost}) * ${byItem})` ``. |
-| Piecewise & element | `` expr`max(${vec}) + sum(abs(${vec} - ${target}))` ``, `` expr`at(${costs}, ${idx})` `` | `at()` enforces $0 \le \text{idx} < \text{costs.length}$ on 0-based integer `idx`. Convex uses (e.g., minimizing `max`/`abs`) stay pure LP on HiGHS/GLPK; non-convex contexts require finite bounds. |
+| Piecewise & element | `` expr`max(${vec}) + sum(abs(${vec} - ${target}))` ``, `` expr`at(${costs}, ${idx})` `` | `at()` enforces `0 <= idx < costs.length` on 0-based integer `idx`. Convex uses (e.g., minimizing `max`/`abs`) stay pure LP on HiGHS/GLPK; non-convex contexts require finite bounds. |
 | Quadratic (`QuadExpr`) | `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` | Supported on HiGHS for convex QP objectives over continuous variables (`m.continuous`); MIQP and quadratic constraints are rejected, and other solvers reject `QuadExpr`. |
 | Constraint (`Constraint`) | `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` | Supports `<=`, `>=`, `==`, `=`, plus integer-only `<`, `>`, `!=`. |
 
@@ -174,8 +175,8 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 
 - **Return value**: Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`).
 - **Status semantics**: Optimization solvers return `"Feasible"` when a limit or abort terminates the solve with a valid primal incumbent. `"Sat"` and `"Unsat"` apply to satisfiability or custom solver adapters.
-- **Reading results**: Check `m.hasPrimalSolution`, then read `x.value`, `` expr`...`.value ``, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`. Inspect entities via `m.variables` and `m.constraints` (`ReadonlyMap`s).
-- **Independent verification**: Call `m.verify()` to check finiteness, variable bounds, integrality, and linear/logical constraints (`VerificationReport`: `{ valid, complete, maxViolation, violations }`). It checks primal feasibility only and does not recompute `m.objectiveValue`.
+- **Reading results**: Check `m.hasPrimalSolution`, then read `x.value`, `` expr`...`.value ``, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`. `m.values` (like `m.variables` and `m.constraints`) is a `ReadonlyMap<string, number | boolean>` (use `.get(name)`), unlike `CheckResult.values` and `m.solution.values` (`Record`).
+- **Independent verification**: `m.verify()` checks primal feasibility—finiteness, bounds, integrality, and constraints—returning `VerificationReport` (`{ valid, complete, maxViolation, violations }`) without recomputing `m.objectiveValue`.
 
 #### Satisfiability & Conflict Diagnosis (`await m.check(options?)`)
 

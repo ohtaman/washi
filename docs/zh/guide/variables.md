@@ -1,4 +1,4 @@
-# 决策变量与定义域 (`Variables`)
+# 决策变量与定义域
 
 决策变量表示数理优化或逻辑验证模型中待求解的未知量。
 在 `Model` 实例上，WaSHI 提供了四个按定义域划分的工厂方法：`m.continuous()`、`m.integer()`、`m.binary()` 与 `m.bool()`。
@@ -125,14 +125,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ## 变量配置选项
 
-各工厂方法接受与其变量类型对应的选项：`m.continuous()` 与 `m.integer()` 支持 `lb`、`ub`、`prefix`、`name`、`initialValue`；`m.binary()` 支持 `prefix`、`name`、`initialValue`；`m.bool()` 仅支持 `prefix` 与 `name`。
+各工厂方法只接受与其变量类型匹配的选项。
+`m.continuous()` 与 `m.integer()` 支持下表所有工厂选项，`m.binary()` 不接受 `lb` 与 `ub`，`m.bool()` 仅支持 `name` 与 `prefix`。
 
 | 选项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
+| `name` | `string` | 自动生成 | 标量变量的显式名称（可替代将名称作为第一个参数传入）。 |
 | `lb` | `number` | `0` | 下界（`m.continuous()`、`m.integer()`）。允许负值时请传入有限负数或 `-Infinity`。 |
 | `ub` | `number` | `Infinity`（`binary` 为 `1`） | 上界（`m.continuous()`、`m.integer()`）。`m.binary()` 固定为 `1`。 |
 | `prefix` | `string` | `"x"`（`m.bool()` 为 `"p"`） | 未命名标量变量以及数组、字典、二维容器的命名前缀（如 `queen_0_0`）。 |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | 由方法自动推断 | 数值变量的定义域类型（仅直接调用 `new Var()` 时使用）。 |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | 由方法自动推断 | 数值变量的定义域类型（仅适用于直接调用 `new Var()`）。 |
 | `initialValue` | `number` | `undefined` | 数值变量（`m.continuous()`、`m.integer()`、`m.binary()`）的热启动提示值，与求解后的 `variable.value` 相互独立。 |
 
 ### 上下界（`lb`, `ub`）设置要点
@@ -187,9 +189,9 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value` 直接读取解，也可按名称从 `m.values` 查询。
 `variable.value` 对 `Var` 返回 `number | null`，对 `BoolVar` 返回 `boolean | null`。
 
-使用 HiGHS 求解连续线性规划（LP）模型后，`variable.reducedCost` 会以 `number | null` 返回变量的缩减成本。
+使用 HiGHS 求解连续线性规划（LP）模型或通过 `m.relax()` 求解 LP 松弛后，`variable.reducedCost` 会以 `number | null` 返回变量的缩减成本。
 **缩减成本（Reduced Cost）** 表示处于下界或上界处的非基变量的目标系数需要改善多少，将其从当前边界移开才对目标有利。
-在求解前、未求得最优解时、使用 GLPK（仅返回约束的 `dual`），或对于 MIP、CP 与 SMT 模型，`reducedCost` 均为 `null`。
+在求解前、未求得最优解时、使用 GLPK（仅返回约束的 `dual`）、使用 `m.solve()` 求解 MIP 模型时，以及对于 CP 和 SMT 模型，`reducedCost` 均为 `null`。
 
 ```typescript
 await m.solve();

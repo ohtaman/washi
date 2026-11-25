@@ -6,9 +6,9 @@
 
 The **Traveling Salesperson Problem (TSP)** finds the shortest closed tour that visits every city once and returns to the starting city.
 
-In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles called **subtours** requires a subtour elimination constraint for every subset of cities $S \subset V$ with $2 \le |S| \le |V| - 1$:
+Let $V$ be the set of $n$ cities ($|V| = n$) and $x_{ij} \in \{0, 1\}$ indicate whether the tour travels directly from city $i$ to city $j$. In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles called **subtours** requires a subtour elimination constraint for every subset $S \subset V$ with $2 \le |S| \le n - 1$:
 
-$$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
+$$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le n - 1$$
 
 Because there are $2^n - n - 2$ such subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Lazy Constraint Separation (combinatorial Benders cuts via `solveBenders()`)**, constraints are added only when violated:
 1. **Master Problem**: Solves the degree-assignment relaxation, where each city has 1 incoming edge and 1 outgoing edge.
@@ -149,6 +149,8 @@ runTSP();
 </CodeRunner>
 
 ## Key Takeaways
+
+This 5-city instance converges in **2 iterations**. In Iteration 1, the assignment relaxation splits the cities into two subtours (`[A -> B]` and `[C -> E -> D]`), and multi-cut separation adds 2 Benders feasibility cuts at once. In Iteration 2, the master problem finds the optimal single tour with total distance `7.236` ($5 + \sqrt{5}$).
 
 ### Lazy Subtour Elimination & Multi-Cut Separation
 

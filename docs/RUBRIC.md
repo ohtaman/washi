@@ -7,6 +7,8 @@ The rubric has two tiers:
 1. **Part I (Common Rubric — 4 Axes)**: Applied to every page. Each axis operates at its own level of abstraction and is scored separately so strengths in one axis do not mask defects in another.
 2. **Part II (Page-Type Rubric — 3 Types)**: Apply the single section matching the page's role (`Type A`, `Type B`, or `Type C`).
 
+For how to apply this rubric during close-reading without tunnel vision or local over-formalization, follow **Part III (Close-Reading & Prose Review Guidelines)** below.
+
 Prioritize improvements by **negative (defect) score first** (especially in Readability, Comprehension, Anti-AI-Slop, and Accuracy), then by **total score within the same page type**.
 
 ---
@@ -92,3 +94,15 @@ Prioritize improvements by **negative (defect) score first** (especially in Read
 | :---: | --- | --- |
 | **+10** | Goal-oriented navigation | Makes it obvious at a glance where to go next based on what the reader wants to build or learn. |
 | **-5** | Missing or inconsistent index metadata | Omits critical preconditions in overview comparison tables (e.g., browser `COOP`/`COEP` requirements) or uses conflicting link labels for the same target page. |
+
+---
+
+## Part III. Close-Reading & Prose Review Guidelines
+
+When reviewing or polishing documentation (`docs/`, `README*.md`, `skills/washi/SKILL.md`, and the exercises built-in Guide), align on these workflow criteria before editing:
+
+- **Read paragraph-by-paragraph in full-section and full-page context**: Evaluate each paragraph, table, and callout together with surrounding sections rather than inspecting isolated sentences or table cells. Narrow sentence-level checks miss cross-section repetition, broken narrative transitions, and misplaced explanations—and invite local over-formalization.
+- **Verify section ownership first**: Before rewriting an awkward passage, check whether the content belongs in that section (overview, concept, API contract table, runnable example, takeaways, or solver/runtime preconditions) or is already covered elsewhere on the page.
+- **Cut, simplify, or relocate before adding**: When spotting an awkward sentence, redundant caveat, or undefined symbol, do **not** reflexively bolt on parenthetical definitions or extra clauses to make that single line "formally self-contained." First ask whether the detail should be cut, stated in plain words, or moved to a better-fitting section.
+- **Prioritize first-read comprehension over mechanical rules**: Aim for natural, idiomatic prose in each locale (`en`, `ja`, `zh`) with consistent domain terminology (preserving standard Japanese OR terms such as `割当`) and consistent units. Judge inline math, compact tables, and callouts by whether they genuinely reduce ambiguity for a first-time reader—avoid both rigid blanket bans and unnecessary formalization.
+- **Verify claims against source ground truth**: Cross-check every API signature, default option, solver behavior (e.g., `Integer`/`Binary` normalization vs. `objectiveValue`, `relax`, dual/reduced-cost signs, browser `COOP`/`COEP` requirements), math formula, and stated numeric output against `src/` and actual runnable behavior. Keep `en`, `ja`, `zh`, and generated `llms.txt` / `llms-full.txt` synchronized.

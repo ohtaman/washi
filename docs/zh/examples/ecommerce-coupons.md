@@ -1,8 +1,8 @@
 # 电商购物车与优惠券优化 (Indicator MIP)
 
-| 问题类别 | 求解器 | 核心 API | 链接 |
+| 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
+| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
 
 电商结算规则常同时包含最低消费门槛、品类满减、互斥优惠券和单笔用券数量上限。将这些规则统一建模为单个 MIP，可同时求得最优优惠券组合，并判断是否加购低价凑单商品以进一步降低实付总额。
 
@@ -15,6 +15,8 @@
 
 ## 场景与促销规则
 
+上方的交互式组件支持探索多商品目录，而下方的可运行示例使用精简的单购物车场景（小计 `$242`、4 张优惠券与 1 件可选凑单商品）。
+
 顾客购物车当前共有 `$242` 商品（数码类 Tech 占 `$210`，服饰类 Apparel 占 `$32`）：
 - **可选凑单商品**：加购一根 `$10` 的编织 USB-C 数据线（Tech 品类）后，商品总额从 `$242` 升至 `$252`（Tech 品类小计从 `$210` 升至 `$220`）。
 - **可用优惠券**：每笔订单最多使用 2 张优惠券；互斥券（Exclusive）彼此不能同时使用，最多使用 1 张（可与可叠加券组合使用）。
@@ -26,7 +28,7 @@
 | `MEGA45_250` | **-$45** | 购物车总额 $\ge \$250$ | **互斥 (Exclusive)**（不可与 `TECH30` 同享） |
 | `MEMBER10` | **-$10** | 购物车总额 $\ge \$150$ | **可叠加 (Stackable)** |
 
-## WaSHI 实现
+## 使用 WaSHI 实现
 
 <CodeRunner preset="cart_coupon">
 

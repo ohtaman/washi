@@ -7,15 +7,15 @@
 | 案例 | 问题类型 | 求解器 | 核心 WaSHI API | 演示内容 | Playground / 指南 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[生产计划问题](./production.md)** | 整数规划 (MIP) | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 整数变量定义、标签模板方程，以及在资源上限下最大化总利润。 | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
-| **[0-1 背包问题](./knapsack.md)** | Binary MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 一维 0-1 变量字典及物品数组上的加权聚合。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |
+| **[0-1 背包问题](./knapsack.md)** | 0-1 整数规划 (MIP) | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 一维 0-1 变量字典及物品数组上的加权聚合。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |
 | **[运输与分配网络](./transportation.md)** | LP | HiGHS | `m.continuous(rows, cols)`, `expr` (`sum`, `dot`), `m.constraint()` | 二维矩阵索引（`ship[factory][store]`）与按行/列汇总的供给上限和需求满足约束。 | [Playground](https://washi.ohtaman.dev/demo/?preset=transportation) |
 | **[营养问题与灵敏度分析](./diet-sensitivity.md)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解后读取对偶值（影子价格）、约束松弛量与变量缩减成本。 | [Playground](https://washi.ohtaman.dev/demo/?preset=diet_sensitivity) |
-| **[员工排班与休假冲突诊断](./shift-scheduling.md)** | Binary MIP + Unsat Core | HiGHS + Z3* | `m.binary(staff, days)`, `m.check()`, `m.unsatCore` | 5×7 周排班优化，以及用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
-| **[电商购物车与优惠券优化](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | 使用 `m.indicator()` 表达满减门槛、互斥券规则与加购凑单决策。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
-| **[投资组合优化 (QP)](./portfolio-qp.md)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 使用 `QuadExpr` 最小化马科维茨均值-方差风险（$\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
-| **[资源受限项目调度 (CP)](./project-scheduling.md)** | CP / LCG + Unsat Core | Pumpkin | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `m.check()` | 含共享校准台互斥与 3 人团队上限的 6 工序调度及截止期冲突诊断。 | [Playground](https://washi.ohtaman.dev/demo/?preset=project_scheduling) |
-| **[SMT 安全策略验证](./smt-security.md)** | SMT | Z3* | `m.bool()`, `implies()`, `and()`, `not()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑运算（`implies`, `and`, `not`）结合整数边界验证。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
-| **[约束冲突诊断 (Unsat Core)](./unsat-core.md)** | LP / MIP + Unsat Core | Z3* + HiGHS | `m.constraint()`, `m.check()`, `m.conflicts` | 当人员配备要求与预算上限冲突时，提取导致矛盾的约束子集。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
+| **[员工排班与休假冲突诊断](./shift-scheduling.md)** | 0-1 整数规划 (MIP) + Unsat Core | HiGHS + Z3* | `m.binary(staff, days)`, `m.check()`, `m.unsatCore` | 5×7 周排班优化，以及用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
+| **[电商购物车与优惠券优化](./ecommerce-coupons.md)** | 指示约束 MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | 使用 `m.indicator()` 表达满减门槛、互斥券规则与加购凑单决策。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
+| **[投资组合优化 (QP)](./portfolio-qp.md)** | 凸二次规划 (QP) | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 使用 `QuadExpr` 最小化马科维茨均值-方差风险（$\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[资源受限项目调度 (CP)](./project-scheduling.md)** | CP + Unsat Core | Pumpkin | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `m.check()` | 含共享校准台互斥与 3 人团队上限的 6 工序调度及截止期冲突诊断。 | [Playground](https://washi.ohtaman.dev/demo/?preset=project_scheduling) |
+| **[SMT 安全策略验证](./smt-security.md)** | SMT | Z3* | `m.bool()`, `implies()`, `.and()`, `not()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑运算（`implies()`, `.and()`, `not()`）结合整数边界验证。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
+| **[约束冲突诊断 (Unsat Core)](./unsat-core.md)** | SMT / MIP + Unsat Core | Z3* + HiGHS | `m.constraint()`, `m.check()`, `m.conflicts` | 当人员配备要求与预算上限冲突时，提取导致矛盾的约束子集。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[车辆路径规划问题 (CVRP)](./vehicle-routing.md)** | 组合优化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing`, `constr.dual` | 根据客户对偶值（影子价格）动态生成路径列，最小化车队规模。 | [分解法](../guide/decomposition.md) |
 | **[旅行商问题 (TSP)](./traveling-salesperson.md)** | 组合优化 / Benders 分解 | HiGHS | `m.solveBenders()`, `subproblem` | 从度数分配松弛出发，利用动态 Benders 可行割消除子回路。 | [分解法](../guide/decomposition.md) |
 
@@ -43,7 +43,7 @@
 | `m.solveBenders()` | Benders 分解与延迟割平面分离 | [旅行商问题 (TSP)](./traveling-salesperson.md) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
 | `disjoint()` / `cumulative()` / `max()` | 调度全局约束与完工时间目标函数 | [资源受限项目调度 (CP)](./project-scheduling.md), [约束规划 (CP) 建模](../guide/constraint-programming.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
 | `distinct()` / `allowed()` / `at()` | CP 互异、表约束与元素索引查找 | [约束规划 (CP) 建模](../guide/constraint-programming.md), [代数表达式](../guide/expressions.md) | — |
-| `solver: "pumpkin"` | 内置 Pumpkin 求解 CP/LCG 与离散模型冲突诊断 | [资源受限项目调度 (CP)](./project-scheduling.md), [Pumpkin 指南](../solvers/pumpkin.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `solver: "pumpkin"` | 内置 Pumpkin 的 CP 调度求解与离散模型冲突诊断 | [资源受限项目调度 (CP)](./project-scheduling.md), [Pumpkin 指南](../solvers/pumpkin.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
 | `solver: "glpk"` | 通过可选 `glpk.js`（GPL-3.0）插件求解 LP/MIP | [GLPK 指南](../solvers/glpk.md) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## 在本地（Node.js）运行示例

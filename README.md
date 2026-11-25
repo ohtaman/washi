@@ -30,7 +30,7 @@
 
 - **Natural Algebraic Syntax**: Write expressions and constraints directly with `` expr`30 * ${x} + 50 * ${y} <= 40` ``, `sum`, and `dot`.
 - **Runs in Node.js & Browsers**: Powered by WebAssembly—no Python service or native C/C++ build required.
-- **Solver-Independent**: Use bundled zero-dependency **HiGHS** (LP/MIP/QP) and **Pumpkin** (CP/LCG), optional **Z3** and **GLPK** plugins, or custom solver adapters.
+- **Solver-Independent**: Use bundled zero-dependency **HiGHS** (LP/MIP/QP) and **Pumpkin** (CP), optional **Z3** and **GLPK** plugins, or custom solver adapters.
 - **Satisfiability & Conflict Diagnosis**: Check logical/arithmetic feasibility and pinpoint contradictory constraints when a model is infeasible.
 - **Decomposition Methods**: Built-in support for Column Generation and Benders Decomposition on large-scale problems.
 
@@ -47,7 +47,7 @@
 
 ```bash
 npm install @ohtaman/washi
-# HiGHS (LP/MIP/QP) and Pumpkin (CP/LCG, @ohtaman/washi/solvers/pumpkin) are bundled with zero extra dependencies
+# HiGHS (LP/MIP/QP) and Pumpkin (CP, @ohtaman/washi/solvers/pumpkin) are bundled with zero extra dependencies
 
 # Optional peer-dependency solver plugins
 npm install z3-solver   # For SMT logic & exact real/integer unsat core diagnosis
@@ -78,8 +78,8 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 | Solver | License | Problem Classes | Primary Use Case | Setup |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & elastic conflict repair | Built-in default (zero extra deps) |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, Logic, Bounded Integer | Combinatorial scheduling & zero-COOP/COEP `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"` (bundled WASM, zero deps) |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & conflict diagnosis (constraint relaxation) | Built-in default (zero extra deps) |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP (Lazy Clause Generation), Logic, Bounded Integer | Combinatorial scheduling & bounded-integer `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"` (bundled WASM, zero deps) |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, Logic, MIP | Logical rules, satisfiability & exact `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | Linear & mixed-integer optimization | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | Deterministic unit & integration testing | Built-in (`MockSolver`) |
@@ -169,13 +169,13 @@ console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value
 ### 4. Logic & Conflict Diagnosis (`m.check`)
 
 Express logical implications and diagnose why a model is infeasible:
-- **HiGHS (default)**: Isolates an **elastic repair set** (`res.conflicts`)—constraints whose relaxation restores feasibility.
-- **Pumpkin (bundled)**: Extracts a scale-invariant **unsatisfiable core** (`res.unsatCore` / `res.conflicts`) for bounded integer and boolean models with **zero `COOP`/`COEP` headers**.
+- **HiGHS (default)**: Identifies constraints whose relaxation restores feasibility (`res.conflicts`).
+- **Pumpkin (bundled)**: Extracts an exact **unsatisfiable core** (`res.unsatCore` / `res.conflicts`) for bounded integer and boolean models.
 - **Z3**: Extracts an exact SMT **unsatisfiable core** (`res.unsatCore` / `res.conflicts`) including continuous and rational arithmetic.
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/pumpkin"; // Bundled zero-COOP/COEP unsatCore (bounded int/bool)
+// import "@ohtaman/washi/solvers/pumpkin"; // Bundled: exact unsatCore (bounded int/bool)
 // import "@ohtaman/washi/solvers/z3";      // Optional: exact SMT unsatCore including Continuous vars
 
 const m = new Model("StaffingRules");
@@ -198,7 +198,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ## 🌐 Browser & Web Worker Usage
 
-- **Bundlers (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` works out of the box. Both **HiGHS** and **Pumpkin** run in dedicated Web Workers by default (pass `{ useWorker: false }` for main-thread execution) and require **no `COOP`/`COEP` headers**.
+- **Bundlers (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` works out of the box. On standard browser origins (`http://` / `https://`), **HiGHS** and **Pumpkin** run in dedicated Web Workers by default (opaque origins such as `file://` default to `{ useWorker: false }`, and you can pass `{ useWorker: false }` explicitly for main-thread execution).
 - **Standalone ESM / Script Tag / CDN**: Serve `dist/browser/` (including `highs.wasm`, `solvers/pumpkin.wasm`, and worker chunks) or load from a CDN.
 
 ```html
@@ -206,9 +206,9 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 <script type="module">
   import { Model } from "./washi/washi.js";
   // Bundled / optional solver plugins:
-  // import "./washi/solvers/pumpkin.js"; // Bundled CP/LCG (zero COOP/COEP)
+  // import "./washi/solvers/pumpkin.js"; // Bundled CP solver
   // import "./washi/solvers/glpk.js";    // Optional GLPK plugin
-  // import "./washi/solvers/z3.js";      // Optional Z3 plugin (requires COOP/COEP)
+  // import "./washi/solvers/z3.js";      // Optional Z3 plugin (see note below)
   const m = new Model();
   await m.solve();
 </script>
@@ -220,7 +220,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 > [!NOTE]
-> **Z3 in the Browser**: Because Z3's WebAssembly build uses `SharedArrayBuffer`, browsers require Cross-Origin Isolation (`COOP: same-origin` and `COEP: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [`examples/distribution/`](examples/distribution/README.md). **HiGHS**, **Pumpkin** (including `unsatCore` on bounded integers/booleans), and **GLPK** require no Cross-Origin Isolation headers.
+> **Z3 in the Browser**: Because Z3's WebAssembly build uses `SharedArrayBuffer`, browsers require a **Secure Context** (`HTTPS` or `localhost`) and Cross-Origin Isolation headers (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [`examples/distribution/`](examples/distribution/README.md). **HiGHS**, **Pumpkin**, and **GLPK** work without Cross-Origin Isolation headers.
 
 ---
 
@@ -235,7 +235,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, running te
 WaSHI stands on the shoulders of the open-source mathematical optimization and automated reasoning communities:
 
 - **[HiGHS](https://highs.dev/)** ([`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)) — High-performance open-source optimization software for LP, MIP, and Convex QP initiated at the University of Edinburgh by Julian Hall, Qi Huangfu, Ivet Galabova, Leona Gottwald, Michael Feldmeier, and contributors, which powers WaSHI's built-in default solver (*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)).
-- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — Lazy Clause Generation (LCG) constraint programming solver developed in Rust by ConSol Lab (TU Delft), powering WaSHI's bundled CP/LCG and zero-`COOP`/`COEP` `unsatCore` engine.
+- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — Lazy Clause Generation (LCG) constraint programming solver developed in Rust by ConSol Lab (TU Delft), powering WaSHI's bundled CP and `unsatCore` engine.
 - **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)** ([`z3-solver`](https://www.npmjs.com/package/z3-solver)) — Developed at Microsoft Research, powering WaSHI's optional SMT satisfiability and exact `unsatCore` conflict diagnosis plugin.
 - **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — Powering WaSHI's optional GPL-3.0 LP/MIP solver plugin.
 - **[PuLP](https://github.com/coin-or/pulp)** — Inspiring WaSHI's declarative algebraic modeling ergonomics.

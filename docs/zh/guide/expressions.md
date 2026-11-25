@@ -58,7 +58,8 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ## 高性能求和 (`sum`)
 
 `sum()` 可直接对一维或二维 `Array`、`Iterable`、`Record` 容器求和。
-它既可在 `` expr`sum(...)` `` 内部使用，也可作为独立函数调用，以 $O(N)$ 线性时间运行且无重复拷贝开销：
+它既可在 `` expr`sum(...)` `` 内部使用，也可作为独立函数调用，以 $O(N)$ 线性时间运行且无重复拷贝开销。
+在 `` expr`sum(...)` `` 内支持对二次表达式（`QuadExpr`）求和，而独立调用的 `sum()` 仅接受线性项：
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -199,7 +200,7 @@ const y = m.continuous("y", { lb: 0 });
 // 1. 使用 .mul() 构建二次项 (x * y + 2 * x^2)
 const quad = x.mul(y).add(x.mul(x).mul(2));
 
-// 2. 构建投资组合方差目标函数：w^T * Sigma * w
+// 2. 构建投资组合方差目标函数：w^T * Sigma * w（交叉项 0.005 已合并 2 * cov）
 const assets = ["Tech", "Bonds"] as const;
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
@@ -264,7 +265,7 @@ m.constraint(expr`${maxErr} <= 3`);
 ### 基于 0 下标的元素查找 (`at(array, index)`)
 
 `at(array, index)` 对应约束规划中的 `Element` 约束，允许数组下标本身作为决策变量（`array[index]`）。
-`index` 必须为整数值表达式，所有求解器都会自动强制 $0 \le \text{index} < \text{array.length}$。
+`index` 必须为整数值表达式，所有求解器都会自动强制 `0 <= index < array.length`。
 Pumpkin 与 Z3 原生支持 `at()`，而 HiGHS 与 GLPK 会使用二元选择变量进行线性化（当数组元素包含变量时，需具备有限上下界）。
 
 ---

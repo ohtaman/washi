@@ -59,6 +59,7 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 
 `sum()` は、1次元・2次元の `Array`・`Iterable`・`Record` コンテナの総和を計算します。
 `` expr`sum(...)` `` の内部でもスタンドアロン関数としても使え、中間式のコピーを繰り返さずに $O(N)$ の線形時間で式を構築します。
+2次式（`QuadExpr`）の総和は `` expr`sum(...)` `` 内でのみ対応しており、スタンドアロンの `sum()` は線形項のみを受け付けます。
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -264,7 +265,7 @@ m.constraint(expr`${maxErr} <= 3`);
 ### 0 始まりインデックス参照 (`at(array, index)`)
 
 `at(array, index)` は制約プログラミングの `Element` 制約に相当し、配列の添字自体を決定変数にできます（`array[index]`）。
-`index` には整数値の式を指定する必要があり、全ソルバー共通で $0 \le \text{index} < \text{array.length}$ の範囲制約が自動的に課されます。
+`index` には整数値の式を指定する必要があり、全ソルバー共通で `0 <= index < array.length` の範囲制約が自動的に課されます。
 Pumpkin と Z3 はネイティブに処理し、HiGHS と GLPK はバイナリ選択変数で線形化します（配列要素に決定変数が含まれる場合は有限の上下限が必要です）。
 
 ---

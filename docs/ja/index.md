@@ -20,7 +20,7 @@ features:
     title: WebAssembly でネイティブ環境構築不要
     details: Python サーバーや C/C++ の環境構築は不要です。ブラウザ（Web Worker）や Node.js でそのままモデルを解けます。
     link: /ja/getting-started/runtimes
-    linkText: ランタイム環境設定
+    linkText: ランタイム環境とデプロイ構成
   - icon: ✍️
     title: 直感的な代数モデリング
     details: 行列や LP 形式文字列を手作業で組み立てず、PuLP に近い数式で線形計画・整数計画・凸二次計画・制約プログラミング・論理（SMT）モデルを記述できます。
@@ -38,7 +38,7 @@ features:
     linkText: 矛盾診断・解の検証・デバッグ
   - icon: ⚙️
     title: 用途別に切り替えられるソルバー構成
-    details: 共通のモデリング API のまま（対応する問題クラスの範囲で）、同梱の HiGHS・Pumpkin、オプションの Z3・GLPK プラグイン、独自ソルバーを用途別に切り替えられます。
+    details: 共通のモデリング API のまま、対応する問題クラスに合わせて同梱の HiGHS・Pumpkin、オプションの Z3・GLPK プラグイン、独自ソルバーを切り替えられます。
     link: /ja/solvers/
     linkText: ソルバー概要
   - icon: 🔀
@@ -128,14 +128,14 @@ features:
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **はじめに**: [インストールと入門](/ja/getting-started/) · [AI コーディングエージェント](/ja/getting-started/coding-agents) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
+- **はじめに**: [インストールと入門](/ja/getting-started/) · [AI コーディングエージェントでの開発](/ja/getting-started/coding-agents) · [ランタイム環境とデプロイ構成](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
 - **モデリング基礎**: [決定変数とドメイン](/ja/guide/variables) · [数式の記述](/ja/guide/expressions)（`expr`, `sum`, `dot`） · [制約条件](/ja/guide/constraints) · [目的関数と求解](/ja/guide/objectives)
 - **応用モデリング**: [矛盾診断・解の検証・デバッグ](/ja/guide/unsat-core) · [制約プログラミング (CP) モデリング](/ja/guide/constraint-programming) · [分解法](/ja/guide/decomposition) · [定式化パターン・Tips](/ja/guide/formulation-tips)
 - **ソルバー接続**: [ソルバー概要](/ja/solvers/) · [HiGHS](/ja/solvers/highs) · [Pumpkin](/ja/solvers/pumpkin) · [Z3](/ja/solvers/z3) · [GLPK](/ja/solvers/glpk) · [カスタムソルバー開発](/ja/solvers/custom-solver)
 - **実践例 — LP・MIP・QP**: [実践例・サンプル集](/ja/examples/) · [生産計画問題](/ja/examples/production) · [0-1 ナップサック問題](/ja/examples/knapsack) · [輸送・物流ネットワーク問題](/ja/examples/transportation) · [栄養問題と感度分析](/ja/examples/diet-sensitivity) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp)
 - **実践例 — シフト・Indicator・CP**: [スタッフのシフト作成](/ja/examples/shift-scheduling) · [EC カートのクーポン最適化](/ja/examples/ecommerce-coupons) · [プロジェクトスケジューリング (CP)](/ja/examples/project-scheduling)
 - **実践例 — SMT・診断・分解法**: [セキュリティポリシー検証 (SMT)](/ja/examples/smt-security) · [制約矛盾の診断 (Unsat Core)](/ja/examples/unsat-core) · [車両配送計画問題 (CVRP)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (TSP)](/ja/examples/traveling-salesperson)
-- **Playground・実務アプリ**: [ショーケース](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理最適化N本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a>
+- **Playground・実務アプリ**: [ショーケース](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/?lang=ja" target="_self">数理最適化N本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a>
 - **パズルゲーム**: <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

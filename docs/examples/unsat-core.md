@@ -4,9 +4,9 @@
 | :--- | :--- | :--- | :--- |
 | Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">Source Code</a></li></ul> |
 
-A standard optimization call (`m.solve()`) only reports `"Infeasible"` when constraints clash. Calling `m.check()` returns `"Unsat"` and extracts an **Unsat Core** — a subset of named constraints that cannot all hold at once.
+A standard optimization call (`m.solve()`) only reports `"Infeasible"` when constraints clash. Calling `m.check()` returns `"Unsat"` along with conflicting constraint names: SMT/CP solvers such as Z3 and Pumpkin extract an **Unsat Core** (a mutually inconsistent subset), whereas MIP solvers such as HiGHS return an **Elastic Repair Set**.
 
-This example uses Z3 to extract a conflicting subset of rules via `m.conflicts` (in this scenario it excludes the unrelated constraint, though in general `unsatCore` / `m.conflicts` is not guaranteed to be minimal).
+This example diagnoses a staffing-vs-budget conflict with Z3 and HiGHS and reads the result from `res.conflicts` (also stored on `m.conflicts`). Here Z3 excludes the unrelated rule, though in general a returned Unsat Core is not guaranteed to be minimal.
 
 ## The Conflicting Scenario
 
@@ -84,4 +84,4 @@ Pumpkin is bundled via `@ohtaman/washi/solvers/pumpkin` and needs neither `z3-so
 
 ### HiGHS (`m.check({ solver: "highs" })`)
 
-Rather than an Unsat Core, HiGHS returns an **Elastic Repair Set** — constraints whose total slack (relaxation) needed to restore feasibility is minimized. Because relaxing `rush_required` takes `1` unit while relaxing the budget cap takes `$14,000`, HiGHS flags `rush_required`.
+Rather than an Unsat Core, HiGHS returns an **Elastic Repair Set** — constraints whose total slack (relaxation) needed to restore feasibility is minimized. It populates `conflicts` and leaves `unsatCore` as `undefined`, whereas Z3 and Pumpkin populate both. Because relaxing `rush_required` takes `1` unit while relaxing the budget cap takes `$14,000`, HiGHS flags `rush_required`.

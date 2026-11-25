@@ -44,15 +44,11 @@ npm install glpk.js     # Optional: GLPK solver (GPL-3.0)
 
 In browsers, Z3 requires a Secure Context and Cross-Origin Isolation headers — `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy`, abbreviated `COOP`/`COEP`. See [Cross-Origin Isolation](./cross-origin.md) for server setup.
 
-Using an AI coding agent? See [Coding with AI Agents](./coding-agents.md) for `npx skills add ohtaman/washi`, `llms.txt`, and ready-to-use prompt templates.
-
 ---
 
 ## 🚀 Quick Start
 
-A typical WaSHI optimization workflow follows three steps: declare decision variables, register an objective and named constraints, and solve and verify the result.
-
-The production-planning example below maximizes profit from desks and chairs under wood and labor limits:
+The production-planning model below maximizes profit from desks and chairs under wood and labor limits:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -77,9 +73,9 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **Define decision variables**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`. For continuous and integer variables, supply finite `lb` and `ub` bounds whenever they are known.
-2. **Describe the objective and constraints**: Write algebraic formulas with `` expr`...` `` and register them with `m.objective()` and `m.constraint()`. Pass descriptive constraint names so infeasibility reports identify conflicting rules clearly.
-3. **Solve and verify**: Call `await m.solve()` to run the bundled HiGHS solver. Check `m.hasPrimalSolution` before reading `.value`, then call `m.verify()` to confirm bounds, integrality, and constraints hold.
+- **Finite bounds**: Supply finite `lb` and `ub` bounds on `m.continuous()` and `m.integer()` variables whenever known; they tighten MIP formulations and are required by `m.indicator()` when `M` is omitted.
+- **Explicit registration & naming**: Constructing an expression with `` expr`...` `` does not attach it to the model until you call `m.objective()` or `m.constraint()`. Passing descriptive constraint names makes `m.check()` conflict reports readable.
+- **Safe reading & verification**: Check `m.hasPrimalSolution` before reading `.value`, then call `m.verify()` to independently confirm bounds, integrality, and constraints.
 
 ---
 

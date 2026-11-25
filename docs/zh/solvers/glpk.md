@@ -60,7 +60,7 @@ console.log("Shadow price:", cap.dual);          // 2
 
 ## 求解器选项与执行模型
 
-GLPK 不支持 WaSHI 的 `useWorker: true` 选项，传入时会直接抛出 `Error`（在浏览器中 `glpk.js` 会自动使用其内置的 Web Worker，而在 Node.js 中则在主线程同步执行）。在所有环境中，`signal` 仅在求解开始前检查，无法中断正在运行的求解。
+GLPK 不支持 WaSHI 的 `useWorker: true` 选项，传入时会直接抛出 `Error`。在浏览器中，`glpk.js` 会自动在其内置 Web Worker 中运行（可调用 `@ohtaman/washi/solvers/glpk` 导出的 `terminateGlpk()` 显式关闭），而在 Node.js 中则在主线程同步执行。在所有环境中，`signal` 仅在求解开始前检查，无法中断正在进行的求解。
 
 ### 支持的选项
 
@@ -68,10 +68,10 @@ GLPK 不支持 WaSHI 的 `useWorker: true` 选项，传入时会直接抛出 `Er
 | :--- | :--- | :--- |
 | `timeLimit` | `number` | 最大求解时间（秒，`tmlim`）。 |
 | `relativeGap` | `number` | 相对 MIP 最优间隙容差（`mipgap`）。 |
-| `presolve` | `"on" \| "off" \| "choose"` | 控制 GLPK 预处理（`"off"` 关闭，`"on"` 和 `"choose"` 开启）。 |
+| `presolve` | `"on" \| "off" \| "choose"` | 控制 GLPK 预处理（默认开启；`"off"` 关闭，`"on"` 和 `"choose"` 开启）。 |
 | `verbose` | `boolean` | 开启 GLPK 控制台日志输出（默认 `false`）。 |
 | `relax` | `boolean` | 求解 MIP 模型的连续 LP 松弛问题。 |
-| `signal` | `AbortSignal` | 仅在求解开始前检查取消状态（无法中断运行中的同步求解）。 |
+| `signal` | `AbortSignal` | 仅在求解开始前检查取消状态（无法中断正在进行的求解）。 |
 | `onProgress` | `(ev) => void` | 在 MIP 分支切割回调中触发，或在求解结束时回调一次。 |
 
 ### 不支持的选项与特性（运行时抛出异常）

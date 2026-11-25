@@ -85,7 +85,7 @@ Explore WaSHI's interactive WebAssembly playground, decision-support application
           <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">AI Nurse Shift Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          A 1-month, 3-shift nurse roster scheduler powered by WaSHI and HiGHS MIP. Natural-language shift input requires Chrome Built-in AI (Gemini Nano) on a supported Chrome browser.
+          Optimizes a 1-month, 3-shift roster for 30 nurses locally with WaSHI and HiGHS MIP, with conflict diagnosis when rules become infeasible. Natural-language shift input requires Chrome Built-in AI (Gemini Nano) on a supported Chrome browser.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -108,7 +108,7 @@ Explore WaSHI's interactive WebAssembly playground, decision-support application
           <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">AI University Timetabling Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          Solves the University Course Timetabling Problem (UCTP) across 4 student cohorts, 10 faculty members, and 7 rooms with WaSHI and HiGHS MIP. Natural-language rule entry requires Chrome Built-in AI (Gemini Nano).
+          Solves the University Course Timetabling Problem (UCTP) across 4 student cohorts, 10 faculty members, and 7 rooms with WaSHI and HiGHS MIP, including conflict diagnosis for infeasible rules. Natural-language rule entry requires Chrome Built-in AI (Gemini Nano).
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -187,7 +187,7 @@ Explore WaSHI's interactive WebAssembly playground, decision-support application
           <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
         </div>
         <p class="washi-showcase-desc">
-          Pack ordered metal parts into a titanium plate with zero scrap void and zero fault lines alongside drone UNIT-74. Powered by live 2D cutting-stock MIP optimization.
+          Pack ordered metal parts into a titanium plate with zero scrap void and zero fault lines alongside drone UNIT-74. Powered by live 2D strip-packing MIP optimization.
         </p>
       </div>
       <div class="washi-showcase-actions">

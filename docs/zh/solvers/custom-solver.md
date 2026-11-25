@@ -10,13 +10,13 @@
 
 ```mermaid
 graph TD
-    A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
-    B --> C[HiGHS WASM Engine Core]
-    B --> D[Mock Solver Core]
-    B --> H[Pumpkin WASM Plugin @ohtaman/washi/solvers/pumpkin]
-    B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
-    B --> F[Z3 SMT Plugin @ohtaman/washi/solvers/z3]
-    B --> G[Your Custom Solver Plugin]
+    A[WaSHI Model] --> B["求解器注册表 (Symbol.for)"]
+    B --> C["HiGHS WASM 引擎 (核心内置)"]
+    B --> D["MockSolver (核心内置)"]
+    B --> H["Pumpkin WASM 插件 (@ohtaman/washi/solvers/pumpkin)"]
+    B --> E["GLPK 插件 (@ohtaman/washi/solvers/glpk)"]
+    B --> F["Z3 SMT 插件 (@ohtaman/washi/solvers/z3)"]
+    B --> G[自定义求解器插件]
 ```
 
 ### 核心架构特征
@@ -113,8 +113,9 @@ export interface SolveModelData extends CheckModelData {
 
 - **二次目标函数（`QuadExpr`）**：当模型包含二次目标函数且 `supportsQP === false` 时直接报错拒绝。
 - **热启动（`initialValue`）**：当变量设置了 `initialValue` 且 `supportsWarmStart !== true` 时直接报错拒绝。
-- **逻辑约束**：`supportsLogicalConstraints` 或 `supportsSMT` 为 `true` 时，通过 `modelData.logicalConstraints` 原生传递。
-- **混合整数规划（MIP）自动线性化**：当两个逻辑标志均不为 `true` 时，`Model` 会在调用 `solve()` 前将逻辑约束自动转为等价的二元变量与线性约束。
+- **逻辑约束**：当 `supportsLogicalConstraints` 或 `supportsSMT` 为 `true` 时，通过 `modelData.logicalConstraints` 原生传递。
+- **`solve()` 自动 MIP 线性化**：当两个标志均不为 `true` 时，`Model` 会在调用 `solve()` 前将 `logicalConstraints`、`boolVars` 以及非线性/CP 表达式自动转为等价的二元变量与线性约束。
+- **`check()` 回退机制**：若适配器未实现 `check()`，`Model.check()` 会回退为通过 `solve()` 求解带弹性松弛变量的可行性问题（在 `conflicts` 中返回违背的约束名，`unsatCore` 为 `undefined`）。
 
 ```typescript
 export interface SolverCapabilities {
@@ -214,7 +215,7 @@ export interface SolveProgressEvent {
 
 | 辅助函数 | 用途 |
 | :--- | :--- |
-| `generateLpString(modelData, { relax }?)` | 将 `modelData` 序列化为 CPLEX LP 字符串（`lpString`）及防冲突映射表（`nameToVar`、`nameToConstraint`）；传入 `{ relax: true }` 输出连续 LP 松弛模型。 |
+| `generateLpString(modelData, { relax }?)` | 将 `modelData` 序列化为 CPLEX LP 字符串（`lpString`）及防冲突映射表（`nameToVar`、`nameToConstraint`）；传入 `{ relax: true }` 输出连续 LP 松弛。注意它不包含 `modelData.objective.constant`，适配器需自行将其加回 `objectiveValue` 与 `objectiveBound`。 |
 | `buildLpSymbolMaps(modelData)` | 在不序列化 LP 字符串的前提下构建防冲突符号映射表（`nameToVar`、`varToName`、`nameToConstraint`、`constraintToName`）。 |
 | `isLpExportResult(value)` | `LpExportResult` 的运行时类型守卫（用于兼容旧版三参数重载 `solve(modelData, lpResult, options)`）。 |
 | `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | 将任意变量名或约束名转换为合法的 LP 标识符。 |
@@ -227,9 +228,9 @@ export interface LpExportResult {
 }
 ```
 
-### `SolverResult` 标准化与标识符还原
+### `SolverResult` 与 `SolverCheckResult` 标准化与标识符还原
 
-`solve()` 返回的 `values`、`boolValues`、`reducedCosts`、`duals` 与 `slacks` 必须以模型原始名称（`v.name`、`bv.name`、`c.name`）为键。使用 LP 辅助函数时，需通过 `nameToVar` 和 `nameToConstraint` 将 LP 标识符还原回原始名称。
+`solve()` 返回的 `values`、`boolValues`、`reducedCosts`、`duals` 与 `slacks` 必须以模型原始名称（`v.name`、`bv.name`、`c.name`）为键。`check()` 同样需以原始名称（`v.name`、`bv.name`、`c.name`、`lc.name`）返回 `values`、`unsatCore` 与 `conflicts`。使用 LP 辅助函数时，需通过 `nameToVar` 和 `nameToConstraint` 将 LP 标识符还原回原始名称。
 
 ```typescript
 export interface SolverResult {
@@ -245,6 +246,17 @@ export interface SolverResult {
   reducedCosts?: Record<string, number>;
   duals?: Record<string, number>;
   slacks?: Record<string, number>;
+  runTime?: number;
+  logs?: string[];
+  raw?: any;
+}
+
+export interface SolverCheckResult {
+  status: "Sat" | "Unsat" | "Unknown";
+  values: Record<string, number | boolean>;
+  unsatCore?: readonly string[];
+  /** unsatCore 的别名：导致不可行的冲突约束子集 */
+  conflicts?: readonly string[];
   runTime?: number;
   logs?: string[];
   raw?: any;
@@ -342,6 +354,7 @@ export class CloudSolver implements Solver {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
+          hasPrimalSolution: false,
           objectiveValue: null,
           values: {},
           runTime: (performance.now() - startTime) / 1000,
@@ -379,19 +392,25 @@ export class CloudSolver implements Solver {
       UNSAT: "Unsat",
     };
     const rawStatus: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+    const offset = modelData.objective?.constant ?? 0;
+    const hasFiniteObj =
+      typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue);
     const hasIncumbent =
-      (typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue)) ||
+      hasFiniteObj ||
       Object.values(values).some((val) => typeof val === "number" && Number.isFinite(val));
     const isLimitStop = rawStatus === "TimeLimit" || rawStatus === "IterationLimit";
     const status: SolverStatus = isLimitStop && hasIncumbent ? "Feasible" : rawStatus;
+    const hasPrimalSolution =
+      (status === "Optimal" || status === "Feasible") && hasIncumbent;
 
     return {
       status,
       terminationStatus: rawStatus,
-      objectiveValue: payload.objectiveValue ?? null,
-      values,
-      duals,
-      slacks,
+      hasPrimalSolution,
+      objectiveValue: hasPrimalSolution && hasFiniteObj ? payload.objectiveValue + offset : null,
+      values: hasPrimalSolution ? values : {},
+      duals: hasPrimalSolution ? duals : {},
+      slacks: hasPrimalSolution ? slacks : {},
       runTime: payload.solveDuration || runTime,
       logs: payload.logs || [],
       raw: payload,
@@ -484,7 +503,7 @@ const model = new Model("DefaultedModel");
     "./browser/index.min.js": "./dist/browser/index.min.js"
   },
   "peerDependencies": {
-    "@ohtaman/washi": ">=0.1.0"
+    "@ohtaman/washi": ">=0.8.0"
   }
 }
 ```

@@ -1,4 +1,4 @@
-# Production Planning (LP / MIP)
+# Production Planning (Integer Programming / MIP)
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |

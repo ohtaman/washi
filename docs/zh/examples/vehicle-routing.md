@@ -8,7 +8,7 @@
 
 若在单一 MIP 模型中预先枚举所有可行路线，变量数量会随客户数 $n$ 发生组合爆炸（仅无序客户子集一般就有 $O(2^n)$ 种，区分访问顺序时规模更大）。采用 **列生成法（Dantzig-Wolfe 分解）** 可以按需生成候选路线：
 1. **受限主问题（RMP）**：在列生成迭代期间求解已生成候选路线上的集合划分问题 **LP 松弛**（最终再求解 MIP），使每个客户恰好被访问一次。
-2. **定价子问题**：读取受限主问题 LP 松弛的对偶值（影子价格），通过最省插点法（Cheapest Insertion）与 2-opt 局部搜索构造检验数 $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$ 的路线 $r$。
+2. **定价子问题**：读取受限主问题 LP 松弛中各客户的对偶值（影子价格）$\pi_i$，通过最省插点法与 2-opt 局部搜索构造检验数 $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$ 的路线 $r$。
 
 ## 输入数据与约束条件
 
@@ -211,16 +211,16 @@ async function runCVRP() {
 
   console.log("\n选定车队的路线示例 (前 5 班):");
   const activeRoutes: RouteMeta[] = [];
+  for (const c of result.generatedColumns) {
+    if (c.variable.value === 1 && c.proposal.meta) {
+      activeRoutes.push(c.proposal.meta);
+    }
+  }
   for (let i = 0; i < customers.length; i++) {
     if (initialRoutes[i].value === 1) {
       const tour = ["Depot", customers[i].id, "Depot"];
       const { travelTime, totalTime } = calcRouteTime(tour, dist, serviceTimes);
       activeRoutes.push({ tour, travelTime, totalTime });
-    }
-  }
-  for (const c of result.generatedColumns) {
-    if (c.variable.value === 1 && c.proposal.meta) {
-      activeRoutes.push(c.proposal.meta);
     }
   }
   for (const r of activeRoutes.slice(0, 5)) {
@@ -235,13 +235,15 @@ runCVRP();
 
 ## 结果解读与要点
 
+从 `50` 辆单点直达专车出发，启发式定价共生成 `63` 条候选路线列，将 LP 松弛值降至约 `12.65`。在根节点对该列池求解 MIP（Price-and-Branch）后，最终车队缩减为 `19` 辆，包含 `11` 条多客户合并路线和 `8` 条单客户直达路线。
+
 ### 受限主问题、定价子问题与路线元数据
 
 受限主问题负责求解 LP 松弛与最终集合划分 MIP。在 `pricing` 回调中，`visitConstrs[i].dual` 提供各客户的对偶值（影子价格），用于优先挑选边际收益更高的客户。每列在 `meta` 中保存 `{ tour, travelTime, totalTime }`，求解完成后可直接从 `result.generatedColumns` 查看访问顺序与耗时。
 
 ### 集合划分（`== 1`）与集合覆盖（`>= 1`）
 
-本例采用 `== 1` 约束以禁止最终 MIP 重复访问同一客户。在大规模列生成实践中，改用 `>= 1` 可将对偶值限制在 $\pi_i \ge 0$，有助于稳定 LP 收敛。当距离满足三角不等式时，后处理剔除重复访问不会增加任何路线的行驶时间（也不会增加载重、途经点数或车辆数）；但像本例这样用 `Math.round` 对距离取整时，需注意舍入误差可能导致三角不等式出现微小偏差。
+本例采用 `== 1` 约束以禁止最终 MIP 重复访问同一客户。在大规模列生成实践中，改用 `>= 1` 可将对偶值限制在 $\pi_i \ge 0$，有助于稳定 LP 收敛。当距离满足三角不等式时，后处理剔除重复访问不会增加行驶时间、载重、途经点数或车辆数。不过像本例这样用 `Math.round` 对距离取整时，需注意舍入误差可能带来微小的三角不等式偏差。
 
 ### 启发式定价与精确 ESPPRC
 

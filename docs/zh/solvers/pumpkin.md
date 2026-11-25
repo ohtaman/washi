@@ -1,6 +1,6 @@
 # Pumpkin 约束规划求解器
 
-**Pumpkin** 是由 [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) 使用 Rust 开发的开源约束规划（CP）求解器。WaSHI 将 Pumpkin（`v0.5.0`）编译为 WebAssembly 并内置在 `@ohtaman/washi/solvers/pumpkin` 中，无需安装额外依赖。
+**Pumpkin** 是由 [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) 使用 Rust 开发的开源约束规划（CP）求解器。WaSHI 以 MIT 许可证在 `@ohtaman/washi/solvers/pumpkin` 中内置了 Pumpkin（`v0.5.0`，`pumpkin.wasm`，约 2.1 MB），无需安装额外依赖。
 
 由于单线程运行，在浏览器中无需 `SharedArrayBuffer` 或 `COOP`/`COEP` 响应头（见[跨域隔离指南](../getting-started/cross-origin.md)）。
 
@@ -17,12 +17,10 @@
 
 ---
 
-## 主要特性
+## 支持的建模原语
 
-- **内置且零依赖**：`pumpkin.wasm`（约 1.4 MB）随 `@ohtaman/washi` 一同发布，采用 MIT 兼容许可。
-- **Web Worker 后台执行**：不依赖 `SharedArrayBuffer`，在浏览器后台线程运行以保持页面流畅。
-- **原生 CP 约束**：支持 `disjoint()`、`cumulative()`、`distinct()`、`allowed()`、`at()`、`max()`、`min()`、`abs()`、离散 `!=` 与 `m.indicator()`。
-- **冲突诊断（`unsatCore`）**：`await model.check({ solver: "pumpkin" })` 可定位有界整数和布尔模型中的冲突命名约束。
+- **原生 CP 与全局约束**：`disjoint()`、`cumulative()`、`distinct()`、`allowed()`、`at()`、`max()`、`min()`、`abs()`、离散 `!=` 与 `m.indicator()`。
+- **原生命题逻辑**：`model.bool()`、`and()`、`or()`、`not()`、`implies()` 与 `xor()`。
 - **热启动（`initialValue`）**：支持为 `model.integer()` 和 `model.binary()` 变量提供初始搜索提示。
 
 ---
@@ -86,7 +84,18 @@ if (result.status === "Unsat") {
 
 ## 求解选项
 
-可将运行选项传入 `model.solve()`、`model.check()` 或 `new PumpkinSolver(options)`。支持的选项包括 `timeLimit`（秒）、`useWorker`、`wasmUrl`、`signal` 和 `onProgress`（仅 `solve()`）：
+可将运行选项传入 `model.solve()`、`model.check()` 或 `new PumpkinSolver(options)`：
+
+| 选项 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | 最大求解或检查时间（秒）。 |
+| `useWorker` | `boolean` | 在浏览器中使用 Web Worker 运行（浏览器默认 `true`；在 `file:` 协议或无源环境下回退为 `false`）。在 Node.js 中传入 `useWorker: true` 会抛出 `Error`。 |
+| `wasmUrl` | `string \| null` | 覆盖 `pumpkin.wasm` 的资源地址（`null` 表示使用内置二进制；全局设置请调用 `setPumpkinWasmUrl()`）。 |
+| `signal` | `AbortSignal` | 取消正在进行的调用。在浏览器 Web Worker 中会抢占式终止并保留最近捕获的暂定解（如有）；在主线程或 Node.js 中则在检查点协作式取消。 |
+| `onProgress` | `(ev) => void` | 实时接收耗时与暂定目标值更新（仅 `solve()` 生效，`check()` 忽略）。 |
+
+> [!NOTE]
+> Pumpkin 是离散 CP 求解器：LP 灵敏度字段（`c.dual`、`c.slack`、`v.reducedCost`）保持为 `null`，MIP 对偶界与间隙字段（`objectiveBound`、`relativeGap`、`absoluteGap`）保持为 `undefined`。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -110,7 +119,7 @@ await model.solve({
 
 if (model.hasPrimalSolution) {
   console.log(
-    `求解结果 (${model.status}, termination: ${model.terminationStatus}):`,
+    `求解结果 (${model.status}, 终止原因: ${model.terminationStatus}):`,
     `obj = ${model.objectiveValue}`
   );
 }

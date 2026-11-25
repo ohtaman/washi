@@ -1,6 +1,6 @@
 # 安装与入门
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）是面向 TypeScript / JavaScript 的代数建模库。您可以像 Python PuLP 一样以直观的代数形式，通过标签模板（`expr`）编写数式，在 **Node.js (18+)** 与现代浏览器中直接进行数理优化与约束规划建模。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）是面向 TypeScript / JavaScript 的代数建模库。您可以像 Python PuLP 一样以直观的代数形式，通过标签模板（`expr`）编写数学表达式，在 **Node.js (18+)** 与现代浏览器中直接进行数理优化与约束规划建模。
 
 ---
 
@@ -44,15 +44,11 @@ npm install glpk.js     # 可选：GLPK 求解器（GPL-3.0）
 
 在浏览器中使用 Z3 需要安全上下文以及跨源隔离响应头，即 `Cross-Origin-Opener-Policy` 与 `Cross-Origin-Embedder-Policy`（简称 `COOP`/`COEP`）。服务器配置方法请参阅[跨源隔离配置](./cross-origin.md)。
 
-如果使用 AI 编程助手，请参阅[使用 AI 编程助手](./coding-agents.md)了解 `npx skills add ohtaman/washi`、`llms.txt` 与现成提示词模板。
-
 ---
 
 ## 🚀 快速开始
 
-使用 WaSHI 建模与求解通常遵循三个基本步骤：定义决策变量、注册目标函数与具名约束，以及求解并校验结果。
-
-下面的生产规划示例在木材与工时限制下最大化书桌和椅子的总利润：
+下面的生产规划示例在木材与工时限制下决定书桌与椅子的产量，以最大化总利润：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -77,9 +73,9 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **定义决策变量**：使用 `m.continuous()`、`m.integer()` 或 `m.binary()` 定义变量。对于连续变量和整数变量，已知范围时请提供有限的 `lb` 与 `ub` 上下界。
-2. **编写目标函数与约束**：使用 `` expr`...` `` 书写代数公式，并通过 `m.objective()` 与 `m.constraint()` 注册到模型。为每条约束传入清晰的名称，便于在模型不可行时定位冲突规则。
-3. **求解并校验结果**：调用 `await m.solve()` 运行内置 HiGHS。先检查 `m.hasPrimalSolution` 再读取 `.value`，并用 `m.verify()` 校验上下界、整数性与约束是否满足。
+- **有限上下界**：对 `m.continuous()` 和 `m.integer()` 变量，已知范围时应提供有限的 `lb` 与 `ub`；这既能收紧 MIP 模型，也是省略 `M` 时使用 `m.indicator()` 的前提。
+- **显式注册与命名**：仅用 `` expr`...` `` 构造表达式不会自动加入模型，必须通过 `m.objective()` 或 `m.constraint()` 注册。为每条约束传入清晰名称，可让 `m.check()` 的冲突报告更易读。
+- **安全读取与校验**：读取 `.value` 前请先检查 `m.hasPrimalSolution`，再调用 `m.verify()` 独立核验上下界、整数性与约束满足情况。
 
 ---
 
@@ -92,6 +88,6 @@ if (m.hasPrimalSolution) {
 
 ### 参考文档与示例
 
-- **[实际案例与 API 功能索引](../examples/)**：涵盖排班优化、投资组合优化（QP）等 12 个可运行的优化与 SMT 案例
+- **[实际案例与 API 功能索引](../examples/)**：涵盖排班优化、投资组合优化（QP）等 12 个可运行的优化、CP 与 SMT 案例
 - **[求解器概览与对比](../solvers/)**：内置 HiGHS、Pumpkin 与可选 Z3、GLPK 的横向对比表
 - **[运行时环境与部署配置](./runtimes.md)**：Node.js、Vite / Next.js、CDN、单文件 HTML 与桌面/移动 WebView 配置说明

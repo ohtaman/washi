@@ -6,7 +6,7 @@ WaSHI 无需本地原生编译，即可跨多种 JavaScript / TypeScript 运行�
 | --- | --- | --- |
 | **Node.js（v18+）、Bun、Deno** | `@ohtaman/washi`（Deno 使用 `npm:@ohtaman/washi`） | 直接从本地包加载 `.wasm`，无需 HTTP 响应头。 |
 | **Vite、Next.js、Webpack、Rollup** | `@ohtaman/washi` | HiGHS 与 Pumpkin 默认在 Web Worker 中运行。 |
-| **Tauri、Capacitor、PWA** | `@ohtaman/washi`（标准 Vite 构建） | 支持离线运行；在内容安全策略（`CSP`）的 `script-src` 中加入 `'wasm-unsafe-eval'`。 |
+| **Tauri、Capacitor、PWA** | `@ohtaman/washi`（标准 Vite 构建） | 支持离线运行；在内容安全策略（`CSP`）中配置 `script-src` 的 `'wasm-unsafe-eval'` 与 `worker-src 'self' blob:`（或传入 `{ useWorker: false }`）。 |
 | **浏览器 ESM（`<script type="module">`）** | `dist/browser/washi.js` | 自托管时请完整保留 `dist/browser/` 目录下的全部文件。 |
 | **单文件 HTML / CDN（`<script>`）** | `dist/browser/washi.min.js` | 暴露全局 `window.Washi`；CDN 版可直接通过 `file://` 打开。 |
 
@@ -83,7 +83,7 @@ export async function runOptimization() {
 }
 ```
 
-由于建模器（JS/TS）与内置求解器（WebAssembly）全部在客户端本地运行，`vite build` 生成的静态产物无需后端服务，可直接部署到 GitHub Pages、Cloudflare Pages、Vercel 或 Netlify。内置的 HiGHS、Pumpkin 与可选 GLPK 均无需特殊 HTTP 响应头。
+由于建模器（JS/TS）与内置求解器（WebAssembly）全部在客户端本地运行，`vite build` 生成的静态产物无需后端服务，可直接部署到 GitHub Pages、Cloudflare Pages、Vercel 或 Netlify。HiGHS、Pumpkin 与 GLPK 均无需特殊 HTTP 响应头（Z3 的要求见下文“离线、内网与严格 CSP 环境部署”）。
 
 #### 后台 Web Worker 执行（默认）
 
@@ -99,18 +99,21 @@ await m.solve({ useWorker: false });
 
 默认情况下，WaSHI 通过 `import.meta.url` 相对打包产物解析 `highs.wasm` 与 `pumpkin.wasm`。它**绝不会**隐式回退到外部公共 CDN（如 `jsDelivr`、`unpkg` 等）。
 
-如果服务器将 `.wasm` 文件放在自定义路径，可在全局或每次调用时覆写 URL：
+如果浏览器端从自定义路径托管 `.wasm` 文件，可在全局或每次调用时覆写 URL。对于 HiGHS，`setHighsWasmUrl()` 与 `{ wasmUrl }` 仅在浏览器中生效（Node.js 下会被忽略）；Pumpkin 在 Node.js 中还支持 `file://` URL，而 Z3 则使用 `setZ3Assets()` 或 `{ z3JsUrl, z3WasmUrl }`：
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
 import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
+import { setZ3Assets } from "@ohtaman/washi/solvers/z3"; // 可选 Z3 插件
 
 // 方式 A：在求解前全局配置
 setHighsWasmUrl("/assets/wasm/highs.wasm");
 setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
+setZ3Assets({ jsUrl: "/assets/z3/z3-built.js", wasmUrl: "/assets/z3/z3-built.wasm" });
 
 // 方式 B：在每次调用 solve / check 时单独配置
 await m.solve({ wasmUrl: "/assets/wasm/highs.wasm" });
+// Z3：await m.check({ solver: "z3", z3JsUrl: "...", z3WasmUrl: "..." });
 ```
 
 ### Next.js 与服务端渲染（SSR）
@@ -149,7 +152,7 @@ export default function OptimizerComponent() {
 
 标准 Vite 前端会将 **HiGHS** 与 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）打包为静态资源以供离线运行。它们无需本地原生编译，即可运行于 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA。
 
-在 `tauri.conf.json` 的 `CSP` 中允许 WebAssembly 编译（`'wasm-unsafe-eval'`）与 Web Worker（`worker-src 'self' blob:`）（若在调用 `solve()` / `check()` 时传入 `{ useWorker: false }` 以禁用 Worker，可省略 `worker-src`，但 `'wasm-unsafe-eval'` 依然必需）：
+在 `tauri.conf.json` 的 `CSP` 字符串中加入 `'wasm-unsafe-eval'` 与 `worker-src 'self' blob:`。若传入 `{ useWorker: false }` 在主线程运行，可省略 `worker-src`（完整指令说明见下文 CSP 表格）：
 
 ```json
 {
@@ -161,7 +164,7 @@ export default function OptimizerComponent() {
 }
 ```
 
-在 WebView 环境中，推荐优先使用内置的 HiGHS 与 Pumpkin，从而避开 Z3 的浏览器跨源隔离要求。
+在 WebView 环境中，推荐优先使用内置的 HiGHS 与 Pumpkin，从而避开 Z3 的[跨源隔离](./cross-origin.md)要求。
 
 ---
 
@@ -252,7 +255,7 @@ export default function OptimizerComponent() {
 | --- | --- |
 | **CDN 脚本** | 从 HTTPS CDN 加载 `washi.min.js`（及 `solvers/pumpkin.min.js`）时，双击本地 `.html` 文件（`file://`）即可直接运行，无需本地服务器。 |
 | **不透明源（`window.origin === "null"`）** | 在 `file://` 页面或未设置 `allow-same-origin` 的沙箱 `<iframe>` 下，未指定 `useWorker` 时 WaSHI 会自动在主线程运行 HiGHS 与 Pumpkin。 |
-| **自托管 `.wasm` 与 Z3** | 浏览器会拦截 `file://` 下本地 `.wasm` 的 `fetch()` 请求，因此需通过 `http://` 或 `https://` 托管。使用 Z3 还需安全上下文（`https://` 或 `http://localhost`）与跨源隔离。 |
+| **自托管 `.wasm` 与 Z3** | 浏览器会拦截 `file://` 下本地 `.wasm` 的 `fetch()` 请求，因此需通过 `http://` 或 `https://` 托管。使用 Z3 还需满足下文的跨源隔离要求。 |
 
 ---
 
@@ -262,7 +265,7 @@ WaSHI 绝不会主动联网或回退到公共 CDN。在物理隔离的内网或�
 
 ### 1. 完整部署 `dist/browser/` 目录
 
-请将 `node_modules/@ohtaman/washi/dist/browser/` 整个目录原样复制到您的静态服务器。`washi.js`、`highs-worker.js` 与 `solvers/pumpkin.js` 等 ESM 入口文件会通过相对路径引用 `dist/browser/` 下的带哈希分块文件（如 `loader-*.js`、`browser-runtime-*.js` 与 `solvers/pumpkin-*.js`）。
+请将 `node_modules/@ohtaman/washi/dist/browser/` 整个目录原样复制到您的静态服务器。即使是传统 `<script>` 版的 `washi.min.js` 与 `solvers/pumpkin.min.js`，只要未传入 `{ useWorker: false }`，默认也会将同目录下的 `highs-worker.js` 与 `solvers/pumpkin-worker.js` 作为 Web Worker 启动。ESM 入口文件与这些 Worker 脚本均会通过相对路径引用 `dist/browser/` 下的带哈希 `*.js` 分块。
 
 | 产物 | `dist/browser/` 下的必需文件 |
 | --- | --- |

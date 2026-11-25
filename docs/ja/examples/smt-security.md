@@ -16,6 +16,8 @@
 3. アラームが警戒中（`alarmArmed`）であれば、玄関ドアは解錠状態（`frontDoorUnlocked`）にしない。
 4. 夜間（`isNight`）に動体検知（`motionDetected`）があれば、足元照明（`lightsOn`）を点灯する。
 
+ここでは `luxLevel <= 20`、`alarmArmed`、`motionDetected` という観測状態のもとで、まずシステムの状態を推論します。続いて、この条件下ではサイレン（`sirenActive`）が鳴らない状態になり得ないことを形式的に証明します。
+
 ## WaSHI による実装
 
 > [!NOTE]
@@ -88,6 +90,8 @@ verifySecurityRules();
 ### 背理法による形式検証（反例探索）
 
 1 回の `m.check()` で `"Sat"` が返っても、「条件を満たす状態が少なくとも 1 つ存在する」ことしか分かりません。安全性要件 `P`（例: `sirenActive`）が常に成立することを証明するには、否定の `not(P)` を追加して `m.check()` を実行します。`"Unsat"` なら反例は存在せず、`"Sat"` なら得られた変数値が具体的な抜け道（反例）を示します。
+
+本例では、最初の判定が `"Sat"` となり、`sirenActive = true`、`lightsOn = true`、`isNight = true`、玄関施錠が導かれます。続いて `not(sirenActive)` を追加すると `"Unsat"` と 6 本のルールからなる証明コアが返り、無関係な `lock_safety_rule` と `comfort_lights` は自動的に除外されます。
 
 ### 片方向の含意（`implies`）と双方向同値の違い
 

@@ -45,7 +45,7 @@ npm install @ohtaman/washi
 1. 每场分享恰好安排到 1 间会议室和 1 个时间段，每个会议室时间段最多安排 1 场。
 2. 避开讲师不可用时间段，且同一讲师在同一时间段不能出现在两间会议室。
 3. 最小化同一时间段并行会场中出现相同主题的次数。
-4. 为每条约束指定清晰的英文名称，使用内置 HiGHS 求解，检查 m.hasPrimalSolution 并断言 m.verify().valid === true 后打印日程表。
+4. 为每条约束指定清晰的名称，使用内置 HiGHS 求解，检查 m.hasPrimalSolution 并断言 m.verify().valid === true 后打印日程表。
 ```
 
 运行该提示词时，助手会在本地依次执行三个步骤：
@@ -80,7 +80,7 @@ npm install @ohtaman/washi
 ### 预算与项目组合优选（0-1 MIP — 内置 HiGHS）
 
 ```text
-请使用 @ohtaman/washi（内置 HiGHS），从候选研发项目 JSON 列表中选择一组项目以最大化年度预期收益总和。
+请使用 @ohtaman/washi（内置 HiGHS），从候选研发项目 JSON 列表中选择一组项目以最大化年度预期成本节约总和。
 每个项目包含 cost、backend_engineers、frontend_engineers 与 savings。
 规则：
 - 季度总预算不超过 120，后端工程师不超过 14 人，前端工程师不超过 10 人。
@@ -102,10 +102,10 @@ npm install @ohtaman/washi
 
 ### 目标配比均衡与方差最小化（凸 QP — 内置 HiGHS）
 
-内置 HiGHS 支持在纯连续变量（`m.continuous`）模型上求解凸二次目标函数：
+内置 HiGHS 支持在纯连续变量（`m.continuous()`）模型上求解凸二次目标函数：
 
 ```text
-请使用 @ohtaman/washi（内置 HiGHS），使用 m.continuous 变量（lb: 0.05, ub: 0.50）将总预算 1.0 分配到 5 个区域算力池。
+请使用 @ohtaman/washi（内置 HiGHS），使用 m.continuous() 变量（lb: 0.05, ub: 0.50）将总预算 1.0 分配到 5 个区域算力池。
 目标权重为 [0.30, 0.25, 0.20, 0.15, 0.10]，并要求区域 0 与区域 1 的份额之和不超过 0.48。
 在满足 sum(w) == 1.0 与区域上限的条件下最小化平方偏差之和 expr`sum((${w} - ${target})^2)`，并验证 m.verify().valid === true。
 ```
@@ -139,13 +139,7 @@ npm install @ohtaman/washi
 - 每次求得可行解后均调用 m.verify() 进行校验。
 ```
 
-**`file://` 运行机制说明**：
-
-| 场景 | 行为与前提条件 |
-| --- | --- |
-| **CDN 脚本** | 从 HTTPS CDN 加载 `washi.min.js` 可在 `file://` 下直接运行，无需本地服务器。遇到不透明源（`window.origin === "null"`）时，WaSHI 会自动在主线程运行 HiGHS 与 Pumpkin。 |
-| **自托管 `.wasm`** | 浏览器会在 `file://` 下拦截本地 `.wasm` 的 `fetch()` 请求。自托管 WebAssembly 资源请通过 `http://` 或 `https://` 提供。 |
-| **浏览器中的 Z3** | 需要安全上下文（`https://` 或 `http://localhost`，普通 `http://` 局域网地址不行）以及 `Cross-Origin-Opener-Policy` 和 `Cross-Origin-Embedder-Policy`（`COOP`/`COEP`），详见[跨源隔离配置](./cross-origin.md)。 |
+**`file://` 运行要点**：从 HTTPS CDN 加载 `washi.min.js` 可在 `file://` 下直接运行；在 `window.origin === "null"` 的不透明源下，HiGHS 与 Pumpkin 会自动在主线程运行。自托管本地 `.wasm` 需要 `http://` 或 `https://`，而在浏览器中使用 Z3 还需跨源隔离；详见[运行时环境与部署配置](./runtimes.md)与[跨源隔离配置](./cross-origin.md)。
 
 ### 离线桌面端与移动端应用（Vite + Tauri / Capacitor / PWA）
 
@@ -155,9 +149,7 @@ npm install @ohtaman/washi
 - 配置内容安全策略（CSP）以允许 WebAssembly 编译（在 script-src 中加入 'wasm-unsafe-eval'）与 Web Worker（worker-src 'self' blob:）。
 ```
 
-**WebView 部署机制说明**：
-
-标准 Vite 构建会将所使用的求解器 `.wasm` 资源（`highs.wasm`，以及导入时的 `pumpkin.wasm`）打包为静态资源，可在 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA 中直接运行。请在内容安全策略（`CSP`）的 `script-src` 中加入 `'wasm-unsafe-eval'`（使用 Web Worker 时同时配置 `worker-src 'self' blob:`）；完整的 `tauri.conf.json` 示例请参阅[运行时环境与部署配置](./runtimes.md)。
+**WebView 部署要点**：标准 Vite 构建会将所用求解器的 `.wasm` 打包为静态资源，可在 Tauri、Capacitor 与 PWA 中离线运行。请在 `CSP` 的 `script-src` 中加入 `'wasm-unsafe-eval'`（使用 Web Worker 时同时配置 `worker-src 'self' blob:`）；`tauri.conf.json` 示例请参阅[运行时环境与部署配置](./runtimes.md)。
 
 ---
 
@@ -165,7 +157,7 @@ npm install @ohtaman/washi
 
 ### 为所有约束命名并校验每次求解
 
-要求助手在调用 `m.constraint(c, "rule_name")` 和 `m.indicator(...)` 时传入清晰的名称，并断言 `m.verify().valid === true`。未命名约束会按从 1 开始的编号自动命名（线性约束为 `c_1`、`c_2`，逻辑约束为 `lc_1`、`lc_2`），不利于排查冲突。
+要求助手在调用 `m.constraint(c, "rule_name")` 和 `m.indicator(b, c, { name: "rule_name" })` 时传入清晰的名称，并断言 `m.verify().valid === true`。未命名约束会使用自动生成的 ID（线性约束为 `c_1`、`c_2`，逻辑约束为 `lc_1`、`lc_2`），不利于排查冲突。
 
 ### 遇到 `"Infeasible"` 时用 `m.check()` 定位冲突
 
