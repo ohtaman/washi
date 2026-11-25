@@ -2,7 +2,7 @@
 
 This guide explains how to build, test, and distribute custom solver plugins for **WaSHI** (`@ohtaman/washi`).
 
-Core `@ohtaman/washi` bundles the HiGHS WebAssembly engine and `MockSolver`, while `@ohtaman/washi/solvers/pumpkin` provides a bundled Constraint Programming (CP) plugin. You can register any other backend—WebAssembly, native C++, Web Worker, or cloud REST/RPC—and use it through the same `Model` API.
+Core `@ohtaman/washi` bundles and auto-registers **HiGHS** (default, `@ohtaman/washi/solvers/highs`), **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`), and `MockSolver`, while optional plugins (`@ohtaman/washi/solvers/glpk`, `@ohtaman/washi/solvers/z3`) register when imported. You can register any other backend—WebAssembly, native C++, Web Worker, or cloud REST/RPC—and use it through the same `Model` API.
 
 ---
 
@@ -11,9 +11,9 @@ Core `@ohtaman/washi` bundles the HiGHS WebAssembly engine and `MockSolver`, whi
 ```mermaid
 graph TD
     A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
-    B --> C[HiGHS WASM Engine Core]
+    B --> C[HiGHS WASM Bundled Default @ohtaman/washi/solvers/highs]
+    B --> H[Pumpkin WASM Bundled @ohtaman/washi/solvers/pumpkin]
     B --> D[Mock Solver Core]
-    B --> H[Pumpkin WASM Plugin @ohtaman/washi/solvers/pumpkin]
     B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
     B --> F[Z3 SMT Plugin @ohtaman/washi/solvers/z3]
     B --> G[Your Custom Solver Plugin]

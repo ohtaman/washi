@@ -7,11 +7,10 @@ import {
   implies,
   maximize,
   minimize,
-  HighsSolver,
   MockSolver,
-  solveLpWithHighs,
   type Solver,
 } from "../src/index.js";
+import { HighsSolver, solveLpWithHighs } from "../src/modeler/solvers/highs.js";
 import * as workerClient from "../src/modeler/solvers/highs/worker-client.js";
 import { GLPKSolver } from "../src/modeler/solvers/glpk/index.js";
 import { PumpkinSolver } from "../src/modeler/solvers/pumpkin/index.js";

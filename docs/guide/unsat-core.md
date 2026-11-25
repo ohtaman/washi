@@ -50,15 +50,14 @@ After `m.solve()` returns `"Infeasible"`, choose among three backends based on y
 | Criterion | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()` / `{ solver: "glpk" }`) |
 | :--- | :--- | :--- | :--- |
 | **Best for** | Bounded integer & Boolean models | Models with `Continuous` or non-integer values | General LP / MIP models (HiGHS needs zero extra imports) |
-| **Setup** | Bundled (`@ohtaman/washi/solvers/pumpkin`) | Optional (`z3-solver`) | Built-in (HiGHS) / optional (`glpk.js`) |
+| **Setup** | Bundled (no extra import) | Optional (`z3-solver` + `@ohtaman/washi/solvers/z3`) | Bundled (HiGHS, default) / optional (`glpk.js`) |
 | **Browser headers** | None | Requires `COOP` / `COEP` headers | None |
 | **Result fields** | `unsatCore` and `conflicts` | `unsatCore` and `conflicts` | `conflicts` only (`unsatCore` is `undefined`) |
 | **What it returns** | Unsat Core (mutually incompatible rules) | Unsat Core (mutually incompatible rules) | Elastic-relaxation set (rules to relax to restore feasibility) |
 | **Unit-scale sensitivity** | Scale-invariant | Scale-invariant | Scale-sensitive (prefers relaxing smaller-scale constraints) |
 
 ```typescript
-// Import Pumpkin or Z3 at the top of your file if needed:
-// import "@ohtaman/washi/solvers/pumpkin";
+// Import Z3 at the top of your file if needed (HiGHS and Pumpkin require no extra import):
 // import "@ohtaman/washi/solvers/z3";
 
 const status = await m.solve();

@@ -1,5 +1,4 @@
 import { Model, at, distinct, expr, implies, minimize, sum } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface P034Input {
   distances: number[][];

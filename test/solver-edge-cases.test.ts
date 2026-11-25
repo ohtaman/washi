@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, maximize, minimize, HighsSolver } from "../src/modeler/index.js";
+import { Model, sum, maximize, minimize } from "../src/modeler/index.js";
+import { HighsSolver } from "../src/modeler/solvers/highs.js";
 
 describe("HiGHS Solver Edge Cases & Advanced Features", () => {
   it("detects Infeasible problems properly", async () => {

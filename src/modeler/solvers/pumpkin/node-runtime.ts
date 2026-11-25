@@ -11,7 +11,7 @@ export async function readBundledPumpkinWasmBytes(): Promise<Uint8Array> {
     import(/* webpackIgnore: true */ /* @vite-ignore */ "node:url"),
   ]);
   const tried: string[] = [];
-  for (const rel of ["../../../../public/pumpkin.wasm", "./pumpkin.wasm"]) {
+  for (const rel of ["../../../../public/solvers/pumpkin.wasm", "./pumpkin.wasm"]) {
     const fileUrl = new URL(rel, import.meta.url);
     tried.push(fileURLToPath(fileUrl));
     try {
@@ -22,6 +22,6 @@ export async function readBundledPumpkinWasmBytes(): Promise<Uint8Array> {
   }
   throw new Error(
     `[WaSHI] Bundled pumpkin.wasm could not be found in Node.js (tried: ${tried.join(", ")}). ` +
-      `Ensure public/pumpkin.wasm exists or configure a custom URL with setPumpkinWasmUrl(url); no CDN fallback is attempted.`
+      `Ensure public/solvers/pumpkin.wasm exists or configure a custom URL with setPumpkinWasmUrl(url); no CDN fallback is attempted.`
   );
 }

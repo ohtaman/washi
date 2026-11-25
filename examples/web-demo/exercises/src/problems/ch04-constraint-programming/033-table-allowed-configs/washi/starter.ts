@@ -1,5 +1,4 @@
 import { Model, allowed, at, minimize, not, sum } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface TableRule {
   vars: number[];

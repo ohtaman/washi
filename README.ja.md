@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** に着想を得た、数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラーです。変数・目的関数・制約をアプリケーションコードで記述し、Node.js やブラウザ上で標準同梱の **HiGHS**（デフォルト）・**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）、あるいはオプションの **Z3**・**GLPK** を使ってそのまま求解できます。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** に着想を得た、数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラーです。変数・目的関数・制約をアプリケーションコードで記述し、Node.js やブラウザ上で同梱の **HiGHS**（デフォルト）・**Pumpkin**（`{ solver: "pumpkin" }`）、あるいはオプションの **Z3**・**GLPK** を使ってそのまま求解できます。
 
 ## ✨ 主な特徴
 
@@ -47,7 +47,7 @@
 
 ```bash
 npm install @ohtaman/washi
-# HiGHS (LP/MIP/QP) と Pumpkin (CP, @ohtaman/washi/solvers/pumpkin) は追加依存なしで同梱されています
+# HiGHS (LP/MIP/QP, デフォルト) と Pumpkin (CP, { solver: "pumpkin" }) は追加依存・追加インポートなしでそのまま使えます
 
 # オプションの peer-dependency ソルバープラグイン
 npm install z3-solver   # SMT 論理制約・実数を含む厳密 Unsat Core 診断を使う場合
@@ -78,13 +78,13 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 | ソルバー | ライセンス | 対応クラス | 主な用途 | 導入方法 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・矛盾診断（制約緩和） | 標準搭載（追加依存なし） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP（Lazy Clause Generation）, 論理, 有界整数 | スケジューリング・有界整数の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱・追加依存なし） |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・矛盾診断（制約緩和） | 同梱デフォルト（追加依存・インポート不要） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP（Lazy Clause Generation）, 論理, 有界整数 | スケジューリング・有界整数の `unsatCore` | 同梱（`{ solver: "pumpkin" }`、追加依存・インポート不要） |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 論理, MIP | 論理ルール・充足判定・厳密な `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 線形・混合整数最適化 | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | テスト用の決定論的な模擬応答 | 標準搭載 (`MockSolver`) |
 
-プラグインを import した上で、`new Model(...)`・`m.solve(...)`・`m.check(...)` に `{ solver: "pumpkin" }`・`{ solver: "z3" }`・`{ solver: "glpk" }` を渡して切り替えます。
+同梱の HiGHS（既定）と Pumpkin（`{ solver: "pumpkin" }`）は追加インポートなしでそのまま切り替えられます。オプションの `{ solver: "z3" }`・`{ solver: "glpk" }` は対応プラグインを import した上で指定します。なお、ソルバー固有のクラスや WASM 設定関数（`HighsSolver`, `setHighsWasmUrl`, `PumpkinSolver`, `setPumpkinWasmUrl` 等）は `@ohtaman/washi/solvers/{highs,pumpkin,z3,glpk}` に配置されています。
 
 ---
 
@@ -139,11 +139,10 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 
 ### 3. 制約プログラミング & スケジューリング (Pumpkin)
 
-同梱の **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を使うと、追加依存なしで有界整数スケジューリングや CP グローバル制約（`disjoint`, `distinct`, `cumulative`, `allowed`）を求解できます：
+同梱の **Pumpkin**（`{ solver: "pumpkin" }`）を使うと、追加依存や追加インポートなしで有界整数スケジューリングや CP グローバル制約（`disjoint`, `distinct`, `cumulative`, `allowed`）を求解できます：
 
 ```ts
 import { Model, expr, disjoint, distinct, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("WorkshopCP", { solver: "pumpkin" });
 const start = m.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
@@ -175,8 +174,8 @@ console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/pumpkin"; // 同梱: 有界整数・真偽値の厳密 unsatCore
-// import "@ohtaman/washi/solvers/z3";      // Continuous 変数を含む厳密 SMT unsatCore
+// { solver: "pumpkin" } なら追加インポートなしで有界整数・真偽値の厳密 unsatCore を抽出
+// import "@ohtaman/washi/solvers/z3";      // Continuous 変数を含む厳密 SMT unsatCore（オプション）
 
 const m = new Model("StaffingRules");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
@@ -199,24 +198,23 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🌐 ブラウザ & Web Worker での利用方法
 
 - **バンドラー (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` でそのまま動作します。通常オリジン（`http://` / `https://`）のブラウザでは、**HiGHS** と **Pumpkin** は標準で専用 Web Worker 上で実行されます（`file://` などの不透明オリジンでは自動的に `{ useWorker: false }` になり、明示的に `{ useWorker: false }` を渡してメインスレッドで実行することも可能です）。
-- **単体 ESM / script タグ / CDN**: `dist/browser/` 一式（`highs.wasm`、`solvers/pumpkin.wasm` や Worker を含む）を配信するか、CDN の URL を指定して読み込みます。
+- **単体 ESM / script タグ / CDN**: `dist/browser/` 一式（`solvers/highs.wasm`、`solvers/pumpkin.wasm` や Worker を含む）を配信するか、CDN の URL を指定して読み込みます。`washi.js` と `washi.min.js` のどちらも HiGHS と Pumpkin の両方を内蔵しています。
 
 ```html
-<!-- ブラウザ ESM -->
+<!-- ブラウザ ESM（HiGHS・Pumpkin の両方を利用可能） -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  // 同梱・オプションプラグイン:
-  // import "./washi/solvers/pumpkin.js"; // 同梱 CP ソルバー
+  // オプションプラグイン:
   // import "./washi/solvers/glpk.js";    // オプション GLPK プラグイン
   // import "./washi/solvers/z3.js";      // オプション Z3 プラグイン（下の注記を参照）
   const m = new Model();
   await m.solve();
 </script>
 
-<!-- script タグ / CodePen (グローバル Washi を公開) -->
+<!-- script タグ / CodePen (グローバル Washi を公開、HiGHS・Pumpkin 同梱) -->
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
 <!-- オプションプラグインスクリプト (window.Washi に自動登録): -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
 ```
 
 > [!NOTE]

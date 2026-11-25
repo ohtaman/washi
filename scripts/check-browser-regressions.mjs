@@ -21,7 +21,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
 
   for (const format of ["esm", "iife"]) {
     for (const solver of ["highs", "glpk", "z3", "pumpkin"]) {
-      const plugin = solver === "highs" ? "" : solver;
+      const plugin = solver === "highs" || solver === "pumpkin" ? "" : solver;
       const setup = format === "esm"
         ? `<script type="module">
             import * as api from '${assets}/factory/washi.js';

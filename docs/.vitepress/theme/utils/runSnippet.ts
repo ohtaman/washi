@@ -31,11 +31,13 @@ export interface SnippetStatusLabels {
 }
 
 type ModelerModule = typeof import("../../../../src/index.ts");
+type HighsModule = typeof import("../../../../src/modeler/solvers/highs/index.ts");
 type PumpkinModule = typeof import("../../../../src/modeler/solvers/pumpkin/index.ts");
 type Z3Module = typeof import("../../../../src/modeler/solvers/z3/index.ts");
 type GlpkModule = typeof import("../../../../src/modeler/solvers/glpk/index.ts");
 
 let cachedModeler: ModelerModule | null = null;
+let cachedHighsMod: HighsModule | null = null;
 let cachedPumpkinMod: PumpkinModule | null = null;
 let cachedZ3Mod: Z3Module | null = null;
 let cachedGlpkMod: GlpkModule | null = null;
@@ -46,6 +48,7 @@ let z3AssetsConfigured = false;
  */
 export function resetSnippetRunnerStateForTests(): void {
   cachedModeler = null;
+  cachedHighsMod = null;
   cachedPumpkinMod = null;
   cachedZ3Mod = null;
   cachedGlpkMod = null;
@@ -149,11 +152,13 @@ export async function runWashiSnippet(
     },
   };
 
+  const needsHighsPlugin = /\b(?:HighsSolver|HiGHS|setHighsWasmUrl|getHighsWasmUrl|getHighs|solveLpWithHighs)\b/.test(rawCode);
   const needsPumpkinPlugin = /\bpumpkin\b/i.test(rawCode);
   const needsZ3Plugin = rawCode.includes("z3");
   const needsGlpkPlugin = rawCode.includes("glpk");
   const mayNeedJsLoad =
     !cachedModeler ||
+    (needsHighsPlugin && !cachedHighsMod) ||
     (needsPumpkinPlugin && !cachedPumpkinMod) ||
     (needsZ3Plugin && !cachedZ3Mod) ||
     (needsGlpkPlugin && !cachedGlpkMod);
@@ -184,8 +189,12 @@ export async function runWashiSnippet(
     }
     const Modeler = cachedModeler;
 
-    // Register optional solver plugins synchronously without initializing WASM or asset configs;
+    // Load solver-specific subpath helpers on demand when referenced by a snippet;
     // actual WASM/worker loading happens only when an operation executes with that solver.
+    if (needsHighsPlugin && !cachedHighsMod) {
+      didLoad = true;
+      cachedHighsMod = await import("../../../../src/modeler/solvers/highs/index.ts");
+    }
     if (needsPumpkinPlugin && !cachedPumpkinMod) {
       didLoad = true;
       cachedPumpkinMod = await import("../../../../src/modeler/solvers/pumpkin/index.ts");
@@ -293,8 +302,8 @@ export async function runWashiSnippet(
           const hasExplicitZ3Urls = Boolean(solveOptions.z3JsUrl || solveOptions.z3WasmUrl);
           if (typeof window !== "undefined" && !z3AssetsConfigured && !hasExplicitZ3Urls) {
             z3Mod.setZ3Assets({
-              jsUrl: new URL("/z3-built.js", window.location.origin).href,
-              wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
+              jsUrl: new URL("/solvers/z3-built.js", window.location.origin).href,
+              wasmUrl: new URL("/solvers/z3-built.wasm", window.location.origin).href,
             });
             z3AssetsConfigured = true;
           }
@@ -393,6 +402,16 @@ export async function runWashiSnippet(
 
     const context: Record<string, unknown> = {
       ...Modeler,
+      ...(cachedHighsMod
+        ? {
+            HighsSolver: cachedHighsMod.HighsSolver,
+            HiGHS: cachedHighsMod.HiGHS,
+            setHighsWasmUrl: cachedHighsMod.setHighsWasmUrl,
+            getHighsWasmUrl: cachedHighsMod.getHighsWasmUrl,
+            getHighs: cachedHighsMod.getHighs,
+            solveLpWithHighs: cachedHighsMod.solveLpWithHighs,
+          }
+        : {}),
       ...(cachedPumpkinMod
         ? {
             PumpkinSolver: cachedPumpkinMod.PumpkinSolver,

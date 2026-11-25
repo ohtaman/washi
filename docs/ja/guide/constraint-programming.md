@@ -1,7 +1,7 @@
 # 制約プログラミング (CP) モデリング
 
 WaSHI では、数理最適化（LP / MIP / QP）と制約プログラミング（CP）の両方を同じ TypeScript API で記述できます。
-同梱の **Pumpkin** ソルバー（`@ohtaman/washi/solvers/pumpkin`）を使うと、スケジュール調整・資源上限・相異制約・テーブル制約といった組合せ条件を、巨大な 0-1 変数群へ展開せずに直接モデル化して解けます。
+同梱の **Pumpkin** ソルバー（`{ solver: "pumpkin" }`、追加インポート不要）を使うと、スケジュール調整・資源上限・相異制約・テーブル制約といった組合せ条件を、巨大な 0-1 変数群へ展開せずに直接モデル化して解けます。
 
 ---
 
@@ -51,7 +51,6 @@ Pumpkin なら時間軸の細かさに関係なく、各作業につき **1 つ�
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("IntervalSchedulingCP", { solver: "pumpkin" });
 const tasks = ["prep", "mill", "drill", "coat"] as const;
@@ -102,7 +101,6 @@ $N \times M$ の 0-1 割当行列を作る代わりに、各ジョブに担当�
 
 ```typescript
 import { Model, expr, distinct, allowed, not, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("MachineAssignmentCP", { solver: "pumpkin" });
 const jobs = ["jobA", "jobB", "jobC"] as const;
@@ -147,7 +145,6 @@ Pumpkin が扱えるのは $[-(2^{30} - 1),\, 2^{30} - 1]$ の範囲の有界な
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("SymmetryBreakingCP", { solver: "pumpkin" });
 const latencyMs = [600, 380, 420, 470, 550];

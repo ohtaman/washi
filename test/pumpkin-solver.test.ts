@@ -100,11 +100,9 @@ describe("Pumpkin WASM LCG solver", () => {
     vi.unstubAllGlobals();
   });
 
-  it("throws a helpful error when 'pumpkin' solver is requested before registration", () => {
-    if (cachedPumpkinModule) {
-      return;
-    }
-    expect(() => getSolver("pumpkin")).toThrow(/@ohtaman\/washi\/solvers\/pumpkin/);
+  it("auto-registers 'pumpkin' solver from root without extra imports", () => {
+    expect(listAvailableSolvers()).toContain("pumpkin");
+    expect(getSolver("pumpkin").name).toBe("pumpkin");
   });
 
   it("exposes accurate solver capabilities and registers cleanly", async () => {
@@ -748,7 +746,7 @@ describe("Pumpkin WASM LCG solver", () => {
     } = await import("../src/modeler/solvers/pumpkin/loader.js");
 
     const realWasmBytes = new Uint8Array(
-      fs.readFileSync(path.resolve(process.cwd(), "public/pumpkin.wasm"))
+      fs.readFileSync(path.resolve(process.cwd(), "public/solvers/pumpkin.wasm"))
     );
     const emptyWasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
     const prevUrl = getPumpkinWasmUrl();
@@ -923,13 +921,13 @@ describe("Pumpkin WASM LCG solver", () => {
       resetPumpkinLoader();
       const fetchSpy = vi.fn().mockRejectedValue(new Error("fetch must not be called for file://"));
       vi.stubGlobal("fetch", fetchSpy);
-      const validFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/pumpkin.wasm")).href;
+      const validFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/solvers/pumpkin.wasm")).href;
       const status = await m.solve({ solver: "pumpkin", wasmUrl: validFileUrl });
       expect(status).toBe("Optimal");
       expect(x.value).toBe(1);
       expect(fetchSpy).not.toHaveBeenCalled();
 
-      const missingFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/nonexistent-pumpkin.wasm")).href;
+      const missingFileUrl = pathToFileURL(path.resolve(process.cwd(), "public/solvers/nonexistent-pumpkin.wasm")).href;
       await expect(loadPumpkinRuntime(missingFileUrl)).rejects.toThrow();
       expect(fetchSpy).not.toHaveBeenCalled();
 

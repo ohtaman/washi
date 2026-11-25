@@ -6,7 +6,7 @@ delete process.env.WASHI_BROWSER_FORMAT;
 delete process.env.WASHI_BROWSER_TARGET;
 await build({ configFile: "vite.config.lib.ts" });
 
-process.env.WASHI_LIB_TARGET = "pumpkin";
+process.env.WASHI_LIB_TARGET = "solvers";
 try {
   await build({ configFile: "vite.config.lib.ts" });
 } finally {

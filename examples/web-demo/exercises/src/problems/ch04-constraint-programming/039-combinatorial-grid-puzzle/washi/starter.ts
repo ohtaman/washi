@@ -1,5 +1,4 @@
 import { Model, distinct, expr, sum } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface CageClue {
   cells: number[][];

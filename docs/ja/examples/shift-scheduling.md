@@ -195,4 +195,4 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 シナリオ B でこのソフト制約モデルを解くと、HiGHS は `"Optimal"` を返し、目的関数値は **`$4,330`**（人件費 `$3,830` + ペナルティ `$500`）になります。4 件中 3 件の希望休を守り、シニア 1 名の土曜希望休だけを調整します（HiGHS の出力では `Alice (Sat)`）。日給の安い `Bob` を上限の 5 日間（`maxShifts = 5`）勤務させ、残り 2 日のシニア枠を `Alice` が担当する構成が最安になります。そのため、土曜のシニア枠で `Alice (Sat)` と `Bob (Sat)` のどちらを調整しても最適コストは同じ `$4,330` です。
 
 > [!TIP]
-> このモデルはすべて 0-1 変数（`m.binary()`）と整数係数の制約で構成されています。同梱の `@ohtaman/washi/solvers/pumpkin` を読み込んで `await model.check({ solver: "pumpkin" })` を実行すれば、`z3-solver` なしでも `unsatCore` を抽出できます。
+> このモデルはすべて 0-1 変数（`m.binary()`）と整数係数の制約で構成されています。追加インポートや `z3-solver` なしでも、`await model.check({ solver: "pumpkin" })` を実行するだけで `unsatCore` を抽出できます。

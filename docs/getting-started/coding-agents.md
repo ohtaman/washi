@@ -92,7 +92,7 @@ Rules:
 ### Task Scheduling with Precedence & Shared Resources (CP — Bundled Pumpkin)
 
 ```text
-Using @ohtaman/washi and its bundled CP solver (@ohtaman/washi/solvers/pumpkin), schedule 10 release-pipeline tasks with integer start times (lb: 0, ub: 120) and fixed durations to minimize total makespan.
+Using @ohtaman/washi and its bundled CP solver ({ solver: "pumpkin" }), schedule 10 release-pipeline tasks with integer start times (lb: 0, ub: 120) and fixed durations to minimize total makespan.
 Rules:
 - Enforce finish-to-start precedence edges between dependent tasks.
 - Tasks using the staging benchmark cluster cannot overlap (use disjoint).
@@ -113,7 +113,7 @@ Minimize the sum of squared deviations expr`sum((${w} - ${target})^2)` subject t
 ### Rule & Configuration Conflict Diagnosis (Infeasibility / Unsat Core)
 
 ```text
-Using @ohtaman/washi and @ohtaman/washi/solvers/pumpkin, check whether a set of deployment and feature-flag rules over bounded integer and boolean variables is satisfiable via await m.check({ solver: "pumpkin" }).
+Using @ohtaman/washi, check whether a set of deployment and feature-flag rules over bounded integer and boolean variables is satisfiable via await m.check({ solver: "pumpkin" }).
 Include a sample test case with contradictory named rules, print res.status and res.unsatCore (or res.conflicts), and show which named rules conflict with each other.
 ```
 
@@ -121,7 +121,7 @@ Include a sample test case with contradictory named rules, print res.status and 
 > `await m.check()` works with default **HiGHS**, which reports conflicting constraint names in `res.conflicts`.
 >
 > To extract an exact unsatisfiable core (`res.unsatCore`), choose the solver by variable domain:
-> - **Bounded integers and booleans**: Import bundled `@ohtaman/washi/solvers/pumpkin` (no browser `COOP`/`COEP` headers required).
+> - **Bounded integers and booleans**: Pass `{ solver: "pumpkin" }` (bundled with `@ohtaman/washi`; no extra import or browser `COOP`/`COEP` headers required).
 > - **Continuous or fractional arithmetic**: Install `z3-solver` and import `@ohtaman/washi/solvers/z3`.
 
 ---
@@ -144,7 +144,7 @@ Package this @ohtaman/washi optimization model into a standalone .html file with
 ### Offline Desktop & Mobile Apps (Vite + Tauri / Capacitor / PWA)
 
 ```text
-Wrap this Vite + TypeScript @ohtaman/washi application as an offline desktop/mobile app using bundled HiGHS (or @ohtaman/washi/solvers/pumpkin) with zero backend server and zero native solver compilation.
+Wrap this Vite + TypeScript @ohtaman/washi application as an offline desktop/mobile app using bundled HiGHS (or { solver: "pumpkin" }) with zero backend server and zero native solver compilation.
 - Keep all solver execution client-side via @ohtaman/washi.
 - Configure Content Security Policy to allow WebAssembly compilation ('wasm-unsafe-eval' in script-src) and Web Workers (worker-src 'self' blob:).
 ```

@@ -196,4 +196,4 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 On Scenario B, HiGHS returns `"Optimal"` with an objective value of **`$4,330`** (`$3,830` payroll plus one `$500` penalty). It honors 3 of the 4 requests and overrides only 1 senior request (`Alice (Sat)` in the HiGHS output). Because `Bob` has the lower daily wage, the cheapest staffing assigns him up to his 5-day limit (`maxShifts = 5`) and `Alice` to the remaining 2 senior days. Overriding either `Alice (Sat)` or `Bob (Sat)` therefore yields the exact same total cost of `$4,330`.
 
 > [!TIP]
-> This model uses only binary variables (`m.binary()`) and constraints with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` using the bundled `@ohtaman/washi/solvers/pumpkin` engine without installing `z3-solver`.
+> This model uses only binary variables (`m.binary()`) and constraints with integer coefficients. You can also extract `unsatCore` via `await model.check({ solver: "pumpkin" })` out of the box without installing `z3-solver` or adding extra imports.

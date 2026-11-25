@@ -195,4 +195,4 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 对场景 B 求解该软约束模型时，HiGHS 返回 `"Optimal"`，目标函数值为 **`$4,330`**（薪资 `$3,830` 加 `$500` 惩罚）。方案保留了 4 项申请中的 3 项，仅调整 1 名资深员工的周六休假（HiGHS 输出为 `Alice (Sat)`）。由于 `Bob` 的日薪更低，最低成本方案会将他排满 5 天上限（`maxShifts = 5`），由 `Alice` 承担其余 2 天的资深班次。因此，无论调整 `Alice (Sat)` 还是 `Bob (Sat)`，最优总成本同为 `$4,330`。
 
 > [!TIP]
-> 该模型仅由 0-1 变量（`m.binary()`）与整数系数约束构成。您也可以引入内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `await model.check({ solver: "pumpkin" })`，无需安装 `z3-solver` 即可提取 `unsatCore`。
+> 该模型仅由 0-1 变量（`m.binary()`）与整数系数约束构成。无需额外导入或安装 `z3-solver`，直接调用 `await model.check({ solver: "pumpkin" })` 即可提取 `unsatCore`。

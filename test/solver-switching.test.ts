@@ -3,7 +3,6 @@ import {
   Model,
   maximize,
   minimize,
-  HiGHS,
   MockSolver,
   generateLpString,
   registerSolver,
@@ -12,6 +11,7 @@ import {
   setDefaultSolver,
   type Solver,
 } from "../src/modeler/index.js";
+import { HiGHS } from "../src/modeler/solvers/highs.js";
 
 describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
   it("lists default available solvers", () => {

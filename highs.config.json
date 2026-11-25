@@ -4,7 +4,7 @@
   "repo": "https://github.com/ERGO-Code/HiGHS.git",
   "emscriptenVersion": "3.1.50",
   "wasm": {
-    "path": "public/highs.wasm",
+    "path": "public/solvers/highs.wasm",
     "sha256": "d1c2cb62726e24a739e694f6a40ab433ceb1f3e186df18113bec128da28f8c4f",
     "downloadUrl": "https://github.com/ohtaman/washi/releases/download/highs-v1.16.0/highs.wasm"
   },

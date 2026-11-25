@@ -34,15 +34,15 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     model.objective(maximize(x));
 
     expect(() => getSolver("glpk")).toThrow(
-      "Solver 'glpk' not found. Available solvers: highs, mock. Please import '@ohtaman/washi/solvers/glpk' before selecting this solver."
+      "Solver 'glpk' not found. Available solvers: mock, highs, pumpkin. Please import '@ohtaman/washi/solvers/glpk' before selecting this solver."
     );
 
     expect(() => getSolver("z3")).toThrow(
-      "Solver 'z3' not found. Available solvers: highs, mock. Please import '@ohtaman/washi/solvers/z3' before selecting this solver."
+      "Solver 'z3' not found. Available solvers: mock, highs, pumpkin. Please import '@ohtaman/washi/solvers/z3' before selecting this solver."
     );
 
     expect(() => getSolver("quantum-solver")).toThrow(
-      "Solver 'quantum-solver' not found. Available solvers: highs, mock"
+      "Solver 'quantum-solver' not found. Available solvers: mock, highs, pumpkin"
     );
   });
 

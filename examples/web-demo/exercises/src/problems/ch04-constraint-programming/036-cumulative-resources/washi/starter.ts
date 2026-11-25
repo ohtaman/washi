@@ -1,5 +1,4 @@
 import { Model, cumulative, expr, max, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface P036Input {
   capacity: number;

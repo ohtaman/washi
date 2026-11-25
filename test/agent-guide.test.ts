@@ -80,6 +80,7 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
 
     const rewriteImports = (src: string) =>
       src
+        .replaceAll('"@ohtaman/washi/solvers/highs"', '"../src/modeler/solvers/highs/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/pumpkin"', '"../src/modeler/solvers/pumpkin/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')
@@ -771,7 +772,8 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       expect(text).toContain("https://washi.ohtaman.dev/llms.txt");
       expect(text).toContain("https://washi.ohtaman.dev/llms-full.txt");
       expect(text).toContain("/ohtaman/washi");
-      expect(text).toContain("@ohtaman/washi/solvers/pumpkin");
+      expect(text).toContain('solver: "pumpkin"');
+      expect(text).not.toContain("@ohtaman/washi/solvers/pumpkin");
       expect(text).toContain("https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js");
       expect(text).toContain('window.origin === "null"');
       expect(text).toContain("'wasm-unsafe-eval'");
@@ -851,6 +853,7 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
 
     const rewriteImports = (src: string) =>
       src
+        .replaceAll('"@ohtaman/washi/solvers/highs"', '"../src/modeler/solvers/highs/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/pumpkin"', '"../src/modeler/solvers/pumpkin/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')

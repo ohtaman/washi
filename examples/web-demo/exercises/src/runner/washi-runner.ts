@@ -1,5 +1,10 @@
 import * as Modeler from "../../../../../src/index.js";
 import {
+  HighsSolver,
+  registerHighsSolver,
+  setHighsWasmUrl,
+} from "../../../../../src/modeler/solvers/highs.js";
+import {
   PumpkinSolver,
   registerPumpkinSolver,
   setPumpkinWasmUrl,
@@ -12,7 +17,6 @@ import {
 } from "../../../../../src/modeler/solvers/z3.js";
 import { transpileExerciseTsToJs } from "./ts-transpile.js";
 
-registerPumpkinSolver();
 registerGLPKSolver();
 registerZ3Solver();
 
@@ -34,18 +38,18 @@ export function configureWashiExerciseWasmUrls(): void {
   );
 
   if (isDev) {
-    Modeler.setHighsWasmUrl(new URL("/highs.wasm", window.location.origin).href);
-    setPumpkinWasmUrl(new URL("/pumpkin.wasm", window.location.origin).href);
+    setHighsWasmUrl(new URL("/solvers/highs.wasm", window.location.origin).href);
+    setPumpkinWasmUrl(new URL("/solvers/pumpkin.wasm", window.location.origin).href);
     setZ3Assets({
-      jsUrl: new URL("/z3-built.js", window.location.origin).href,
-      wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
+      jsUrl: new URL("/solvers/z3-built.js", window.location.origin).href,
+      wasmUrl: new URL("/solvers/z3-built.wasm", window.location.origin).href,
     });
   } else {
-    Modeler.setHighsWasmUrl(new URL("../highs.wasm", window.location.href).href);
-    setPumpkinWasmUrl(new URL("../pumpkin.wasm", window.location.href).href);
+    setHighsWasmUrl(new URL("../solvers/highs.wasm", window.location.href).href);
+    setPumpkinWasmUrl(new URL("../solvers/pumpkin.wasm", window.location.href).href);
     setZ3Assets({
-      jsUrl: new URL("../z3-built.js", window.location.href).href,
-      wasmUrl: new URL("../z3-built.wasm", window.location.href).href,
+      jsUrl: new URL("../solvers/z3-built.js", window.location.href).href,
+      wasmUrl: new URL("../solvers/z3-built.wasm", window.location.href).href,
     });
   }
 }
@@ -202,9 +206,11 @@ export async function runWashiExerciseCode(
 
   const context: Record<string, unknown> = {
     ...Modeler,
+    HighsSolver,
     PumpkinSolver,
     GLPKSolver,
     Z3Solver,
+    registerHighsSolver,
     registerPumpkinSolver,
     registerGLPKSolver,
     registerZ3Solver,

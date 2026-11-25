@@ -76,7 +76,7 @@ jobs:
         with:
           name: highs-wasm-assets
           path: |
-            public/highs.wasm
+            public/solvers/highs.wasm
             src/modeler/solvers/highs/runtime.js
             highs.config.json
 
@@ -89,11 +89,11 @@ jobs:
           TAG_NAME="highs-${VERSION}"
           echo "Target Release Tag: ${TAG_NAME}"
           gh release upload "${TAG_NAME}" \
-            public/highs.wasm \
+            public/solvers/highs.wasm \
             src/modeler/solvers/highs/runtime.js \
             --clobber || \
           gh release create "${TAG_NAME}" \
-            public/highs.wasm \
+            public/solvers/highs.wasm \
             src/modeler/solvers/highs/runtime.js \
             --title "HiGHS WebAssembly ${VERSION}" \
             --notes "Prebuilt WebAssembly assets (highs.wasm & runtime.js) compiled from upstream ERGO-Code/HiGHS ${VERSION} with Emscripten."

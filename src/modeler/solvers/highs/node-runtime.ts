@@ -9,7 +9,7 @@ export async function loadNodeHighs(): Promise<(options?: any) => Promise<Highs>
 
   return async (options: any = {}) => {
     let wasmPath: string | undefined;
-    for (const rel of ["../../../../public/highs.wasm", "./highs.wasm"]) {
+    for (const rel of ["../../../../public/solvers/highs.wasm", "./highs.wasm"]) {
       try {
         const candidate = fileURLToPath(new URL(rel, import.meta.url));
         if (existsSync(candidate)) {

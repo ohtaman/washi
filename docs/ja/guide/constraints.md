@@ -165,8 +165,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ## 命題論理・SMT 制約 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
 WaSHI の論理演算子を使うと、`m.bool()` で作成した `BoolVar` と線形制約 `Constraint` を自在に組み合わせられます。
-Pumpkin と Z3 は論理式をネイティブに処理し、HiGHS と GLPK は 0-1 MIP 制約へ自動線形化します。
-Pumpkin や Z3 バックエンドを利用する場合は、`@ohtaman/washi/solvers/pumpkin` または `@ohtaman/washi/solvers/z3` をインポートして登録します。
+Pumpkin（`{ solver: "pumpkin" }`、追加インポート不要）と Z3（`import "@ohtaman/washi/solvers/z3"`）は論理式をネイティブに処理し、HiGHS と GLPK は 0-1 MIP 制約へ自動線形化します。
 
 > [!IMPORTANT]
 > **ソルバーの前提条件**:

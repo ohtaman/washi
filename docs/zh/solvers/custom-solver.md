@@ -2,7 +2,7 @@
 
 本指南介绍如何为 **WaSHI**（`@ohtaman/washi`）构建、测试和发布自定义求解器插件。
 
-核心包 `@ohtaman/washi` 内置了 HiGHS WebAssembly 引擎与 `MockSolver`。`@ohtaman/washi/solvers/pumpkin` 提供了内置的约束规划（CP）插件。你还可以注册任意其他后端——如 WebAssembly、原生 C++、Web Worker 或云端 REST/RPC 服务——并通过统一的 `Model` API 调用。
+`@ohtaman/washi` 内置并自动注册 **HiGHS**（默认，`@ohtaman/washi/solvers/highs`）、**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）与 `MockSolver`，而可选插件（`@ohtaman/washi/solvers/glpk`、`@ohtaman/washi/solvers/z3`）在导入时注册。你还可以注册任意其他后端——如 WebAssembly、原生 C++、Web Worker 或云端 REST/RPC 服务——并通过统一的 `Model` API 调用。
 
 ---
 
@@ -11,9 +11,9 @@
 ```mermaid
 graph TD
     A[WaSHI Model] --> B["求解器注册表 (Symbol.for)"]
-    B --> C["HiGHS WASM 引擎 (核心内置)"]
+    B --> C["HiGHS WASM 引擎 (内置默认 / solvers/highs)"]
+    B --> H["Pumpkin WASM 引擎 (内置 / solvers/pumpkin)"]
     B --> D["MockSolver (核心内置)"]
-    B --> H["Pumpkin WASM 插件 (@ohtaman/washi/solvers/pumpkin)"]
     B --> E["GLPK 插件 (@ohtaman/washi/solvers/glpk)"]
     B --> F["Z3 SMT 插件 (@ohtaman/washi/solvers/z3)"]
     B --> G[自定义求解器插件]

@@ -16,7 +16,7 @@ WaSHI 无需本地原生编译，即可跨多种 JavaScript / TypeScript 运行�
 
 ### Node.js
 
-WaSHI 原生支持 Node.js 18+ 的标准 ECMAScript Modules（`ESM`）。内置的 HiGHS 与 Pumpkin（`@ohtaman/washi/solvers/pumpkin`）WebAssembly 二进制文件会直接从已安装包中加载：
+WaSHI 原生支持 Node.js 18+ 的标准 ECMAScript Modules（`ESM`）。内置的 HiGHS（默认）与 Pumpkin（`{ solver: "pumpkin" }`）WebAssembly 二进制文件均位于包内 `solvers/` 下，无需额外导入即可直接加载：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -97,12 +97,12 @@ await m.solve({ useWorker: false });
 
 #### 自定义 WASM 资源 URL
 
-默认情况下，WaSHI 通过 `import.meta.url` 相对打包产物解析 `highs.wasm` 与 `pumpkin.wasm`。它**绝不会**隐式回退到外部公共 CDN（如 `jsDelivr`、`unpkg` 等）。
+默认情况下，WaSHI 通过 `import.meta.url` 相对打包产物解析 `solvers/highs.wasm` 与 `solvers/pumpkin.wasm`。它**绝不会**隐式回退到外部公共 CDN（如 `jsDelivr`、`unpkg` 等）。
 
-如果浏览器端从自定义路径托管 `.wasm` 文件，可在全局或每次调用时覆写 URL。对于 HiGHS，`setHighsWasmUrl()` 与 `{ wasmUrl }` 仅在浏览器中生效（Node.js 下会被忽略）；Pumpkin 在 Node.js 中还支持 `file://` URL，而 Z3 则使用 `setZ3Assets()` 或 `{ z3JsUrl, z3WasmUrl }`：
+如果浏览器端从自定义路径托管 `.wasm` 文件，可在全局或每次调用时覆写 URL。对于 HiGHS，`setHighsWasmUrl()`（位于 `@ohtaman/washi/solvers/highs`）与 `{ wasmUrl }` 仅在浏览器中生效（Node.js 下会被忽略）；Pumpkin（`@ohtaman/washi/solvers/pumpkin` 的 `setPumpkinWasmUrl()`）在 Node.js 中还支持 `file://` URL，而 Z3 则使用 `setZ3Assets()` 或 `{ z3JsUrl, z3WasmUrl }`：
 
 ```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
+import { setHighsWasmUrl } from "@ohtaman/washi/solvers/highs";
 import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 import { setZ3Assets } from "@ohtaman/washi/solvers/z3"; // 可选 Z3 插件
 
@@ -150,7 +150,7 @@ export default function OptimizerComponent() {
 
 ### 桌面端与移动端 WebView 应用（Tauri / Capacitor / PWA）
 
-标准 Vite 前端会将 **HiGHS** 与 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）打包为静态资源以供离线运行。它们无需本地原生编译，即可运行于 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA。
+标准 Vite 前端会将 **HiGHS** 与 **Pumpkin** 打包为静态资源以供离线运行。它们无需本地原生编译，即可运行于 Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor 移动 WebView 与离线 PWA。
 
 在 `tauri.conf.json` 的 `CSP` 字符串中加入 `'wasm-unsafe-eval'` 与 `worker-src 'self' blob:`。若传入 `{ useWorker: false }` 在主线程运行，可省略 `worker-src`（完整指令说明见下文 CSP 表格）：
 
@@ -174,10 +174,9 @@ export default function OptimizerComponent() {
 
 ```html
 <script type="module">
-  // 从 npm CDN 加载（自托管时可使用 "./dist/browser/washi.js"）：
+  // 从 npm CDN 加载（自托管时可使用 "./dist/browser/washi.js"，内置 HiGHS 与 Pumpkin）：
   import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.js";
-  // 内置或可选的求解器插件：
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.js";
+  // 可选求解器插件：
   // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.js";
   // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/z3.js";
 
@@ -213,10 +212,9 @@ export default function OptimizerComponent() {
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- 通过 CDN 加载 WaSHI 核心 + HiGHS（MIT）（自托管时可使用 "./dist/browser/washi.min.js"） -->
+    <!-- 通过 CDN 加载 WaSHI 核心 + 内置 HiGHS 与 Pumpkin（MIT）（自托管时可使用 "./dist/browser/washi.min.js"） -->
     <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
-    <!-- 内置或可选插件（若已加载 window.Washi 则自动注册求解器）： -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
+    <!-- 可选插件（若已加载 window.Washi 则自动注册求解器）： -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/z3.min.js"></script> -->
 
@@ -253,7 +251,7 @@ export default function OptimizerComponent() {
 
 | 场景 | 行为与前提条件 |
 | --- | --- |
-| **CDN 脚本** | 从 HTTPS CDN 加载 `washi.min.js`（及 `solvers/pumpkin.min.js`）时，双击本地 `.html` 文件（`file://`）即可直接运行，无需本地服务器。 |
+| **CDN 脚本** | 从 HTTPS CDN 加载的 `washi.min.js` 已同时包含 HiGHS 与 Pumpkin，双击本地 `.html` 文件（`file://`）即可直接运行，无需本地服务器。 |
 | **不透明源（`window.origin === "null"`）** | 在 `file://` 页面或未设置 `allow-same-origin` 的沙箱 `<iframe>` 下，未指定 `useWorker` 时 WaSHI 会自动在主线程运行 HiGHS 与 Pumpkin。 |
 | **自托管 `.wasm` 与 Z3** | 浏览器会拦截 `file://` 下本地 `.wasm` 的 `fetch()` 请求，因此需通过 `http://` 或 `https://` 托管。使用 Z3 还需满足下文的跨源隔离要求。 |
 
@@ -265,12 +263,13 @@ WaSHI 绝不会主动联网或回退到公共 CDN。在物理隔离的内网或�
 
 ### 1. 完整部署 `dist/browser/` 目录
 
-请将 `node_modules/@ohtaman/washi/dist/browser/` 整个目录原样复制到您的静态服务器。即使是传统 `<script>` 版的 `washi.min.js` 与 `solvers/pumpkin.min.js`，只要未传入 `{ useWorker: false }`，默认也会将同目录下的 `highs-worker.js` 与 `solvers/pumpkin-worker.js` 作为 Web Worker 启动。ESM 入口文件与这些 Worker 脚本均会通过相对路径引用 `dist/browser/` 下的带哈希 `*.js` 分块。
+请将 `node_modules/@ohtaman/washi/dist/browser/` 整个目录原样复制到您的静态服务器。即使是传统 `<script>` 版的 `washi.min.js`，只要未传入 `{ useWorker: false }`，默认也会将 `solvers/highs-worker.js` 与 `solvers/pumpkin-worker.js` 作为 Web Worker 启动。ESM 入口文件与这些 Worker 脚本均会通过相对路径引用 `dist/browser/` 下的带哈希 `*.js` 分块。
 
 | 产物 | `dist/browser/` 下的必需文件 |
 | --- | --- |
-| **核心（HiGHS）** | `washi.js` / `washi.min.js`、`highs.wasm`、`highs-worker.js` 及 `dist/browser/` 根目录 `*.js` 分块 |
-| **内置 Pumpkin** | `solvers/pumpkin.js` / `solvers/pumpkin.min.js`、`solvers/pumpkin.wasm`、`solvers/pumpkin-worker.js` 及 `solvers/pumpkin-*.js` 分块 |
+| **核心** | `washi.js` / `washi.min.js` |
+| **内置 HiGHS** | `solvers/highs.js`、`solvers/highs.wasm`、`solvers/highs-worker.js` 及 `solvers/highs-*.js` 分块 |
+| **内置 Pumpkin** | `solvers/pumpkin.js`、`solvers/pumpkin.wasm`、`solvers/pumpkin-worker.js` 及 `solvers/pumpkin-*.js` 分块 |
 | **可选 GLPK** | `solvers/glpk.js` / `solvers/glpk.min.js` |
 | **可选 Z3** | `solvers/z3.js` / `solvers/z3.min.js`、`solvers/z3-built.js`、`solvers/z3-built.wasm` |
 
@@ -280,7 +279,7 @@ WaSHI 绝不会主动联网或回退到公共 CDN。在物理隔离的内网或�
 | --- | --- | --- |
 | `script-src` | `'wasm-unsafe-eval'` | 允许编译 WebAssembly 模块。 |
 | `worker-src` | `'self' blob:` | 允许默认 Web Worker 与 CDN `Blob` Worker 引导。 |
-| `worker-src`（禁用 `blob:` 时） | 仅 `'self'` | 从同源托管 `highs-worker.js` / `solvers/pumpkin-worker.js`，或传入 `{ useWorker: false }`。 |
+| `worker-src`（禁用 `blob:` 时） | 仅 `'self'` | 从同源托管 `solvers/highs-worker.js` / `solvers/pumpkin-worker.js`，或传入 `{ useWorker: false }`。 |
 
 ### 3. 开启跨源隔离（仅限使用 Z3 时）
 

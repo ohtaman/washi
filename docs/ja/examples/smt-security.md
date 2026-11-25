@@ -99,4 +99,4 @@ verifySecurityRules();
 
 ### 離散モデル向けの代替ソルバー
 
-このモデルの変数は `BoolVar` と有界整数（`luxLevel` は `[0, 1000]`）のみです。そのため、同梱の `@ohtaman/washi/solvers/pumpkin` を読み込んで `m.check({ solver: "pumpkin" })` を実行すれば、同じ推論と反例検証ができます。
+このモデルの変数は `BoolVar` と有界整数（`luxLevel` は `[0, 1000]`）のみです。そのため、追加インポートなしで同梱の Pumpkin（`m.check({ solver: "pumpkin" })`）を実行しても、同じ推論と反例検証ができます。

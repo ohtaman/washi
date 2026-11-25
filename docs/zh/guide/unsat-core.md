@@ -51,15 +51,14 @@ if (result.status === "Unsat") {
 | 项目 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()` / `{ solver: "glpk" }`) |
 | :--- | :--- | :--- | :--- |
 | **适用模型** | 有界整数与布尔模型 | 包含 `Continuous` 变量或非整数的模型 | 通用 LP / MIP 模型（使用 HiGHS 时无需额外导入） |
-| **安装与依赖** | 内置（`@ohtaman/washi/solvers/pumpkin`） | 可选（`z3-solver`） | 内置（HiGHS）/ 可选（`glpk.js`） |
+| **安装与依赖** | 内置（无需额外导入） | 可选（`z3-solver` + `@ohtaman/washi/solvers/z3`） | 内置默认（HiGHS）/ 可选（`glpk.js`） |
 | **浏览器响应头** | 无需配置 | 需要 `COOP` / `COEP` 响应头 | 无需配置 |
 | **返回字段** | `unsatCore` 和 `conflicts` | `unsatCore` 和 `conflicts` | 仅 `conflicts`（`unsatCore` 为 `undefined`） |
 | **结果含义** | 不可满足核心（无法同时成立的规则子集） | 不可满足核心（无法同时成立的规则子集） | 弹性松弛集合（放宽后可恢复可行的规则） |
 | **量纲/数值尺度敏感性** | 不受影响 | 不受影响 | 会受影响（倾向于放宽数值较小的约束） |
 
 ```typescript
-// 如使用 Pumpkin 或 Z3，请在文件顶部导入：
-// import "@ohtaman/washi/solvers/pumpkin";
+// 仅使用 Z3 时需要在文件顶部导入（HiGHS 与 Pumpkin 均无需额外导入）：
 // import "@ohtaman/washi/solvers/z3";
 
 const status = await m.solve();

@@ -1,6 +1,6 @@
 # Pumpkin Constraint Programming Solver
 
-**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`, `pumpkin.wasm`, ~2.1 MB) in `@ohtaman/washi/solvers/pumpkin` under the MIT license with zero extra packages.
+**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`, `pumpkin.wasm`, ~2.1 MB) under the MIT license alongside HiGHS with zero extra packages—pass `{ solver: "pumpkin" }` out of the box without any extra plugin import (advanced APIs such as `PumpkinSolver` and `setPumpkinWasmUrl()` are available from `@ohtaman/washi/solvers/pumpkin`).
 
 Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` or `COOP`/`COEP` headers (see [Cross-Origin Isolation](../getting-started/cross-origin.md)).
 
@@ -10,7 +10,7 @@ Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` o
 
 | Problem Type | Recommended Solver | Why |
 | :--- | :--- | :--- |
-| **Scheduling, resource caps, & discrete global constraints** | **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) | Native propagation for `disjoint`, `cumulative`, `distinct`, and `allowed` with zero extra setup. |
+| **Scheduling, resource caps, & discrete global constraints** | **Pumpkin** (`{ solver: "pumpkin" }`) | Native propagation for `disjoint`, `cumulative`, `distinct`, and `allowed` with zero extra setup. |
 | **Browser `unsatCore` without `COOP`/`COEP`** | **Pumpkin** (`m.check({ solver: "pumpkin" })`) | Extracts conflicting named constraints on bounded integer and boolean models in any static site or iframe. |
 | **Linear, Mixed-Integer, & Convex Quadratic Programming** | **[HiGHS](./highs.md)** (default) | Supports continuous variables, duals and slacks, convex quadratic objectives, and continuous relaxation. |
 | **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Handles real-valued inequalities inside logical operators and mixed continuous/integer `unsatCore`. |
@@ -27,13 +27,12 @@ Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` o
 
 ## Usage Examples
 
-Import `@ohtaman/washi/solvers/pumpkin` once to register the `"pumpkin"` solver. Use `model.solve()` to optimize an integer objective over bounded integer and boolean variables, or use `model.check()` to verify satisfiability and inspect conflicting constraints.
+Pumpkin is pre-registered in `@ohtaman/washi` with no extra import required—just pass `{ solver: "pumpkin" }` to `new Model()`, `model.solve()`, or `model.check()`. Use `model.solve()` to optimize an integer objective over bounded integer and boolean variables, or use `model.check()` to verify satisfiability and inspect conflicting constraints.
 
 ### 1. Scheduling & Global Constraints (`model.solve()`)
 
 ```typescript
 import { Model, disjoint, expr, implies, minimize, not } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("SchedulingStep", { solver: "pumpkin" });
 
@@ -63,7 +62,6 @@ console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
 
 ```typescript
 import { Model, expr, implies } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("PolicyConflict", { solver: "pumpkin" });
 const vip = model.bool("vip");
@@ -99,7 +97,6 @@ Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSol
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("TimedSearch", { solver: "pumpkin" });
 const x = model.integer("x", { lb: 0, ub: 100 });

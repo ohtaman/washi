@@ -80,7 +80,7 @@ Z3 は `budget` のような連続変数（`m.continuous()`）や小数係数に
 
 ### Pumpkin（`m.check({ solver: "pumpkin" })`）
 
-Pumpkin は `@ohtaman/washi/solvers/pumpkin` に同梱されており、`z3-solver` やブラウザの `COOP` / `COEP` ヘッダーは不要です。`budget` を `m.integer()` にするなど、すべての変数が有界整数・真偽値であれば、数値スケールに依存しない Unsat Core を抽出できます。
+Pumpkin は `@ohtaman/washi` に同梱されており、追加のインポートや `z3-solver`、ブラウザの `COOP` / `COEP` ヘッダーは不要です。`budget` を `m.integer()` にするなど、すべての変数が有界整数・真偽値であれば、数値スケールに依存しない Unsat Core を抽出できます。
 
 ### HiGHS（`m.check({ solver: "highs" })`）
 

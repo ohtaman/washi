@@ -341,7 +341,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
   });
 
   it("separates cold WASM load time from solve time on first run and marks subsequent runs cached", async () => {
-    const { getHighsWasmUrl, setHighsWasmUrl } = await import("../src/index.js");
+    const { getHighsWasmUrl, setHighsWasmUrl } = await import("../src/modeler/solvers/highs/index.js");
     setHighsWasmUrl(null);
     resetSnippetRunnerStateForTests();
 
@@ -394,7 +394,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     }
 
     // Snippet with setHighsWasmUrl / custom solve options must configure options before warming HiGHS
-    const { HighsSolver } = await import("../src/index.js");
+    const { HighsSolver } = await import("../src/modeler/solvers/highs/index.js");
     let wasmUrlAtWarmup: string | null = null;
     const isWarmedSpy = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
     const customWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockImplementation(async () => {
@@ -577,13 +577,12 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       resetSnippetRunnerStateForTests();
     }
 
-    // Pumpkin CP snippet runs with separate cold load vs warm cached timing and never warms HiGHS
+    // Pumpkin CP snippet runs out of the box with separate cold load vs warm cached timing and never warms HiGHS
     resetSnippetRunnerStateForTests();
     const highsWarmupForPumpkinSpy = vi.spyOn(workerClientMod, "warmupHighs");
     try {
       const pumpkinSnippet = `
         import { Model, expr, disjoint, minimize } from "@ohtaman/washi";
-        import "@ohtaman/washi/solvers/pumpkin";
         const m = new Model("CpSnippet", { solver: "pumpkin" });
         const s = m.integer(2, { lb: 0, ub: 10, prefix: "s" });
         m.constraint(disjoint([{ start: s[0], duration: 4 }, { start: s[1], duration: 3 }]), "single_rig");
@@ -623,7 +622,6 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       resetSnippetRunnerStateForTests();
       const zeroLimitPumpkin = await runWashiSnippet(`
         import { Model, expr, minimize } from "@ohtaman/washi";
-        import "@ohtaman/washi/solvers/pumpkin";
         const m = new Model("ZeroLimitCp", { solver: "pumpkin" });
         const x = m.integer("x", { lb: 0, ub: 5 });
         m.objective(minimize(x));
@@ -757,7 +755,6 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     try {
       const abortPumpkinRes = await runFreshPumpkinSnippet(`
         import { Model, maximize } from "@ohtaman/washi";
-        import "@ohtaman/washi/solvers/pumpkin";
         const m = new Model("AbortPumpkinWarmup", { solver: "pumpkin" });
         const x = m.integer("x", { lb: 0, ub: 5 });
         m.objective(maximize(x));

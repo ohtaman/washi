@@ -2,11 +2,11 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 制約プログラミング (RCPSP) / Unsat Core 診断 | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (スケジュール)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (競合診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">ソースコード</a></li><li><a href="/ja/guide/constraint-programming">CP モデリングガイド</a></li></ul> |
+| 制約プログラミング (RCPSP) / Unsat Core 診断 | Pumpkin (`{ solver: "pumpkin" }`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (スケジュール)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (競合診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">ソースコード</a></li><li><a href="/ja/guide/constraint-programming">CP モデリングガイド</a></li></ul> |
 
 **リソース制約付きプロジェクトスケジューリング問題（RCPSP）**では、最大完了時刻である**メイクスパン**を最小化する工程スケジュールを求めます。作業の先行順序、単一設備の排他利用、チーム人数の上限を同時に満たす必要があります。
 
-同梱の **Pumpkin** ソルバー（`@ohtaman/washi/solvers/pumpkin`）を使うと、次の 2 点を簡潔に実現できます。
+同梱の **Pumpkin** ソルバー（`{ solver: "pumpkin" }`、追加インポート不要）を使うと、次の 2 点を簡潔に実現できます。
 1. 各作業に開始時刻の整数変数 `start[task]` を 1 つ置くだけで済み、時刻ごとの 0-1 変数を大量に作る必要がありません。
 2. 点検期間や厳しい納期制約を追加して実行不能になった場合も、同じモデルで `m.check()` を呼ぶだけで矛盾原因（`unsatCore`）を特定できます。
 
@@ -31,7 +31,6 @@
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 async function runProjectScheduling() {
   const horizon = 24;

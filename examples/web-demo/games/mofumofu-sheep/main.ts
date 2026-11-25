@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { setHighsWasmUrl } from "../../../../src/index.js";
+import { setHighsWasmUrl } from "../../../../src/modeler/solvers/highs/loader.js";
 import { pastureAudio } from "./audio.js";
 import { FENCE_SVG } from "./fence-icon.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
@@ -70,14 +70,14 @@ import {
 if (typeof window !== "undefined") {
   let wasmUrl: string;
   if (import.meta.env.DEV) {
-    wasmUrl = new URL("/highs.wasm", window.location.origin).href;
+    wasmUrl = new URL("/solvers/highs.wasm", window.location.origin).href;
   } else {
     const base = import.meta.env.BASE_URL || "/";
     if (base.startsWith("/")) {
       const cleanBase = base.endsWith("/") ? base : `${base}/`;
-      wasmUrl = new URL(`${cleanBase}highs.wasm`, window.location.origin).href;
+      wasmUrl = new URL(`${cleanBase}solvers/highs.wasm`, window.location.origin).href;
     } else {
-      wasmUrl = new URL("../../highs.wasm", window.location.href).href;
+      wasmUrl = new URL("../../solvers/highs.wasm", window.location.href).href;
     }
   }
   setHighsWasmUrl(wasmUrl);

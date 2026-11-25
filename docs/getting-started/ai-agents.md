@@ -40,12 +40,13 @@ import {
   not,
   implies,
   xor,
-  setHighsWasmUrl,
 } from "@ohtaman/washi";
 
-// Bundled Constraint Programming (CP) solver plugin (zero external dependencies; registers "pumpkin"):
-import "@ohtaman/washi/solvers/pumpkin";
-// (Also exports `setPumpkinWasmUrl` when overriding the browser WASM URL.)
+// Bundled solvers: HiGHS (default) and Pumpkin (`{ solver: "pumpkin" }`) work out of the box with zero extra imports.
+// Import solver subpaths only when configuring engine-specific classes or custom WASM URLs:
+// import { HighsSolver, setHighsWasmUrl } from "@ohtaman/washi/solvers/highs";
+// import { PumpkinSolver, setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
+
 // Optional solver plugins (require installing peer dependencies first):
 // npm install z3-solver
 import "@ohtaman/washi/solvers/z3";
@@ -55,22 +56,23 @@ import "@ohtaman/washi/solvers/glpk";
 
 ### Browser ESM & Classic Script Tags
 
-Classic `<script>` tags load immediately invoked function expression (`IIFE`) bundles that attach a global namespace to `window` (solver plugins also auto-register when `window.Washi` is present). Assuming `dist/browser/` is hosted at `./washi/`:
+Classic `<script>` tags load immediately invoked function expression (`IIFE`) bundles that attach a global namespace to `window` (optional solver plugins auto-register when `window.Washi` is present). Assuming `dist/browser/` is hosted at `./washi/`:
 
 | Solver | Browser ESM (`<script type="module">`) | Classic `<script>` IIFE |
 | --- | --- | --- |
-| **Core (HiGHS)** | `import { Model, expr, maximize } from "./washi/washi.js";` | `<script src="./washi/washi.min.js"></script>` (global `Washi`) |
-| **Pumpkin** | `import "./washi/solvers/pumpkin.js";` | `<script src="./washi/solvers/pumpkin.min.js"></script>` (`WashiPumpkin`) |
-| **GLPK** | `import "./washi/solvers/glpk.js";` | `<script src="./washi/solvers/glpk.min.js"></script>` (`WashiGLPK`) |
-| **Z3** | `import "./washi/solvers/z3.js";` | `<script src="./washi/solvers/z3.min.js"></script>` (`WashiZ3`) |
+| **Core (HiGHS & Pumpkin)** | `import { Model, expr, maximize } from "./washi/washi.js";` | `<script src="./washi/washi.min.js"></script>` (global `Washi`) |
+| **HiGHS** *(subpath API)* | `import { HighsSolver, setHighsWasmUrl } from "./washi/solvers/highs.js";` | Bundled in `washi.min.js` (pass `{ wasmUrl }` per call) |
+| **Pumpkin** *(subpath API)* | `import { PumpkinSolver, setPumpkinWasmUrl } from "./washi/solvers/pumpkin.js";` | Bundled in `washi.min.js` (pass `{ wasmUrl }` per call) |
+| **GLPK** *(optional)* | `import "./washi/solvers/glpk.js";` | `<script src="./washi/solvers/glpk.min.js"></script>` (`WashiGLPK`) |
+| **Z3** *(optional)* | `import "./washi/solvers/z3.js";` | `<script src="./washi/solvers/z3.min.js"></script>` (`WashiZ3`) |
 
 ### WebAssembly Asset & Runtime Rules
 
 #### Bundled WASM & Custom Asset URLs
 
-- **Automatic resolution**: In Node.js and bundler builds, WaSHI resolves `.wasm` assets relative to the module with no CDN fallback.
-- **Browser self-hosting**: Deploy `dist/browser/` intact (entry scripts, sibling chunks, Web Worker scripts, and `.wasm` files). Requests that hit missing URLs or HTML SPA fallbacks fail immediately and report the attempted URL.
-- **Custom browser URLs**: Call `setHighsWasmUrl(url)` or `setPumpkinWasmUrl(url)`, or pass `{ wasmUrl }` to `m.solve()` / `m.check()`. This override is ignored for HiGHS in Node.js, while Pumpkin accepts `file://` URLs in Node.js. For Z3, call `setZ3Assets({ jsUrl, wasmUrl })` (from `@ohtaman/washi/solvers/z3`) or pass `{ z3JsUrl, z3WasmUrl }`.
+- **Automatic resolution**: In Node.js and bundler builds, WaSHI resolves `.wasm` assets under `solvers/` relative to the module with no CDN fallback.
+- **Browser self-hosting**: Deploy `dist/browser/` intact (entry scripts, `solvers/` runtime/worker/WASM assets, and chunks). Requests that hit missing URLs or HTML SPA fallbacks fail immediately and report the attempted URL.
+- **Custom browser URLs**: Call `setHighsWasmUrl(url)` (from `@ohtaman/washi/solvers/highs`) or `setPumpkinWasmUrl(url)` (from `@ohtaman/washi/solvers/pumpkin`), or pass `{ wasmUrl }` to `m.solve()` / `m.check()`. This override is ignored for HiGHS in Node.js, while Pumpkin accepts `file://` URLs in Node.js. For Z3, call `setZ3Assets({ jsUrl, wasmUrl })` (from `@ohtaman/washi/solvers/z3`) or pass `{ z3JsUrl, z3WasmUrl }`.
 
 #### Browser Security & Cross-Origin Isolation
 
@@ -290,7 +292,6 @@ export async function runZ3Example() {
 
 ```ts
 import { Model, expr, disjoint, distinct, implies, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export async function runPumpkinExample() {
   // Part 1: Bounded-integer CP scheduling with native global propagators
