@@ -4,20 +4,20 @@
 | :--- | :--- | :--- | :--- |
 | Combinatorial OR / Dantzig-Wolfe | HiGHS (default) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">Source Code</a></li><li><a href="/guide/decomposition">Decomposition Guide</a></li></ul> |
 
-The **Capacitated Vehicle Routing Problem (CVRP)** determines the minimum number of delivery vehicles needed to visit a set of customers, subject to vehicle cargo capacity, maximum customer stops per shift, and route duration limits.
+This **Capacitated Vehicle Routing Problem (CVRP)** variant minimizes the number of delivery vehicles needed to serve every customer. In addition to vehicle cargo capacity, each route must respect maximum stops per shift and route duration limits.
 
-In a monolithic MIP formulation, enumerating all possible customer combinations and visit sequences leads to $O(2^n)$ binary variables. With **Column Generation (Dantzig-Wolfe Decomposition)**, routes are generated on demand:
-1. **Restricted Master Problem (RMP)**: Solves a set partitioning problem that selects a subset of candidate routes so that every customer is visited once.
-2. **Pricing Subproblem**: Uses the dual values (shadow prices) from the master LP relaxation to construct improving routes with negative reduced cost ($\bar{c} = 1 - \sum \pi_i < 0$) via cheapest insertion and 2-opt local search.
+Enumerating every feasible route upfront in a monolithic MIP causes the number of binary variables to explode combinatorially as $n$ grows (even unordered customer subsets alone are $O(2^n)$ in general, and ordered visit sequences grow faster still). With **Column Generation (Dantzig-Wolfe Decomposition)**, routes are generated on demand:
+1. **Restricted Master Problem (RMP)**: Solves the **LP relaxation** of a set partitioning problem over the generated routes during column generation (and solves it as a MIP at the end) so every customer is visited exactly once.
+2. **Pricing Subproblem**: Reads dual values (shadow prices) from the master LP relaxation, then uses cheapest insertion and 2-opt search to build a route $r$ with negative reduced cost: $\bar{c}_r = 1 - \sum_{i \in r} \pi_i < 0$.
 
 ## Problem Inputs
 
-We consider a distribution network with a central depot at $(0, 0)$ and **50 customer locations**:
+We consider a distribution network with a central depot at $(0, 0)$ and **50 customer locations** (demands of **1 to 4 units** each):
 
 - **Vehicle Cargo Capacity**: At most **10 units** per vehicle.
 - **Maximum Stops**: At most **4 customers** per route.
 - **Maximum Shift Duration**: At most **200 minutes** (transit time + service time) per route.
-- **Transit & Service Times**: Euclidean distances between nodes (1 unit = 1 minute) plus **10 minutes** of unloading service time per customer.
+- **Transit & Service Times**: Integer-rounded Euclidean distances (`Math.round`) between nodes (1 unit = 1 minute) plus **10 minutes** of unloading time per customer.
 
 ## Implementation in WaSHI
 
@@ -26,10 +26,30 @@ We consider a distribution network with a central depot at $(0, 0)$ and **50 cus
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
 
+interface RouteMeta {
+  tour: string[];
+  travelTime: number;
+  totalTime: number;
+}
+
+interface CandidateCustomer {
+  id: string;
+  demand: number;
+  dual: number;
+}
+
+interface RouteConstraints {
+  dist: (a: string, b: string) => number;
+  serviceTimes: Record<string, number>;
+  vehicleCapacity: number;
+  maxStops: number;
+  maxRouteTime: number;
+}
+
 // --- Extracted Routing Helpers ---
 
 // 2-opt local search to eliminate crossing paths in a tour
-function optimize2Opt(tour, dist) {
+function optimize2Opt(tour: string[], dist: (a: string, b: string) => number): string[] {
   let best = [...tour];
   let improved = true;
 
@@ -49,8 +69,8 @@ function optimize2Opt(tour, dist) {
   return best;
 }
 
-// Inserts a customer into the tour at the position that minimizes detour distance
-function insertCheapest(tour, id, dist) {
+// Inserts a customer into the tour at the position that minimizes added distance
+function insertCheapest(tour: string[], id: string, dist: (a: string, b: string) => number): string[] {
   let bestPos = 1;
   let minCost = Infinity;
 
@@ -65,7 +85,11 @@ function insertCheapest(tour, id, dist) {
 }
 
 // Calculates transit time and total duration (transit + service) for a tour
-function calcRouteTime(tour, dist, serviceTimes) {
+function calcRouteTime(
+  tour: string[],
+  dist: (a: string, b: string) => number,
+  serviceTimes: Record<string, number>
+) {
   let travelTime = 0;
   for (let i = 0; i < tour.length - 1; i++) {
     travelTime += dist(tour[i], tour[i + 1]);
@@ -75,8 +99,8 @@ function calcRouteTime(tour, dist, serviceTimes) {
 }
 
 // Pricing subproblem: Finds an improving route with negative reduced cost (1 - dualSum < 0)
-function findImprovingRoute(candidates, config) {
-  let bestRoute = null;
+function findImprovingRoute(candidates: CandidateCustomer[], config: RouteConstraints): string[] | null {
+  let bestRoute: string[] | null = null;
   let minReducedCost = -1e-4;
 
   for (const seed of candidates.slice(0, 15)) {
@@ -130,11 +154,11 @@ async function runCVRP() {
   });
 
   const nodes = Object.fromEntries([depot, ...customers].map((n) => [n.id, n]));
-  const dist = (a, b) =>
+  const dist = (a: string, b: string) =>
     Math.round(Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y));
   const serviceTimes = Object.fromEntries(customers.map((c) => [c.id, c.serviceTime]));
 
-  const routeConfig = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
+  const routeConfig: RouteConstraints = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
 
   // 1. Build Restricted Master Problem (RMP)
   const master = new Model("CVRP_FleetMaster");
@@ -143,7 +167,7 @@ async function runCVRP() {
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
   master.objective(minimize(expr`sum(${initialRoutes})`));
 
-  // Each customer must be visited by exactly 1 vehicle
+  // Set-partitioning constraints: each customer must be visited by exactly 1 vehicle
   const visitConstrs = customers.map((c, i) =>
     master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${c.id}`)
   );
@@ -152,7 +176,7 @@ async function runCVRP() {
   console.log("Solving via Column Generation with dual-directed heuristic pricing...");
 
   // 2. Solve via Column Generation
-  const result = await master.solveColumnGeneration({
+  const result = await master.solveColumnGeneration<RouteMeta>({
     finalizeAsMIP: true,
     pricing: async () => {
       // 1. Sort customers by shadow price (dual profit) descending
@@ -167,14 +191,14 @@ async function runCVRP() {
 
       // 3. Propose new column to Restricted Master Problem
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
-      const coefficients = {};
+      const coefficients: Record<string, number> = {};
       for (const id of bestRoute.slice(1, -1)) {
         coefficients[`visit_${id}`] = 1;
       }
 
       return {
         cost: 1,
-        type: "Binary",
+        type: "Binary" as const,
         coefficients,
         meta: { tour: bestRoute, travelTime, totalTime },
       };
@@ -186,10 +210,21 @@ async function runCVRP() {
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
 
   console.log("\nSample routes selected in fleet:");
-  const activeRoutes = result.generatedColumns.filter((c) => c.variable.value === 1);
+  const activeRoutes: RouteMeta[] = [];
+  for (let i = 0; i < customers.length; i++) {
+    if (initialRoutes[i].value === 1) {
+      const tour = ["Depot", customers[i].id, "Depot"];
+      const { travelTime, totalTime } = calcRouteTime(tour, dist, serviceTimes);
+      activeRoutes.push({ tour, travelTime, totalTime });
+    }
+  }
+  for (const c of result.generatedColumns) {
+    if (c.variable.value === 1 && c.proposal.meta) {
+      activeRoutes.push(c.proposal.meta);
+    }
+  }
   for (const r of activeRoutes.slice(0, 5)) {
-    const meta = r.proposal.meta;
-    console.log(`  ${meta?.tour.join(" -> ")} (Transit: ${meta?.travelTime}m, Total: ${meta?.totalTime}m)`);
+    console.log(`  ${r.tour.join(" -> ")} (Transit: ${r.travelTime}m, Total: ${r.totalTime}m)`);
   }
 }
 
@@ -198,11 +233,20 @@ runCVRP();
 
 </CodeRunner>
 
-## Notes
+## Key Takeaways
 
-- **Master Problem and Pricing Separation**: The master problem solves the LP relaxation and final set-partitioning MIP, while the `pricing` callback searches for negative-reduced-cost routes using cheapest insertion and 2-opt local search.
-- **Dual Value Access**: Dual values from the master LP relaxation are read from `visitConstrs[i].dual` to prioritize customers with higher shadow prices during route construction.
-- **Route Metadata**: Each proposed column attaches `{ tour, travelTime, totalTime }` under `meta`, allowing the ordered stop sequence to be inspected from `result.generatedColumns` after the solve completes.
-- **Set Partitioning (`== 1`) vs. Set Covering (`>= 1`)**: This example uses `== 1` so that the final MIP never covers a customer twice. In large-scale column generation, formulating coverage as `>= 1` restricts the dual prices to $\pi_i \ge 0$, avoiding negative dual oscillations; if the final MIP selects overlapping routes, duplicate visits can be removed by post-processing whenever distances satisfy the triangle inequality.
-- **Heuristic Pricing vs. Exact ESPPRC**: Because `findImprovingRoute` uses a fast greedy heuristic (cheapest insertion + 2-opt) instead of an exact Elementary Shortest Path Problem with Resource Constraints (ESPPRC) solver, returning `null` means no further improving columns were found by the heuristic rather than proving global LP optimality.
-- **Price-and-Branch (`finalizeAsMIP: true`)**: Solving the Restricted Master Problem as a MIP over the columns generated at the root node is known as the *Restricted Master Heuristic* (Price-and-Branch). It produces near-optimal integer fleets quickly without requiring full Branch-and-Price tree search.
+### Master Problem, Pricing & Route Metadata
+
+The master problem handles the LP relaxation and final set-partitioning MIP. Inside `pricing`, `visitConstrs[i].dual` supplies each customer's dual value (shadow price) to guide route construction. Storing `{ tour, travelTime, totalTime }` in `meta` lets you inspect the chosen stop sequence via `result.generatedColumns` after solving.
+
+### Set Partitioning (`== 1`) vs. Set Covering (`>= 1`)
+
+This example uses `== 1` so no customer is visited twice in the final MIP. In larger instances, using `>= 1` keeps dual values non-negative ($\pi_i \ge 0$) and stabilizes LP convergence. When travel distances satisfy the triangle inequality, duplicate visits can be stripped after solving without increasing any route's travel time (or load, stop count, or fleet size); note that rounding distances with `Math.round` as in this example can introduce small rounding violations of the triangle inequality.
+
+### Heuristic Pricing vs. Exact ESPPRC
+
+Here `findImprovingRoute` runs a greedy cheapest-insertion and 2-opt heuristic instead of an exact Elementary Shortest Path Problem with Resource Constraints (ESPPRC) solver. Returning `null` therefore means the heuristic found no further improving route, rather than proving global LP optimality.
+
+### Price-and-Branch (`finalizeAsMIP: true`)
+
+Solving the Restricted Master Problem as a MIP over the columns generated at the root node is called the **Restricted Master Heuristic** (Price-and-Branch). It produces strong integer fleets quickly without implementing a full Branch-and-Price search tree.

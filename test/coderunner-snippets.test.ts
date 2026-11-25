@@ -282,7 +282,11 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     const enHumanPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter(
-        (rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md"
+        (rel) =>
+          !rel.startsWith("ja/") &&
+          !rel.startsWith("zh/") &&
+          rel !== "getting-started/ai-agents.md" &&
+          rel !== "RUBRIC.md"
       )
       .sort();
     const jaPages = mdFiles

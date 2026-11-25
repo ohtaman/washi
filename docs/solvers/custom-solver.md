@@ -1,8 +1,8 @@
 # WaSHI Custom Solver Developer Guide
 
-This guide describes how to build, test, and distribute custom solver plugins for **WaSHI** (`@ohtaman/washi`).
+This guide explains how to build, test, and distribute custom solver plugins for **WaSHI** (`@ohtaman/washi`).
 
-WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi` bundles the zero-config HiGHS WASM engine and a Mock solver, while `@ohtaman/washi/solvers/pumpkin` provides a bundled CP/LCG WASM plugin. Any third-party solver—whether implemented in WebAssembly, native C++, a Web Worker, or an external cloud REST/RPC backend—can be registered and used through the unified `Model` API.
+Core `@ohtaman/washi` bundles the HiGHS WebAssembly engine and `MockSolver`, while `@ohtaman/washi/solvers/pumpkin` provides a bundled Constraint Programming (CP) plugin. You can register any other backend—WebAssembly, native C++, Web Worker, or cloud REST/RPC—and use it through the same `Model` API.
 
 ---
 
@@ -20,15 +20,16 @@ graph TD
 ```
 
 ### Key Architectural Characteristics
-1. **Unified Global Registry**: The solver registry is backed by `Symbol.for("washi.solverRegistry")` on `globalThis`. This ensures that even across different ESM chunks, dynamic imports, or `<script>` tags, every bundle accesses the identical solver map.
-2. **Behavioral Symmetry**: Node.js and browser environments share identical error messages, solver naming, and capability handling.
-3. **Decoupled Bundling**: Core WaSHI does not import optional or custom plugins. A plugin only registers itself when explicitly imported.
+
+- **Unified global registry**: Stored under `Symbol.for("washi.solverRegistry")` on `globalThis`, so separate ESM chunks, dynamic imports, and `<script>` tags share one solver map.
+- **Cross-runtime symmetry**: Node.js and browser builds share identical solver naming, capability checks, and error messages.
+- **Decoupled bundling**: Core WaSHI never imports optional or custom plugins; each plugin registers itself only when imported.
 
 ---
 
 ## 2. API Contracts & TypeScript Interfaces
 
-All custom solvers must implement the `Solver` interface defined in `@ohtaman/washi`:
+Every custom solver implements the `Solver` interface exported from `@ohtaman/washi`:
 
 ```typescript
 import {
@@ -57,20 +58,20 @@ import {
 
 ```typescript
 export interface Solver {
-  /** Unique human-readable name of the solver (e.g. "GLPK", "AcmeCloudSolver") */
+  /** Identifier name of the solver engine (e.g. "GLPK", "AcmeCloudSolver") */
   readonly name: string;
 
-  /** Solver version string (e.g. "1.2.0") */
+  /** Version string of the solver (e.g. "1.2.0") */
   readonly version?: string;
 
-  /** Capability flags declaring which problem classes the solver supports */
+  /** Feature capabilities of this solver */
   readonly capabilities?: SolverCapabilities;
 
+  /** Default options configured on this solver instance */
+  readonly options?: SolverOptions;
+
   /**
-   * Main solve method for LP, MIP, QP, and SMT optimization models.
-   *
-   * @param modelData Typed in-memory model structure (variables, constraints, objective, sense, boolVars, logicalConstraints)
-   * @param options Runtime execution options (timeLimit, relativeGap, absoluteGap, verbose, signal, onProgress, etc.)
+   * Solve a mathematical programming model (LP, MIP, QP, CP, or SMT).
    */
   solve(
     modelData: SolveModelData,
@@ -78,10 +79,7 @@ export interface Solver {
   ): Promise<SolverResult>;
 
   /**
-   * Optional check method for Pure SAT / SMT or feasibility checking without an objective.
-   *
-   * @param modelData Objective-free in-memory model structure (variables, boolVars, constraints, logicalConstraints)
-   * @param options Runtime execution options
+   * Optional objective-free satisfiability / feasibility check (SAT / SMT / CP).
    */
   check?(
     modelData: CheckModelData,
@@ -92,176 +90,177 @@ export interface Solver {
 
 ### `CheckModelData` & `SolveModelData`
 
-`Model.solve()` and `Model.check()` pass the structured model directly to your adapter without serializing an LP string upfront:
+`Model.solve()` and `Model.check()` pass structured model snapshots directly to your adapter without serializing a CPLEX LP format string upfront:
 
 ```typescript
 export interface CheckModelData {
-  /** Model name */
   name?: string;
-  /** Decision variables registered in the model */
   variables: Var[];
-  /** Propositional Boolean variables registered in the model */
   boolVars?: BoolVar[];
-  /** Linear arithmetic constraints registered in the model */
   constraints: Constraint[];
-  /** Logical / SMT constraints registered in the model */
   logicalConstraints?: LogicalConstraintItem[];
 }
 
 export interface SolveModelData extends CheckModelData {
-  /** Optimization direction ("Minimize" | "Maximize") */
   sense: OptimizationSense;
-  /** Linear or quadratic objective expression */
   objective: LinExpr | QuadExpr;
 }
 ```
 
 ### `SolverCapabilities`
 
-Custom solvers declare their supported features using `capabilities`. Before dispatching `solve()` or `check()`, `Model` validates:
-- `supportsQP === false` when the objective contains quadratic terms (`QuadExpr`),
-- when the model contains logical constraints (added via `m.constraint(...)`, appearing in `m.constraints` with `kind: "logical"` and passed to solvers in `modelData.logicalConstraints`) and the solver supports neither native logical constraints (`supportsLogicalConstraints !== true`) nor SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
-- `supportsWarmStart !== true` when any variable has a primal `initialValue` set.
+Declare supported features on `capabilities`. Before calling `solve()` or `check()`, `Model` checks these flags:
+
+- **Quadratic objectives (`QuadExpr`)**: Rejected when the model has a quadratic objective and `supportsQP === false`.
+- **Warm starts (`initialValue`)**: Rejected when any variable sets `initialValue` and `supportsWarmStart !== true`.
+- **Logical constraints**: Passed natively in `modelData.logicalConstraints` when `supportsLogicalConstraints === true` or Satisfiability Modulo Theories (`supportsSMT === true`) is enabled.
+- **Automatic Mixed-Integer Programming (MIP) linearization**: When neither logical flag is `true`, `Model` converts logical constraints into equivalent binary variables and linear constraints before calling `solve()`.
 
 ```typescript
 export interface SolverCapabilities {
-  /** Supports mixed-integer programming (integer/binary variables) */
+  /** Supports Mixed-Integer Programming (integer and binary variables) */
   supportsMIP?: boolean;
 
-  /** Supports quadratic objectives (QP: x^T Q x + c^T x) */
+  /** Supports Quadratic Programming objectives (QP) */
   supportsQP?: boolean;
 
-  /** Supports second-order cone or quadratic constraints */
+  /** Supports quadratic constraints (QCQP / SOCP) */
   supportsQCQP?: boolean;
 
-  /** Supports satisfiability modulo theories / boolean logic constraints */
+  /** Supports Satisfiability Modulo Theories (SMT) and logical constraints */
   supportsSMT?: boolean;
 
-  /** Supports native boolean/propositional logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) without SMT continuous theories */
+  /** Supports native boolean/propositional logical constraints without SMT continuous theories */
   supportsLogicalConstraints?: boolean;
 
-  /** Supports extracting an unsatisfiable core (conflicting constraint subset) */
+  /** Supports extracting an unsatisfiable core (conflicting constraint subset; minimality is not guaranteed) */
   supportsUnsatCore?: boolean;
 
-  /** Supports primal initial values / MIP warm starts (Var.initialValue) */
+  /** Supports primal initial values / warm-start hints (Var.initialValue) */
   supportsWarmStart?: boolean;
 }
 ```
 
 ### `SolverOptions` & `SolveProgressEvent`
 
-Runtime options passed to `solve` and `check` include cancellation and progress hooks (note that the routing `solver` field from `SolveOptions` is stripped before options are passed to your adapter):
+Runtime options passed to `solve()` and `check()` follow `SolverOptions`. Note that `Model` strips the routing `solver` field before forwarding options to your adapter.
 
 ```typescript
 export interface SolverOptions {
-  /** Time limit in seconds */
+  /** Maximum solve time limit in seconds */
   timeLimit?: number;
 
-  /** Relative MIP optimality gap tolerance (e.g. 0.01 for 1%) */
+  /** Presolve mode */
+  presolve?: "on" | "off" | "choose";
+
+  /** Relative MIP gap tolerance (e.g. 0.01 for 1%) */
   relativeGap?: number;
 
-  /** Absolute MIP optimality gap tolerance */
+  /** Absolute MIP gap tolerance */
   absoluteGap?: number;
 
-  /** Enable solver console logging */
+  /** Number of parallel threads */
+  threads?: number;
+
+  /** Enable verbose solver logging */
   verbose?: boolean;
 
-  /** Cooperative cancellation signal; when aborted, return terminationStatus: "Interrupted" */
+  /** Solve the continuous LP relaxation by relaxing integer and binary variables */
+  relax?: boolean;
+
+  /** Use Web Worker for non-blocking browser execution */
+  useWorker?: boolean;
+
+  /** AbortSignal to cancel an in-flight solve */
   signal?: AbortSignal;
 
-  /** Progress callback invoked with normalized SolveProgressEvent snapshots */
+  /** Callback invoked with normalized SolveProgressEvent metrics */
   onProgress?: (progress: SolveProgressEvent) => void;
 
   /** Additional solver-specific options */
   [key: string]: any;
 }
+
+export interface SolveProgressEvent {
+  /** Elapsed solver time in seconds */
+  elapsedTime: number;
+  /** Alias for elapsedTime: elapsed solver time in seconds */
+  elapsedSeconds?: number;
+  /** Current solver phase when known */
+  phase?: "simplex" | "ipm" | "mip";
+  /** Best feasible incumbent objective value when available */
+  objectiveValue?: number;
+  /** Best proven dual / objective bound when available */
+  objectiveBound?: number;
+  /** Relative MIP optimality gap when available */
+  relativeGap?: number;
+  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when available */
+  absoluteGap?: number;
+  /** Explored MIP branch-and-bound node count when available */
+  nodes?: number;
+  /** Solver iteration count (simplex, IPM, or MIP LP iterations) when available */
+  iterations?: number;
+  /** Optional raw progress message from the solver */
+  message?: string;
+}
 ```
 
-### Optional LP Serialization & Symbol-Mapping Helpers
+### Direct Model Data vs. LP Helpers
 
-Solvers that consume structured JS/WASM data (such as `PumpkinSolver`, `GLPKSolver`, and `Z3Solver`) work directly with `SolveModelData` / `CheckModelData`.
-If your adapter targets a backend that requires CPLEX/HiGHS LP text or restricted identifier syntax, WaSHI exports opt-in helpers:
+Choose how your adapter reads `modelData` based on your backend's input format:
 
-- `generateLpString(modelData): LpExportResult` — serializes `modelData` into a CPLEX LP format string (`lpString`) along with collision-safe symbol lookup maps (`nameToVar`, `nameToConstraint`).
-- `buildLpSymbolMaps(modelData): LpSymbolMaps` — builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string.
-- `isLpExportResult(value): value is LpExportResult` — runtime type guard for `LpExportResult` (useful when supporting legacy 3-argument `solve(modelData, lpResult, options)` overloads).
-- `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — sanitizes an arbitrary display name into a valid LP identifier.
+- **Use `SolveModelData` / `CheckModelData` directly** when your backend accepts structured JS or WebAssembly objects (as `PumpkinSolver`, `GLPKSolver`, and `Z3Solver` do).
+- **Use WaSHI's opt-in LP helpers** when your backend expects CPLEX/HiGHS LP text or restricted ASCII identifiers:
+
+| Helper | Purpose |
+| :--- | :--- |
+| `generateLpString(modelData, { relax }?)` | Serializes `modelData` into a CPLEX LP string (`lpString`) with collision-safe `nameToVar` and `nameToConstraint` maps; pass `{ relax: true }` to emit continuous LP relaxation. |
+| `buildLpSymbolMaps(modelData)` | Builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string. |
+| `isLpExportResult(value)` | Runtime type guard for `LpExportResult` (useful for legacy 3-argument `solve(modelData, lpResult, options)` overloads). |
+| `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` | Converts an arbitrary variable or constraint name into a valid LP identifier. |
 
 ```typescript
 export interface LpExportResult {
-  /** Standard CPLEX/HiGHS LP formatted string */
   lpString: string;
-
-  /** Map translating sanitized LP variable identifiers back to WaSHI Var objects */
   nameToVar: Map<string, Var>;
-
-  /** Map translating sanitized LP constraint identifiers back to WaSHI Constraint objects */
   nameToConstraint: Map<string, Constraint>;
 }
 ```
 
 ### `SolverResult` Normalization & Identity Decoding
 
-The `solve` method must return normalized results keyed by the model's canonical variable/constraint names (`v.name`, `bv.name`, `c.name`). Adapters that use `generateLpString(modelData)` or `buildLpSymbolMaps(modelData)` for an LP backend must translate sanitized LP identifiers back to canonical model names using `nameToVar` and `nameToConstraint`:
+`solve()` must key returned `values`, `boolValues`, `reducedCosts`, `duals`, and `slacks` by the model's canonical names (`v.name`, `bv.name`, `c.name`). When using LP helpers, decode sanitized LP identifiers back via `nameToVar` and `nameToConstraint`.
 
 ```typescript
 export interface SolverResult {
-  /** Standardized status string */
   status: SolverStatus;
-
-  /** Exact termination reason independent of whether a feasible incumbent is available (defaults to status) */
   terminationStatus?: TerminationStatus;
-
-  /** Whether a feasible primal solution / incumbent is available (inferred from status/values if omitted) */
   hasPrimalSolution?: boolean;
-
-  /** Optimal or best objective value (null if no primal solution is available) */
   objectiveValue: number | null;
-
-  /** Best proven dual/objective bound when provided by the solver */
   objectiveBound?: number;
-
-  /** Relative MIP optimality gap when provided by the solver */
   relativeGap?: number;
-
-  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| (computed automatically when both are finite) */
   absoluteGap?: number;
-
-  /** Variable primal values keyed by canonical variable name (non-finite values are ignored) */
   values: Record<string, number>;
-
-  /** Propositional Boolean variable assignments keyed by BoolVar name (optional, SMT/SAT) */
   boolValues?: Record<string, boolean>;
-
-  /** Variable reduced costs (optional, LP only) */
   reducedCosts?: Record<string, number>;
-
-  /** Constraint dual values / shadow prices (optional, LP only) */
   duals?: Record<string, number>;
-
-  /** Constraint slack values (optional) */
   slacks?: Record<string, number>;
-
-  /** Solve execution duration in seconds */
   runTime?: number;
-
-  /** Diagnostic solver logs / text outputs */
   logs?: string[];
-
-  /** Raw solver response object for inspection */
   raw?: any;
 }
 ```
 
 #### Standardized `SolverStatus` Values
-- `"Optimal"`: Global optimal solution found (for MIP within tolerance, for LP proven optimal).
-- `"Feasible"`: Feasible solution found, but optimality not yet proven (e.g., hit time limit with an incumbent).
-- `"Infeasible"`: Model is proven mathematically infeasible.
+
+- `"Optimal"`: Optimal solution found (within MIP tolerance, or proven optimal for LP).
+- `"Feasible"`: Feasible incumbent found, but optimality is not yet proven.
+- `"Infeasible"`: Model is proven infeasible.
 - `"Unbounded"`: Model objective is unbounded.
-- `"TimeLimit"`: Solver terminated due to `timeLimit` without proof of optimality.
-- `"IterationLimit"`: Solver terminated due to iteration limit.
-- `"Sat"` / `"Unsat"`: Satisfiable / unsatisfiable status returned by `check()` or SMT solvers.
-- `"Error"` / `"NotSolved"` / `"Unknown"`: Error, not yet solved, or unrecognized status. **Never convert Unknown/Error to Optimal.**
+- `"TimeLimit"`: Stopped by `timeLimit` without finding a feasible incumbent.
+- `"IterationLimit"`: Stopped by an iteration limit without finding a feasible incumbent.
+- `"Sat"` / `"Unsat"`: Satisfiable / unsatisfiable status from `check()` or SMT solvers.
+- `"Error"` / `"NotSolved"` / `"Unknown"`: Failure, unsolved, or unrecognized status. Never map `"Unknown"` or `"Error"` to `"Optimal"`.
 
 ---
 
@@ -269,7 +268,7 @@ export interface SolverResult {
 
 ### Tutorial A: In-House Cloud REST Solver Adapter
 
-Here is a complete, production-ready custom solver connecting to an HTTP microservice that accepts LP format strings on demand via `generateLpString(modelData)`:
+This example builds a custom solver that calls an HTTP microservice accepting CPLEX LP strings generated on demand with `generateLpString`:
 
 ```typescript
 import {
@@ -294,21 +293,27 @@ export class CloudSolver implements Solver {
     supportsMIP: true,
     supportsQP: false,
   };
+  public readonly options: SolverOptions;
 
   private endpoint: string;
   private apiKey: string;
 
   constructor(config: CloudSolverConfig = {}) {
-    this.endpoint = config.endpoint || "https://solver.mycompany.internal/v1/solve";
-    this.apiKey = config.apiKey || "";
+    const { endpoint, apiKey, ...defaultOptions } = config;
+    this.endpoint = endpoint || "https://solver.mycompany.internal/v1/solve";
+    this.apiKey = apiKey || "";
+    this.options = defaultOptions;
   }
 
   async solve(
     modelData: SolveModelData,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    const mergedOptions: SolverOptions = { ...this.options, ...options };
     const startTime = performance.now();
-    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
+    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData, {
+      relax: mergedOptions.relax,
+    });
 
     let payload: any;
     try {
@@ -320,11 +325,11 @@ export class CloudSolver implements Solver {
         },
         body: JSON.stringify({
           lp: lpString,
-          timeLimit: options.timeLimit,
-          relativeGap: options.relativeGap,
-          absoluteGap: options.absoluteGap,
+          timeLimit: mergedOptions.timeLimit,
+          relativeGap: mergedOptions.relativeGap,
+          absoluteGap: mergedOptions.absoluteGap,
         }),
-        signal: options.signal,
+        signal: mergedOptions.signal,
       });
 
       if (!response.ok) {
@@ -333,7 +338,7 @@ export class CloudSolver implements Solver {
 
       payload = await response.json();
     } catch (err: any) {
-      if (options.signal?.aborted || err?.name === "AbortError") {
+      if (mergedOptions.signal?.aborted || err?.name === "AbortError") {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
@@ -405,18 +410,26 @@ registerCloudSolver();
 
 ### Tutorial B: Registering and Using the Custom Solver
 
-Once implemented, the custom solver can be selected in three different ways:
+Choose how to attach your solver based on whether configuration is shared globally or varies per call or per model:
+
+| Method | Best For |
+| :--- | :--- |
+| **Registered name string** | Reusable plugins with default settings (`solver: "cloud"`). |
+| **Solver instance** | Per-call or per-model credentials, endpoints, or custom option presets. |
+| **Global default (`setDefaultSolver`)** | Replacing HiGHS across an entire application without updating every `new Model()`. |
 
 #### Option 1: By Registered Name String
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import "./cloud-solver.js"; // Auto-registers "cloud"
 
 const model = new Model({ name: "SupplyChain", solver: "cloud" });
-// Or model.solve("cloud")
+// Or await model.solve({ solver: "cloud" })
 ```
 
 #### Option 2: By Passing the Solver Instance Directly
+
 ```typescript
 import { Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
@@ -431,13 +444,14 @@ const status = await model.solve();
 ```
 
 #### Option 3: Setting Global Default Solver
+
 ```typescript
 import { setDefaultSolver, Model } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
 
 setDefaultSolver(() => new CloudSolver());
 
-// All subsequent models use CloudSolver by default
+// Models without an explicit solver use CloudSolver by default
 const model = new Model("DefaultedModel");
 ```
 
@@ -445,9 +459,10 @@ const model = new Model("DefaultedModel");
 
 ## 4. Distribution: Packaging as a Plugin
 
-To publish your solver as an independent npm package (e.g. `@my-org/washi-solver-cplex`):
+To publish your solver as an independent npm package (such as `@my-org/washi-solver-cplex`), declare Node ESM and browser entry points in `package.json`:
 
 ### 1. `package.json` Exports Structure
+
 ```json
 {
   "name": "@my-org/washi-solver-cplex",
@@ -474,17 +489,19 @@ To publish your solver as an independent npm package (e.g. `@my-org/washi-solver
 }
 ```
 
-### 2. Browser IIFE Build
-When building the browser standalone script (`.min.js`), configure your bundler (Vite or Rollup) to:
-- Output format: `iife`
-- Global name: `WashiCplex`
-- Rely on `Symbol.for("washi.solverRegistry")` so that `<script src="washi.min.js"></script><script src="washi-cplex.min.js"></script>` automatically connects.
+### 2. Browser Standalone Build (IIFE)
+
+When building a browser `.min.js` bundle, configure Vite or Rollup for Immediately Invoked Function Expression (`iife`) output:
+
+- **Output format**: `iife`
+- **Global name**: `WashiCplex`
+- **Registry linking**: Because registration uses `Symbol.for("washi.solverRegistry")`, loading `<script src="washi.min.js"></script>` followed by `<script src="washi-cplex.min.js"></script>` connects automatically.
 
 ---
 
 ## 5. Testing Your Custom Solver
 
-You can test your solver using Vitest or Jest without bundling:
+You can test your adapter directly in Vitest or Jest without bundling by mocking network calls:
 
 ```typescript
 import { describe, it, expect, vi } from "vitest";

@@ -2,19 +2,24 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
+| 命題論理・SMT 充足可能性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
 
-真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`` implies(expr`${luxLevel} <= 50`, isNight) ``)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
+**SMT（Satisfiability Modulo Theories）** は、命題論理に、整数の範囲制約や線形不等式などの背景理論を組み合わせて充足可能性を判定する枠組みです。
+
+この例では、WaSHI と Z3 を使ってスマートホームのセキュリティルールを検証し、センサー観測値からシステム状態を推論します。
 
 ## シナリオ
 
-センサー観測値と論理ルールからなるスマートホームのセキュリティシステムをモデル化します：
-1. 周囲の照度が $\le 50$ のとき、夜間モード（`isNight`）と判定する。
-2. 夜間に動体検知があり、かつアラームが警戒中であれば、サイレン（`sirenActive`）を鳴らさなければならない。
-3. アラームが警戒中であれば、玄関ドアは決して解錠状態（`frontDoorUnlocked`）であってはならない。
-4. 夜間に動体検知があった場合、足元照明（`lightsOn`）を点灯する。
+センサー観測値と論理ルールからなるセキュリティシステムをモデル化します。
+1. 周囲の照度（`luxLevel`）が `50 lux` 以下であれば、夜間モード（`isNight`）にする。
+2. 夜間（`isNight`）に動体検知（`motionDetected`）があり、かつアラームが警戒中（`alarmArmed`）であれば、サイレン（`sirenActive`）を鳴らす。
+3. アラームが警戒中（`alarmArmed`）であれば、玄関ドアは解錠状態（`frontDoorUnlocked`）にしない。
+4. 夜間（`isNight`）に動体検知（`motionDetected`）があれば、足元照明（`lightsOn`）を点灯する。
 
 ## WaSHI による実装
+
+> [!NOTE]
+> **Z3 の前提条件:** `@ohtaman/washi/solvers/z3` を使うには、任意の `peerDependencies` パッケージ `z3-solver`（`npm install z3-solver`）が必要です。ブラウザ上で Z3 を実行する場合は `COOP` / `COEP` ヘッダーも必要になります（詳しくは [Cross-Origin Isolation](../getting-started/cross-origin.md) を参照してください）。
 
 <CodeRunner preset="smt_security">
 
@@ -33,7 +38,7 @@ async function verifySecurityRules() {
   const sirenActive = m.bool("sirenActive");
   const lightsOn = m.bool("lightsOn");
 
-  // 2. 数値メトリクス（照度センサー lux）
+  // 2. 数値変数（照度センサー値 [lux]）
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // ルール 1: luxLevel <= 50 ならば isNight
@@ -51,13 +56,13 @@ async function verifySecurityRules() {
   // ルール 4: (motionDetected AND isNight) => lightsOn
   m.constraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
 
-  // 3. 観測されたコンテキスト状態
+  // 3. 観測されたセンサー値と設定状態
   m.constraint(expr`${luxLevel} <= 20`, "sensor_reading_dark");
   m.constraint(alarmArmed, "user_armed_alarm");
   m.constraint(motionDetected, "sensor_motion_triggered");
 
   // 充足可能性を判定しシステム状態を推論
-  const res = await m.check({ solver: "z3" });
+  const res = await m.check();
 
   console.log(`Status: ${res.status}`);
   console.log(`Siren Active : ${sirenActive.value}`);
@@ -68,8 +73,8 @@ async function verifySecurityRules() {
   // 4. 安全性プロパティの形式検証（反例探索 / 背理法）:
   // この状況下で「サイレンが鳴らない (not(sirenActive))」という抜け道が存在しないことを証明
   m.constraint(not(sirenActive), "counterexample_siren_off");
-  const proof = await m.check({ solver: "z3" });
-  console.log(`Can siren stay off? ${proof.status} (Unsat なら抜け道なしと証明完了)`);
+  const proof = await m.check();
+  console.log(`Can siren stay off? ${proof.status} (Proven safe when Unsat)`);
   console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
 
@@ -80,6 +85,14 @@ verifySecurityRules();
 
 ## 実務上のポイント
 
-- **背理法による形式検証（反例探索）**: 単一の `check()` で `"Sat"` が返ることは「条件を満たす状態が少なくとも1つ存在する」ことを意味します。ある安全性要件 $P$（例：`sirenActive`）が**いかなる場合も必ず成立する（抜け道がない）**ことを形式的に証明するには、あえて否定 `not(P)` を追加して `m.check()` を実行し、`"Unsat"` になることを確認します。もし `"Sat"` が返れば、そのときの変数値が具体的なセキュリティ上の抜け道（反例）となります。
-- **片方向の含意（`implies`）と双方向同値の違い**: `` implies(expr`${luxLevel} <= 50`, isNight) `` は「照度 50 以下なら夜」しか規定しないため、昼間（`luxLevel > 50`）のときに `isNight` が `true` になっても論理的には違反になりません（オープンワールド仮定）。「照度 50 以下 $\iff$ 夜」とする場合は、逆方向の `` implies(expr`${luxLevel} >= 51`, not(isNight)) `` も併せて記述します。
-- **`COOP` / `COEP` ヘッダー不要での実行 (`solver: "pumpkin"`)**: このモデルの変数はすべて `BoolVar` と有界整数（`luxLevel` は `[0, 1000]`）であるため、同梱の `@ohtaman/washi/solvers/pumpkin` を使った `m.check({ solver: "pumpkin" })` でも同じ状態推論と反例 `unsatCore` 証明が `COOP` / `COEP` ヘッダーや `z3-solver` なしで動作します。
+### 背理法による形式検証（反例探索）
+
+1 回の `m.check()` で `"Sat"` が返っても、「条件を満たす状態が少なくとも 1 つ存在する」ことしか分かりません。安全性要件 `P`（例: `sirenActive`）が常に成立することを証明するには、否定の `not(P)` を追加して `m.check()` を実行します。`"Unsat"` なら反例は存在せず、`"Sat"` なら得られた変数値が具体的な抜け道（反例）を示します。
+
+### 片方向の含意（`implies`）と双方向同値の違い
+
+`` implies(expr`${luxLevel} <= 50`, isNight) `` が制約するのは、`luxLevel <= 50` が真のときの `isNight` だけです。`luxLevel > 50` のときは `isNight` に制限がかからず、`true`・`false` いずれの値も取り得ます。必要十分条件（双方向同値）として定義したい場合は、逆の `` implies(isNight, expr`${luxLevel} <= 50`) ``（あるいは論理的に同値な裏の `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``）も追加します。
+
+### 離散モデル向けの代替ソルバー
+
+このモデルの変数は `BoolVar` と有界整数（`luxLevel` は `[0, 1000]`）のみです。そのため、同梱の `@ohtaman/washi/solvers/pumpkin` を読み込んで `m.check({ solver: "pumpkin" })` を実行すれば、同じ推論と反例検証ができます。

@@ -1,25 +1,42 @@
-# HiGHS ソルバーエンジン
+# HiGHS ソルバー
 
-**HiGHS** はエディンバラ大学で創始された高性能な数理最適化ソフトウェアです（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
+**HiGHS** はエディンバラ大学で開発が始まったオープンソースの数理最適化ソルバーです（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）を解けます。
 
-`@ohtaman/washi` では、公式の上流リポジトリ（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）から直接コンパイルした WebAssembly とネイティブ C API（`highs_c_api.h`）ドライバにより、サードパーティ製ラッパーに依存することなく、Node.js・Web Worker・ブラウザ環境でゼロコンフィグで完全動作します。
+`@ohtaman/washi` では HiGHS がデフォルトソルバーです。WebAssembly バイナリを同梱しているため追加パッケージは不要で、Node.js やブラウザ（Web Worker を含む）でそのまま動作します。
+
+---
+
+## HiGHS を選ぶ基準
+
+| 問題のタイプ | 推奨ソルバー | 選定理由 |
+| :--- | :--- | :--- |
+| **LP・MIP・連続変数の凸 QP** | **HiGHS**（デフォルト） | MIT ライセンスで標準同梱。LP・MIP・QP の求解が高速で、LP の双対値・スラック・被約費用や MIP ウォームスタートに対応。 |
+| **有界整数の制約プログラミング（CP）** | **[Pumpkin](./pumpkin.md)** | `disjoint`・`cumulative`・`distinct` などのグローバル制約や `unsatCore` 抽出を Cross-Origin Isolation なしで利用可能。 |
+| **連続変数を含む論理ルール** | **[Z3](./z3.md)** | 論理式（`implies` 等）内の厳密な実数算術や、連続・整数混在モデルの `unsatCore` 抽出に対応。 |
+| **GNU GLPK 互換・ベンチマーク比較** | **[GLPK](./glpk.md)** | 既存の GLPK モデルとの検算・ベンチマーク比較に対応（GPL-3.0 のオプション peer dependency）。 |
+
+> [!TIP]
+> 一般的な数理最適化（LP・MIP・凸 QP）はまず **HiGHS** を選んでください。ネイティブな CP の制約伝播や SMT による矛盾診断が必要な場合のみ、**Pumpkin** や **Z3** を使い分けます。
 
 ---
 
 ## WaSHI における主な特徴
 
-- **標準搭載・ゼロコンフィグ**: 公式の HiGHS からビルドした WebAssembly 配布物を `@ohtaman/washi` に直接同梱しており、外部ランタイム依存ゼロで即座に動作します。
-- **商用利用しやすい MIT ライセンス**: コアパッケージは 100% MIT ライセンスで提供されます。
-- **Web Worker バックグラウンド実行**: ブラウザ環境では自動的に専用 Web Worker を起動して計算を行うため、メインスレッド（UI）をブロックしません。
-- **ウォームスタート対応 (`initialValue`)**: 変数の初期値ヒント（`initialValue`）を HiGHS の `setSolution` に渡すウォームスタートをサポートしています。
-- **高速な WASM 実行**: 直接ビルドされた 32 ビット WebAssembly バイナリにより、ネイティブに近い速度で動作します。
+- **標準同梱・追加依存なし**: MIT ライセンスで `@ohtaman/washi` 本体に組み込まれており、追加インストールは不要です。
+- **`COOP`/`COEP` ヘッダー不要**: シングルスレッド動作のため、`SharedArrayBuffer` や [Cross-Origin Isolation 設定](../getting-started/cross-origin.md) は不要です。
+- **Web Worker バックグラウンド実行**: ブラウザではデフォルトで専用 Web Worker を使い、メインスレッド（UI 描画）をブロックせずに求解します。
+- **ウォームスタート（`initialValue`）**: `model.continuous()`・`model.integer()`・`model.binary()` の変数定義時に初期値ヒント（`initialValue`）を指定できます。
+- **LP 緩和（`relax: true`）**: 変数定義を書き換えずに、MIP モデルの連続緩和問題を解けます。
 
 ---
 
 ## 対応する問題クラス
 
-### 1. 線形計画問題 (LP)
-主・双対シンプレックス法または内点法（IPM）により連続変数の最適化問題を解きます。求解後は制約の潜在価格（`c.dual`）・余剰（`c.slack`）および変数の被約費用（`v.reducedCost`）を取得できます：
+HiGHS では線形計画（LP）・混合整数計画（MIP）・凸二次計画（QP）のいずれも同じ `Model` API で記述できます。問題に合わせて変数の種類と目的関数の形式を選んでください。
+
+### 1. 線形計画問題（LP）
+
+連続変数・線形制約・線形目的関数からなるモデルです。シンプレックス法または内点法で求解され、最適解では制約の双対値 `c.dual`、スラック `c.slack`、変数の被約費用 `v.reducedCost` を取得できます。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -27,55 +44,113 @@ import { Model, expr, maximize } from "@ohtaman/washi";
 const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
+
 model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
-model.constraint(expr`${x} + ${y} <= 100`, "cap");
+const cap = model.constraint(expr`${x} + ${y} <= 100`, "cap");
+
 await model.solve();
+console.log(model.status, model.objectiveValue, cap.dual, cap.slack);
 ```
 
-### 2. 混合整数計画問題 (MIP)
-分枝限定法（Branch-and-Bound）と切除平面法（Cutting Planes）を用いて整数・0-1 バイナリ変数の問題を解きます：
+### 2. 混合整数計画問題（MIP）
+
+`model.integer()` や `model.binary()` による整数・バイナリ変数を含むモデル（連続変数との混在も可）です。分枝カット法で求解され、`objectiveBound`・`relativeGap`・`absoluteGap` を取得できます。
 
 ```typescript
-const count = model.integer("count", { lb: 0, ub: 50 });
-const open = model.binary("open");
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const mipModel = new Model({ solver: "highs" });
+const count = mipModel.integer("count", { lb: 0, ub: 50 });
+const open = mipModel.binary("open");
+
+mipModel.objective(maximize(expr`12 * ${count} - 100 * ${open}`));
+mipModel.constraint(expr`${count} <= 50 * ${open}`, "link");
+
+await mipModel.solve();
+console.log(mipModel.status, count.value, open.value);
 ```
 
-### 3. 凸二次計画問題 (Convex QP)
-線形制約の下で、連続変数に対する凸二次目的関数を最小化（または凹二次目的関数を最大化）します：
+### 3. 凸二次計画問題（Convex QP）
+
+線形制約の下で、連続変数の凸二次目的関数を最小化（または凹二次目的関数を最大化）するモデルです。
 
 ```typescript
-// expr タグで二次目的関数を記述:
-model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const qpModel = new Model({ solver: "highs" });
+const x = qpModel.continuous("x", { lb: 0 });
+const y = qpModel.continuous("y", { lb: 0 });
+
+qpModel.constraint(expr`${x} + ${y} >= 10`, "demand");
+qpModel.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
+
+await qpModel.solve();
+console.log(qpModel.status, qpModel.objectiveValue, x.value, y.value);
+// Optimal 25 5 5
 ```
 
 > [!NOTE]
-> **全変数が連続変数の凸 QP が対象**: HiGHS がサポートする二次計画は、モデル内の**すべての変数が連続変数（`m.continuous`）**である凸 QP（最小化時は半正定値行列 $\mathbf{Q}$、最大化時は半負定値行列）です。`Integer`・`Binary`・`BoolVar` を含むモデルに二次目的関数を設定する混合整数二次計画（**MIQP**）および二次制約（**QCP**）には対応していません。バイナリ変数同士の積を MILP として線形化する手法については、[定式化パターン・Tips](../guide/formulation-tips.md) を参照してください。
+> **連続変数の凸 QP のみ対応**: QP モデル内のすべての変数は連続変数（`model.continuous()`）でなければなりません。また、二次形式の係数行列 $\mathbf{Q}$ は最小化時に半正定値、最大化時に半負定値である必要があります。
+>
+> 混合整数二次計画（MIQP）や二次制約（QCQP）には対応していません。バイナリ変数同士の積を MIP として線形化する方法は、[定式化パターン・Tips](../guide/formulation-tips.md) を参照してください。
 
 ---
 
 ## ソルバーオプション
 
-`model.solve()` にオプションを渡して制御できます：
+実行オプションは `model.solve()` または `HighsSolver` コンストラクタに渡します。WaSHI の HiGHS アダプターはオプション名を厳密に検証し、未対応のキーを渡すと実行時に `Error` を投げます。
+
+### 対応オプション
+
+| オプション | 型 | 説明 |
+| :--- | :--- | :--- |
+| `timeLimit` | `number` | 最大実行時間（秒）。 |
+| `relativeGap` | `number` | 相対 MIP 最適性ギャップがこの値以下になると求解を終了。 |
+| `absoluteGap` | `number` | 絶対 MIP 最適性ギャップがこの値以下になると求解を終了。 |
+| `presolve` | `"on" \| "off" \| "choose"` | 求解前の前処理を制御。 |
+| `outputFlag` | `boolean` | ソルバーの内部ログ出力を有効化（既定は `false`）。 |
+| `relax` | `boolean` | MIP モデルの連続 LP 緩和問題を解く。 |
+| `useWorker` | `boolean` | ブラウザ環境で Web Worker を使用（ブラウザでの既定は `true`）。 |
+| `wasmUrl` | `string \| null` | 使用する `highs.wasm` の URL を上書き（`null` で `setHighsWasmUrl()` または同梱バイナリを使用）。 |
+| `signal` | `AbortSignal` | 実行中の求解を協調的に中断。 |
+| `onProgress` | `(ev) => void` | 経過時間・暫定目的関数値・双対境界・ギャップを逐次受け取る進捗コールバック。 |
+
+このほか、HiGHS 固有の上限オプション（`mip_max_nodes`、`mip_max_improving_sols`、`mip_max_leaves`、`simplex_iteration_limit`、`ipm_iteration_limit`）も指定できます。
+
+### 未対応オプション（実行時にエラー）
+
+- `verbose`: 指定すると `Error` を投げます。代わりに `outputFlag: true` を使ってください。
+- `threads`: HiGHS WebAssembly はシングルスレッド動作のため、指定すると `Error` を投げます。
+- 未定義のオプションキー: 認識されないキーを渡すと `Error` を投げます。
+
+### 時間制限・進捗監視・中断の例
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const model = new Model({ solver: "highs" });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
+model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
+model.constraint(expr`${x} + ${y} <= 100`, "cap");
+
 const controller = new AbortController();
 
 await model.solve({
-  timeLimit: 60.0,       // 最大実行時間（秒）
-  relativeGap: 0.001,    // 相対 MIP ギャップが 0.1% 以内になったら終了
-  absoluteGap: 1.0,      // 絶対 MIP ギャップ許容値
-  presolve: "on",        // 前処理 ("on" | "off" | "choose")
-  outputFlag: true,      // シンプレックス / 分枝限定法の内部ログを出力 (output_flag)
+  timeLimit: 60.0,
+  relativeGap: 0.001,
+  absoluteGap: 1.0,
+  presolve: "on",
+  outputFlag: true,
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`経過: ${ev.elapsedTime.toFixed(1)}s, 暫定値: ${ev.objectiveValue}`);
   },
 });
 
-// timeLimit や AbortSignal を使用する場合は hasPrimalSolution で暫定解の有無を確認します:
 if (model.hasPrimalSolution) {
   console.log(
-    `利用可能な解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
+    `解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
     `obj = ${model.objectiveValue}, gap = ${((model.relativeGap ?? 0) * 100).toFixed(2)}%`
   );
 }
@@ -85,34 +160,46 @@ if (model.hasPrimalSolution) {
 
 ## ブラウザでの Web Worker・WASM 設定
 
-ブラウザではデフォルトで Web Worker が使用されますが、Web Worker が制限されている環境やメインスレッドで同期実行したい場合は `useWorker: false` を指定します：
+ブラウザではデフォルトで専用の Web Worker 内で HiGHS を実行します。これにより UI 描画を妨げず、`onProgress` による進捗通知や `AbortSignal` による中断も機能します。
+
+メインスレッドで実行したい場合や、独自パスから `highs.wasm` を読み込みたい場合は `useWorker`・`setHighsWasmUrl`・`wasmUrl` を使います。
 
 ```typescript
-import { Model, HighsSolver } from "@ohtaman/washi";
+import { Model, HighsSolver, expr, maximize, setHighsWasmUrl } from "@ohtaman/washi";
 
-// 方法 1: solve 呼び出し時に指定
-await model.solve({ useWorker: false });
+// グローバルに WASM の URL を指定（null を渡すと同梱バイナリに戻る）
+setHighsWasmUrl("/assets/wasm/highs.wasm");
 
-// 方法 2: HighsSolver インスタンス生成時に指定
+const model = new Model({ solver: "highs" });
+const x = model.continuous("x", { lb: 0, ub: 10 });
+model.objective(maximize(expr`${x}`));
+
+// 方法 1: solve 呼び出しごとに Web Worker 無効化や wasmUrl を指定
+await model.solve({ useWorker: false, wasmUrl: "/assets/wasm/highs.wasm" });
+
+// 方法 2: HighsSolver インスタンスの既定値として指定
 const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
 
+`highs.wasm` の読み込みに失敗した場合や HTML のエラーページが返された場合、外部 CDN へフォールバックせず、試行した URL を含むエラーを投げます。
+
 ---
 
 ## アーキテクチャと WebAssembly ランタイム
 
-WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接ビルドし（`-fwasm-exceptions`、シングルスレッド可搬性 `-DHIGHS_NO_DEFAULT_THREADS=ON`）、ネイティブ C API（`highs_c_api.h`）を通じて直接連携しています。これにより、WebAssembly 線形メモリ上の TypedArray ビューによるゼロコピー解抽出、上流リリースの迅速な追従、および依存ゼロの自己完結型パッケージングを実現しています。
+> [!NOTE]
+> このセクションは、メンテナーや高度な統合を行う開発者向けの内部構成メモです。
 
-同梱の `highs.wasm` と `runtime.js` は `highs.config.json` の SHA-256 チェックサムで整合性が検証されています。ソースからの再ビルドや Release 更新を行うメンテナー向け手順は [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow) を参照してください。
+WaSHI は公式 HiGHS C++ ソースを `-fwasm-exceptions` と `-DHIGHS_NO_DEFAULT_THREADS=ON` で 32 ビット WebAssembly（`highs.wasm`）へコンパイルしています。ネイティブ C API（`highs_c_api.h`）を直接呼び出し、線形メモリ上の TypedArray ビューから解をゼロコピーで抽出し、`setSolution` で MIP ウォームスタート用の初期解を渡します。
+
+同梱の `highs.wasm` と `runtime.js` は `highs.config.json` の SHA-256 チェックサムで検証されています。再ビルド手順は [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow) を参照してください。
 
 ### コールバックと対話的制御
 
-- **進捗監視と途中中断（対応済み）**:
-  HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
-- **動的カット生成・遅延制約（WASM ドライバで未公開）**:
-  WaSHI の HiGHS WebAssembly C API ドライバは現在ロギング・進捗・割り込み・暫定解コールバックのみをバインドしており、探索木内部の遅延制約（lazy constraints）やユーザーカット（user cuts）コールバックは WASM ↔ JS 境界越しに公開していません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、外側の反復カット分離ループとして同じ厳密最適解へ収束する [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（または手動の切除平面ループ：解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）をご利用ください。
+- **進捗監視と中断**: HiGHS のロギング・割り込みコールバック経由で `onProgress` と `AbortSignal` に対応しています。
+- **動的カット・遅延制約**: 分枝限定法の探索木内コールバックには非対応です（WASM 境界越しには公開していません）。Benders 分解には [`solveBenders()`](../guide/decomposition.md) や外側の切除平面ループを使います。
 
 ---
 
@@ -121,5 +208,5 @@ WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接
 - **公式ウェブサイト**: [https://highs.dev/](https://highs.dev/)
 - **公式ドキュメント**: [https://ergo-code.github.io/HiGHS/](https://ergo-code.github.io/HiGHS/)
 - **ソースリポジトリ**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)（MIT License）
-- **学術引用（Citation）**: 学術論文や技術報告等で HiGHS を引用される際は、HiGHS 開発チームが案内している以下の基礎論文をご参照ください：
+- **学術引用（Citation）**: 学術論文や技術報告で HiGHS を引用する際は、以下の基礎論文を引用してください。
   > Q. Huangfu and J. A. J. Hall, *"Parallelizing the dual revised simplex method"*, Mathematical Programming Computation, 10 (1), 119–142, 2018. DOI: [10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)

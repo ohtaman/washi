@@ -1,33 +1,37 @@
 # Pumpkin Constraint Programming Solver
 
-**Pumpkin** is a Lazy Clause Generation (LCG) constraint programming solver developed in pure Rust by ConSol Lab at TU Delft ([ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) · [docs.rs/pumpkin-core](https://docs.rs/pumpkin-core)). WaSHI compiles Pumpkin (`v0.5.0`) directly to WebAssembly and bundles it in `@ohtaman/washi/solvers/pumpkin` with zero external runtime dependencies.
+**Pumpkin** is an open-source Constraint Programming (CP) solver written in Rust and maintained by [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin). WaSHI bundles Pumpkin (`v0.5.0`) as WebAssembly in `@ohtaman/washi/solvers/pumpkin` with zero extra packages.
 
-Unlike multi-threaded WASM engines, Pumpkin runs as a single-threaded WebAssembly instance inside a Web Worker (or directly in Node.js) and **does not require Cross-Origin Isolation (`COOP` / `COEP`) headers** in browsers.
-
----
-
-## Key Features in WaSHI
-
-- **Bundled & Zero External Dependencies**: `pumpkin.wasm` (`~1.4 MB`) is shipped directly with `@ohtaman/washi` and tree-shaken into `@ohtaman/washi/solvers/pumpkin`—no separate `npm install` peer dependency or Rust toolchain required.
-- **Permissive MIT License**: 100% commercially friendly, including all transitive Rust WASM dependencies (`MIT`, `Apache-2.0`, `Unicode-3.0`).
-- **Background Web Worker & Zero `COOP` / `COEP`**: Runs in a dedicated Web Worker on HTTP(S) origins without `SharedArrayBuffer` or Cross-Origin Isolation headers, keeping UI rendering responsive while working in standard static hosts and third-party iframes.
-- **Native CP Global Constraints & Propagators**: Lowers `distinct()` (`all_different` via pairwise `binary_not_equals` in Pumpkin `v0.5.0`), `disjoint()` (`disjunctive_strict` Vilím edge-finding), `cumulative()` (time-table filtering), `allowed()` / `not(allowed())` (`table` / `negative_table`), `at()` (`element`), `max()` / `min()` / `abs()` (`maximum` / `minimum` / `absolute`), discrete `!=` (`not_equals`), and `m.indicator()` (with `M` omitted, via `implied_by`) directly to Pumpkin constraints.
-- **Zero-`COOP` / `COEP` Unsat Core Diagnosis**: `await model.check({ solver: "pumpkin" })` extracts conflicting named rules (`unsatCore` / `conflicts`) over bounded integer and boolean constraints in standard browser contexts.
-- **Warm-Start Support (`initialValue`)**: Supports non-binding primal initial value hints (`initialValue`, `supportsWarmStart: true`) on bounded `Integer` and `Binary` variables in both `solve()` and `check()` via Pumpkin's `WarmStart` brancher (kept distinct from solved `Var.value`).
+Because Pumpkin runs single-threaded, browsers do not need `SharedArrayBuffer` or `COOP`/`COEP` headers (see [Cross-Origin Isolation](../getting-started/cross-origin.md)).
 
 ---
 
-## Supported Problem Classes
+## When to Choose Pumpkin
 
-> [!TIP]
-> **HiGHS vs. Pumpkin vs. Z3**:
-> - Use **HiGHS** (`{ solver: "highs" }`) for Continuous LPs, Convex QPs, or large linear-relaxation-dominated MILPs.
-> - Use **Pumpkin** (`{ solver: "pumpkin" }`) for disjunctive scheduling, CP global constraints, bounded integer + propositional logic models, and zero-`COOP`/`COEP` `unsatCore` extraction.
-> - Use **Z3** (`{ solver: "z3" }`) when you need continuous variables inside `implies(...)` / `not(...)` or arbitrary real-valued SMT arithmetic.
+| Problem Type | Recommended Solver | Why |
+| :--- | :--- | :--- |
+| **Scheduling, resource caps, & discrete global constraints** | **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) | Native propagation for `disjoint`, `cumulative`, `distinct`, and `allowed` with zero extra setup. |
+| **Browser `unsatCore` without `COOP`/`COEP`** | **Pumpkin** (`m.check({ solver: "pumpkin" })`) | Extracts conflicting named constraints on bounded integer and boolean models in any static site or iframe. |
+| **Linear, Mixed-Integer, & Convex Quadratic Programming** | **[HiGHS](./highs.md)** (default) | Supports continuous variables, duals and slacks, convex quadratic objectives, and continuous relaxation. |
+| **Logical rules with `Continuous` variables** | **[Z3](./z3.md)** | Handles real-valued inequalities inside logical operators and mixed continuous/integer `unsatCore`. |
 
-### 1. Disjunctive Scheduling & Global CP Constraints (`model.solve()`)
+---
 
-Model unary/cumulative resource scheduling, precedence logic (`implies`, `not`), and global predicates (`disjoint`, `distinct`, `cumulative`, `allowed`, `at`, `max`, `min`, `abs`) directly over bounded integers:
+## Key Features
+
+- **Bundled & zero dependencies**: `pumpkin.wasm` (~1.4 MB) ships inside `@ohtaman/washi` under an MIT-compatible license.
+- **Background Web Worker execution**: Runs off the main thread in browsers without `SharedArrayBuffer`, keeping UI rendering responsive.
+- **Native CP constraints**: Supports `disjoint()`, `cumulative()`, `distinct()`, `allowed()`, `at()`, `max()`, `min()`, `abs()`, discrete `!=`, and `m.indicator()`.
+- **Conflict diagnosis (`unsatCore`)**: `await model.check({ solver: "pumpkin" })` identifies conflicting named constraints in bounded integer and boolean models.
+- **Warm starts (`initialValue`)**: Accepts starting value hints on `model.integer()` and `model.binary()` variables.
+
+---
+
+## Usage Examples
+
+Import `@ohtaman/washi/solvers/pumpkin` once to register the `"pumpkin"` solver. Use `model.solve()` to optimize an integer objective over bounded integer and boolean variables, or use `model.check()` to verify satisfiability and inspect conflicting constraints.
+
+### 1. Scheduling & Global Constraints (`model.solve()`)
 
 ```typescript
 import { Model, disjoint, expr, implies, minimize, not } from "@ohtaman/washi";
@@ -46,6 +50,7 @@ model.constraint(
   ]),
   "single_machine"
 );
+// Optional: reify the chosen order in job1First (disjoint already enforces non-overlap)
 model.constraint(implies(job1First, expr`${s1} + 6 <= ${s2}`), "job1_before_job2");
 model.constraint(implies(not(job1First), expr`${s2} + 4 <= ${s1}`), "job2_before_job1");
 
@@ -53,11 +58,10 @@ model.objective(minimize(expr`${s1} + ${s2}`));
 await model.solve();
 
 console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
+// Status: Optimal, s1=4, s2=0
 ```
 
-### 2. Satisfiability & Unsat Core Diagnosis (`model.check()`)
-
-Call `await model.check()` to verify satisfiability over integer linear constraints, CP global constraints, and nested propositional logic (`and`, `or`, `not`, `implies`, `xor`), and isolate conflicting named rules (`conflicts` / `unsatCore`) when unsatisfiable:
+### 2. Conflict Diagnosis (`model.check()`)
 
 ```typescript
 import { Model, expr, implies } from "@ohtaman/washi";
@@ -73,7 +77,8 @@ model.constraint(expr`${seats} <= 5`, "room_cap");
 
 const result = await model.check();
 if (result.status === "Unsat") {
-  console.log("Conflicting rules:", result.conflicts); // also on result.unsatCore / model.unsatCore
+  console.log("Conflicting rules:", result.conflicts); // or result.unsatCore / model.unsatCore
+  // ["vip_active", "vip_seats", "room_cap"]
 }
 ```
 
@@ -81,23 +86,31 @@ if (result.status === "Unsat") {
 
 ## Solver Options
 
-Pass solver options into `model.solve()` or `model.check()`:
+Pass execution options into `model.solve()`, `model.check()`, or `new PumpkinSolver(options)`. Supported options are `timeLimit` (seconds), `useWorker`, `wasmUrl`, `signal`, and `onProgress` (`solve()` only):
 
 ```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+const model = new Model("TimedSearch", { solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
+model.constraint(expr`${x} + ${y} >= 40`, "min_total");
+model.objective(minimize(expr`2 * ${x} + 3 * ${y}`));
+
 const controller = new AbortController();
 
 await model.solve({
-  timeLimit: 30.0,       // Maximum solve time in seconds
+  timeLimit: 30.0,
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`Elapsed: ${ev.elapsedTime.toFixed(1)}s, Best: ${ev.objectiveValue}`);
   },
 });
 
-// Always check hasPrimalSolution when timeLimit or AbortSignal is used:
 if (model.hasPrimalSolution) {
   console.log(
-    `Usable solution (${model.status}, termination: ${model.terminationStatus}):`,
+    `Solution (${model.status}, termination: ${model.terminationStatus}):`,
     `obj = ${model.objectiveValue}`
   );
 }
@@ -105,59 +118,48 @@ if (model.hasPrimalSolution) {
 
 ---
 
-## Domain & API Preconditions
+## Requirements & Limitations {#domain-api-preconditions}
 
-Pumpkin is strictly a **bounded integer & boolean CP/LCG solver**. Unsupported constructs are rejected with explicit errors rather than silent rounding or fallbacks:
+Pumpkin solves **bounded integer and boolean** models only. Unsupported variables, values, or options fail fast by throwing a runtime `Error`:
 
-- **Bounded integer / binary / boolean variables only**: All `Var` instances must be finite integers (`Integer` or `Binary`) with `lb` and `ub` within `[-(2^30 - 1), 2^30 - 1]`. Unbounded integers (`-Infinity` / `Infinity`) and `Continuous` variables throw an explicit error.
-- **Integer linear arithmetic**: Constraint coefficients, adjusted RHS values (`rhs - lhs.constant`), and scaled variable bounds must be exact integers within safe signed 32-bit range (`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`). Objective constants (`f64`) may be fractional.
-- **Unsupported features**: `QuadExpr` objectives/constraints, `Continuous` variables, unbounded variables, and `relax: true` throw explicit errors.
+- **Bounded integers only**: Every `Integer` variable must have finite integer bounds in $[-(2^{30} - 1),\, 2^{30} - 1]$ (`Binary` variables are bounded to 0/1); `Continuous` variables and infinite bounds on `Integer` variables throw an `Error`.
+- **Integer coefficients & scaled bounds**: Constraint coefficients, adjusted right-hand sides (`rhs - lhs.constant`), and scaled variable bounds must be exact integers in $[-(2^{30} - 1),\, 2^{30} - 1]$.
+- **Constraint magnitude sum**: In each constraint, the adjusted right-hand side magnitude plus the sum of worst-case term magnitudes ($|\text{coeff}| \times \max(|\mathrm{lb}|, |\mathrm{ub}|)$) must not exceed $2^{31} - 2$.
+- **Stricter objective bound**: Objective coefficients must be integers whose worst-case scaled term magnitudes sum to at most $2^{30} - 1$; objective constants may be fractional.
+- **Unsupported model features**: `QuadExpr` objectives or constraints and `relax: true` throw a runtime `Error`.
+- **Unsupported options**: `relativeGap`, `absoluteGap`, `presolve`, `threads`, `verbose`, `outputFlag`, and unknown option keys throw a runtime `Error`.
 
 ---
 
-## Worker & WASM Configuration in Browsers
+## Browser Worker & WASM Hosting
 
-By default in browsers, `@ohtaman/washi/solvers/pumpkin` resolves the bundled `pumpkin.wasm` and spawns `pumpkin-worker.js` in a dedicated Web Worker on HTTP(S) origins (falling back to main-thread execution on `file:` URLs or opaque-origin sandboxed iframes).
+By default in browsers, Pumpkin loads `pumpkin.wasm` inside a dedicated Web Worker. On `file:` URLs or sandboxed iframes without an origin, it falls back to the main thread automatically.
 
-To execute synchronously on the main thread (or in environments where Web Workers are prohibited), pass `useWorker: false` to `model.solve()` / `model.check()` or instantiate `PumpkinSolver`:
+To force main-thread execution or serve `pumpkin.wasm` from a custom URL:
 
 ```typescript
-import { Model } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 import { PumpkinSolver, setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 
-// Option 1: Per solve / check call
+// Set a custom WASM URL globally (or pass { wasmUrl } to solve() / check())
+setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
+
+const model = new Model({ solver: "pumpkin" });
+const x = model.integer("x", { lb: 0, ub: 10 });
+model.objective(minimize(expr`${x}`));
+
+// Option 1: Force main-thread execution for a single call
 await model.solve({ useWorker: false });
 
-// Option 2: When instantiating the solver
-const syncModel = new Model({
-  solver: new PumpkinSolver({ useWorker: false }),
-});
-
-// Host pumpkin.wasm at a custom path or CDN (globally or per call via { wasmUrl }):
-setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
+// Option 2: Configure defaults on a PumpkinSolver instance
+const syncModel = new Model({ solver: new PumpkinSolver({ useWorker: false }) });
 ```
 
-If `pumpkin.wasm` cannot be loaded or returns an HTML SPA fallback instead of a WebAssembly binary, Pumpkin rejects explicitly with the attempted URL and performs **no silent CDN fallback**.
+If `pumpkin.wasm` fails to load or returns an HTML fallback page, WaSHI throws an error with the attempted URL instead of silently falling back to a CDN.
 
 ---
 
-## Architecture & WebAssembly Runtime
+## References
 
-WaSHI compiles its Rust WebAssembly wrapper (`wasm/pumpkin`, linking `pumpkin-core`, `pumpkin-constraints`, `pumpkin-propagators`, and `pumpkin-conflict-resolvers` `v0.5.0` to `wasm32-unknown-unknown`) directly to `pumpkin.wasm` with `wasm-bindgen` bindings.
-
-Bundled `pumpkin.wasm` and `runtime.js` / `runtime.d.ts` artifacts are tracked and verified via SHA-256 checksums in `pumpkin.config.json`. Maintainers rebuilding Pumpkin from source can follow the instructions in [`CONTRIBUTING.md`](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow).
-
-### Callbacks & Solver Interactivity
-
-- **Progress Monitoring & Cancellation (Supported)**:
-  During `solve()`, Pumpkin emits real-time incumbent progress callbacks (`onProgress`, providing `elapsedTime` and `objectiveValue`) and honors `AbortSignal`: browser Web Worker execution supports preemptive mid-solve Worker termination and queue cancellation, while main-thread and Node.js runs poll cooperative `should_abort` checkpoints across branching and termination hooks.
-- **Exact Discrete Optimality**:
-  As an exact LCG solver over finite integer domains, Pumpkin proves optimality via nogood clause learning and objective-bound strengthening (`LinearSatUnsat`) rather than LP relaxation tolerances (`relativeGap`, `absoluteGap`, or `presolve`).
-
----
-
-## References & Upstream Links
-
-- **Modeling Guide & Walkthrough**: [Constraint Programming (CP) Modeling](../guide/constraint-programming.md) · [Resource-Constrained Project Scheduling (RCPSP)](../examples/project-scheduling.md)
-- **Source Repository**: [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) (MIT License — ConSol Lab, TU Delft)
-- **Rust Crate & API Docs**: [docs.rs/pumpkin-core](https://docs.rs/pumpkin-core) · [crates.io/crates/pumpkin-core](https://crates.io/crates/pumpkin-core)
+- [Constraint Programming (CP) Modeling](../guide/constraint-programming.md) · [Resource-Constrained Project Scheduling (RCPSP)](../examples/project-scheduling.md)
+- [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) · [`CONTRIBUTING.md` (rebuilding WASM)](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md#4-rebuilding-webassembly-assets--release-workflow)

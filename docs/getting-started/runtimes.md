@@ -1,6 +1,14 @@
 # Runtime Environments & Deployment
 
-WaSHI runs across JavaScript and TypeScript runtimes—from Node.js, Bun, and Deno to modern bundlers, static hosting, and vanilla browser `<script>` tags—without native C/C++ compilation.
+WaSHI runs across JavaScript and TypeScript runtimes and deployment targets without native solver compilation. Supported targets include Node.js, Bun, Deno, modern bundlers, static hosting, classic `<script>` tags, and offline WebView apps.
+
+| Target Environment | Entry Point | Worker & Header Notes |
+| --- | --- | --- |
+| **Node.js (v18+), Bun, Deno** | `@ohtaman/washi` (`npm:@ohtaman/washi` in Deno) | Loads bundled `.wasm` from disk; no HTTP headers required. |
+| **Vite, Next.js, Webpack, Rollup** | `@ohtaman/washi` | Runs HiGHS and Pumpkin in Web Workers by default. |
+| **Tauri, Capacitor, PWA** | `@ohtaman/washi` (standard Vite build) | Runs offline; include `'wasm-unsafe-eval'` in Content Security Policy (`CSP`) `script-src`. |
+| **Browser ESM (`<script type="module">`)** | `dist/browser/washi.js` | Keep all `dist/browser/` files together when self-hosting. |
+| **Standalone HTML / CDN (`<script>`)** | `dist/browser/washi.min.js` | Exposes `window.Washi`; CDN builds also run directly on `file://`. |
 
 ---
 
@@ -8,7 +16,7 @@ WaSHI runs across JavaScript and TypeScript runtimes—from Node.js, Bun, and De
 
 ### Node.js
 
-WaSHI supports Node.js (v18+) out of the box with standard ECMAScript Modules (ESM). Both the built-in HiGHS WebAssembly binary and the bundled Pumpkin WebAssembly binary (`@ohtaman/washi/solvers/pumpkin`) are loaded directly from the installed package:
+WaSHI supports Node.js 18+ with standard ECMAScript Modules (`ESM`). Both the built-in HiGHS binary and the bundled Pumpkin binary (`@ohtaman/washi/solvers/pumpkin`) load directly from the installed package:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -27,7 +35,7 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-Run directly with `tsx` or `node`:
+Run TypeScript files directly with `tsx` (or compiled `.js` with `node`):
 
 ```bash
 npx tsx app.ts
@@ -61,10 +69,10 @@ if (m.hasPrimalSolution) {
 
 ### Modern Bundlers & Static Deployment
 
-When importing `@ohtaman/washi` in a browser bundler, the `browser` export condition resolves automatically:
+The package root export (`@ohtaman/washi`) resolves `import` and `default` to `./dist/lib/washi.js` (and `types` to `./dist/types/index.d.ts`). That unified ESM bundle detects Node.js versus browser runtimes automatically at execution time:
 
 ```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const m = new Model({ solver: "highs" });
@@ -75,21 +83,23 @@ export async function runOptimization() {
 }
 ```
 
-Because both the modeler and solver run on WebAssembly, the static output of `vite build` (or your bundler's production build) can be deployed directly to **GitHub Pages, Cloudflare Pages, Vercel, or Netlify** with no backend server required. (Bundled **HiGHS** and **Pumpkin**, as well as **GLPK**, require no special HTTP headers; if you use Z3 in the browser, see [Cross-Origin Isolation](./cross-origin.md).)
+Because the modeler (JS/TS) and bundled solvers (WebAssembly) execute entirely on the client, static builds from `vite build` deploy directly to **GitHub Pages, Cloudflare Pages, Vercel, or Netlify** without a backend server. Bundled HiGHS, Pumpkin, and optional GLPK require no special HTTP headers.
 
 #### Background Web Worker Execution (Default)
-In browsers, both **HiGHS** and **Pumpkin** automatically run inside dedicated **Web Workers** so LP/MIP/QP/CP solves never freeze the main UI thread, animations, or user input, while enabling real-time progress events (`onProgress`) and cancellation (`AbortSignal`).
 
-If your environment prohibits Web Workers or you explicitly want main-thread execution, pass `useWorker: false`:
+In browsers, **HiGHS** and **Pumpkin** run inside dedicated Web Workers by default. This keeps the main UI thread responsive during `LP`, `MIP`, `QP`, and `CP` solves while enabling `onProgress` callbacks and `AbortSignal` cancellation.
+
+Pass `useWorker: false` if your environment prohibits Web Workers or you prefer main-thread execution:
 
 ```typescript
 await m.solve({ useWorker: false });
 ```
 
 #### Customizing WASM Asset URLs
-By default, WaSHI resolves `highs.wasm` and `pumpkin.wasm` relative to the bundle (`new URL("./highs.wasm", import.meta.url)` / `new URL("./pumpkin.wasm", import.meta.url)`). It **never** makes implicit requests to external CDNs (`jsdelivr`, `unpkg`, etc.).
 
-If your bundler or static server hosts `.wasm` files under a custom path, configure the URL globally or per solve/check:
+By default, WaSHI resolves `highs.wasm` and `pumpkin.wasm` relative to the bundle via `import.meta.url`. It **never** falls back to external CDNs (`jsDelivr`, `unpkg`, etc.).
+
+If your host serves `.wasm` files from a custom path, override the URL globally or per call:
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
@@ -105,7 +115,7 @@ await m.solve({ wasmUrl: "/assets/wasm/highs.wasm" });
 
 ### Next.js & Server-Side Rendering (SSR)
 
-In Next.js App Router or Pages Router, optimization models can run either in Server Actions / API Routes (Node.js runtime) or on the client inside `"use client"` components:
+In Next.js App Router or Pages Router, models run either on the server (Server Actions / API Routes) or in the browser inside `"use client"` components. Below is a client component example:
 
 ```tsx
 "use client";
@@ -137,9 +147,9 @@ export default function OptimizerComponent() {
 
 ### Desktop & Mobile WebView Apps (Tauri / Capacitor / PWA)
 
-Standard Vite frontends bundle and run **HiGHS** and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) completely offline inside **Tauri** (`tauri://localhost` / `http://tauri.localhost`), **Capacitor** mobile WebViews, and offline **PWAs** with no native C/C++ solver compilation.
+Standard Vite frontends bundle **HiGHS** and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) as static assets for offline execution. They run in Tauri (`tauri://localhost` or `http://tauri.localhost`), Capacitor mobile WebViews, and offline PWAs with no native solver build step.
 
-In `tauri.conf.json`, allow WebAssembly compilation (`'wasm-unsafe-eval'` in `script-src`) and Web Workers (`worker-src 'self' blob:`), or pass `{ useWorker: false }`:
+In `tauri.conf.json`, allow WebAssembly compilation (`'wasm-unsafe-eval'`) and Web Workers (`worker-src 'self' blob:`) in the `CSP` string (if you disable workers by passing `{ useWorker: false }` to `solve()` / `check()`, you can omit `worker-src`, though `'wasm-unsafe-eval'` is still required):
 
 ```json
 {
@@ -151,13 +161,13 @@ In `tauri.conf.json`, allow WebAssembly compilation (`'wasm-unsafe-eval'` in `sc
 }
 ```
 
-Bundled **HiGHS** and **Pumpkin** are recommended over **Z3** in desktop and mobile WebViews because they do not require `SharedArrayBuffer` or `COOP`/`COEP` headers.
+Bundled HiGHS and Pumpkin are recommended in WebViews because they avoid Z3's Cross-Origin Isolation requirements.
 
 ---
 
 ## 📦 Browser ESM (`<script type="module">`)
 
-Without a bundler, you can import the pre-built browser ESM module directly from your own static server or an npm CDN:
+Without a bundler, import the pre-built browser ESM module from your own static server or an npm CDN:
 
 ```html
 <script type="module">
@@ -187,7 +197,7 @@ Without a bundler, you can import the pre-built browser ESM module directly from
 
 ## 🟨 Classic `<script>` Tags (IIFE / Standalone HTML / CDN)
 
-For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard `<script>` tag. All exports are attached to the global `window.Washi` object:
+For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a classic `<script>` tag. This immediately invoked function expression (`IIFE`) bundle exposes the core API on the global `window.Washi` object:
 
 ```html
 <!DOCTYPE html>
@@ -232,25 +242,43 @@ For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a stan
 </html>
 ```
 
-> [!NOTE]
-> - **Cross-origin CDN workers**: On standard web origins (`https://` / `http://`), browsers block direct `new Worker("https://cdn...")`, so WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`).
-> - **Opening local `.html` files directly (`file://`)**: CDN-loaded `washi.min.js` and `solvers/pumpkin.min.js` work directly when opening a local `.html` via `file://` (double-click, no local server)—on opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), WaSHI automatically runs HiGHS and Pumpkin on the main thread when `useWorker` is omitted. Self-hosted local `.wasm` files (blocked on `file://` by browser `fetch()` CORS rules) and **Z3** (`COOP`/`COEP`) require serving over `http://` or `https://`.
+### Cross-Origin CDN Workers
+
+On standard `http://` and `https://` origins, browsers block direct `new Worker("https://cdn...")` calls. WaSHI automatically bridges cross-origin CDN workers with a small ES module `Blob` bootstrap.
+
+### Opening Local `.html` Files Directly (`file://`)
+
+| Scenario | Behavior & Requirement |
+| --- | --- |
+| **CDN scripts** | Loading `washi.min.js` (and `solvers/pumpkin.min.js`) from an HTTPS CDN works by double-clicking a local `.html` file (`file://`) with no local server. |
+| **Opaque origins (`window.origin === "null"`)** | On `file://` pages or sandboxed `<iframe>` embeds without `allow-same-origin`, WaSHI runs HiGHS and Pumpkin on the main thread when `useWorker` is omitted. |
+| **Self-hosted `.wasm` & Z3** | Local `.wasm` files require `http://` or `https://` because browsers block `fetch()` on `file://`. Z3 additionally requires a Secure Context (`https://` or `http://localhost`) and Cross-Origin Isolation. |
 
 ---
 
 ## 🔒 Offline, Intranet & Strict CSP Environments
 
-WaSHI never phones home or falls back to public CDNs. To self-host in an air-gapped intranet or under a strict Content Security Policy (CSP):
+WaSHI never phones home or falls back to public CDNs. To self-host in an air-gapped intranet or under a strict `CSP`, configure three areas:
 
-1. **Copy Static Assets**: Serve the files from `node_modules/@ohtaman/washi/dist/browser/` on your own origin:
-   - `washi.js` / `washi.min.js`, `highs.wasm`, and `highs-worker.js`
-   - Bundled Pumpkin: `solvers/pumpkin.js` / `solvers/pumpkin.min.js`, `solvers/pumpkin.wasm`, `solvers/pumpkin-worker.js` (plus `solvers/pumpkin-*.js` chunks)
-   - Optional GLPK: `solvers/glpk.js` / `solvers/glpk.min.js`
-   - Optional Z3: `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm`
-2. **Content Security Policy (CSP) Headers**:
-   - Allow WebAssembly compilation (`'wasm-unsafe-eval'` in `script-src`).
-   - If using the default Web Worker or cross-origin Blob worker bootstrap, allow `worker-src 'self' blob:;`.
-   - If `blob:` workers are prohibited by policy, either serve `highs-worker.js` / `solvers/pumpkin-worker.js` from `'self'` or run on the main thread with `await m.solve({ useWorker: false })`.
-3. **Cross-Origin Isolation (Z3 Only)**:
-   - HiGHS, Pumpkin, and GLPK run in standard browser contexts without special headers.
-   - Z3 WASM uses pthreads + `SharedArrayBuffer` and requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (`credentialless` works in Chromium/Firefox, whereas Safari requires `require-corp`). See the [Cross-Origin Isolation Guide](./cross-origin.md) for setup details.
+### 1. Deploy `dist/browser/` Intact
+
+Copy `node_modules/@ohtaman/washi/dist/browser/` to your static origin as a complete directory. The ESM entry points (`washi.js`, `highs-worker.js`, and `solvers/pumpkin.js`) import hashed chunk files under `dist/browser/` (such as `loader-*.js`, `browser-runtime-*.js`, and `solvers/pumpkin-*.js`) via relative paths.
+
+| Bundle | Required Files under `dist/browser/` |
+| --- | --- |
+| **Core (HiGHS)** | `washi.js` / `washi.min.js`, `highs.wasm`, `highs-worker.js`, and root `*.js` chunks |
+| **Bundled Pumpkin** | `solvers/pumpkin.js` / `solvers/pumpkin.min.js`, `solvers/pumpkin.wasm`, `solvers/pumpkin-worker.js`, and `solvers/pumpkin-*.js` chunks |
+| **Optional GLPK** | `solvers/glpk.js` / `solvers/glpk.min.js` |
+| **Optional Z3** | `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm` |
+
+### 2. Configure CSP Directives
+
+| Directive | Required Value | Purpose |
+| --- | --- | --- |
+| `script-src` | `'wasm-unsafe-eval'` | Allows WebAssembly module compilation. |
+| `worker-src` | `'self' blob:` | Allows default Web Workers and CDN `Blob` worker bootstraps. |
+| `worker-src` (if `blob:` is disallowed) | `'self'` only | Serve `highs-worker.js` / `solvers/pumpkin-worker.js` from `'self'`, or pass `{ useWorker: false }`. |
+
+### 3. Enable Cross-Origin Isolation (Z3 Only)
+
+HiGHS, Pumpkin, and GLPK run in standard browser contexts without isolation headers. Z3 uses `SharedArrayBuffer` multithreading, so browsers require a **Secure Context** (`https://` or `http://localhost`). You must also serve `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers (`COOP`/`COEP`); see the [Cross-Origin Isolation Guide](./cross-origin.md).

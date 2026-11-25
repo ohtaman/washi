@@ -1,12 +1,13 @@
 # Objectives & Solving (`m.solve` & `m.check`)
 
-The objective function defines the goal of mathematical optimization—whether to maximize profits, minimize costs, or minimize quadratic risk variance. When you only need to verify constraint feasibility or solve pure SMT logic, you can also run `m.check()` without an objective.
+The objective function defines the goal of mathematical optimization, such as maximizing profit, minimizing cost, or minimizing quadratic variance.
+If you only need to check feasibility or solve logical rules without an objective, call `m.check()` instead.
 
 ---
 
 ## Setting the Objective Function
 
-Set the objective direction and formula declaratively using `m.objective(maximize(...))` or `m.objective(minimize(...))`:
+Set the optimization direction and formula declaratively with `m.objective(maximize(...))` or `m.objective(minimize(...))`:
 
 ```typescript
 import { Model, expr, maximize, minimize } from "@ohtaman/washi";
@@ -23,21 +24,22 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));
 ```
 
-Calling `m.objective()` with no arguments returns the current objective expression (`LinExpr | QuadExpr`). If you omit setting an objective, the model defaults to minimizing `0`.
+Calling `m.objective()` with no arguments returns the current objective expression (`LinExpr | QuadExpr`).
+If you omit setting an objective, the model defaults to minimizing `0`.
 
 > [!TIP]
-> For objective formulation patterns—such as **Min-Max / Max-Min load balancing**, **weighted-sum vs. lexicographic multi-objective optimization**, and **MIP stopping tolerances (`relativeGap` / `absoluteGap`)**—see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
+> For Min-Max / Max-Min load balancing, see [Min-Max & Max-Min Objectives](./formulation-tips.md#min-max-max-min-objectives-load-balancing); for multi-objective optimization and MIP gap tolerances (`relativeGap` / `absoluteGap`), see [Multi-Objective & MIP Stopping Design](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
 
 ---
 
 ## Solving the Model (`m.solve()` vs. `m.check()`)
 
-WaSHI provides two asynchronous execution entrypoints:
+WaSHI provides two asynchronous execution methods:
 
 | Method | Return Value | Purpose |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | Optimizes the objective (`Minimize` or `Maximize`) subject to all constraints. Populates primal values, objective value, MIP bounds/gaps, and LP duals/slacks. |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` where `values: Record<string, number \| boolean>` contains both numeric and Boolean variable assignments. Ideal for CP/SMT/SAT verification and Pumpkin / Z3 `unsatCore` extraction. |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` for CP/SMT checks and conflict diagnosis. |
 
 ```typescript
 const status = await m.solve({
@@ -51,15 +53,15 @@ const status = await m.solve({
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (e.g. `"highs"`, `"pumpkin"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
+| `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (`"highs"`, `"pumpkin"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
 | `timeLimit` | `number` | `undefined` | Maximum solve duration in seconds. |
-| `relativeGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
+| `relativeGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (for example, `0.01` for 1%). |
 | `absoluteGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
-| `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver iteration logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
-| `useWorker` | `boolean` | `true` (browser) | Offloads **HiGHS** and **Pumpkin** to dedicated Web Workers in browsers. Set `false` for main-thread execution. |
+| `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
+| `useWorker` | `boolean` | `true` (browser) / `false` (Node.js) | Runs HiGHS and Pumpkin in a browser Web Worker. Set `false` for main-thread browser runs; omit or set `false` in Node.js (explicit `true` fails). |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` or `pumpkin.wasm` in browser deployments. |
-| `signal` | `AbortSignal` | `undefined` | Cooperative cancellation signal (`AbortController.signal`). |
+| `signal` | `AbortSignal` | `undefined` | Cancellation signal (`AbortController.signal`); see cancellation limitations below. |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | Callback receiving live solver progress snapshots. |
 
 You can also pass a solver name directly as the first argument: `await m.solve("glpk", { timeLimit: 5 })`.
@@ -68,7 +70,7 @@ You can also pass a solver name directly as the first argument: `await m.solve("
 
 ## Reading Results, Bounds & Solver Status
 
-After solving, query the status, optimal values, and MIP optimality bounds on the `Model`:
+After solving, inspect the status, objective value, variable values, and MIP bounds directly on the `Model`:
 
 ```typescript
 const status = await m.solve();
@@ -89,29 +91,33 @@ console.log("x by name:", m.values.get("x"));
 ```
 
 > [!TIP]
-> To independently check that the returned values satisfy all bounds, integrality requirements, and constraints within tolerance, call `m.verify()`—see [Diagnosis, Verification & Debugging](./unsat-core.md#independent-solution-verification-m-verify).
+> To independently check that returned values satisfy all bounds, integrality rules, and constraints within tolerance, call `m.verify()`.
+> See [Verifying Solutions (`m.verify()`)](./unsat-core.md#verifying-solutions-m-verify).
 
 ### Understanding `m.status` vs. `m.terminationStatus`
 
-When a MIP solver stops early due to a time limit, iteration limit, or `AbortSignal`, two distinct questions matter:
-1. **Is there a usable solution?** (`m.hasPrimalSolution` / `m.status`)
-2. **Why did the solver stop?** (`m.terminationStatus`)
+When a MIP solver stops early due to a time limit, iteration limit, or `AbortSignal`, two separate questions matter:
 
-If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, `m.hasPrimalSolution` is `false`, `m.terminationStatus` records why the solver stopped (`"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`), and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"` (when aborted via `AbortSignal` without an incumbent).
+1. **Is there a usable solution?** Check `m.hasPrimalSolution` or `m.status`.
+2. **Why did the solver stop?** Check `m.terminationStatus`.
+
+If the solver found a valid solution—called an **incumbent**—before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"`.
+In that case, `x.value` holds the incumbent's variable values and `m.objectiveValue` holds its objective value, while `m.terminationStatus` records `"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`.
+If no solution was found before stopping, `m.hasPrimalSolution` is `false` and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"`.
 
 ### All `SolverStatus` Values
 
 | Status | `hasPrimalSolution` | Meaning |
 | :--- | :--- | :--- |
-| `"Optimal"` | `true` | Global optimal solution proven (within tolerances). |
-| `"Feasible"` | `true` | Valid primal solution (incumbent) found, but optimality was not proven before stopping (`terminationStatus` indicates why: `"TimeLimit"`, `"IterationLimit"`, `"Interrupted"`, etc.). |
+| `"Optimal"` | `true` | Global optimal solution proven within tolerances. |
+| `"Feasible"` | `true` | Valid solution found, but stopped before proving optimality (see `terminationStatus`). |
 | `"Sat"` | `true` | Constraints are satisfiable (`m.check()`). |
 | `"Infeasible"` | `false` | Proven mathematically infeasible; no solution satisfies all constraints. |
-| `"Unsat"` | `false` | Logical/arithmetic constraints are unsatisfiable (`m.check()`). |
+| `"Unsat"` | `false` | Logical or arithmetic constraints are unsatisfiable (`m.check()`). |
 | `"Unbounded"` | `false` | Objective can improve indefinitely without violating constraints. |
 | `"TimeLimit"` | `false` | Time limit reached before finding any feasible primal solution. |
 | `"IterationLimit"` | `false` | Iteration limit reached before finding any feasible primal solution. |
-| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution (including when cancelled via `AbortSignal` before finding an incumbent, where `terminationStatus === "Interrupted"`). |
+| `"Unknown"` | `false` | Stopped without a solution (for example, cancelled via `AbortSignal` before finding one). |
 | `"Error"` | `false` | Solver encountered an internal execution error. |
 | `"NotSolved"` | `false` | Initial state before solving, or after the model has been mutated. |
 
@@ -119,7 +125,7 @@ If an integer-feasible incumbent was found before hitting `timeLimit` or `signal
 
 ## Real-Time Progress (`onProgress`) & Cancellation (`AbortSignal`)
 
-For long-running MIP optimizations in interactive UIs, you can stream live branch-and-bound progress (`SolveProgressEvent`) and allow users to cancel the solve cleanly with `AbortController`:
+For long-running MIP solves in interactive apps, you can stream branch-and-bound progress with `onProgress` and cancel runs with `AbortController`:
 
 ```typescript
 const controller = new AbortController();
@@ -135,7 +141,7 @@ const status = await m.solve({
       `Gap: ${event.relativeGap !== undefined ? (event.relativeGap * 100).toFixed(2) + "%" : "—"}`
     );
 
-    // Optional: stop early as soon as a good-enough incumbent is found
+    // Optional (maximization model): stop early as soon as a good-enough incumbent is found
     if (event.objectiveValue !== undefined && event.objectiveValue >= 1000) {
       controller.abort();
     }
@@ -147,6 +153,12 @@ console.log("Termination:", m.terminationStatus);   // "Interrupted"
 console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was available
 ```
 
+> [!NOTE]
+> **`AbortSignal` Behavior Across Backends**:
+> - **Asynchronous preemptive cancellation**: On HiGHS and Pumpkin inside a browser Web Worker (`useWorker: true`), aborting terminates the worker immediately.
+> - **Cooperative mid-solve cancellation**: On HiGHS and Pumpkin in Node.js or on the browser main thread (`useWorker: false`), aborting inside `onProgress` (and during Pumpkin search checkpoints) stops the active solve cleanly.
+> - **Pre-solve cancellation only**: On GLPK and Z3, `AbortSignal` is checked only before starting a solve.
+
 ### `SolveProgressEvent` Fields
 
 | Field | Type | Description |
@@ -154,23 +166,31 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 | `elapsedTime` | `number` | Elapsed solver time in seconds (optional alias: `elapsedSeconds`). |
 | `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | Current solver phase when known. |
 | `objectiveValue` | `number \| undefined` | Current best feasible incumbent objective value (MIP). |
-| `objectiveBound` | `number \| undefined` | Current best proven dual / objective bound (MIP). |
+| `objectiveBound` | `number \| undefined` | Current best proven dual bound (MIP). |
 | `relativeGap` | `number \| undefined` | Current relative MIP optimality gap (`0.05` = 5%). |
 | `absoluteGap` | `number \| undefined` | Current absolute MIP optimality gap `\|objectiveValue - objectiveBound\|`. |
 | `nodes` | `number \| undefined` | Branch-and-bound nodes explored so far. |
-| `iterations` | `number \| undefined` | Solver iteration count (simplex, IPM, or MIP LP iterations). |
+| `iterations` | `number \| undefined` | Solver iteration count (simplex, interior-point, or MIP LP iterations). |
 | `message` | `string \| undefined` | Raw progress line emitted by the solver. |
 
 ---
 
 ## Model Mutations & Execution Validity
 
-A `Model` instance keeps its solution state synchronized across mutations made through `Model` methods and `Model` / `Var` / `Constraint` property setters:
+A `Model` keeps its solution state consistent across edits made through `Model` methods and `Model`, `Var`, and `Constraint` property setters.
 
-1. **Post-Solve Mutations Reset Solution State**: Adding variables or constraints, updating the objective (`m.objective(...)`, `m.sense = ...`), or modifying variable bounds/types (`v.lb`, `v.ub`, `v.type`) or constraint properties (`c.lhs`, `c.sense`, `c.rhs`) immediately resets `m.status` to `"NotSolved"`, clears `m.solution` and `m.objectiveValue`, and resets variable/constraint primal and dual values to `null`.
-2. **Mid-Flight Mutations Discard Stale Runs**: If the model is modified via these APIs while an asynchronous `m.solve()` or `m.check()` call is in progress, the stale solver result is discarded, the model remains in `"NotSolved"`, and the in-flight promise rejects with an explicit error.
-3. **Overlapping Executions**: Starting a new `m.solve()` or `m.check()` call supersedes any earlier in-flight call on the same model so out-of-order completions can never overwrite the latest run's state.
-4. **Transactional Batch Edits**: If an invalid edit is rejected (including batch array calls like `m.constraint([...])`), the model rolls back the failed edit without leaving partial entities registered or invalidating an existing valid solution.
+### Post-Solve Mutations Reset State
+
+Adding variables or constraints, or updating the objective via `m.objective()` or `m.sense`, immediately resets `m.status` to `"NotSolved"`.
+The same reset applies when modifying variable fields (`v.lb`, `v.ub`, `v.type`, `v.initialValue`) or constraint fields (`c.lhs`, `c.sense`, `c.rhs`).
+This clears `m.solution` and `m.objectiveValue`, resets variable `value` and `reducedCost` to `null`, and resets constraint `dual` and `slack` to `null`.
+
+### Mid-Flight & Overlapping Runs
+
+- **Mid-flight mutations**: Modifying the model while an async `m.solve()` or `m.check()` is running discards the stale result, keeps `m.status` at `"NotSolved"`, and rejects the in-flight promise.
+- **Overlapping calls**: Starting a new `m.solve()` or `m.check()` supersedes any earlier in-flight call on the same model so late completions cannot overwrite the latest state.
+- **Atomic batch edits**: If a batch call such as `m.constraint([...])` contains an invalid item, WaSHI rolls back the entire call without leaving partial edits or clearing an existing valid solution.
 
 > [!NOTE]
-> Renaming already-registered variables or constraints (e.g., reassigning `c.name` after registration) or mutating internal backing maps and ASTs directly (such as `c.lhs.terms` or `BoolOp.children`) is unsupported and will be rejected by internal model integrity validation on the next solve/check/export call.
+> Renaming already-registered variables or constraints, or mutating internal maps and ASTs directly (`c.lhs.terms`, `BoolOp.children`), is unsupported.
+> Such edits are rejected by model integrity validation on the next solve, check, or export call.

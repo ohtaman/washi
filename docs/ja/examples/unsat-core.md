@@ -4,22 +4,27 @@
 | :--- | :--- | :--- | :--- |
 | 実行不能 (Infeasible) 診断・Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">ソースコード</a></li></ul> |
 
-複数の業務ルールや数値制約が互いに矛盾して実行可能解が存在しない（`Unsat`）場合、名前付き制約の中から矛盾を引き起こしている制約の部分集合（Unsat Core。最小性は保証されません）を Z3 で抽出します。
+通常の最適化（`m.solve()`）では、制約同士が矛盾していても `"Infeasible"` が返るだけで、原因となる制約は分かりません。`m.check()` を呼ぶと `"Unsat"` とともに、同時には満たせない名前付き制約の部分集合である **Unsat Core** を抽出できます。
+
+この例では Z3 を使い、矛盾に関わるルール群を `res.conflicts`（`m.conflicts` でも参照可能）として取得します（このシナリオでは無関係な制約が除かれますが、一般に返される Unsat Core の極小性・最小性は保証されません）。
 
 ## 矛盾が発生するシナリオ
 
-ある開発チームが顧客プロジェクトの要員計画を立てています：
-1. エンジニア1名あたり $8,000 のプロジェクト予算を消費する（`budget_limit`）。
+ある開発チームが顧客プロジェクトの要員計画を立てています。
+1. エンジニア 1 名あたり $8,000 の人件費がかかり、総額はプロジェクト予算（`budget`）以内に収める（`budget_limit`）。
 2. 顧客から特急納品が要求されている（`rush_required`）。
 3. 特急納品には最低 8 名のエンジニア配置が必須である（`rush_staffing_rule`）。
-4. 役員会からプロジェクト予算の上限 $50,000 が厳命されている（`strict_board_budget_cap`）。
-5. 労働基準により最低 1 名の社員を配置する必要がある（`minimum_one_employee`）。
+4. 役員会によりプロジェクト予算の上限が $50,000 と定められている（`strict_board_budget_cap`）。
+5. 労働基準により最低 1 名のエンジニアを配置する必要がある（`minimum_one_employee`）。
 
-ここで以下の矛盾が生じていることに注目してください：
+これらの条件は次のように矛盾します。
 
-$$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
+$$8 \text{ 名} \times \$8,000 = \$64,000 > \$50,000$$
 
 ## WaSHI による実装
+
+> [!NOTE]
+> **Z3 の前提条件:** `@ohtaman/washi/solvers/z3` を使うには、任意の `peerDependencies` パッケージ `z3-solver`（`npm install z3-solver`）が必要です。ブラウザ上で Z3 を実行する場合は `COOP` / `COEP` ヘッダーも必要になります（詳しくは [Cross-Origin Isolation](../getting-started/cross-origin.md) を参照してください）。
 
 <CodeRunner preset="conflict_diagnosis_unsat">
 
@@ -34,7 +39,7 @@ async function diagnoseConflicts() {
   const budget = m.continuous("budget", { lb: 0, ub: 100000 });
   const rushDelivery = m.bool("rushDelivery");
 
-  // ルール 1: エンジニア1名あたり $8,000 のコスト
+  // ルール 1: エンジニア 1 名あたり $8,000 のコスト
   m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
   // ルール 2: 顧客が特急納品を要求
@@ -43,7 +48,7 @@ async function diagnoseConflicts() {
   // ルール 3: 特急納品には最低 8 名のエンジニアが必要
   m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
-  // ルール 4: 役員会による予算上限 $50,000（矛盾の原因！）
+  // ルール 4: 役員会による予算上限 $50,000（ルール 1〜3 と矛盾）
   m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
   // ルール 5: 矛盾とは無関係なルール
@@ -52,12 +57,14 @@ async function diagnoseConflicts() {
   // 競合診断を実行
   const res = await m.check({ solver: "z3" });
 
-  console.log(`Status: ${res.status}`);
-  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  console.log(`Status: ${res.status}`); // Status: Unsat
+  console.log("Z3 Unsat Core (scale-invariant):", res.conflicts); // m.conflicts でも参照可能
+  // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
-  // 標準搭載の HiGHS でも単一 solve の L1 弾性スラック緩和で競合診断が可能:
+  // 標準搭載の HiGHS でも、緩めると解ける制約を特定できます:
   const highsDiag = await m.check({ solver: "highs" });
   console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
+  // ["rush_required"]
 }
 
 diagnoseConflicts();
@@ -67,7 +74,14 @@ diagnoseConflicts();
 
 ## 実務上のポイント
 
-- **Pumpkin・Z3・HiGHS の診断手法の使い分け**:
-  - **Pumpkin（`m.check({ solver: "pumpkin" })`）** は `@ohtaman/washi/solvers/pumpkin` に同梱されており（追加依存なし・`COOP` / `COEP` ヘッダー不要）、上記の `budget` を `m.integer("budget", ...)` のような有界整数で表現する離散・命題論理モデルに対してスケール不変な `unsatCore` を抽出できます。
-  - **Z3（`m.check({ solver: "z3" })`）** は上記の `budget` のような `Continuous` 変数や実数演算にも対応し、無関係な `minimum_one_employee` を除外したうえで矛盾を構成する4つのルール（`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`）を単位スケールに依存せず抽出します。
-  - **HiGHS（`m.check({ solver: "highs" })`）** は単一 solve の $L_1$ 弾性スラック最小化（$\min \sum s_i$）を解きます。予算上限を $14,000 緩和するよりも特急要件・人数要件を 1〜2 単位緩和する方がスラック総和が小さいため、重みなし $L_1$ 最小化では「最小の数値変更で実行可能に戻せる修復箇所（`rush_required`）」が優先して提示されます。
+### Z3（`m.check({ solver: "z3" })`）
+
+Z3 は `budget` のような連続変数（`m.continuous()`）や小数係数に対応しています。数値スケールに左右されず、無関係な `minimum_one_employee` を除いた 4 つの矛盾ルールを返します。
+
+### Pumpkin（`m.check({ solver: "pumpkin" })`）
+
+Pumpkin は `@ohtaman/washi/solvers/pumpkin` に同梱されており、`z3-solver` やブラウザの `COOP` / `COEP` ヘッダーは不要です。`budget` を `m.integer()` にするなど、すべての変数が有界整数・真偽値であれば、数値スケールに依存しない Unsat Core を抽出できます。
+
+### HiGHS（`m.check({ solver: "highs" })`）
+
+HiGHS は Unsat Core ではなく、実行可能にするために必要な制約緩和量（スラック）の総和が最小となる修復候補（**Elastic Repair Set**）を探します。予算上限を `$14,000` 緩めるより `rush_required` を `1` 緩める方が数値として小さいため、`rush_required` が選ばれます。

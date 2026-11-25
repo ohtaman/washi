@@ -4,24 +4,27 @@
 | :--- | :--- | :--- | :--- |
 | 不可行性诊断 / 不可满足核 (Unsat Core) | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">源代码</a></li></ul> |
 
-当业务规则、预算限制和运营策略变得复杂时，约束之间往往会发生冲突。由于常规优化调用（`m.solve()`）仅返回 `"Infeasible"` 状态，WaSHI 提供了 `m.check()` 来直接定位引发矛盾的规则，无需人工逐条排查。
+当约束之间发生冲突时，常规优化调用（`m.solve()`）只会返回 `"Infeasible"`。改用 `m.check()` 则会返回 `"Unsat"`，并提取出无法同时满足的命名约束子集，即**不可满足核（Unsat Core）**。
 
-本示例展示如何利用 Z3 的不可满足核（Unsat Core）提取功能，从命名约束中精准隔离出引发矛盾的约束子集（不保证极小性）。
+本示例使用 Z3 通过 `m.conflicts`（`res.conflicts`）提取引发冲突的规则子集（在此场景下会排除无关约束，但一般而言 `unsatCore` / `m.conflicts` 不保证极小性或最小性）。
 
 ## 存在冲突的场景
 
 某技术团队正在为一个客户项目调配开发人员：
-1. 每名工程师占用 $8,000 的项目预算（`budget_limit`）。
+1. 每名工程师的人力成本为 $8,000，总成本不得超过项目预算 `budget`（`budget_limit`）。
 2. 客户要求加急交付（`rush_required`）。
 3. 加急交付强制要求至少配置 8 名工程师（`rush_staffing_rule`）。
 4. 董事会设定了 $50,000 的严格预算上限（`strict_board_budget_cap`）。
-5. 劳动法规定项目至少需要配备 1 名员工（`minimum_one_employee`）。
+5. 劳动法规定项目至少需要配备 1 名工程师（`minimum_one_employee`）。
 
-请注意其中的矛盾：
+这些规则直接构成矛盾：
 
-$$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
+$$8 \text{ 名工程师} \times \$8,000 = \$64,000 > \$50,000$$
 
 ## WaSHI 实现
+
+> [!NOTE]
+> **Z3 前置条件：** 引入 `@ohtaman/washi/solvers/z3` 需要先安装可选对等依赖 `z3-solver`（`npm install z3-solver`）。在浏览器中使用 Z3 还需要配置 `COOP` / `COEP` 响应头，详见 [跨源隔离](../getting-started/cross-origin.md)。
 
 <CodeRunner preset="conflict_diagnosis_unsat">
 
@@ -45,7 +48,7 @@ async function diagnoseConflicts() {
   // 规则 3: 加急交付要求至少配备 8 名工程师
   m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
-  // 规则 4: 董事会设定的 $50,000 预算上限（引发冲突！）
+  // 规则 4: 董事会设定的 $50,000 预算上限（与规则 1–3 矛盾）
   m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
   // 规则 5: 与冲突无关的无辜规则
@@ -54,12 +57,14 @@ async function diagnoseConflicts() {
   // 运行冲突诊断
   const res = await m.check({ solver: "z3" });
 
-  console.log(`Status: ${res.status}`);
-  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+  console.log(`Status: ${res.status}`); // Status: Unsat
+  console.log("Z3 Unsat Core (scale-invariant):", res.conflicts); // 也可通过 m.conflicts 读取
+  // ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 
-  // 内置的 HiGHS 同样可通过单次求解 L1 弹性松弛定位冲突：
+  // 内置的 HiGHS 也可找出放宽后即可恢复可行的约束：
   const highsDiag = await m.check({ solver: "highs" });
   console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
+  // ["rush_required"]
 }
 
 diagnoseConflicts();
@@ -69,7 +74,14 @@ diagnoseConflicts();
 
 ## 实战要点
 
-- **在 Pumpkin、Z3 与 HiGHS 之间选择诊断引擎**：
-  - **Pumpkin（`m.check({ solver: "pumpkin" })`）** 内置打包于 `@ohtaman/washi/solvers/pumpkin`（零外部依赖，免 `COOP` / `COEP` 响应头），适用于所有变量均为有界 `Integer`、`Binary` 或 `BoolVar` 的离散与命题模型（例如将上例中的 `budget` 设为 `m.integer("budget", ...)`），可提取尺度无关的 `unsatCore`。
-  - **Z3（`m.check({ solver: "z3" })`）** 支持 `Continuous` 连续变量（如上例中的 `budget`）与小数算术，排除无辜的 `minimum_one_employee` 规则，并不受量纲影响地完整返回共同构成矛盾的 4 条规则（`budget_limit`、`rush_required`、`rush_staffing_rule`、`strict_board_budget_cap`）。
-  - **HiGHS（`m.check({ solver: "highs" })`）** 求解单次 $L_1$ 弹性松弛最小化问题（$\min \sum s_i$）。由于放宽预算需要 `14,000` 单位松弛量，而放宽加急或人数要求仅需 `1`–`2` 单位松弛量，无权重 $L_1$ 最小化会优先指出总变动量最小的修复点（`rush_required`）。
+### Z3（`m.check({ solver: "z3" })`）
+
+Z3 支持 `budget` 这类连续变量（`m.continuous()`）与小数系数。它不受数值量纲影响，能排除无关的 `minimum_one_employee` 并返回构成冲突的 4 条规则。
+
+### Pumpkin（`m.check({ solver: "pumpkin" })`）
+
+Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的 Unsat Core。
+
+### HiGHS（`m.check({ solver: "highs" })`）
+
+与 Unsat Core 不同，HiGHS 返回的是**弹性修复集（Elastic Repair Set）**——即恢复可行性所需总松弛量最小的约束集合。相比将预算上限放宽 `$14,000`，放宽 `rush_required` 仅需 `1` 个单位，因此 HiGHS 标记了 `rush_required`。

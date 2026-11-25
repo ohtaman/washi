@@ -2,13 +2,13 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
+| Integer Programming (MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `expr`, `maximize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
 
-Production planning is a classic Linear Programming problem: determine the optimal quantity of each product to manufacture in order to maximize total profit while respecting resource constraints (raw materials, machine time, labor hours).
+Production planning is a classic optimization problem. You choose how many units of each product to make to maximize profit without exceeding resource limits such as raw materials or labor hours.
 
 ## Mathematical Formulation
 
-Let $x$ be the number of chairs and $y$ be the number of tables.
+Let $x$ be the number of chairs (profit `$45` each) and $y$ be the number of tables (profit `$80` each).
 
 $$\begin{aligned}
 \text{Maximize} \quad & 45x + 80y & (\text{Profit}) \\
@@ -34,7 +34,7 @@ async function runProductionOptimization() {
   // Objective: Maximize total profit ($45 per chair, $80 per table)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // Resource constraints: declarative formulas via expr and constraint()
+  // Resource constraints: mahogany wood and carpentry labor limits
   m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
   m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
@@ -49,3 +49,8 @@ runProductionOptimization();
 ```
 
 </CodeRunner>
+
+## Key Takeaways
+
+- **Optimal Result**: Producing `chairs = 24` and `tables = 14` yields the maximum profit of `$2,200`. Both resources are fully used: mahogany wood is $5(24) + 20(14) = 400$ and carpentry labor is $10(24) + 15(14) = 450$.
+- **Why `m.integer()` instead of `m.continuous()`**: Chairs and tables are discrete items that cannot be shipped in fractions. Although this instance happens to have an integer LP optimum, `m.integer()` guarantees whole-number outputs even when limits or prices change.

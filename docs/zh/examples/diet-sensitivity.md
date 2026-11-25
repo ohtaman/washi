@@ -1,18 +1,18 @@
-# 营养问题与灵敏度分析 (LP 对偶值与松弛量)
+# 营养问题与灵敏度分析（影子价格・松弛量・缩减成本）
 
 | 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
+| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
 
-在求解线性规划模型时，决策变量的最优取值（`var.value`）往往只是故事的一半。在实际业务决策中，我们通常还需要了解**灵敏度分析（Sensitivity Analysis）**信息：
+求解线性规划模型后，**灵敏度分析（Sensitivity Analysis）** 可以说明需求、上限或价格变化如何影响最优总成本：
 
-1. **瓶颈约束（`constr.dual` — 影子价格 Shadow Price）：** 哪些最低营养指标正在推高总成本？该指标每收紧 1 个单位，总成本会增加多少？
-2. **约束盈余（`constr.slack` — 松弛量）：** 哪些约束正处于紧绑定状态（Binding），哪些约束还有充足的富余空间（Surplus）？
-3. **缩减成本（`var.reducedCost` — Reduced Cost）：** 对于未被选入最优方案的食物（取值为 `0`），每份至少需要降价多少美元，才值得被纳入最优食谱？
+1. **影子价格（`constr.dual` / Shadow Price）：** 约束右端项增加 1 个单位时，最优目标值的边际变化量。
+2. **松弛量（`constr.slack`）：** 约束距离边界的富余（或盈余）空间，为 `0` 时表示紧绑定瓶颈。
+3. **缩减成本（`var.reducedCost`）：** 处于下界或上界的变量取值增加 1 个单位时，最优目标值的边际变化量。
 
 ## 问题输入数据
 
-我们需要在 6 种食物中选择每日摄入份数（$0 \le x_i \le 4$），在满足 4 项每日最低营养需求（热量 `Calories >= 2000 kcal`、蛋白质 `Protein >= 105 g`、钙 `Calcium >= 1000 mg`、铁 `Iron >= 18 mg`）的前提下使每日饮食总成本最小化：
+我们为 6 种食物分别确定每日摄入份数（$0 \le x_i \le 4$ 份，连续值），使每日总餐费最小。方案必须满足 4 项每日最低营养标准：热量不少于 `2000 kcal`、蛋白质不少于 `105 g`、钙不少于 `1000 mg`、铁不少于 `18 mg`。
 
 | 食物名称 | 单份成本 | 热量 (kcal) | 蛋白质 (g) | 钙 (mg) | 铁 (mg) | 每日最大份数 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -42,7 +42,7 @@ const foods = [
 async function runDietSensitivity() {
   const m = new Model("DietSensitivity");
 
-  // 每日连续摄入份数（每种食物 0 至最多 4 份）
+  // 每日连续摄入份数（每种食物 0 至 4 份）
   const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
   const costs = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
@@ -51,10 +51,10 @@ async function runDietSensitivity() {
   const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // 目标函数：通过 expr 内的点积（dot）最小化每日饮食总成本
+  // 目标函数：最小化每日饮食总成本
   m.objective(minimize(expr`dot(${costs}, ${srv})`));
 
-  // 营养下限约束：使用 expr 与 constraint() 声明式定义
+  // 营养下限约束
   const nutConstraints = [
     m.constraint(expr`dot(${cals}, ${srv}) >= 2000`, "min_calories"),
     m.constraint(expr`dot(${prots}, ${srv}) >= 105`,  "min_protein"),
@@ -83,8 +83,28 @@ runDietSensitivity();
 
 ## 结果解读
 
-- **瓶颈约束（`slack == 0`, `dual > 0`）：** 热量（2000 kcal）和铁（18 mg）紧贴下界，其中铁摄入标准每提高 1 mg，每日最低饮食成本将增加 **$0.3241**。
-- **有盈余的约束（`slack > 0`, `dual == 0`）：** 蛋白质（超出下限 +46.46 g）和钙（超出下限 +483.02 mg）已自然超额满足，因此它们的影子价格为 `$0`。
-- **处于下界（未选中）变量的缩减成本（`Salmon`）：** 未被选入方案（`0.00`）的三文鱼（Salmon）缩减成本为 `+1.5125`，意味着每份三文鱼至少需要降价 **$1.51** 以上，才会被纳入最优食谱。
-- **处于上界变量的负缩减成本（`Oats`, `Eggs`）：** 燕麦 `Oats`（`reducedCost = -0.2581`）和鸡蛋 `Eggs`（`reducedCost = -0.0887`）均已达到每日最大份数上限（`ub = 4.0`）。在最小化 LP 中，紧贴上界变量的负缩减成本表示将该上界 `ub` 放宽 1 单位所能带来的总成本**下降量**——将燕麦上限提高 1 份可每天节省 **$0.26**。
-- **最优基稳定区间（局部偏导数）：** 影子价格（`dual`）与缩减成本（`reducedCost`）反映的是当前最优单纯形基（Optimal Basis）保持不变时的边际变化率。当右端项（RHS）或变量边界变动幅度超过基稳定区间并触发换基时，影子价格将分段跃迁到新的斜率。
+HiGHS 返回 `"Optimal"`，每日最低总餐费为 **`$13.66`**（最优摄入份数为 `Oats`、`Eggs`、`Milk` 各 `4.00` 份，`Chicken` `1.55` 份，`Spinach` `0.50` 份，`Salmon` `0.00` 份）。
+
+### 瓶颈约束（`slack == 0`, `dual > 0`）
+
+`min_calories` 和 `min_iron` 均在等号处紧绑定，对应的影子价格分别为 `$0.0091/kcal` 和 `$0.3241/mg`。将每日铁标准提高 `1 mg`，最低餐费会增加 `$0.3241`。
+
+### 有盈余的约束（`|slack| > 0`, `dual == 0`）
+
+对于 `>=` 约束，HiGHS 按 `右端项 - 左端项` 计算并返回负的 `slack`（蛋白质为 `-46.46`，钙为 `-483.02`），因此代码通过 `Math.abs(c.slack)` 打印盈余量。蛋白质盈余 `46.46 g`，钙盈余 `483.02 mg`，两项约束的影子价格均为 `0`。
+
+### 处于下界变量的缩减成本（`Salmon`）
+
+未被选中的 `Salmon`（`value = 0.00`）缩减成本为 `+1.5125`。每份单价需下降至少 `$1.5125`（约 `$1.51`），它才会被纳入最优食谱。
+
+### 处于上界变量的负缩减成本（`Oats`, `Eggs`, `Milk`）
+
+共有 3 种食物达到每日份数上限 `ub = 4.0`。在最小化 LP 中，紧贴上界变量的缩减成本为负值，表示将 `ub` 提高 1 单位时的每日成本边际变化量（绝对值为节省金额）：
+
+- `Oats`：`reducedCost = -1.3546`（上限提高 1 份可节省约 `$1.35/天`）
+- `Eggs`：`reducedCost = -1.0307`（上限提高 1 份可节省约 `$1.03/天`）
+- `Milk`：`reducedCost = -0.2294`（上限提高 1 份可节省约 `$0.23/天`）
+
+### 最优基稳定区间
+
+`dual` 与 `reducedCost` 只在当前最优单纯形基（Optimal Basis）不变的局部范围内有效。若边界或右端项变动过大并导致有效约束集合切换，这些边际变化率也会随之改变。

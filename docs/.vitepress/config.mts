@@ -45,6 +45,7 @@ export default withMermaid(
   titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
   description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, CP, SMT).",
   base: "/",
+  srcExclude: ["RUBRIC.md"],
   cleanUrls: true,
   lastUpdated: true,
   sitemap: {

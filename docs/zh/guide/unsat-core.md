@@ -1,29 +1,30 @@
-# 冲突诊断 (`unsatCore`)、解验证与调试
+# 冲突诊断 (`m.check()` / `unsatCore`)、解验证与调试
 
-在构建贴近实际业务的数理优化与规则系统时，通常需要排查不可行模型的冲突原因、独立校验求解结果的正确性，并对公式导出与单元测试提供支持。
+当模型无可行解（`"Infeasible"`）或需要在上线前复核求解结果时，WaSHI 提供了四个内置诊断与调试工具：
 
-WaSHI 为此提供了一体化的诊断、验证与调试工具链：
-- **冲突约束诊断（`m.check()`）**：通过内置 HiGHS 弹性松弛、内置 Pumpkin `unsatCore` 或 Z3 `unsatCore` 精准定位相互矛盾的约束规则。
-- **独立解验证与 LP 公式检查（`m.verify()`, `m.toLpString()`）**：独立校验变量边界、整数性与约束残差，并导出标准 CPLEX `.lp` 公式文本以便核对。
-- **快速单元测试（`MockSolver`）**：无需加载 WebAssembly 即可在 CI 中快速测试业务层的建模与结果解析逻辑。
+- **定位冲突约束（`m.check()`）**：找出哪些命名约束导致了不可行。
+- **独立验证解（`m.verify()`）**：检查解是否满足所有变量上下界、整数条件和约束。
+- **查看 LP 建模形式（`m.toLpString()`）**：以 CPLEX `.lp` 格式导出模型，核对系数、符号和约束名称。
+- **免 WebAssembly 单元测试（`MockSolver`）**：在单元测试中无需加载 WebAssembly 即可立即返回固定结果。
 
 ---
 
-## 冲突约束诊断 (`unsatCore` / `conflicts`)
+## 定位冲突约束 (`m.check()`)
 
-当常规优化调用（`m.solve()`）返回 **`"Infeasible"`** 时，仅凭该状态只能得知不存在满足全部约束的可行解，而无法直接看出具体是*哪些*规则发生了冲突。
-通过调用 **`await m.check({ solver: "pumpkin" })`**（适用于无需 `COOP`/`COEP` 响应头与外部依赖的有界整数及布尔模型）或 **`await m.check({ solver: "z3" })`**（适用于包含 `Continuous` 连续变量或小数的模型），WaSHI 会计算出**不可满足核（Unsatisfiable Core，`unsatCore`）**——即无法同时满足的命名约束冲突子集：
+`m.solve()` 返回 `"Infeasible"` 时，只能说明不存在满足全部规则的解，但无法指出**哪些**规则发生了冲突。
+要定位冲突原因，请调用 `m.check()`。
+逻辑上的 **不可满足核心（Unsat Core）** 是指一组无法同时成立的命名约束子集——即使移除模型中的其他所有命名约束（保留变量上下界），这组约束依然相互矛盾。
+
+对于仅包含有界整数变量与布尔值的模型，请传入 `{ solver: "pumpkin" }`；对于包含 `Continuous` 变量或非整数系数/常数的模型，请传入 `{ solver: "z3" }`：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
-// 注册 Z3 求解器插件（用于含 Continuous / 实数算术的 SMT 模型）
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model();
-
 const x = m.continuous("reserve", { lb: 0 });
 
-// 添加命名的业务规则约束
+// 为约束命名后再注册
 m.constraint(expr`${x} >= 100`, "minimum_regulatory_reserve");
 m.constraint(expr`${x} <= 50`, "budget_ceiling");
 m.constraint(expr`${x} >= 10`, "routine_operating_cost");
@@ -31,71 +32,72 @@ m.constraint(expr`${x} >= 10`, "routine_operating_cost");
 const result = await m.check({ solver: "z3" });
 
 if (result.status === "Unsat") {
-  console.log("Contradictory constraints identified:");
-  console.log(m.conflicts); // 或 result.conflicts / result.unsatCore / m.unsatCore
+  console.log("冲突约束:", result.unsatCore); // 也可通过 m.conflicts 读取
   // 输出: ["minimum_regulatory_reserve", "budget_ceiling"]
 }
 ```
 
-可以看到，`routine_operating_cost`（$x \ge 10$）**不在**冲突核中，因为只有 `minimum_regulatory_reserve`（$x \ge 100$）与 `budget_ceiling`（$x \le 50$）直接相互矛盾。
+本例中，`routine_operating_cost` 未参与直接矛盾，因此被排除。
+结果仅返回直接冲突的 `minimum_regulatory_reserve` 与 `budget_ceiling`。
 
 > [!IMPORTANT]
-> - **请使用 `m.check({ solver: "pumpkin" })` 或 `m.check({ solver: "z3" })` 提取 Unsat Core**：`m.solve()` 执行的是目标函数优化，而 `m.check()` 执行的是带假设跟踪的可满足性检查（Pumpkin 假设核心或 `Z3.Solver.assertAndTrack`），并填充 `result.conflicts` / `m.conflicts`（以及别名 `m.unsatCore`）。
-> - **请为约束命名**：变量自带的上下界（`lb`、`ub`）作为背景定义域声明处理。如果希望将某个边界或业务规则包含在返回的 `unsatCore` 列表中，请通过 `m.constraint(expr`...`, "rule_name")` 将其注册为命名约束。
+> - **请用 `m.check()` 诊断冲突**：模型不可行时，`m.solve()` 仅返回 `"Infeasible"`，不会定位冲突原因。当结果为 `"Unsat"` 时，`m.check()` 会在所有求解器上填充 `conflicts`，并在 Pumpkin 和 Z3 上同时填充 `unsatCore`（HiGHS 和 GLPK 上为 `undefined`）。
+> - **为需要排查的规则命名**：变量的 `lb` 和 `ub` 没有名称，不会出现在 `conflicts` 中。如需排查边界冲突，请通过 ``m.constraint(expr`...`, "rule_name")`` 注册命名约束。
 
-### 实战工作流：使用 HiGHS、Pumpkin 或 Z3 进行不可行约束诊断
+### 如何选择诊断求解器
 
-由于 WaSHI 模型与具体求解器解耦，当模型不可行（`"Infeasible"`）时，您可选用三种诊断方式：
-1. **内置 HiGHS / GLPK（默认）**：`await m.check()` 采用单次求解弹性松弛模型（$\min \sum s_i$）定位需要松弛的冲突约束（`diag.conflicts`），无需额外导入。
-2. **内置 Pumpkin CP/LCG 求解器**：`await m.check({ solver: "pumpkin" })`（需 `import "@ohtaman/washi/solvers/pumpkin"`）无需外部依赖、也**无需浏览器 `COOP` / `COEP` 响应头**，即可为有界整数与布尔模型提取尺度无关的 `unsatCore` / `conflicts`。
-3. **Z3 SMT 求解器**：`await m.check({ solver: "z3" })` 借助 SMT 约束跟踪机制，在包含 `Continuous` 变量或小数算术时也能提取精确的不可满足核（`diag.unsatCore` / `diag.conflicts`）。
+当 `m.solve()` 返回 `"Infeasible"` 后，可根据变量类型与尺度敏感性要求选择以下三种方式之一：
+
+| 项目 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()` / `{ solver: "glpk" }`) |
+| :--- | :--- | :--- | :--- |
+| **适用模型** | 有界整数与布尔模型 | 包含 `Continuous` 变量或非整数的模型 | 通用 LP / MIP 模型（使用 HiGHS 时无需额外导入） |
+| **安装与依赖** | 内置（`@ohtaman/washi/solvers/pumpkin`） | 可选（`z3-solver`） | 内置（HiGHS）/ 可选（`glpk.js`） |
+| **浏览器响应头** | 无需配置 | 需要 `COOP` / `COEP` 响应头 | 无需配置 |
+| **返回字段** | `unsatCore` 和 `conflicts` | `unsatCore` 和 `conflicts` | 仅 `conflicts`（`unsatCore` 为 `undefined`） |
+| **结果含义** | 不可满足核心（无法同时成立的规则子集） | 不可满足核心（无法同时成立的规则子集） | 弹性松弛集合（放宽后可恢复可行的规则） |
+| **量纲/数值尺度敏感性** | 不受影响 | 不受影响 | 会受影响（倾向于放宽数值较小的约束） |
 
 ```typescript
-const status = await m.solve(); // 使用默认的 HiGHS 快速求解 MIP
+// 如使用 Pumpkin 或 Z3，请在文件顶部导入：
+// import "@ohtaman/washi/solvers/pumpkin";
+// import "@ohtaman/washi/solvers/z3";
+
+const status = await m.solve();
 
 if (status === "Infeasible") {
-  // 方式 1: 使用内置 HiGHS 单次求解弹性松弛直接诊断
+  // 方式 1：内置 HiGHS（无需额外导入；受数值尺度影响）
   const diag = await m.check();
-  console.error("冲突的约束规则:", diag.conflicts);
+  console.error("可放宽的约束:", diag.conflicts);
 
-  // 方式 2: 使用内置 Pumpkin 进行免 COOP/COEP 的 Unsat Core 诊断（有界整数/布尔模型，需 import "@ohtaman/washi/solvers/pumpkin"）
+  // 方式 2：内置 Pumpkin（有界整数与布尔模型；尺度无关的 Unsat Core）
   // const pumpkinDiag = await m.check({ solver: "pumpkin" });
   // console.error("Pumpkin Unsat Core:", pumpkinDiag.unsatCore);
 
-  // 方式 3: 使用 Z3 进行精确 SMT Unsat Core 诊断（支持 Continuous 连续变量，需 import "@ohtaman/washi/solvers/z3"）
+  // 方式 3：Z3（支持 Continuous 变量与小数；需安装 z3-solver）
   // const z3Diag = await m.check({ solver: "z3" });
   // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 
-### Pumpkin `unsatCore`、Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的对比
-
-| 维度 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
-| :--- | :--- | :--- | :--- |
-| **安装与依赖** | **内置插件**（`@ohtaman/washi/solvers/pumpkin`，零外部依赖） | 可选 peer 依赖（`z3-solver`） | **内置默认**（HiGHS）/ 可选 `glpk.js` |
-| **浏览器响应头要求** | **无需配置**（免 `COOP` / `COEP`） | 需 `COOP` / `COEP`（`SharedArrayBuffer`） | **无需配置** |
-| **支持变量类型** | 有界 `Integer`、`Binary`、`BoolVar` | `Continuous`、`Integer`、`Binary`、`BoolVar` | `Continuous`、`Integer`、`Binary`、`BoolVar` |
-| **诊断算法** | 基于约束假设的 LCG 冲突分析 | SMT 假设跟踪（`assertAndTrack`） | 单次求解 $L_1$ 弹性松弛最小化（$\min \sum s_i$） |
-| **填充字段** | 同时填充 `result.unsatCore` 与 `result.conflicts` | 同时填充 `result.unsatCore` 与 `result.conflicts` | 仅填充 `result.conflicts`（`unsatCore` 为 `undefined`） |
-| **语义含义** | 无法同时成立的**矛盾规则子集** | 无法同时成立的**矛盾规则子集** | 松弛后能以最小总违反量恢复可行性的**最小修复约束集** |
-| **量纲尺度敏感性** | **尺度无关**（纯逻辑与整数矛盾分析） | **尺度无关**（纯逻辑与代数矛盾分析） | **对量纲尺度敏感**（无权重最小化 $\sum s_i$ 时，松弛 `2` 名人手比松弛 `10,000` 元预算的总松弛量更小） |
-
 > [!TIP]
-> 当模型同时包含量级差异巨大的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，若希望获得与量纲无关的矛盾规则子集：有界整数/布尔模型可使用免 `COOP`/`COEP` 的 **`m.check({ solver: "pumpkin" })`**，包含 `Continuous` 变量或小数阈值时请使用 **`m.check({ solver: "z3" })`**，或在构建约束时对不同量纲进行归一化。
+> **为什么 HiGHS / GLPK 会受数值尺度影响**：MIP 求解器（HiGHS 和 GLPK）的 `m.check()` 会为每条命名约束引入非负松弛变量（`<=` 减去松弛、`>=` 加上松弛、`==` 两侧同时引入），并最小化**无权重的总松弛量**。
+> 当模型同时包含数量级差异悬殊的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，放宽数值较小的约束所增加的总松弛量远小于放宽大数值约束，因此 HiGHS/GLPK 更容易优先标记前者。
+> 若要减轻弹性松弛中的量纲偏差，请先统一约束的数值尺度；若需要与尺度无关的严格不可满足核心（Unsat Core），请使用 `pumpkin` 或 `z3`。
 
 ---
 
-## 独立解验证 (`m.verify()`)
+## 独立验证解 (`m.verify()`) {#verifying-solutions-m-verify}
 
-求解完成后（或通过 `values` 选项传入自定义候选解后），您可以对照原始模型定义，独立验证所有变量边界、整数/二元定义域、线性约束以及 SMT 逻辑公式是否在容差范围内成立：
+求解完成后，调用 `m.verify()` 可独立检查所有变量上下界、整数条件、线性约束和逻辑约束是否在容差范围内成立。
+您也可以通过 `values` 选项传入自定义赋值来验证外部解：
 
 ```typescript
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
   const report = m.verify({
-    feasibilityTolerance: 1e-6,     // 变量边界与线性约束的最大允许违反量
-    integralityTolerance: 1e-6,     // Integer/Binary 变量距离最近整数的最大允许偏差
+    feasibilityTolerance: 1e-6, // 上下界与线性约束的最大允许误差
+    integralityTolerance: 1e-6, // Integer / Binary 变量偏离整数的最大允许误差
     evaluateLogicalConstraints: true,
   });
 
@@ -110,26 +112,28 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-### `VerificationReport` 属性一览
+### `VerificationReport` 字段说明
 
-| 属性 | 类型 | 说明 |
+| 字段 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `valid` | `boolean` | 当且仅当 `complete === true`、`uncheckedConstraints.length === 0` 且 `violations.length === 0` 时为 `true`。 |
-| `complete` | `boolean` | 当所有变量、布尔变量、线性约束和逻辑约束均已完成评估时为 `true`。 |
-| `maxViolation` | `number` | 所有已评估边界、整数性检查和约束中的最大数值违反量。 |
-| `violations` | `VerificationViolation[]` | 检测到的违规详情列表（`"missing_value"`、`"non_finite_value"`、`"invalid_boolean_value"`、`"lower_bound"`、`"upper_bound"`、`"integrality"`、`"linear_constraint"`、`"logical_constraint"`、`"unchecked_constraint"`）。 |
-| `violationsByName` | `Record<string, VerificationViolation[]>` | 按变量名或约束名分组的违规列表。 |
-| `uncheckedConstraints` | `string[]` | 因缺失变量值等原因未能评估的约束名称列表。 |
-| `missingVariables` | `string[]` | 取值为 `null` 或 `undefined` 的数值或布尔变量名称列表。 |
-| `summary` | `VerificationSummary` | 已检查与总计的变量、布尔变量、线性约束及逻辑约束数量统计。 |
+| `valid` | `boolean` | 当 `complete === true` 且 `uncheckedConstraints` 与 `violations` 均为空时为 `true`。 |
+| `complete` | `boolean` | 当所有变量与约束均已完成评估时为 `true`。 |
+| `maxViolation` | `number` | 所有已检查的上下界、整数条件和约束中的最大违背量。 |
+| `violations` | `VerificationViolation[]` | 检测到的违背项列表（上下界、整数条件、线性/逻辑约束或缺失/无效值）。 |
+| `violationsByName` | `Record<string, VerificationViolation[]>` | 按变量名或约束名分组的违背项。 |
+| `uncheckedConstraints` | `string[]` | 未能评估的约束名称列表。 |
+| `missingVariables` | `string[]` | 值为 `null` 或 `undefined` 的变量名称列表。 |
+| `summary` | `VerificationSummary` | 已检查与总变量数、约束数的统计汇总。 |
 
 ---
 
-## 检查导出的 LP 模型公式 (`m.toLpString()`)
+## 查看 LP 建模形式 (`m.toLpString()`)
 
-在调试系数、正负号或由 `m.indicator()` 自动展开的 Big-M 约束时，可调用 `m.toLpString()` 将模型导出为标准的 CPLEX/HiGHS `.lp` 格式文本：
+如需核对系数、正负号或约束名称，可调用 `m.toLpString()` 导出标准 CPLEX `.lp` 格式文本：
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
 const m = new Model("DebugModel");
 const x = m.integer("x", { lb: 0, ub: 10 });
 m.objective(maximize(expr`5 * ${x}`));
@@ -151,9 +155,9 @@ End
 
 ---
 
-## 使用 `MockSolver` 对应用逻辑进行单元测试
+## 免 WebAssembly 单元测试 (`MockSolver`)
 
-在为构建或消费 WaSHI `Model` 的业务代码编写单元测试时，可以使用内置的 `MockSolver`（`solver: "mock"`）立即返回确定性的测试结果，而无需加载 WebAssembly：
+在测试构建或读取 `Model` 的应用逻辑时，传入 `MockSolver` 可在不加载 WebAssembly 的情况下立即返回固定结果：
 
 ```typescript
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";

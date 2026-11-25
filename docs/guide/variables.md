@@ -1,14 +1,16 @@
 # Variables & Domains
 
-Variables represent the mathematical decision variables in your optimization or logical model.
-WaSHI provides domain-specific factory methods on the `Model` instance: `m.continuous()`, `m.integer()`, `m.binary()`, and `m.bool()`.
+Variables represent the unknown decision quantities in an optimization or logical model.
+On a `Model` instance, WaSHI provides four domain-specific factory methods: `m.continuous()`, `m.integer()`, `m.binary()`, and `m.bool()`.
 
 ---
 
 ## Decision Variable Types
 
 ### 1. Continuous Variables (`m.continuous`)
-Can take any real number value within `[lb, ub]`. Used for continuous quantities such as flow rates, weights, budgets, and portfolio allocations:
+
+Continuous variables take any real number bounded by `lb` and `ub` (default: `lb = 0`, `ub = Infinity`).
+Use them for divisible quantities such as flow rates, weights, budgets, and portfolio weights:
 
 ```typescript
 import { Model } from "@ohtaman/washi";
@@ -20,7 +22,9 @@ const fuel = m.continuous("fuel", { lb: 0, ub: 1000 });
 ```
 
 ### 2. Integer Variables (`m.integer`)
-Restricted to integer values within `[lb, ub]`. Used for discrete counts such as machines, vehicles, or headcount:
+
+Integer variables take whole numbers bounded by `lb` and `ub` (default: `lb = 0`, `ub = Infinity`).
+Use them for indivisible counts such as vehicles, machines, or staff headcount:
 
 ```typescript
 // Single integer variable bounded in [0, 15]
@@ -28,7 +32,9 @@ const trucks = m.integer("trucks", { lb: 0, ub: 15 });
 ```
 
 ### 3. Binary Variables (`m.binary`)
-Restricted to $\{0, 1\}$ as numeric values (`lb = 0`, `ub = 1`). Used for 0-1 MIP selection and yes/no decisions that appear in linear sums or objective costs:
+
+Binary variables take numeric values in $\{0, 1\}$ with `lb = 0` and `ub = 1` set automatically.
+Use them for yes/no decisions in Mixed-Integer Programming (MIP) that appear in linear sums or objective costs:
 
 ```typescript
 // Single binary variable (lb = 0, ub = 1 automatically)
@@ -36,7 +42,8 @@ const openWarehouse = m.binary("open_warehouse");
 ```
 
 ### 4. Propositional Boolean Variables (`m.bool`)
-Pure boolean propositions (`true` / `false`) for logical and SMT constraints:
+
+Propositional Boolean variables take pure truth values (`true` or `false`) for logical and Satisfiability Modulo Theories (SMT) rules:
 
 ```typescript
 // Single propositional boolean variables
@@ -53,20 +60,19 @@ m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 | :--- | :--- | :--- |
 | **Solved `.value` type** | `number \| null` (`0` or `1`) | `boolean \| null` (`true` or `false`) |
 | **Linear arithmetic (`expr`, `sum`, `dot`, objective costs)** | ✅ Native (`` expr`30 * ${b}` ``) | ❌ Cannot be multiplied by numbers or summed directly |
-| **Indicator constraints (`m.indicator(b, ...)` )** | ✅ Supported as trigger variable | ❌ Use `` implies(flag, expr`...`) `` instead |
+| **Indicator constraints (`m.indicator(b, ...)`)** | ✅ Supported as trigger variable | ❌ Use `` implies(flag, expr`...`) `` instead |
 | **Propositional logic (`and`, `or`, `not`, `implies`, `xor`)** | Via comparison (`` expr`${b} == 1` ``) | ✅ Native first-class methods (`.implies()`, `.and()`) |
-| **Solver execution** | Native 0-1 MIP on HiGHS/GLPK; bounded `{0, 1}` integer on Pumpkin/Z3 | Native boolean proposition on Pumpkin/Z3; auto-linearized to 0-1 MIP on HiGHS/GLPK |
-
-> [!TIP]
-> Use **`m.binary()`** when a decision participates in arithmetic expressions—such as linear sums ($\sum x_i \ge 3$), objective cost terms ($c_i x_i$), or `m.indicator()`. Use **`m.bool()`** when expressing logical conditions with `implies()`, `and()`, and `or()` without numeric coefficients.
+| **Best used for** | Arithmetic sums, objective costs, `m.indicator()` | Pure logical rules without numeric coefficients |
 
 ---
 
 ## Multi-Dimensional & Array Creation
 
-The domain factory methods (`continuous`, `integer`, `binary`, `bool`) accept a numeric count or an array of string keys to create 1D arrays, typed dictionaries, and 2D matrices in a single call.
+All four factory methods (`continuous`, `integer`, `binary`, `bool`) accept counts or string-key arrays.
+This lets you create 1D arrays, typed dictionaries, and 2D matrices in a single call.
 
 ### By Count
+
 Pass a number to create an array of variables:
 
 ```typescript
@@ -75,7 +81,8 @@ const flags = m.bool(3);              // BoolVar[] (p_0, p_1, p_2)
 ```
 
 ### 1D Variable Dictionaries
-Pass an array of keys to get a typed dictionary `Record<K, Var>` or `Record<K, BoolVar>`:
+
+Pass an array of string keys to create a typed dictionary (`Record<K, Var>` or `Record<K, BoolVar>`):
 
 ```typescript
 const items = ["laptop", "phone", "tablet"] as const;
@@ -88,7 +95,9 @@ const perms = m.bool(["read", "write", "execute"] as const);
 ```
 
 ### 2D Variable Matrices & Grids
-Each dimension follows a consistent rule: passing a numeric count (`number`) produces an `Array`, and passing a collection of keys produces a `Record`:
+
+Each dimension follows one rule: a numeric count produces an `Array`, and a key list produces a `Record`.
+
 - `(rowsCount, colsCount)` $\rightarrow$ `Var[][]` (or `BoolVar[][]`)
 - `(rowKeys, colKeys)` $\rightarrow$ `Record<R, Record<C, Var>>` (or `Record<R, Record<C, BoolVar>>`)
 - `(rowsCount, colKeys)` $\rightarrow$ `Array<Record<C, Var>>`
@@ -115,24 +124,28 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 ## Variable Options
 
+Factory methods accept options matching their variable kind: `m.continuous()` and `m.integer()` accept `lb`, `ub`, `prefix`, `name`, and `initialValue`; `m.binary()` accepts `prefix`, `name`, and `initialValue`; `m.bool()` accepts `prefix` and `name` only.
+
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). Pass `-Infinity` for free lower bounds. |
-| `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
-| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalar variables and indexed arrays/matrices (e.g., `queen_0_0`). |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
-| `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP warm start), kept distinct from solved `variable.value`. |
+| `lb` | `number` | `0` | Lower bound (`m.continuous()`, `m.integer()`). Pass a negative finite number or `-Infinity` to allow negative values. |
+| `ub` | `number` | `Infinity` (`1` for binary) | Upper bound (`m.continuous()`, `m.integer()`). Fixed to `1` for `m.binary()`. |
+| `prefix` | `string` | `"x"` (`"p"` for `m.bool()`) | Name prefix for unnamed scalars, arrays, dictionaries, and 2D containers (e.g., `queen_0_0`). |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Numeric variable domain (for direct `new Var()` construction only). |
+| `initialValue` | `number` | `undefined` | Warm-start hint for numeric variables (`m.continuous()`, `m.integer()`, `m.binary()`), stored separately from solved `variable.value`. |
 
 ### Designing Bounds (`lb` & `ub`)
 
-- **Default non-negativity**: Numeric variables default to `lb: 0, ub: Infinity`. If a variable can take negative values (such as net inventory change or deviation), explicitly pass `{ lb: -Infinity }`.
-- **Prefer realistic finite bounds**: Specifying finite `lb` and `ub` values strengthens MIP presolve, allows `m.indicator()` to derive tight Big-M constants automatically, and is required by bounded-integer CP solvers such as **Pumpkin**.
+- **Allowing negative values**: Numeric variables are non-negative by default. For signed quantities such as net inventory change or deviation, explicitly pass a negative finite bound or `{ lb: -Infinity }`.
+- **Strengthening MIP formulations**: Realistic finite `lb` and `ub` bounds improve MIP presolve and let `m.indicator()` compute tight Big-M constants automatically.
+- **CP solver requirement**: Bounded-integer Constraint Programming (CP) solvers such as Pumpkin require finite integer bounds on every numeric variable.
 
 ---
 
 ## Primal Initial Values (Warm-Start Hints)
 
-When rebuilding a model across iterations, you can supply optional primal initial values (`initialValue`) on a subset or all numeric variables (`m.continuous`, `m.integer`, `m.binary`, or `v.initialValue = ...`):
+When re-solving a modified model, you can supply a warm-start hint (`initialValue`) on some or all numeric variables.
+Pass `initialValue` in the factory options or assign `v.initialValue = ...` directly:
 
 ```typescript
 const prevValues: Record<string, number | null> = { trucks: 8, open_warehouse: 1 };
@@ -149,15 +162,33 @@ const openWarehouse2 = m2.binary("open_warehouse", {
 const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial start: no initialValue needed
 ```
 
-- **Hint vs. Hard Constraint**: `initialValue` is an optional solver hint (passed to HiGHS via `setSolution`, or to Pumpkin's `WarmStart` branching strategy). It does **not** fix the variable or add a constraint, and `variable.value` remains `null` until solved. *(To penalize deviations from a previous plan, see [Formulation Patterns & Tips](./formulation-tips.md#minimal-perturbation-rescheduling-vs-warm-starting).)*
-- **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer for `"Integer"` and `"Binary"` variables). Partial starts are accepted without needing to satisfy every model constraint, though supplying a complete constraint-feasible assignment gives MIP solvers an immediate incumbent bound.
-- **Solver Support**: Supported by **HiGHS** and **Pumpkin** (`capabilities.supportsWarmStart === true`; Pumpkin supports `initialValue` on bounded `Integer` and `Binary` variables in both `solve()` and `check()`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
+### Hint vs. Hard Constraint
+
+`initialValue` is an optional starting hint for the solver, not a constraint or variable fixation.
+Before solving, `variable.value` remains `null`.
+To penalize changes from an existing schedule in the objective instead, see [Formulation Patterns & Tips](./formulation-tips.md#minimal-perturbation-rescheduling-vs-warm-starting).
+
+### Validation & Tolerance (`1e-6`)
+
+Every supplied `initialValue` must be a finite number within `[lb - 1e-6, ub + 1e-6]`.
+For `"Integer"` and `"Binary"` variables, the value must also lie within `1e-6` of an integer.
+Partial starts are allowed; providing a complete feasible assignment gives MIP solvers an immediate incumbent solution (a valid baseline objective value used to prune search branches).
+
+### Solver Support
+
+- **Supported**: HiGHS supports warm starts on all numeric variables. Pumpkin supports them on bounded `Integer` and `Binary` variables in both `solve()` and `check()`.
+- **Unsupported**: GLPK, Z3, and custom adapters without warm-start support reject `solve()` and `check()` with an explicit error instead of silently ignoring `initialValue`.
 
 ---
 
 ## Accessing Solution Values & Reduced Costs
 
-After calling `await m.solve()` or `await m.check()`, assigned variable values are accessible directly via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`), or by variable name via `m.values`:
+After calling `await m.solve()` or `await m.check()`, read assigned values directly from `variable.value` or look them up by name in `m.values`.
+`variable.value` returns `number | null` for `Var` and `boolean | null` for `BoolVar`.
+
+For continuous Linear Programming (LP) models solved by HiGHS, `variable.reducedCost` exposes the variable's LP reduced cost as `number | null`.
+The **reduced cost** indicates how much a non-basic variable's objective coefficient must improve before moving it away from its active bound (`lb` or `ub`) becomes worthwhile.
+Before solving, when no optimal LP solution is found, on GLPK (which populates constraint `dual` only), or on MIP, CP, and SMT models, `reducedCost` is `null`.
 
 ```typescript
 await m.solve();
@@ -173,7 +204,7 @@ console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
 // Name-keyed ReadonlyMap lookup (ReadonlyMap<string, number | boolean>)
 console.log(`trucks by name: ${m.values.get("trucks")}`);
 
-// Reduced cost (LP sensitivity analysis)
+// Reduced cost (LP sensitivity analysis; number | null)
 console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 ```
 
@@ -181,7 +212,7 @@ console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 ## Looking Up Variables by Name
 
-All registered numeric (`Var`) and propositional Boolean (`BoolVar`) variables are exposed through `m.variables` (`ReadonlyMap<string, Var | BoolVar>`):
+All registered numeric (`Var`) and propositional Boolean (`BoolVar`) variables are accessible through `m.variables` (`ReadonlyMap<string, Var | BoolVar>`):
 
 ```typescript
 const v = m.variables.get("trucks");   // Var | BoolVar | undefined

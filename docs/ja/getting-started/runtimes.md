@@ -1,6 +1,14 @@
 # ランタイム環境とデプロイ構成
 
-WaSHI は C/C++ のネイティブビルドを必要とせず、Node.js・Bun・Deno からモダンバンドラー、静的ホスティング、ブラウザの `<script>` タグ、閉域網のイントラネット環境まで一貫して動作します。
+WaSHI はネイティブビルドなしで、JavaScript / TypeScript の多様なランタイムや配信形態で動作します。Node.js・Bun・Deno からモダンバンドラー、静的ホスティング、クラシック `<script>` タグ、オフライン WebView アプリまで幅広く対応します。
+
+| 対象環境 | エントリーポイント | Worker・ヘッダーの要点 |
+| --- | --- | --- |
+| **Node.js（v18+）・Bun・Deno** | `@ohtaman/washi`（Deno は `npm:@ohtaman/washi`） | パッケージ内の `.wasm` を直接読み込みます。HTTP ヘッダー不要。 |
+| **Vite・Next.js・Webpack・Rollup** | `@ohtaman/washi` | HiGHS と Pumpkin はデフォルトで Web Worker 内で実行されます。 |
+| **Tauri・Capacitor・PWA** | `@ohtaman/washi`（標準の Vite ビルド） | オフライン動作。Content Security Policy（`CSP`）の `script-src` に `'wasm-unsafe-eval'` を指定します。 |
+| **ブラウザ ESM（`<script type="module">`）** | `dist/browser/washi.js` | セルフホスト時は `dist/browser/` 配下のファイル一式をそのまま配置します。 |
+| **単一 HTML / CDN（`<script>`）** | `dist/browser/washi.min.js` | `window.Washi` を公開します。CDN 版は `file://` でも直接実行できます。 |
 
 ---
 
@@ -8,7 +16,7 @@ WaSHI は C/C++ のネイティブビルドを必要とせず、Node.js・Bun・
 
 ### Node.js
 
-Node.js (v18+) の標準 ECMAScript Modules (ESM) をそのままサポートしています。同梱の HiGHS および Pumpkin（`@ohtaman/washi/solvers/pumpkin`）の WebAssembly バイナリはパッケージ内から直接読み込まれます：
+WaSHI は Node.js 18+ の標準 ECMAScript Modules（`ESM`）に対応しています。同梱の HiGHS と Pumpkin（`@ohtaman/washi/solvers/pumpkin`）の WebAssembly バイナリは、パッケージ内から直接読み込まれます：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -27,7 +35,7 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-`tsx` または `node` で実行できます：
+TypeScript ファイルは `tsx`（ビルド後の `.js` は `node`）で実行できます：
 
 ```bash
 npx tsx app.ts
@@ -41,7 +49,7 @@ bun add @ohtaman/washi
 bun run app.ts
 ```
 
-Deno（v1.30+ の `npm:` 指定子）：
+Deno（v1.30+）では `npm:` 指定子を使って読み込めます：
 
 ```typescript
 import { Model, maximize } from "npm:@ohtaman/washi";
@@ -57,14 +65,14 @@ if (m.hasPrimalSolution) {
 
 ---
 
-## 🌐 バンドラーと静的ホスティング (Vite, Next.js, Webpack, Rollup)
+## 🌐 バンドラーと静的ホスティング（Vite・Next.js・Webpack・Rollup）
 
 ### モダンバンドラーと静的サイト配信
 
-ブラウザ向けバンドラーで `@ohtaman/washi` をインポートすると、`browser` エクスポート条件が自動的に解決されます：
+パッケージのルートエクスポート（`@ohtaman/washi`）は、`import`・`default` 条件で `./dist/lib/washi.js` に、`types` 条件で `./dist/types/index.d.ts` に解決されます。この統一 ESM バンドルが、実行時に Node.js とブラウザ環境を自動判別します：
 
 ```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const m = new Model({ solver: "highs" });
@@ -75,21 +83,23 @@ export async function runOptimization() {
 }
 ```
 
-モデラーとソルバーの両方が WebAssembly で動作するため、`vite build` 等のビルド成果物（JS・Worker・WASM）をそのまま **GitHub Pages・Cloudflare Pages・Vercel・Netlify** などの静的ホスティングに配置するだけで公開できます（同梱の **HiGHS**・**Pumpkin** および **GLPK** は特別な HTTP ヘッダー不要。ブラウザで Z3 を使う場合のみ [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください）。
+モデラー（JS/TS）と同梱ソルバー（WebAssembly）がすべてクライアント内で完結するため、`vite build` の静的成果物をバックエンド不要で GitHub Pages・Cloudflare Pages・Vercel・Netlify へそのまま配信できます。同梱の HiGHS・Pumpkin とオプションの GLPK は、特別な HTTP ヘッダーを必要としません。
 
 #### Web Worker によるバックグラウンド実行（デフォルト）
-ブラウザ環境では、**HiGHS** と **Pumpkin** はいずれもデフォルトで専用の **Web Worker** 内で実行されます。これにより、LP / MIP / QP / CP の求解中でも UI スレッドやアニメーションがフリーズせず、リアルタイムの進捗通知（`onProgress`）や中断（`AbortSignal`）が機能します。
 
-Web Worker が制限されている環境やメインスレッドで実行したい場合は、`useWorker: false` を指定します：
+ブラウザ環境では、**HiGHS** と **Pumpkin** はデフォルトで専用の Web Worker 内で実行されます。`LP`・`MIP`・`QP`・`CP` の求解中も UI スレッドをブロックせず、`onProgress` による進捗通知や `AbortSignal` による中断が利用できます。
+
+Web Worker が使えない環境やメインスレッド実行を選びたい場合は、`useWorker: false` を指定します：
 
 ```typescript
 await m.solve({ useWorker: false });
 ```
 
 #### WASM アセット URL のカスタマイズ
-デフォルトでは、WaSHI はバンドルからの相対パス（`new URL("./highs.wasm", import.meta.url)` / `new URL("./pumpkin.wasm", import.meta.url)`）で `highs.wasm` や `pumpkin.wasm` を解決します。外部 CDN（`jsdelivr` や `unpkg` など）へ暗黙的にフォールバック通信することは一切ありません。
 
-カスタムパスで `.wasm` を配信する場合は、グローバルまたは求解ごとに URL を指定できます：
+デフォルトでは、`import.meta.url` を使ってバンドルからの相対パスで `highs.wasm` と `pumpkin.wasm` を解決します。外部 CDN（`jsDelivr` や `unpkg` など）へ暗黙的にフォールバックすることは一切ありません。
+
+カスタムパスで `.wasm` を配信する場合は、グローバルまたは呼び出しごとに URL を上書きできます：
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
@@ -103,9 +113,9 @@ setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 await m.solve({ wasmUrl: "/assets/wasm/highs.wasm" });
 ```
 
-### Next.js & サーバーサイドレンダリング (SSR)
+### Next.js & サーバーサイドレンダリング（SSR）
 
-Next.js では、Server Actions / API Routes（Node.js ランタイム）と `"use client"` コンポーネント（ブラウザ内実行）のどちらでもモデルを求解できます：
+Next.js の App Router / Pages Router では、サーバー側（Server Actions・API Routes）とクライアント側（`"use client"` コンポーネント）の両方で WaSHI を実行できます。以下はクライアントコンポーネントの例です：
 
 ```tsx
 "use client";
@@ -135,11 +145,11 @@ export default function OptimizerComponent() {
 }
 ```
 
-### デスクトップ・モバイル WebView アプリ (Tauri / Capacitor / PWA)
+### デスクトップ・モバイル WebView アプリ（Tauri / Capacitor / PWA）
 
-標準の Vite フロントエンド構成のまま、**Tauri**（`tauri://localhost` / `http://tauri.localhost`）、**Capacitor** のモバイル WebView、オフライン対応 **PWA** 内で同梱の **HiGHS** および **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を C/C++ ソルバーのネイティブビルドなしでオフライン実行できます。
+標準の Vite フロントエンド構成のまま、**HiGHS** と **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を静的アセットとして同梱し、オフラインで実行できます。Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、オフライン PWA でネイティブビルドなしに動作します。
 
-Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src` に `'wasm-unsafe-eval'`）と Web Worker（`worker-src 'self' blob:`）を許可するか、`{ useWorker: false }` を指定します：
+`tauri.conf.json` の `CSP` で WebAssembly コンパイル（`'wasm-unsafe-eval'`）と Web Worker（`worker-src 'self' blob:`）を許可します（求解時に `{ useWorker: false }` を渡してメインスレッドで実行する場合は `worker-src` を省けますが、`'wasm-unsafe-eval'` は引き続き必要です）：
 
 ```json
 {
@@ -151,11 +161,11 @@ Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src
 }
 ```
 
-デスクトップ・モバイル WebView では、`SharedArrayBuffer` や `COOP`/`COEP` ヘッダーを必要としない同梱の **HiGHS** および **Pumpkin** の利用を **Z3** より推奨します。
+WebView 環境では、Z3 の Cross-Origin Isolation 要件を避けられる同梱の HiGHS・Pumpkin の利用を推奨します。
 
 ---
 
-## 📦 ブラウザ ESM (`<script type="module">`)
+## 📦 ブラウザ ESM（`<script type="module">`）
 
 ビルドツールを使わずに、セルフホストの静的サーバーや npm CDN からブラウザ向け ESM バンドルを直接インポートできます：
 
@@ -185,9 +195,9 @@ Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src
 
 ---
 
-## 🟨 クラシック `<script>` タグ (IIFE / 単一 HTML / CDN)
+## 🟨 クラシック `<script>` タグ（IIFE / 単一 HTML / CDN）
 
-単一の HTML ファイルや CodePen 等では、`washi.min.js` を `<script>` タグで読み込むことでグローバル変数 `window.Washi` から全 API を利用できます：
+単一 HTML ファイルや CodePen・JSFiddle では、クラシック `<script>` タグで `washi.min.js` を読み込みます。この即時実行関数式（`IIFE`）バンドルは、コア API をグローバルオブジェクト `window.Washi` として公開します：
 
 ```html
 <!DOCTYPE html>
@@ -200,9 +210,9 @@ Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- CDN からの WaSHI コア + HiGHS (MIT) 読み込み（セルフホスト時は "./dist/browser/washi.min.js" 等） -->
+    <!-- CDN からの WaSHI コア + HiGHS（MIT）読み込み（セルフホスト時は "./dist/browser/washi.min.js" 等） -->
     <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
-    <!-- 同梱・オプションプラグイン (window.Washi に自動登録): -->
+    <!-- 同梱・オプションプラグイン（window.Washi が読み込み済みならソルバーを自動登録）: -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/z3.min.js"></script> -->
@@ -232,25 +242,43 @@ Tauri（`tauri.conf.json`）では、CSP で WebAssembly の実行（`script-src
 </html>
 ```
 
-> [!NOTE]
-> - **クロスオリジン CDN の Worker 起動**: 通常の Web オリジン（`https://` / `http://`）では直接の `new Worker("https://cdn...")` がブロックされるため、WaSHI は軽量の ES モジュール `Blob` ブートストラップ（`import "https://..."`）を介して自動的に Web Worker を起動します。
-> - **ローカル `.html` の直接起動（`file://`）**: CDN から `washi.min.js` や `solvers/pumpkin.min.js` を読み込む場合、ローカル `.html` を `file://`（ダブルクリック、ローカルサーバー不要）で開いてもそのまま動作します。実効オリジンが不透明な環境（`window.origin === "null"`、ローカルの `file:` URL や `allow-same-origin` なしの `sandbox="allow-scripts"` `<iframe>` 埋め込みなど）では、`useWorker` 未指定時に自動的にメインスレッドで HiGHS と Pumpkin を実行するためです。一方、セルフホストのローカル `.wasm` ファイル（`file://` ではブラウザの `fetch()` CORS 制約でブロック）や **Z3**（`COOP`/`COEP` 必須）は `http://` / `https://` サーバー経由で配信してください。
+### クロスオリジン CDN での Worker 起動
+
+通常の `http://`・`https://` オリジンでは、クロスオリジン URL を直接指定した `new Worker("https://cdn...")` はブロックされます。WaSHI は ES モジュールを読み込む軽量な `Blob` URL を仲介して、クロスオリジン CDN の Worker を自動起動します。
+
+### ローカル `.html` ファイルの直接起動（`file://`）
+
+| シナリオ | 動作と前提条件 |
+| --- | --- |
+| **CDN スクリプト** | HTTPS CDN から読み込む `washi.min.js`（および `solvers/pumpkin.min.js`）は、ローカル `.html` ファイルをダブルクリックして `file://` で開くだけで、サーバーなしに動作します。 |
+| **不透明オリジン（`window.origin === "null"`）** | `file://` ページや `allow-same-origin` なしのサンドボックス `<iframe>` では、`useWorker` 未指定時に HiGHS と Pumpkin が自動的にメインスレッドで実行されます。 |
+| **セルフホスト `.wasm` と Z3** | ローカル `.wasm` をセルフホストする場合、`file://` では `fetch()` がブロックされるため `http://` または `https://` で配信する必要があります。Z3 にはさらにセキュアコンテキスト（`https://` または `http://localhost`）と Cross-Origin Isolation が必要です。 |
 
 ---
 
 ## 🔒 オフライン・イントラネット・厳格な CSP 環境での運用
 
-WaSHI は外部 CDN への暗黙的な通信を一切行いません。インターネット接続のない閉域網や厳格な Content Security Policy (CSP) 環境でセルフホストする場合は、以下の手順で配置できます：
+WaSHI は外部 CDN への暗黙的な通信を行いません。閉域網や厳格な `CSP` 環境でセルフホストする場合は、次の 3 点を設定します：
 
-1. **静的アセットの配置**: `node_modules/@ohtaman/washi/dist/browser/` 内のファイルを同一オリジンに配置します：
-   - `washi.js` / `washi.min.js`, `highs.wasm`, `highs-worker.js`
-   - 同梱 Pumpkin 利用時: `solvers/pumpkin.js` / `solvers/pumpkin.min.js`, `solvers/pumpkin.wasm`, `solvers/pumpkin-worker.js`（および `solvers/pumpkin-*.js` チャンク）
-   - GLPK 利用時: `solvers/glpk.js` / `solvers/glpk.min.js`
-   - Z3 利用時: `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm`
-2. **Content Security Policy (CSP) ヘッダー**:
-   - WebAssembly の実行許可（`script-src` に `'wasm-unsafe-eval'`）。
-   - Web Worker またはクロスオリジン `Blob` ブートストラップを利用する場合は `worker-src 'self' blob:;` を許可します。
-   - `blob:` Worker が禁止されている環境では、同一オリジン（`'self'`）から `highs-worker.js` / `solvers/pumpkin-worker.js` を配信するか、`await m.solve({ useWorker: false })` でメインスレッド実行を選択してください。
-3. **Cross-Origin Isolation（Z3 利用時のみ）**:
-   - HiGHS・Pumpkin・GLPK は通常のブラウザ環境でそのまま動作します。
-   - Z3 WASM は pthreads と `SharedArrayBuffer` を使用するため、`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp` が必要です（Chromium / Firefox では `credentialless` も利用できますが、Safari 対応には `require-corp` が必要です）。詳細は [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。
+### 1. `dist/browser/` ディレクトリをそのまま配置する
+
+`node_modules/@ohtaman/washi/dist/browser/` を、ディレクトリ構造ごと同一オリジンへ配置してください。`washi.js`・`highs-worker.js`・`solvers/pumpkin.js` などの ESM エントリーポイントは、`dist/browser/` 配下のハッシュ付きチャンク（`loader-*.js`・`browser-runtime-*.js`・`solvers/pumpkin-*.js` 等）を相対パスで参照します。
+
+| バンドル | `dist/browser/` 配下の必要ファイル |
+| --- | --- |
+| **コア（HiGHS）** | `washi.js` / `washi.min.js`、`highs.wasm`、`highs-worker.js`、`dist/browser/` 直下の `*.js` チャンク |
+| **同梱 Pumpkin** | `solvers/pumpkin.js` / `solvers/pumpkin.min.js`、`solvers/pumpkin.wasm`、`solvers/pumpkin-worker.js`、`solvers/pumpkin-*.js` チャンク |
+| **オプション GLPK** | `solvers/glpk.js` / `solvers/glpk.min.js` |
+| **オプション Z3** | `solvers/z3.js` / `solvers/z3.min.js`、`solvers/z3-built.js`、`solvers/z3-built.wasm` |
+
+### 2. CSP ディレクティブを設定する
+
+| ディレクティブ | 必要な設定値 | 用途 |
+| --- | --- | --- |
+| `script-src` | `'wasm-unsafe-eval'` | WebAssembly モジュールのコンパイルを許可する。 |
+| `worker-src` | `'self' blob:` | 標準の Web Worker と CDN `Blob` ブートストラップを許可する。 |
+| `worker-src`（`blob:` 禁止時） | `'self'` のみ | `highs-worker.js`・`solvers/pumpkin-worker.js` を同一オリジンから配信するか、`{ useWorker: false }` を指定する。 |
+
+### 3. Cross-Origin Isolation を有効化する（Z3 利用時のみ）
+
+HiGHS・Pumpkin・GLPK は通常のブラウザ環境で Cross-Origin Isolation ヘッダーなしに動作します。Z3 は `SharedArrayBuffer` を用いたマルチスレッド実行を行うため、**セキュアコンテキスト**（`https://` または `http://localhost`）が必要です。あわせて `Cross-Origin-Opener-Policy` と `Cross-Origin-Embedder-Policy` ヘッダー（`COOP`/`COEP`）も設定してください。詳細は [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。

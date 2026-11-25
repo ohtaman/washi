@@ -1,12 +1,21 @@
 # Introduction & Installation
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. Write expressions naturally with tagged templates (`expr`) and solve mathematical optimization and constraint programming problems directly in **Node.js and the browser** using WebAssembly solvers (**HiGHS**, **Pumpkin**, **Z3**, and **GLPK**).
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings Python PuLP-style algebraic modeling to TypeScript and JavaScript. You write linear, quadratic, and logical expressions with tagged templates (`expr`). Bundled WebAssembly solvers execute those models directly in **Node.js 18+** and modern browsers.
 
 ---
 
 ## 📦 Installation
 
-Both the default **HiGHS** solver (LP / MIP / Convex QP) and the **Pumpkin** CP/LCG solver (`@ohtaman/washi/solvers/pumpkin`) are bundled with zero external dependencies and work out of the box:
+Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, with two additional solvers available as optional peer dependencies:
+
+| Solver | Install | Problem Classes & Capabilities |
+| --- | --- | --- |
+| **HiGHS** *(default)* | Bundled in `@ohtaman/washi` | Linear, mixed-integer, and convex quadratic programming — `LP`, `MIP`, and `QP`. |
+| **Pumpkin** | Bundled in `@ohtaman/washi` (`@ohtaman/washi/solvers/pumpkin`) | Constraint Programming (`CP`) and exact `unsatCore` conflict diagnosis on bounded integers and booleans. |
+| **Z3** | Optional (`z3-solver`) | Satisfiability Modulo Theories (`SMT`), continuous logic, and exact `unsatCore` diagnosis (including continuous variables). |
+| **GLPK** | Optional (`glpk.js`) | Alternative `LP` and `MIP` solver under the GPL-3.0 license. |
+
+An **unsatisfiable core** (`unsatCore`) is a subset of constraints that cannot all hold at once (naming constraints makes conflicts easy to identify). Both Pumpkin and Z3 extract `unsatCore` via `m.check()`.
 
 ::: code-group
 
@@ -28,12 +37,14 @@ bun add @ohtaman/washi
 
 :::
 
-Install optional peer dependencies when you need **Z3** (SMT logic and Unsat Core conflict diagnosis) or **GLPK**:
+Install optional peer dependencies when you need **Z3** or **GLPK**:
 
 ```bash
-npm install z3-solver   # For SMT logic and Unsat Core conflict diagnosis
-npm install glpk.js     # For GLPK solver (GPL-3.0)
+npm install z3-solver   # Optional: SMT logic and unsatCore diagnosis for models with continuous variables
+npm install glpk.js     # Optional: GLPK solver (GPL-3.0)
 ```
+
+In browsers, Z3 requires a Secure Context and Cross-Origin Isolation headers — `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy`, abbreviated `COOP`/`COEP`. See [Cross-Origin Isolation](./cross-origin.md) for server setup.
 
 Using an AI coding agent? See [Coding with AI Agents](./coding-agents.md) for `npx skills add ohtaman/washi`, `llms.txt`, and ready-to-use prompt templates.
 
@@ -41,7 +52,9 @@ Using an AI coding agent? See [Coding with AI Agents](./coding-agents.md) for `n
 
 ## 🚀 Quick Start
 
-Here is a complete production-planning model illustrating the three steps of a typical WaSHI workflow:
+A typical WaSHI optimization workflow follows three steps: declare decision variables, register an objective and named constraints, and solve and verify the result.
+
+The production-planning example below maximizes profit from desks and chairs under wood and labor limits:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -57,7 +70,7 @@ m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
 m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
 
-// 3. Solve (built-in HiGHS WebAssembly) and verify the solution
+// 3. Solve (bundled HiGHS WebAssembly) and verify the solution
 const status = await m.solve();
 if (m.hasPrimalSolution) {
   const report = m.verify();
@@ -66,9 +79,9 @@ if (m.hasPrimalSolution) {
 }
 ```
 
-1. **Define decision variables (`lb`, `ub`)**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`, providing finite `lb` and `ub` bounds when known.
-2. **Describe the objective and constraints (`expr`)**: Formulate equations naturally with `` expr`...` ``, and pass constraint names to make infeasibility debugging straightforward.
-3. **Solve and verify (`solve`, `verify`)**: `await m.solve()` runs the bundled HiGHS WebAssembly solver. Check `m.hasPrimalSolution` before reading `.value`, and call `m.verify()` to independently verify that bounds, integrality, and constraints hold.
+1. **Define decision variables**: Create variables with `m.continuous()`, `m.integer()`, or `m.binary()`. For continuous and integer variables, supply finite `lb` and `ub` bounds whenever they are known.
+2. **Describe the objective and constraints**: Write algebraic formulas with `` expr`...` `` and register them with `m.objective()` and `m.constraint()`. Pass descriptive constraint names so infeasibility reports identify conflicting rules clearly.
+3. **Solve and verify**: Call `await m.solve()` to run the bundled HiGHS solver. Check `m.hasPrimalSolution` before reading `.value`, then call `m.verify()` to confirm bounds, integrality, and constraints hold.
 
 ---
 
@@ -76,11 +89,11 @@ if (m.hasPrimalSolution) {
 
 ### Choose Your Workflow
 
-- **Build with an AI Coding Agent**: [Coding with AI Agents](./coding-agents.md) — Setup with `npx skills add`, `llms.txt` / Context7, ready-to-use prompt examples across problem types and deployment targets, and conflict debugging
-- **Write Models Directly in TypeScript**: [Modeling Guide](../guide/variables.md) — Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and conflict diagnosis
+- **Build with an AI Coding Agent**: [Coding with AI Agents](./coding-agents.md) — Skill setup via `npx skills add ohtaman/washi`, `llms.txt` / Context7, and ready-to-use prompt templates.
+- **Write Models in TypeScript**: [Modeling Guide](../guide/variables.md) — Variable containers, `sum` and `dot` aggregations, logical constraints, and conflict diagnosis.
 
 ### Reference & Examples
 
-- **[Examples & API Finder](../examples/)**: 12 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
-- **[Solvers Overview](../solvers/)**: Compare bundled HiGHS and Pumpkin with optional Z3 and GLPK adapters
-- **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, standalone HTML, and desktop/mobile WebViews
+- **[Examples & API Finder](../examples/)**: 12 runnable optimization, CP, and SMT recipes—from shift scheduling to portfolio QP.
+- **[Solvers Overview](../solvers/)**: Side-by-side comparison of bundled HiGHS and Pumpkin against optional Z3 and GLPK.
+- **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite/Next.js, CDNs, standalone HTML, and desktop/mobile WebViews.

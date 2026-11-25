@@ -9,7 +9,7 @@ aside: false
 # Showcase
 
 <p class="washi-showcase-lead">
-Explore WaSHI's interactive WebAssembly playground, real-world decision-support applications, and mathematical optimization puzzle games—all running locally in your browser.
+Explore WaSHI's interactive WebAssembly playground, decision-support applications, and optimization puzzle games—all running locally in your browser.
 </p>
 
 <div class="washi-showcase-section">
@@ -31,7 +31,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          Formulate LP, MIP, Convex QP, CP, and SMT models in TypeScript/JavaScript and solve directly in your browser via WebAssembly. Includes runnable presets, CPLEX LP export inspection, sensitivity analysis, and Pumpkin / Z3 <code>unsatCore</code> conflict diagnosis.
+          Write LP, MIP, Convex QP, CP, and SMT models in TypeScript or JavaScript and solve locally via WebAssembly. Includes runnable presets, LP export inspection, sensitivity analysis, and <code>unsatCore</code> conflict diagnosis.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -54,7 +54,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
           <a href="/exercises/" target="_self" class="washi-showcase-title-link">Optimization N</a>
         </div>
         <p class="washi-showcase-desc">
-          Interactive mathematical optimization exercise series running locally in your browser with side-by-side WaSHI (TypeScript) and PuLP (Python, backed by HiGHS / <code>highspy</code> via Pyodide) tabs, automated judging, and formulation notes.
+          Interactive mathematical optimization exercise series running locally in your browser. Compare WaSHI in TypeScript and PuLP in Python (via Pyodide and <code>highspy</code>) side by side with automated judging and formulation notes.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -79,13 +79,13 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏥</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/apps/ai-shift/" target="_self" class="washi-showcase-title-link">AI Nurse Shift Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          1-month 3-shift nurse roster scheduler combining on-device Chrome Built-in AI (Gemini Nano) for natural-language shift requests with WaSHI (HiGHS MILP) for sub-second optimization and conflict diagnosis.
+          A 1-month, 3-shift nurse roster scheduler powered by WaSHI and HiGHS MIP. Natural-language shift input requires Chrome Built-in AI (Gemini Nano) on a supported Chrome browser.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -96,19 +96,19 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
 
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-ai-timetable.png" alt="AI University Timetabling Copilot (UCTP)" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-ai-timetable.png" alt="AI University Timetabling Copilot" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🎓</span>
-          <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+          <span class="washi-showcase-badge">Gemini Nano × HiGHS MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">AI University Timetabling Copilot (UCTP)</a>
+          <a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">AI University Timetabling Copilot</a>
         </div>
         <p class="washi-showcase-desc">
-          Simultaneously coordinate 4 student cohort timetables, 10 faculty schedules (including adjunct day limits), and 7 specialized rooms. Add natural-language constraints via on-device Gemini Nano and solve or diagnose conflicts with WaSHI (HiGHS).
+          Solves the University Course Timetabling Problem (UCTP) across 4 student cohorts, 10 faculty members, and 7 rooms with WaSHI and HiGHS MIP. Natural-language rule entry requires Chrome Built-in AI (Gemini Nano).
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -134,13 +134,13 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🏰</span>
-          <span class="washi-showcase-badge">Castle Defense Shift Puzzle</span>
+          <span class="washi-showcase-badge">Shift Scheduling MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/demon-castle-shift/" target="_self" class="washi-showcase-title-link">Demon Castle 24-Hour Guard Shift</a>
         </div>
         <p class="washi-showcase-desc">
-          Work alongside Chief Tactician Lilith to defend the Demon Castle from the Hero's advancing army day and night while respecting each guard's preferred hours and rest rules.
+          Work with Chief Tactician Lilith to defend the Demon Castle day and night. Build shift rosters that respect each guard's preferred hours and rest rules.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -158,13 +158,13 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">🐑</span>
-          <span class="washi-showcase-badge">Pasture Enclosure Puzzle</span>
+          <span class="washi-showcase-badge">Network Cut &amp; Enclosure MIP</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">Fluffy Sheep Pasture Enclosure</a>
         </div>
         <p class="washi-showcase-desc">
-          Block hungry wolves using a limited number of wooden fences while maximizing wild strawberries and plugging or avoiding pitfalls inside the safe pasture where Moko the sheep can roam.
+          Block hungry wolves using a limited supply of wooden fences. Maximize wild strawberries inside Moko the sheep's safe pasture while plugging or avoiding pitfalls.
         </p>
       </div>
       <div class="washi-showcase-actions">
@@ -175,19 +175,19 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
   </div>
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — Precision Sheet Metal Puzzle" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">2D Strip Packing MILP</span>
+          <span class="washi-showcase-badge">2D Strip Packing MIP</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — Precision 2D Packing</a>
+          <a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
         </div>
         <p class="washi-showcase-desc">
-          Pack ordered metal parts into a titanium matrix plate with zero scrap void and zero fault lines alongside inspection drone UNIT-74. Experience true 2D cutting-stock MILP optimization.
+          Pack ordered metal parts into a titanium plate with zero scrap void and zero fault lines alongside drone UNIT-74. Powered by live 2D cutting-stock MIP optimization.
         </p>
       </div>
       <div class="washi-showcase-actions">

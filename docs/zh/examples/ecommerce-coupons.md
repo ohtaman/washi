@@ -4,17 +4,20 @@
 | :--- | :--- | :--- | :--- |
 | 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
 
-现代电商结算页面通常包含复杂的促销规则：最低消费门槛、特定品类折扣、可叠加与互斥（不可叠加）优惠券，以及每笔订单的最大用券数量限制。直接在浏览器端（或边缘节点 Worker）运行优化求解器，可以让结算 UI 自动为用户匹配最优的优惠券组合——甚至在跨过满减门槛能降低实付总额时，智能推荐一件低价“凑单”商品。
+电商结算规则常同时包含最低消费门槛、品类满减、互斥优惠券和单笔用券数量上限。将这些规则统一建模为单个 MIP，可同时求得最优优惠券组合，并判断是否加购低价凑单商品以进一步降低实付总额。
 
-本示例演示了 **`m.indicator(binVar, constraint, { activeValue, M? })`** 的用法：针对 HiGHS 等 MIP 求解器，它会通过 Big-M 重构自动将*“若选用该优惠券，则必须满足最低消费门槛”*这类条件约束线性化。当省略参数 `M` 时，WaSHI 会根据变量的有限上下界自动推导安全且紧凑的 Big-M 值。
+本例使用 `m.indicator(binVar, constraint, { activeValue, M? })` 表示“若选用某张优惠券，则必须满足最低消费门槛”的条件约束。对于 HiGHS 等 MIP 求解器，WaSHI 会通过 **Big-M 线性化** 自动转换：当二元指示变量未激活时，利用常数 `M` 放宽对应不等式。
+
+> [!IMPORTANT]
+> **省略 `M` 的前提条件**：被控约束表达式中的所有变量都具备**有限的** `lb` 和 `ub` 上下界时，WaSHI 才会自动推导紧凑的 Big-M（0-1 变量天然有界于 `[0, 1]`）。若包含无界变量，需显式传入 `M` 或先设置有限边界。
 
 <EcommerceCouponDemo />
 
 ## 场景与促销规则
 
-一位顾客的购物车中当前共有 **$242** 的商品（其中数码类 Tech 商品 **$210**，服饰类 Apparel 商品 **$32**）：
-- **可选凑单配件：** 可加购一根 **$10** 的编织 USB-C 数据线（Tech 品类），将购物车商品总额从 `$242` 提升至 `$252`。
-- **可用优惠券列表**（每次结算最多使用 **2 张优惠券**；其中**互斥券（Exclusive）**最多使用 **1 张**）：
+顾客购物车当前共有 `$242` 商品（数码类 Tech 占 `$210`，服饰类 Apparel 占 `$32`）：
+- **可选凑单商品**：加购一根 `$10` 的编织 USB-C 数据线（Tech 品类）后，商品总额从 `$242` 升至 `$252`（Tech 品类小计从 `$210` 升至 `$220`）。
+- **可用优惠券**：每笔订单最多使用 2 张优惠券；互斥券（Exclusive）彼此不能同时使用，最多使用 1 张（可与可叠加券组合使用）。
 
 | 优惠券代码 | 抵扣金额 | 适用门槛 | 叠加规则 |
 | :--- | :---: | :--- | :--- |
@@ -22,9 +25,6 @@
 | `TECH30` | **-$30** | Tech 品类满额 $\ge \$200$ | **互斥 (Exclusive)**（不可与 `MEGA45_250` 同享） |
 | `MEGA45_250` | **-$45** | 购物车总额 $\ge \$250$ | **互斥 (Exclusive)**（不可与 `TECH30` 同享） |
 | `MEMBER10` | **-$10** | 购物车总额 $\ge \$150$ | **可叠加 (Stackable)** |
-
-如果不加购 `$10` 的数据线，购物车（`$242`）无法解锁 `MEGA45_250`，实付金额为 `$242 - $30 (TECH30) - $15 (WELCOME15) = $197`。  
-而加购 `$10` 的数据线后（商品总额 `$252`），顾客即可解锁 `MEGA45_250`（`-$45`）+ `WELCOME15`（`-$15`），最终实付仅需 **$192**——白得一根数据线的同时还额外省下了 **$5**！
 
 ## WaSHI 实现
 
@@ -58,7 +58,7 @@ async function optimizeCheckoutCart() {
   const techSpend  = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // 1. 指示符约束 (Indicator)：若 useCoupon[id] == 1，则必须满足最低消费门槛
-  // 省略 M 时，WaSHI 会根据变量边界自动推导最紧凑的 Big-M
+  // 省略 M 时，WaSHI 会根据变量边界自动推导紧凑的 Big-M
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
       m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCart}`, {
@@ -97,3 +97,9 @@ optimizeCheckoutCart();
 ```
 
 </CodeRunner>
+
+## 结果解读与要点
+
+- **不加购数据线（`$197`）**：购物车总额 `$242` 未达到 `MEGA45_250` 门槛，最优组合为 `TECH30`（`-$30`）与 `WELCOME15`（`-$15`），最终实付 `$197`。
+- **加购 `$10` 数据线（`$192`）**：商品总额增至 `$252` 后解锁 `MEGA45_250`（`-$45`），搭配 `WELCOME15`（`-$15`）使实付降至 `$192`，多得一根数据线的同时反而再省 `$5`。
+- **使用 `m.indicator()` 的优势**：在同一 MIP 模型中联合决策 `addUsbCable` 与 `useCoupon`，无需手工枚举凑单组合即可直接权衡加购成本与新增折扣。

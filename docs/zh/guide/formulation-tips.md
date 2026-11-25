@@ -1,6 +1,8 @@
 # 数理优化建模模式与实战技巧
 
-前面的建模指南各章节介绍了 WaSHI 的 API 与核心功能（`Model`、`expr`、`m.constraint`、`m.solve` 等）。本章汇总了线性规划（LP）与混合整数规划（MIP）中常用的通用运筹建模模式与求解器调优技巧。*（有关配合 Pumpkin 使用 `disjoint`、`cumulative`、`distinct`、`allowed` 与 `at` 的约束规划建模方法，请参阅 [约束规划 (CP) 建模指南](./constraint-programming.md)。）*
+前面的建模指南介绍了 WaSHI 的核心 API（`Model`、`expr`、`m.constraint`、`m.solve`）。
+本章汇总了线性规划（LP）与混合整数线性规划（MILP）中常用的建模模式与求解器调优技巧。
+有关配合 Pumpkin 使用约束规划（`disjoint`、`cumulative`、`distinct`、`allowed`、`at`）的方法，请参阅 [约束规划 (CP) 建模指南](./constraint-programming.md)。
 
 ---
 
@@ -8,9 +10,10 @@
 
 ### 半连续决策变量（$\{0\} \cup [L, U]$）
 
-半连续变量的取值范围为 $\{0\} \cup [L, U]$（例如要么不排产取 `0`，要么排产且产量落在最小起订批次 $L = 10$ 与产能上限 $U = 100$ 之间）。
+半连续变量在未启用时取 `0`，启用时则必须落在正区间 $[L, U]$（`0 < L <= U`）内。
+例如，某生产批次要么不排产（`0`），要么产量位于最小起订量 $L = 10$ 与产能上限 $U = 100$ 之间。
 
-将一个连续变量与一个 0-1 二元激活变量结合，并添加关联约束 $L \cdot b \le x \le U \cdot b$ 即可表达：
+将连续变量 $x$（`batch`）与二元激活变量 $b$（`isActive`）通过关联不等式 $L \cdot b \le x \le U \cdot b$ 结合即可表达：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -26,9 +29,10 @@ m.constraint(expr`${batch} <= 100 * ${isActive}`, "max_batch_run");
 
 ### 最小扰动重优化（汉明距离惩罚）与热启动的区别 {#minimal-perturbation}
 
-在遇到突发变动需要重排计划时，仅将原方案传入 [`initialValue`](./variables.md#warm-start) 只会为求解器提供搜索起点提示，**不会**阻止求解器为了微小的目标改进而推翻原有的大部分决策。
+遇到突发变动需要重排计划时，仅将原方案传入 [`initialValue`](./variables.md#warm-start) 只会为求解器提供搜索起点提示。
+它**不会**阻止求解器为了微小的目标改善而推翻原有的大部分决策。
 
-若希望新二元方案 $x_i \in \{0, 1\}$ 尽可能接近原方案 $x_i^{\text{prev}} \in \{0, 1\}$，可在目标函数中添加**汉明距离（Hamming Distance）变动惩罚项**：
+若希望新二元方案 $x_i \in \{0, 1\}$ 尽量贴近原方案 $x_i^{\text{prev}} \in \{0, 1\}$，请在目标函数中惩罚**汉明距离**（发生翻转的决策数量）：
 
 $$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
 
@@ -55,7 +59,8 @@ m.objective(minimize(expr`5 * sum(${flipTerms})`));
 
 ### 两个 0-1 二元变量乘积（$x_A \cdot x_B$）的线性化 {#binary-product}
 
-在整数规划中，当两个二元决策 $x_A, x_B \in \{0, 1\}$ **同时为 `1`** 时才会产生协同收益或交互成本（$z_{AB} = x_A \cdot x_B$），无需使用二次项。引入辅助变量 $z_{AB} \in [0, 1]$ 与以下三条 McCormick / Fortet 线性不等式，即可保持为标准 MILP 高效求解：
+假设只有当两个二元决策 $x_A, x_B \in \{0, 1\}$ **同时为 `1`** 时，才会触发协同收益或交互成本。
+无需写成二次乘积，只需引入辅助变量 $z_{AB} \in [0, 1]$ 和三条标准线性不等式（Fortet / McCormick 线性化），即可保持纯 MILP 结构高效求解：
 
 $$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
 
@@ -77,9 +82,11 @@ m.objective(maximize(expr`10 * ${xA} + 10 * ${xB} + 5 * ${bothAB}`));
 
 ### Min-Max 与 Max-Min 目标函数（负载均衡）
 
-WaSHI 内置的 `max(...)` 和 `min(...)` 原语（参见[分段线性与下标索引表达式](./expressions.md#分段线性与下标索引表达式-max-min-abs-at)）已自动完成 HiGHS/GLPK 的凸 LP 上境图变换，并在 Pumpkin 中直接映射为原生传播器。
+WaSHI 内置的 `max(...)` 与 `min(...)` 会自动将凸负载均衡目标转为 HiGHS/GLPK 上的纯线性不等式，以及 Pumpkin 上的原生约束。
+详见 [分段线性与下标索引表达式](./expressions.md#分段线性与下标索引表达式-max-min-abs-at)。
 
-如果您需要在第 4 节的词典序两阶段优化等场景中显式引用上下界变量 $z$，可以手动引入辅助上限变量 $z$，对每个个体施加 $\text{load}_i \le z$ 后最小化 $z$（对称地，Max-Min 最大化最低水平时施加 $u_i \ge z$ 并最大化 $z$）：
+如果需要在后续约束或多阶段优化中显式引用共享上限变量 $z$（例如在第一阶段最小化峰值负荷后，将其作为第二阶段的约束上限），请直接写出 **上镜图（epigraph）** 形式。
+对每个负载施加 $\text{load}_i \le z$ 并最小化 $z$（若为 Max-Min，则对各项指标 $u_i$ 施加 $u_i \ge z$ 并最大化 $z$）：
 
 $$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
 
@@ -105,7 +112,8 @@ m.objective(minimize(maxHours));
 
 ### 硬约束与软约束（引入弹性松弛变量）
 
-如果将所有业务目标都设为刚性的**硬约束**，一旦遇到需求高峰或资源不足，模型就会直接返回 `"Infeasible"`。建议保留物理与法规底线作为硬约束，将非刚性目标转化为带非负松弛变量（$s \ge 0$）与惩罚权重 $W$ 的**软约束**：
+若把所有业务目标都设为刚性的**硬约束**，一旦需求超出产能，模型就会直接返回 `"Infeasible"`。
+建议把物理与法规底线保留为硬约束，把可弹性调整的目标写成带非负松弛变量（$s \ge 0$）和目标惩罚权重 $W$ 的**软约束**：
 
 | 约束类型 | 硬约束形式 | 软约束（弹性）形式 ($s \ge 0$) | 目标函数惩罚项（最小化） |
 | :--- | :--- | :--- | :--- |
@@ -131,13 +139,15 @@ await m.solve();
 ```
 
 > [!TIP]
-> **惩罚权重 $W$ 的量级选择**：将权重 $W$ 设为高于常规边际成本（通常为单位成本的 $10\sim 1{,}000$ 倍），避免使用 $10^{12}$ 这类过大的数值。将模型中最大系数与最小系数之比控制在 $10^5\sim 10^6$ 以内，有助于保持 LP/MIP 求解器的浮点数值稳定性。
+> **惩罚权重 $W$ 的量级选择**：将 $W$ 设为高于常规边际成本（通常为单位成本的 $10\sim 1{,}000$ 倍），避免使用 $10^{12}$ 这类极端数值。
+> 将模型中非零系数的最大绝对值与最小绝对值之比控制在 $10^5\sim 10^6$ 以内，可保持 LP 与 MIP 求解器的浮点数值稳定性。
 
 ### 同构资源的对称性破缺（Symmetry Breaking）
 
-当模型包含 $K$ 个完全相同的可互换资源（如相同规格的货车、箱子或并行机器）时，重排资源编号会产生多达 $K!$ 个目标值完全相同的等价解，导致 MIP 求解器在分支定界树中重复搜索镜像子树。
+当模型包含 $K$ 个完全可互换的资源（如相同规格的货车、箱子或并行机器）时，重排编号会产生多达 $K!$ 个目标值相同的等价解。
+若不打破对称性，MIP 求解器会在分支定界树中重复搜索同构（对称）子树。
 
-对同构资源的启用状态施加顺序约束（$u_0 \ge u_1 \ge \dots \ge u_{K-1}$），即可在不改变最优值的前提下削减对称搜索空间：
+设 $u_k \in \{0, 1\}$ 表示是否启用第 $k$ 个资源，施加按编号顺序启用的约束（$u_0 \ge u_1 \ge \dots \ge u_{K-1}$），即可在不改变最优值的前提下削减搜索空间：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -161,10 +171,10 @@ for (let k = 0; k < numTrucks - 1; k++) {
 
 ### 多目标优化（加权求和 vs. 词典序两阶段求解）
 
-当需要兼顾多个目标（例如最小化总成本 $f_1$ 与均衡最大工时 $f_2$）时，常用以下两种模式：
+在平衡总成本 $f_1$ 与峰值负荷 $f_2$ 等多个目标时，常用两种方法：
 
-- **加权求和（单次求解）**：量纲归一化后合并为单一目标，如 ``minimize(expr`${totalCost} + 50 * ${maxHours}`)``。
-- **词典序（分层）两阶段求解**：当首要目标具有明确优先级时，第一阶段先求最优值 $f_1^*$，第二阶段将 $f_1$ 锁定在最优值附近（如允许 1% 退化的 $f_1 \le 1.01 f_1^*$），再优化次要目标：
+- **加权求和（单次求解）**：将各目标归一化后合并为单一目标，例如 ``minimize(expr`${totalCost} + 50 * ${maxHours}`)``。
+- **词典序两阶段求解**：先求首要目标 $f_1$ 的最优值 $f_1^*$，再用容差约束锁定 $f_1$，最后再优化次要目标 $f_2$。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -192,21 +202,30 @@ await m.solve();
 
 ### MIP 长尾效应（Tail-Off）与最优性间隙容差
 
-在组合 MIP 问题中，求解器通常能在前几秒内找到高质量的可行解（Incumbent），但往往会耗费大量剩余时间在分支定界树中证明最后不到 0.5% 的间隙（**Tail-Off 现象**）。
+在组合 MIP 问题中，求解器通常能在几秒内找到优质的**暂定解（Incumbent）**，却往往耗费剩余大部分时间去证明最后不到 0.5% 的间隙（**Tail-Off 现象**）。
 
-在交互式应用或生产流水线中，建议在 [`m.solve(options)`](./objectives.md#求解选项-solveoptions) 中结合 `timeLimit` 设置符合业务精度的容差：
-- **`relativeGap: 0.01`**：一旦证明当前可行解与理论对偶界的相对差距在 **1% 以内**即停止。
-- **`absoluteGap: 100`**：一旦 `|objectiveValue - objectiveBound| <= 100`（按目标函数单位计）即停止。
+在交互式应用或批处理任务中，建议在 [`m.solve(options)`](./objectives.md#求解选项-solveoptions) 中配合 `timeLimit` 设置合理的容差：
+
+- **`relativeGap: 0.01`**（支持 HiGHS / GLPK）：一旦证明当前暂定解目标值与对偶界的相对差距在 **1% 以内**即停止。
+- **`absoluteGap: 100`**（仅 HiGHS 支持）：一旦目标函数值的绝对差距满足 `|objectiveValue - objectiveBound| <= 100` 即停止。
 
 ---
 
 ## 5. 分解算法建模要点 {#decomposition-tips}
 
-在使用 [`solveColumnGeneration` 或 `solveBenders`](./decomposition.md) 时：
+在使用 [`solveColumnGeneration` 或 `solveBenders`](./decomposition.md) 时，以下三项技巧有助于提升收敛速度与解质量。
 
-1. **列生成法中的集合覆盖（`>= 1`）与集合划分（`== 1`）**：
-   将覆盖约束写成不等式 `>= 1`（集合覆盖）而非严格等式 `== 1`（集合划分），可将对偶价格限制在 $\pi_i \ge 0$，抑制对偶价格的正负震荡并加快收敛（适用于满足三角不等式、跳过重复访问不会增加成本的路径问题）。
-2. **Price-and-Branch（`finalizeAsMIP: true`）与精确 Branch-and-Price**：
-   在根节点 LP 松弛完成列生成后对列池求解一次 MIP（`finalizeAsMIP: true`）即 **Price-and-Branch（限制主问题启发式）**，无需在定价子问题内部处理分支约束即可快速获得高质量整数解。
-3. **Benders / 延迟约束中的多割平面分离**：
-   当子问题从当前候选解中同时检测到多个孤立子回路或违规连通分量时，一次性返回**全部**违规分量的割平面数组能显著减少主问题 MIP 的重求解次数（完整示例参见 [旅行商问题 (`examples/traveling-salesperson`)](../examples/traveling-salesperson.md)）。
+### 列生成法中的集合覆盖（`>= 1`）与集合划分（`== 1`）
+
+在最小化问题中，将需求覆盖约束写成不等式 `>= 1`（集合覆盖）而非等式 `== 1`，可将对偶价格限制在 $\pi_i \ge 0$。
+这能抑制对偶价格的正负震荡并加快收敛，尤其适用于满足三角不等式、跳过重复访问不会增加成本的路径问题。
+
+### Price-and-Branch（`finalizeAsMIP: true`）与精确 Branch-and-Price
+
+在根节点 LP 松弛完成列生成后，对已有列池求解一次 MIP（`finalizeAsMIP: true`）被称为 **Price-and-Branch** 启发式。
+与在分支定界树的每个节点内都执行列生成的精确 **Branch-and-Price** 不同，它无需把分支约束嵌入定价子问题，即可快速产出高质量整数解（但不保证严格的整数最优性）。
+
+### Benders 与延迟约束中单轮返回多条割平面
+
+当 `subproblem` 回调从当前候选解中检测到多个孤立子环或违规分量时，请一次性返回**全部**违规分量的割平面数组。
+单轮追加多个割平面能够大幅减少主问题 MIP 的重求解次数（完整示例见 [旅行商问题](../examples/traveling-salesperson.md)）。
