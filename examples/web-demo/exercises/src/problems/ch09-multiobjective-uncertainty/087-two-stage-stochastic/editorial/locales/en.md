@@ -1,6 +1,6 @@
 ## Approach
 
-Formulate the deterministic equivalent LP by pairing shared first-stage variables `orders` ($x_j \ge 0$) with scenario-indexed second-stage recourse variables `shortage` ($u_{s,j} \ge 0$) and `leftover` ($v_{s,j} \ge 0$), linked by $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ and weighted by scenario probabilities $p_s$.
+Formulate the deterministic equivalent LP by pairing shared first-stage variables `orders` ($x_j \ge 0$) with scenario-indexed second-stage recourse variables `shortage` ($u_{s,j} \ge 0$) and `leftover` ($v_{s,j} \ge 0$). Writing $c_j, q_j, r_j, W_{\text{cap}}$ for `orderCosts`, `shortageCosts`, `salvageValues`, and `warehouseCap`, link each scenario through $x_j + u_{s,j} - v_{s,j} = d_{s,j}$ and weight second-stage net costs by scenario probabilities $p_s$.
 
 ## Mathematical Model
 

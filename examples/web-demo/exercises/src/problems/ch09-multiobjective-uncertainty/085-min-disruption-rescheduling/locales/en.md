@@ -1,27 +1,27 @@
 # #085. Minimum-Disruption Rescheduling
 
 <!-- section:scenario -->
-A call center has already published a baseline 0-1 shift schedule across its staff and time slots. Just before operations begin, unexpected absences make certain staff-slot pairs unavailable.
+A call center has already published a baseline 0-1 shift schedule across its workers and time slots. Just before operations begin, unexpected absences make certain worker-slot pairs unavailable.
 
-Create a new 0-1 schedule that avoids all unavailable cells, meets the exact headcount required in each time slot, and does not exceed any staff member's maximum shift limit. To minimize workplace disruption, minimize the weighted Hamming distance (number of changed cells from the baseline schedule) plus total staff assignment costs.
+Create a new 0-1 schedule that avoids all unavailable cells, meets the exact headcount required in each time slot, and does not exceed any worker's maximum shift limit. To minimize workplace disruption, minimize the weighted Hamming distance (number of changed cells from the baseline schedule) plus total worker assignment costs.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `baseline` | `number[][]` | Baseline 0-1 shift matrix ($m \times T$) |
-| `unavailable` | `number[][]` | Unavailability mask (1 forbids assigning staff $i$ to slot $t$) |
-| `demands` | `number[]` | Exact headcount required in each time slot $t$ |
-| `maxShifts` | `number[]` | Maximum number of shifts allowed for each staff member $i$ |
-| `workerCosts` | `number[]` | Assignment cost per shift for each staff member $i$ |
+| `baseline` | `number[][]` | Baseline 0-1 shift matrix (`[worker][time slot]`, $m \times T$) |
+| `unavailable` | `number[][]` | Unavailability mask (`[worker][time slot]`, $m \times T$; 1 forbids assignment) |
+| `demands` | `number[]` | Exact headcount required in each time slot |
+| `maxShifts` | `number[]` | Maximum number of shifts allowed for each worker |
+| `workerCosts` | `number[]` | Assignment cost per shift for each worker |
 | `disruptionWeight` | `number` | Penalty weight per changed cell from `baseline` |
 
 ### Output
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `schedule` | `number[][]` | Repaired 0-1 shift matrix ($m \times T$) |
+| `schedule` | `number[][]` | Repaired 0-1 shift matrix (`[worker][time slot]`, $m \times T$) |
 | `hammingDistance` | `number` | Total number of cells differing from `baseline` |
 | `totalObjective` | `number` | Minimized weighted Hamming distance plus worker assignment costs |
 

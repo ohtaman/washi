@@ -10,11 +10,11 @@ To balance the workload across teams, minimize the total cost consisting of the 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `unitCosts` | `number[]` | Linear operating cost per ton for each team |
+| `unitCosts` | `number[]` | Operating cost per ton for each team |
 | `minAlloc` | `number[]` | Minimum required allocation for each team (tons) |
 | `maxAlloc` | `number[]` | Maximum allowed allocation for each team (tons) |
 | `totalDemand` | `number` | Exact total demand to distribute across all teams (tons) |
-| `fairnessWeight` | `number` | Non-negative penalty weight $\lambda$ on $\sum_i (x_i - \bar{x})^2$ |
+| `fairnessWeight` | `number` | Non-negative weight on the sum of squared deviations from the mean allocation |
 
 ### Output
 

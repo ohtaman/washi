@@ -6,18 +6,20 @@
 
 $$
 \begin{aligned}
-\min \quad & \sum_{j=0}^{n-1} F_j y_j + \sum_{s=0}^{S-1} p_s \left( C_{\text{sw}} \sum_{j=0}^{n-1} d_{s,j} + C_{\text{sh}} u_s \right) \\
-\text{s.t.} \quad & \sum_{j=0}^{n-1} C_j y_j - \Gamma z - \sum_{j=0}^{n-1} p_j \ge C_{\text{rob}}, \quad z + p_j \ge \delta_j y_j && \forall j \\
+\min \quad & \sum_{j=0}^{n-1} F_j y_j + \sum_{s=0}^{S-1} \pi_s \left( C_{\text{sw}} \sum_{j=0}^{n-1} d_{s,j} + C_{\text{sh}} u_s \right) \\
+\text{s.t.} \quad & \sum_{j=0}^{n-1} C_j y_j - \Gamma z - \sum_{j=0}^{n-1} p_j \ge C_{\text{rob}} \\
+& z + p_j \ge \delta_j y_j && \forall j \\
 & w_{s,j} = 0 && \forall (s,j): \text{offline}_{s,j} = 1 \\
 & d_{s,j} \ge w_{s,j} - y_j, \quad d_{s,j} \ge y_j - w_{s,j} && \forall s, j \\
-& \sum_{j=0}^{n-1} C_j w_{s,j} + u_s \ge D_s, \quad y_j, w_{s,j} \in \{0, 1\},\; z, p_j, d_{s,j}, u_s \ge 0
+& \sum_{j=0}^{n-1} C_j w_{s,j} + u_s \ge D_s && \forall s \\
+& y_j, w_{s,j} \in \{0, 1\},\; z, p_j, d_{s,j}, u_s \ge 0 && \forall s, j
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **两个决策向量之间的汉明距离线性化**：与 `#085`（基准固定为常数）不同，此处 $y_j$ 与 $w_{s,j}$ 均为决策变量；引入非负变量及两道不等式 $d_{s,j} \ge w_{s,j} - y_j$、$d_{s,j} \ge y_j - w_{s,j}$，即可在 $C_{\text{sw}} > 0$ 时精确表达 $|w_{s,j} - y_j|$。
-- **鲁棒、随机与弹性机制的协同作用**：Bertsimas-Sim 约束淘汰脆弱的第一阶段组合，随机追索在预留冗余与震后切换间取得平衡（用例 2），而弹性缺口松弛避免为极低概率峰值付出过高备用成本（用例 3）。
+- **两个决策向量之间的汉明距离线性化**：与基准方案固定为常数的单阶段重排不同，此处 $y_j$ 与 $w_{s,j}$ 均为决策变量；引入非负变量及两道不等式 $d_{s,j} \ge w_{s,j} - y_j$、$d_{s,j} \ge y_j - w_{s,j}$，即可在 $C_{\text{sw}} > 0$ 时精确表达 $|w_{s,j} - y_j|$。
+- **鲁棒、随机与弹性机制的协同作用**：Bertsimas-Sim 约束淘汰脆弱的第一阶段组合，随机追索在预留冗余与震后切换间取得平衡（用例 2），而弹性缺口松弛可避免为极低概率的极端峰值付出过高备用成本。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
 ## 实现要点

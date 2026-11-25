@@ -18,7 +18,7 @@
     "m0": "返回值必须是包含 { produced, inventories, shortfalls, totalCost } 的对象。",
     "m1": "produced[{p0}] = {p1} 超出产能范围 [0, {p2}]。",
     "m2": "inventories[{p0}] ({p1}) 与按实际需求结算的期末库存 ({p2}) 不一致。",
-    "m3": "shortfalls[{p0}] ({p1}) 与按实际需求结算的缺口量 ({p2}) 不一致。",
+    "m3": "shortfalls[{p0}] ({p1}) 与按实际需求结算的缺货量 ({p2}) 不一致。",
     "m4": "返回的 totalCost ({p0}) 与实际逐期累计总成本 ({p1}) 不一致。",
     "m5": "实际成本 ({p0}) 低于滚动时域 MPC 策略成本 ({p1})，请确认每步仅使用 windowLen 窗口和 forecastDemands 规划。",
     "m6": "实际成本 ({p0}) 高于滚动时域 MPC 策略成本 ({p1})。",

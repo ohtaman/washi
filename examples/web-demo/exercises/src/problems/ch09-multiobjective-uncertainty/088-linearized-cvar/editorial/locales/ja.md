@@ -1,6 +1,6 @@
 ## アプローチ
 
-Rockafellar-Uryasev (2000) の $\text{CVaR}_\alpha$ 線形再定式化を用います。上下界を持たない自由変数 $\eta \in \mathbb{R}$（`lb: -Infinity`）と非負の超過変数 $u_s \ge L_s(w) - \eta$ を導入し、期待損失と $\lambda \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$ の和を純 LP として最小化します。
+Rockafellar-Uryasev (2000) の $\text{CVaR}_\alpha$ 線形再定式化を用います。各シナリオ $s$ のポートフォリオ損失を $L_s(w) = -\sum_j r_{s,j} w_j$ とおき、上下界を持たない自由変数 $\eta \in \mathbb{R}$（`lb: -Infinity`）と非負の超過変数 $u_s \ge L_s(w) - \eta$ を導入して、期待損失と $\lambda \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$ の和を純 LP として最小化します。
 
 ## 数理モデル
 
@@ -14,7 +14,7 @@ $$
 
 ## ポイント
 
-- **$\eta$ を必ず自由変数（`lb: -Infinity` / `lowBound=None`）にする**: WaSHI も PuLP もデフォルトの下界は 0 です。Case 1 のようにテールシナリオでもリターンが正（損失が負、$\eta^* = -0.0428$）のとき、$\eta \ge 0$ のままだと CVaR が歪み最適解に到達できません（-0.0596 対 -0.1742）。
+- **$\eta$ を必ず自由変数にする（WaSHI は `lb: -Infinity`、PuLP は `lowBound=None`）**: WaSHI の `m.continuous` は既定で下界 `lb` が 0 となるため、無制約のしきい値には `{ lb: -Infinity }` の明示が必須です。一方 PuLP の `pulp.LpVariable` は既定で `lowBound=None`（無制約）なので、`eta` に `lowBound=0` を誤ってコピーせず、意図を明確にするため `lowBound=None` と明記するのが安全です。Case 1 のようにテールシナリオでもリターンが正（損失が負、$\eta^* = -0.0428$）のとき、$\eta \ge 0$ と制限すると CVaR が歪み最適解に到達できません（-0.0596 対 -0.1742）。
 - **VaR の非凸性と CVaR の凸性**: VaR（分位点）の直接制約は 0-1 変数を必要としますが、CVaR は整数変数ゼロの厳密な凸線形計画として高速に解けます。
 - 用語の確認: [ガイド・用語集 — 上下界](?view=guide&lang=ja#building-blocks) / [問題の分類](?view=guide&lang=ja#paradigms)
 

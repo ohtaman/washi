@@ -1,6 +1,6 @@
 ## Approach
 
-Apply Rockafellar and Uryasev's (2000) LP reformulation of $\text{CVaR}_\alpha$: introduce an **unconstrained** scalar VaR threshold $\eta \in \mathbb{R}$ (`lb: -Infinity`) and non-negative scenario excess variables $u_s \ge L_s(w) - \eta$, then minimize expected portfolio loss plus $\lambda \cdot \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$.
+Apply Rockafellar and Uryasev's (2000) LP reformulation of $\text{CVaR}_\alpha$: introduce an **unconstrained** scalar VaR threshold $\eta \in \mathbb{R}$ (`lb: -Infinity`) and non-negative scenario excess variables $u_s \ge L_s(w) - \eta$, where $L_s(w) = -\sum_j r_{s,j} w_j$ is scenario $s$'s portfolio loss, then minimize expected portfolio loss plus $\lambda \cdot \left(\eta + \frac{1}{1-\alpha}\sum_s p_s u_s\right)$.
 
 ## Mathematical Model
 
@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **Keep $\eta$ free (`lb: -Infinity`, `lowBound=None`)**: Both WaSHI (`m.continuous`) and PuLP (`pulp.LpVariable`) default `lb` to 0. Whenever even the tail portfolio return is positive (making loss negative, as in Case 1 where $\eta^* = -0.0428$), clamping $\eta \ge 0$ distorts CVaR and ruins optimality (-0.0596 vs. -0.1742).
+- **Keep $\eta$ free (`lb: -Infinity` in WaSHI, `lowBound=None` in PuLP)**: WaSHI's `m.continuous` defaults `lb` to 0, so `{ lb: -Infinity }` is required for an unconstrained threshold; PuLP's `pulp.LpVariable` already defaults `lowBound` to `None` (unbounded), so do not copy `lowBound=0` onto `eta` and write `lowBound=None` explicitly to make the intent clear. Whenever even the tail portfolio return is positive (making loss negative, as in Case 1 where $\eta^* = -0.0428$), clamping $\eta \ge 0$ distorts CVaR and ruins optimality (-0.0596 vs. -0.1742).
 - **Convexity of CVaR vs. non-convexity of VaR**: Direct quantile VaR requires binary indicators and is non-convex, whereas $\text{CVaR}_\alpha$ optimizes an exact convex epigraph with zero integer variables.
 - Related definitions: [Guide & Glossary — Variable Bounds](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 

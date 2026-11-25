@@ -10,11 +10,11 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `unitCosts` | `number[]` | 各团队每吨的线性运营成本 |
+| `unitCosts` | `number[]` | 各团队每吨的运营成本 |
 | `minAlloc` | `number[]` | 各团队的最小分配量（吨） |
 | `maxAlloc` | `number[]` | 各团队的最大分配量（吨） |
 | `totalDemand` | `number` | 全团队共同分担的总需求量（吨） |
-| `fairnessWeight` | `number` | 施加在 $\sum_i (x_i - \bar{x})^2$ 上的非负惩罚权重 $\lambda$ |
+| `fairnessWeight` | `number` | 施加在各团队偏离平均分配量的平方和上的非负惩罚权重 |
 
 ### 输出
 

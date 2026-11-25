@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **Capturing non-supported MIP Pareto points**: In discrete MIPs, the Pareto frontier is non-convex; linear weighted sums ($\max p^\top x - w\, e^\top x$) can only hit points on the upper convex hull and skip interior "unsupported" Pareto solutions. Sweeping $\varepsilon_k$ discovers every exact frontier point regardless of convexity.
+- **Capturing unsupported MIP Pareto points**: Discrete MIP Pareto frontiers can be non-convex, so linear weighted sums ($\max p^\top x - w\, e^\top x$) only reach points on the upper convex hull and skip interior "unsupported" solutions—for example, in the visible Example, $(e=6, p=45)$ lies strictly below the line segment joining $(0, 0)$ and $(11, 85)$. Sweeping $\varepsilon_k$ recovers the exact maximum profit $z(\varepsilon_k)$ at every threshold regardless of convexity (when strict non-dominance is needed under profit ties, add a small emission tie-breaker as in the augmented $\varepsilon$-constraint method).
 - **No scaling calibration needed**: Moving emissions into an explicit physical constraint eliminates arbitrary trade-off weights and directly answers operational cap questions ("what is the maximum profit under emission cap $\varepsilon_k$?").
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Core Building Blocks](?view=guide&lang=en#building-blocks).
 
@@ -25,11 +25,11 @@ Create an independent `Model` for each emission threshold in `input.epsilons`, e
 **WaSHI (TypeScript)**
 
 ```ts
-for (let k = 0; k < input.epsilons.length; k++) {
+for (const [k, eps] of input.epsilons.entries()) {
   const m = new Model(`EpsilonPareto_${k}`);
   const x = m.binary(n, { prefix: "x" });
   m.constraint(expr`dot(${input.budgets}, ${x}) <= ${input.budgetCap}`);
-  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${input.epsilons[k]}`);
+  m.constraint(expr`dot(${input.emissions}, ${x}) <= ${eps}`);
   m.objective(maximize(expr`dot(${input.profits}, ${x})`));
   await m.solve();
   selections.push(x.map((v) => Math.round(v.value!) || 0));
@@ -47,4 +47,6 @@ for k, eps in enumerate(epsilons):
     prob += pulp.lpDot(emissions, x) <= eps
     prob += pulp.lpDot(profits, x)
     prob.solve(pulp.HiGHS(msg=False))
+    selections.append([round(pulp.value(v)) for v in x])
+    frontier_profits.append(float(pulp.value(prob.objective)))
 ```
