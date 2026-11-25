@@ -17,9 +17,9 @@ $$
 
 ## 核心要点
 
-- **消除 $K!$ 个对称颜色排列分支**：任意 $k$-着色方案通过重命名颜色编号都会产生 $k! \binom{K}{k}$ 个等价解。约束 `colors[0] == 0` 与 `colors[i] <= 1 + max(colors[0..i-1])` 将搜索空间限制在按 `0, 1, 2, ...` 顺序引入新颜色的规范解上。
+- **消除多达 $K!$ 个对称颜色排列分支**：任意 $k$-着色方案通过重命名颜色编号都会产生 $k! \binom{K}{k}$ 个等价解。约束 `colors[0] == 0` 与 `colors[i] <= 1 + max(colors[0..i-1])` 将搜索空间限制在按 `0, 1, 2, ...` 顺序引入新颜色的规范解上。
 - **无跳号性质使 `maxColor + 1` 精确等于所用颜色数**：由于规范编号不会跳过任何颜色编号，已用颜色集合恒为 `{0, ..., maxColor}`，无需额外引入颜色使用 0-1 指示变量即可直接最小化 `maxColor + 1`。
-- 参考资料：[指南与术语表 — 核心构建模块](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
+- 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
 

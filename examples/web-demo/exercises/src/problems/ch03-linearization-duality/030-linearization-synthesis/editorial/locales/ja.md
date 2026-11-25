@@ -1,6 +1,6 @@
 ## アプローチ
 
-0-1 配備変数 $x_i \in \{0, 1\}$ 上に、第 3 章で学んだ 3 つの線形化定石——エピグラフ最大負荷変数 $t \ge L_r$、L1 目標偏差変数 $d_r^+ - d_r^- = L_r - \tau_r$、および符号混在ペア相互作用に対する McCormick 線形化 $w_k = x_{i_k} x_{j_k}$——を 1 つの MIP モデルとして統合します。
+候補サービス数を $n$（`baseCosts.length`）、ゾーン数を $m$（`loads.length`）、ペア相互作用の件数を $P$（`pairs.length`）とし、各入力を基本コスト $c_i$（`baseCosts[i]`）、提供価値 $v_i$（`values[i]`）、ゾーン負荷 $a_{ri}$（`loads[r][i]`）、目標負荷 $\tau_r$（`targets[r]`）、偏差重み $\beta_r$（`devWeights[r]`）、ピーク重み $\alpha$（`peakWeight`）、ペア組 $(i_k, j_k, s_k)$（`pairs[k]`）とおきます。0-1 配備変数 $x_i \in \{0, 1\}$（`selected[i]`）と各ゾーンの合計負荷 $L_r = \sum_{i=0}^{n-1} a_{ri} x_i$ の上に、第 3 章で学んだ 3 つの線形化定石——エピグラフ最大負荷変数 $t \ge L_r$（`peakLoad`）、非負の L1 目標偏差変数対 $d_r^+ - d_r^- = L_r - \tau_r$、および符号混在ペア相互作用に対する McCormick 線形化 $w_k = x_{i_k} x_{j_k}$（`pairProducts[k]`）——を 1 つの MIP モデルとして統合します。
 
 ## 数理モデル
 

@@ -1,6 +1,6 @@
 ## 解题思路
 
-为每项任务声明有界整数开始时间变量 `starts[i]`（范围为 `[releaseTimes[i], horizon - durations[i]]`），添加前后序不等式并按机器分组施加 `disjoint(tasks)` 全局约束，最后最小化 `max(starts[i] + durations[i])`。
+为每道工序声明有界整数开始时间变量 `starts[i]`（范围为 `[releaseTimes[i], horizon - durations[i]]`），添加前后序不等式并按设备分组施加 `disjoint(tasks)` 全局约束，最后最小化 `max(starts[i] + durations[i])`。
 
 ## 数学模型
 
@@ -15,8 +15,8 @@ $$
 
 ## 核心要点
 
-- **边缘推导（Edge-finding）vs. Big-M 两两拆解**：相比于在 MIP 中为每对同机任务引入二元顺序变量与 Big-M 不等式，`disjoint(tasks)` 直接调用 Pumpkin 原生的 `disjunctive_strict` 传播器进行整体区间推演，域收窄更紧致。
-- **紧凑的有限时间域**：取 `horizon = max(releaseTimes) + sum(durations)` 作为上界，既保证不剪掉任何有效串行调度，又为 Pumpkin 提供了紧致的整数域范围。
+- **边缘推导（Edge-finding）vs. Big-M 两两拆解**：相比于在 MIP 中为每对同设备工序引入二元顺序变量与 Big-M 不等式，`disjoint(tasks)` 直接调用 Pumpkin 原生的 `disjunctive_strict` 传播器进行整体区间推演，域收窄更紧致。
+- **安全的有限时间域**：取 `horizon = max(releaseTimes) + sum(durations)` 作为上界，既保证不剪掉任何有效串行调度，又为 Pumpkin 提供了安全的有限整数域范围。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
 
 ## 实现要点

@@ -10,13 +10,14 @@ $$
 \text{s.t.} \quad & \text{AllDifferent}(\text{next}), \quad \text{AllDifferent}(\text{rank}) \\
 & \text{next}_i \ne i && \forall i \in \{0, \dots, n-1\} \\
 & \text{rank}_0 = 0, \quad \text{rank}_{\text{next}_0} = 1 \\
-& \text{next}_i \ne 0 \implies \text{rank}_{\text{next}_i} = \text{rank}_i + 1 && \forall i \in \{1, \dots, n-1\}
+& \text{next}_i \ne 0 \implies \text{rank}_{\text{next}_i} = \text{rank}_i + 1 && \forall i \in \{1, \dots, n-1\} \\
+& \text{next}_i,\, \text{rank}_i \in \{0, \dots, n-1\} && \forall i \in \{0, \dots, n-1\}
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **为何仅有 `distinct(next)` 与 `next[i] != i` 还不够**：无不动点置换仍可能分解成 `(0 <-> 1)` 与 `(2 <-> 3)` 这样的多个互不连通子环。要求所有不回到 `0` 的边都满足 `rank[next[i]] == rank[i] + 1`，任何不含节点 `0` 的环都会因位次单调递增而矛盾，进而只允许单一哈密顿回路。
+- **为何仅有 `distinct(next)` 与 `next[i] != i` 还不够**：无不动点置换仍可能分解成 `(0 <-> 1)` 与 `(2 <-> 3)` 这样的多个互不连通子环。要求所有不回到 0 的边都满足 `rank[next[i]] == rank[i] + 1`，任何不含节点 0 的环都会因位次单调递增而矛盾，进而只允许单一哈密顿回路。
 - **紧凑的 $O(n)$ CP 表达**：将整数变量数组 `rank` 传入 `at(rank, next[i])`，避免 MIP 所需的 $O(n^2)$ 边二元变量和 MTZ Big-M 约束。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
 

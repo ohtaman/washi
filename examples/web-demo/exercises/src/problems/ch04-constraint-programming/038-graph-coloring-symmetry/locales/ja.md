@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | `numNodes` | `number` | 基地局（頂点）の個数（0 〜 `numNodes - 1`） |
 | `maxColors` | `number` | 利用可能なチャネル（色）番号の個数（0 〜 `maxColors - 1`） |
-| `edges` | `number[][]` | `colors[u] != colors[v]` を課す干渉ペア（無向辺 `[u, v]`）のリスト |
+| `edges` | `number[][]` | 干渉し合う基地局のペア（無向辺 `[u, v]`）のリスト |
 
 ### 出力
 

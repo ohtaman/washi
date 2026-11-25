@@ -16,8 +16,8 @@ Choose the immediate successor node visited right after each node so that all no
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `next` | `number[]` | Immediate successor node (`0` to `n - 1`) visited directly after node `i` |
-| `totalDistance` | `number` | Minimized total tour distance `sum(distances[i][next[i]])` (km) |
+| `next` | `number[]` | Immediate successor node (0 to `n - 1`) visited directly after node `i` |
+| `totalDistance` | `number` | Minimized total travel distance of the tour (km) |
 
 <!-- section:example -->
 **Input**
@@ -48,4 +48,4 @@ When `next` is [1, 2, 3, 0], it forms the single closed tour 0 -> 1 -> 2 -> 3 ->
 Model one successor integer variable per node in `[0, n - 1]` with no self-loops and all distinct values. To rule out disconnected cycles (subtours), introduce an auxiliary visit-order rank variable per node starting at depot 0.
 
 <!-- section:hint2 -->
-Enforce `distinct(next)`, `distinct(rank)`, and `rank[0] == 0` along with `at(rank, next[0]) == 1`. For every customer node $i \ge 1$, link successor steps with `implies(expr\`${next[i]} != 0\`, expr\`at(${rank}, ${next[i]}) == ${rank[i]} + 1\`)`, and minimize `sum(input.distances.map((row, i) => at(row, next[i])))` using `solver: "pumpkin"`.
+Enforce `distinct(next)`, `distinct(rank)`, and `rank[0] == 0` along with `at(rank, next[0]) == 1`. For every customer node $i \ge 1$, link successor steps with ``implies(expr`${next[i]} != 0`, expr`at(${rank}, ${next[i]}) == ${rank[i]} + 1`)``, and minimize the sum of `at(distances[i], next[i])` across all nodes using `solver: "pumpkin"`.

@@ -10,14 +10,14 @@
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `costs` | `number[][]` | `n × m` の整数段取りコスト行列（`costs[i][j]` は作業 `i` を機械 `j` に割り当てるコスト［千円］、`n <= m`） |
+| `costs` | `number[][]` | $n \times m$ の整数段取りコスト行列（`costs[i][j]` は作業 `i` を機械 `j` に割り当てる段取りコスト［千円］、$1 \le n \le m$） |
 
 ### 出力
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `assignment` | `number[]` | 各作業に割り当てた機械番号（0 〜 `m - 1`） |
-| `totalCost` | `number` | 最小化された総割当コスト（千円） |
+| `assignment` | `number[]` | 各作業に割り当てた機械番号（0 〜 $m - 1$） |
+| `totalCost` | `number` | 最小化された総段取りコスト（千円） |
 
 <!-- section:example -->
 **入力例**
@@ -41,10 +41,10 @@
 }
 ```
 
-割当 [0, 2, 1] は 3 つの異なる機械を選び、総コストは `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42** 千円となります。
+割当 [0, 2, 1] は 3 台の異なる機械を選び、総段取りコストは `costs[0][0] + costs[1][2] + costs[2][1]` $= 10 + 18 + 14 =$ **42** 千円となります。
 
 <!-- section:hint1 -->
-$n \times m$ のバイナリ行列を作る代わりに、各作業に対して `[0, numMachines - 1]` の機械番号を表す整数変数を 1 つずつ定義します。すべての作業が相異なる機械を使うように制約します。
+作業と機械の 2 次元バイナリ行列を作る代わりに、各作業に対して候補機械の番号を表す整数変数を 1 つずつ定義します。すべての作業が相異なる機械を使うように制約します。
 
 <!-- section:hint2 -->
-機械の重複を防ぐために `distinct(assignment)` を追加します。各作業のコストは Element 制約 `at(row, assignment[i])` で参照できるため、`sum(input.costs.map((row, i) => at(row, assignment[i])))` を `minimize` し、`solver: "pumpkin"` で解いてください。
+機械の重複を防ぐために `distinct(assignment)` を追加します。各作業の段取りコストは Element 制約 `at(row, assignment[i])` で参照し、その `sum(...)` を `minimize` して `solver: "pumpkin"` で解いてください。

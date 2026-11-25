@@ -18,12 +18,12 @@ $$
 ## Key Points
 
 - **CP vs. MIP comparison**: Formulating this problem in MIP requires $O(n \cdot H)$ time-indexed binary pulse variables $x_{i,t}$, mode selection binaries $z_{i,m}$, pairwise tuple indicators for every `modeRule`, and $O(H)$ capacity rows. In WaSHI + Pumpkin, the entire model stays $O(n)$ integer variables while leveraging native `disjoint` edge-finding, `cumulative` time-table filtering, `allowed` tuple tables, and `at` element propagators simultaneously.
-- **Hidden idle-time synergy**: When machine contention or power limits force a job to wait before starting (`starts[i] >= 4`), choosing a slower off-machine pre-staging mode (`setup = 2` or `3`) eliminates post-processing delay (`post = 0`) for free.
+- **Hidden idle-time synergy**: When machine contention or power limits force a job to wait before starting, choosing a slower off-machine pre-staging mode absorbs the setup during the wait and eliminates post-processing delay for free—for example, in the sample problem, Job 0 must wait for Machine 0 until `starts[0] = 4`, so picking mode 1 (`setup = 2`, `post = 0`) removes its post-processing delay at no extra cost.
 - Related references: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation
 
-Combine `at(..., modes[i])` for setup and precedence offsets, `disjoint(...)` for per-machine non-overlap, `cumulative(..., input.powerCap)` for the factory power limit, and `allowed(...)` for mode compatibility.
+Combine `at(..., modes[i])` for setup and precedence offsets, `disjoint(...)` for per-machine non-overlap, `cumulative(..., input.powerCap)` for the factory power limit, and `allowed(...)` for mode compatibility, then minimize the makespan (including post-processing) via `max(...)`.
 
 **WaSHI (TypeScript)**
 
@@ -39,13 +39,13 @@ m.constraint(
 );
 m.constraint(
   Array.from({ length: numMachines }, (_, mach) =>
-    disjoint(
-      input.jobs
-        .map((j, i) => ({ start: starts[i], duration: j.duration, machine: j.machine }))
-        .filter((t) => t.machine === mach)
-        .map(({ start, duration }) => ({ start, duration }))
-    )
+    input.jobs
+      .map((j, i) => ({ start: starts[i], duration: j.duration, machine: j.machine }))
+      .filter((t) => t.machine === mach)
+      .map(({ start, duration }) => ({ start, duration }))
   )
+    .filter((tasks) => tasks.length > 0)
+    .map((tasks) => disjoint(tasks))
 );
 m.constraint(
   cumulative(
@@ -55,5 +55,14 @@ m.constraint(
 );
 m.constraint(
   input.modeRules.map((r) => allowed([modes[r.jobs[0]], modes[r.jobs[1]]], r.allowedPairs))
+);
+m.objective(
+  minimize(
+    max(
+      input.jobs.map(
+        (j, i) => expr`${starts[i]} + ${j.duration} + at(${j.postTimes}, ${modes[i]})`
+      )
+    )
+  )
 );
 ```

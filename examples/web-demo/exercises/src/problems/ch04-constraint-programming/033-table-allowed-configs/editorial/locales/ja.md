@@ -1,15 +1,15 @@
 ## アプローチ
 
-各部品の選択を表す整数変数 `choices[c]` を用意し、許容ルールを `allowed(vars, tuples)`、禁止ルールを `not(allowed(vars, tuples))` でそのまま記述したうえで、`at(componentCosts[c], choices[c])` の合計コストを最小化します。
+部品数を $k$（`componentCosts.length`）、各部品のオプションコスト配列を $\text{cost}_c$（`componentCosts[c]`）、互換ルール集合を $\mathcal{R}_{\text{allowed}}$（`allowedRules`）、禁止ルール集合を $\mathcal{R}_{\text{forbidden}}$（`forbiddenRules`）とおきます。各部品に選択オプションを表す有限整数変数 $x_c \in \{0, \dots, |\text{cost}_c| - 1\}$（`choices[c]`）を導入し、各ルールの対象部品タプルが許容集合 $T^+$ に含まれること・禁止集合 $T^-$ に含まれないことを制約して、総コスト $\sum_{c=0}^{k-1} \text{cost}_{c,\, x_c}$ を最小化します。WaSHI（Pumpkin）では、`allowed(vars, tuples)`、`not(allowed(vars, tuples))`、および `at(componentCosts[c], choices[c])` でそのまま記述できます。
 
 ## 数理モデル
 
 $$
 \begin{aligned}
 \min \quad & \sum_{c=0}^{k-1} \text{cost}_{c,\, x_c} \\
-\text{s.t.} \quad & (x_{v_1}, \dots, x_{v_r}) \in T^+ && \forall (V, T^+) \in \mathcal{R}_{\text{allowed}} \\
-& (x_{v_1}, \dots, x_{v_r}) \notin T^- && \forall (V, T^-) \in \mathcal{R}_{\text{forbidden}} \\
-& x_c \in \{0, \dots, |\text{cost}_c| - 1\} && \forall c
+\text{s.t.} \quad & (x_{v_1}, \dots, x_{v_r}) \in T^+ && \forall ((v_1, \dots, v_r), T^+) \in \mathcal{R}_{\text{allowed}} \\
+& (x_{v_1}, \dots, x_{v_r}) \notin T^- && \forall ((v_1, \dots, v_r), T^-) \in \mathcal{R}_{\text{forbidden}} \\
+& x_c \in \{0, \dots, |\text{cost}_c| - 1\} && \forall c \in \{0, \dots, k - 1\}
 \end{aligned}
 $$
 

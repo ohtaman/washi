@@ -10,7 +10,7 @@
   "caseNames": [
     "4 tasks under capacity 3",
     "5-task diamond DAG under capacity 4",
-    "6-task hardware testbench RCPSP",
+    "6-task multi-predecessor schedule",
     "7-task multi-branch project",
     "9-task deep DAG under capacity 6"
   ],

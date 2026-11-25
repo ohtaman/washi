@@ -10,9 +10,9 @@
   ],
   "caseNames": [
     "4 services across 2 balanced zones",
-    "5 services across 3 clusters",
+    "5 services across 3 zones",
     "4-service low-threshold synergy trade-off",
-    "6-service multi-cluster deployment",
+    "6-service multi-zone deployment",
     "7-service 4-zone enterprise fleet"
   ],
   "judge": {
@@ -23,6 +23,6 @@
     "m4": "Reported peakLoad ({p0}) does not match maximum zone load ({p1}).",
     "m5": "Reported totalCost ({p0}) does not match computed cost ({p1}).",
     "m6": "Valid deployment, but totalCost ({p0}) exceeds optimal ({p1}).",
-    "m7": "Optimal multi-cluster deployment found (totalCost = {p0})!"
+    "m7": "Optimal multi-zone deployment found (totalCost = {p0})!"
   }
 }

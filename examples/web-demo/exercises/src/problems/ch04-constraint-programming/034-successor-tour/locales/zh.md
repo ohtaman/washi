@@ -1,4 +1,4 @@
-# #034. 基于后继变量与位次数组的哈密顿回路
+# #034. 基于后继变量的哈密顿回路
 
 <!-- section:scenario -->
 配送计划负责人正在为配送车辆规划单一闭合巡回路径：车辆从仓库（节点 0）出发，恰好访问每个客户节点各一次后返回仓库。任意两个节点之间都给定了直接行驶的整数距离（km）。
@@ -16,8 +16,8 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `next` | `number[]` | 节点 `i` 之后紧接着访问的后继节点编号（`0` 到 `n - 1`） |
-| `totalDistance` | `number` | 最小化后的总巡回距离 `sum(distances[i][next[i]])`（km） |
+| `next` | `number[]` | 节点 `i` 之后紧接着访问的后继节点编号（0 到 `n - 1`） |
+| `totalDistance` | `number` | 最小化后的总行驶距离（km） |
 
 <!-- section:example -->
 **输入示例**
@@ -48,4 +48,4 @@
 为每个节点定义一个取值在 `[0, n - 1]` 且无自环、互不相同的后继节点变量。为消除断开的子环（subtour），再为每个节点引入一个从仓库 0 开始计数的访问次序（rank）辅助整数变量。
 
 <!-- section:hint2 -->
-施加 `distinct(next)`、`distinct(rank)`、`rank[0] == 0` 以及 `at(rank, next[0]) == 1`。对每个客户节点 $i \ge 1$，使用 `implies(expr\`${next[i]} != 0\`, expr\`at(${rank}, ${next[i]}) == ${rank[i]} + 1\`)` 串联访问次序，并用 `solver: "pumpkin"` 最小化 `sum(input.distances.map((row, i) => at(row, next[i])))`。
+施加 `distinct(next)`、`distinct(rank)`、`rank[0] == 0` 以及 `at(rank, next[0]) == 1`。对每个客户节点 $i \ge 1$，使用 ``implies(expr`${next[i]} != 0`, expr`at(${rank}, ${next[i]}) == ${rank[i]} + 1`)`` 串联访问次序，并借助 `at(distances[i], next[i])` 最小化各节点行驶距离之和，通过 `solver: "pumpkin"` 求解。

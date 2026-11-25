@@ -1,6 +1,6 @@
 {
   "title": "#039. Cage-Sum Latin Grid Puzzle",
-  "subtitle": "Solve a pure feasibility Killer-Latin grid puzzle combining row/column distinctness with cage sum and uniqueness clues.",
+  "subtitle": "Solve a pure feasibility cage-sum Latin grid puzzle combining row/column distinctness with cage sum and uniqueness clues.",
   "tags": [
     "CP",
     "Feasibility",

@@ -10,9 +10,9 @@ Among all valid interference-free channel assignments (colorings), minimize the 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `numNodes` | `number` | Number of base stations (vertices, `0` to `numNodes - 1`) |
-| `maxColors` | `number` | Number of available channel (color) indices (`0` to `maxColors - 1`) |
-| `edges` | `number[][]` | List of interfering pairs (undirected edges `[u, v]`) requiring `colors[u] != colors[v]` |
+| `numNodes` | `number` | Number of base stations (vertices, 0 to `numNodes - 1`) |
+| `maxColors` | `number` | Number of available channel (color) indices (0 to `maxColors - 1`) |
+| `edges` | `number[][]` | List of interfering pairs (undirected edges `[u, v]`) |
 
 ### Output
 

@@ -15,7 +15,7 @@ $$
 ## Key Points
 
 - **CP Disjunction (`or`) vs. MIP Big-M**: A standard Big-M MIP introduces $4 \binom{n}{2}$ binary direction selectors $l_{ij}, r_{ij}, b_{ij}, t_{ij}$ with $l_{ij} + r_{ij} + b_{ij} + t_{ij} \ge 1$ and large $M_x, M_y$ constants, yielding a very weak LP relaxation ($x_i = y_i = 0$ satisfies fractional $0.25$ on each selector). CP avoids Big-M dilution completely and propagates bounds directly via lazy clause generation as soon as any axis separation fails.
-- **Tight strip height upper bound**: Summing `heights` gives a safe finite `y[i]` bound `maxHeight - heights[i]`, keeping Pumpkin's integer domains compact.
+- **Safe finite strip height upper bound**: Summing `heights` gives a safe finite `y[i]` bound `maxHeight - heights[i]`, keeping Pumpkin's integer domains bounded without arbitrary large constants.
 - Related references: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
 ## Key Implementation

@@ -10,9 +10,9 @@ Pre-specified cells must be fixed to their given digits, and within each region 
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `size` | `number` | Grid dimension `N` (`1..N` digits per row and column) |
-| `givens` | `number[][]` | Pre-filled cell clues `[row, col, value]` (`0`-based row/col) |
-| `cages` | `CageClue[]` | Cage clues `{ cells, targetSum }` with distinct cell values summing to `targetSum` |
+| `size` | `number` | Grid dimension $N$ (digits 1 to $N$ per row and column) |
+| `givens` | `number[][]` | Pre-filled cell clues `[row, col, value]` (0-based row/col) |
+| `cages` | `CageClue[]` | List of cage clues `{ cells, targetSum }` specifying each cage's cells and target sum |
 
 Each `CageClue` object has `{ cells: [number, number][], targetSum: number }`, where `cells` lists 0-based `[row, col]` coordinates in the cage.
 
@@ -20,7 +20,7 @@ Each `CageClue` object has `{ cells: [number, number][], targetSum: number }`, w
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `grid` | `number[][]` | Solved `N × N` Latin grid with cage constraints satisfied |
+| `grid` | `number[][]` | Solved $N \times N$ Latin grid with cage constraints satisfied |
 
 <!-- section:example -->
 **Input**
@@ -56,7 +56,7 @@ Each `CageClue` object has `{ cells: [number, number][], targetSum: number }`, w
 Every row and column is a permutation of {1, 2, 3, 4}, and all fixed clues as well as every cage's sum and distinctness rules (e.g., $2 + 3 = 5$, $3 + 2 + 1 = 6$) are satisfied.
 
 <!-- section:hint1 -->
-Introduce an $N \times N$ matrix of integer decision variables with domain `[1, n]`. Enforce all-different constraints on every row, every column, and every cage, alongside equality constraints for fixed givens and cage sums. No objective is needed for this pure feasibility puzzle.
+Introduce an $N \times N$ matrix of integer decision variables taking values from 1 to $N$. Enforce all-different constraints on every row, every column, and every cage, alongside equality constraints for fixed givens and cage sums. No objective is needed for this pure feasibility puzzle.
 
 <!-- section:hint2 -->
-Apply `distinct(row)` to each row and `distinct(grid.map((row) => row[c]))` to each column `c`. For each `cage` in `input.cages`, gather `vars = cage.cells.map(([r, c]) => grid[r][c])` and constrain both `expr\`${sum(vars)} == ${cage.targetSum}\`` and `distinct(vars)`, then solve with `solver: "pumpkin"`.
+Apply `distinct(row)` to each row and `distinct(grid.map((row) => row[c]))` to each column `c`. For each `cage` in `input.cages`, gather `vars = cage.cells.map(([r, c]) => grid[r][c])` and constrain both `` expr`${sum(vars)} == ${cage.targetSum}` `` and `distinct(vars)`, then solve with `solver: "pumpkin"`.

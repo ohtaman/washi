@@ -10,9 +10,9 @@
   "caseNames": [
     "5-node triangle with tail",
     "6-node complete bipartite graph",
-    "6-node clique with triangle",
-    "7-node wheel with pendant",
-    "8-node prism-like graph"
+    "6-node 4-clique with triangle",
+    "7-node wheel with attached triangle",
+    "8-node 5-cycle coupled with triangle"
   ],
   "judge": {
     "m0": "Output must be an object { colors, usedColors }.",

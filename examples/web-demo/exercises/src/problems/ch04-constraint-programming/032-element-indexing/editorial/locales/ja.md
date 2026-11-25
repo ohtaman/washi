@@ -1,6 +1,6 @@
 ## アプローチ
 
-各作業に 1 つの有界整数変数 `assignment[i]`（`0 .. m - 1`）を用意し、`distinct(assignment)` で機械の重複を防いだうえで、変数添字の配列参照 `at(input.costs[i], assignment[i])` の和を最小化します。
+各作業 $i \in \{0, \dots, n - 1\}$ に割当先の機械番号を表す有界整数変数 $a_i \in \{0, \dots, m - 1\}$（`assignment[i]`）を導入し、段取りコストを $c_{i,j}$（`costs[i][j]`）とおきます。すべての $a_i$ に相異制約を課して機械の重複を防ぎ、総段取りコスト $\sum_{i=0}^{n-1} c_{i,\, a_i}$ を最小化します。WaSHI（Pumpkin）では、`distinct(assignment)` と変数添字の配列参照 `at(input.costs[i], assignment[i])` でそのまま表現できます。
 
 ## 数理モデル
 
@@ -14,7 +14,7 @@ $$
 
 ## ポイント
 
-- **Element 制約 `at()` と 0-1 割当行列（#007）の対比**: `#007` の MIP では $n \times m$ 個のバイナリ変数が必要でしたが、CP ではたった $n$ 個の整数変数で済み、目的関数のコスト参照 `c_{i, a_i}` をそのまま Pumpkin の `element` プロパゲータへ渡せます。
+- **Element 制約 `at()` と標準的な 0-1 MIP 割当モデルの対比**: 標準的な $n \times m$ の 0-1 MIP 割当定式化では $n \times m$ 個のバイナリ変数 $x_{i,j}$ と $n + m$ 本の総和制約（各作業・各機械ごと）が必要になりますが、CP では $n$ 個の整数変数だけで済み、目的関数のコスト参照 $c_{i, a_i}$ をそのまま Pumpkin の `element` プロパゲータへ渡せます。
 - **0 始まりインデックスと長方形行列への対応**: `at(array, idx)` は $0 \le \text{idx} < \text{array.length}$ を自動で保証し、$n < m$（余剰機械あり）の場合でもダミー行なしでそのまま書けます。
 - 関連リファレンス: [ガイド・用語集 — モデルの基本構成要素](?view=guide&lang=ja#building-blocks) / [代表的な問題クラス](?view=guide&lang=ja#paradigms)
 

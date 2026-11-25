@@ -10,9 +10,9 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `numNodes` | `number` | 基站（顶点）数量（`0` 到 `numNodes - 1`） |
-| `maxColors` | `number` | 可用信道（颜色）编号数量上限（`0` 到 `maxColors - 1`） |
-| `edges` | `number[][]` | 要求 `colors[u] != colors[v]` 的干扰对（无向边 `[u, v]`）列表 |
+| `numNodes` | `number` | 基站（顶点）数量（0 到 `numNodes - 1`） |
+| `maxColors` | `number` | 可用信道（颜色）编号数量上限（0 到 `maxColors - 1`） |
+| `edges` | `number[][]` | 相互干扰的基站对（无向边 `[u, v]`）列表 |
 
 ### 输出
 

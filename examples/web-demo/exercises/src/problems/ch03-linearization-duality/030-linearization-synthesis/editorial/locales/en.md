@@ -1,6 +1,6 @@
 ## Approach
 
-Combine three Chapter 3 linearization idioms inside one MIP over binary deployment variables $x_i \in \{0, 1\}$: an epigraph peak variable $t \ge L_r$, non-negative L1 deviation pairs $d_r^+ - d_r^- = L_r - \tau_r$, and McCormick bilinear variables $w_k = x_{i_k} x_{j_k}$ for mixed-sign pairwise interactions.
+Let $n$, $m$, and $P$ be the numbers of candidate services (`baseCosts.length`), zones (`loads.length`), and interaction entries (`pairs.length`), with base costs $c_i$ (`baseCosts[i]`), delivered values $v_i$ (`values[i]`), zone loads $a_{ri}$ (`loads[r][i]`), target loads $\tau_r$ (`targets[r]`), deviation weights $\beta_r$ (`devWeights[r]`), peak weight $\alpha$ (`peakWeight`), and pairwise entries $(i_k, j_k, s_k)$ (`pairs[k]`). Define binary deployment variables $x_i \in \{0, 1\}$ (`selected[i]`) and each zone's total load $L_r = \sum_{i=0}^{n-1} a_{ri} x_i$. Combining three Chapter 3 linearization idioms inside one MIP, introduce an epigraph peak variable $t \ge L_r$ (`peakLoad`), non-negative L1 deviation pairs $d_r^+ - d_r^- = L_r - \tau_r$, and McCormick bilinear variables $w_k = x_{i_k} x_{j_k}$ (`pairProducts[k]`) for the mixed-sign pairwise interactions.
 
 ## Mathematical Model
 

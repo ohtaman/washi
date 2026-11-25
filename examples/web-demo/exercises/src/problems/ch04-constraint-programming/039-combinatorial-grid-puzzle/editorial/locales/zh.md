@@ -16,7 +16,7 @@ $$
 
 ## 核心要点
 
-- **纯可行性 CP 求解**：与需要虚拟目标函数的 MIP 不同，CP 求解器原生面向约束满足问题；在 WaSHI 中省去 `m.objective(...)` 并直接调用 `await m.solve({ solver: "pumpkin" })` 即可通过域传播与子句学习高效搜出网格解。
+- **无目标函数的纯可行性 CP 求解**：即使没有需要优化的标量目标，CP 求解器也能通过约束传播与惰性子句生成（LCG）高效求得可行解。在 WaSHI 中省去 `m.objective(...)` 并直接调用 `await m.solve({ solver: "pumpkin" })` 即可求解。
 - **`distinct` 与 `sum` 的联合传播**：区域和上下界过滤掉不可能的数字组合，同时行列 `distinct` 将已确定格的取值沿交叉区域级联传播。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [求解状态术语](?view=guide&lang=zh#solver-status)
 

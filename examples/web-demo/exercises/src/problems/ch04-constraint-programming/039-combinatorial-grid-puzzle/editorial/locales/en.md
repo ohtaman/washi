@@ -16,7 +16,7 @@ $$
 
 ## Key Points
 
-- **Pure feasibility solving in WaSHI**: Unlike MIP, where feasibility requires a dummy objective, CP propagation works naturally on satisfaction problems. Calling `await m.solve({ solver: "pumpkin" })` without `m.objective(...)` finds a valid grid directly through constraint propagation and nogood learning.
+- **Pure feasibility solving in WaSHI**: CP propagation works naturally on satisfaction problems even without a scalar objective to optimize. Calling `await m.solve({ solver: "pumpkin" })` without `m.objective(...)` finds a valid grid directly through constraint propagation and Lazy Clause Generation (LCG).
 - **Combined `distinct` + `sum` propagation**: Even before choosing individual digits, `sum` bounds narrow valid digit combinations in each cage while row/column `distinct` propagates exclusions across intersecting cages.
 - Related references: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Solver Statuses](?view=guide&lang=en#solver-status).
 

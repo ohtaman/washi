@@ -15,7 +15,7 @@ $$
 ## 核心要点
 
 - **CP 原生析取 `or(...)` vs. MIP Big-M**：若改用 MIP Big-M 建模，每对矩形需要 4 个二元选择变量且必须满足求和 $\ge 1$；其 LP 松弛常取各 0-1 变量为 $0.25$ 从而允许矩形重叠在原点，松弛下界极弱。CP 通过延迟子句生成（LCG）直接在矛盾方向被禁用时触发域收窄，避免 Big-M 退化。
-- **紧凑的高度上界**：取 `maxHeight = sum(heights)` 为纵坐标提供紧致的有限整数上界。
+- **安全的有限高度上界**：取 `maxHeight = sum(heights)` 为纵坐标提供安全且有限的整数上界，避免引入任意过大的常数。
 - 参考资料：[指南与术语表 — 模型基本要素](?view=guide&lang=zh#building-blocks) / [常见优化问题类型](?view=guide&lang=zh#paradigms)
 
 ## 实现要点
