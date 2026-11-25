@@ -11,7 +11,7 @@
     "4-staff 2-day skill and pair check",
     "5-staff 3-day dual-shift roster",
     "6-staff 3-shift multi-skill roster",
-    "6-staff 4-day dense NG pairs",
+    "6-staff 4-day dense incompatible pairs",
     "8-staff 4-day multi-tier clinic"
   ],
   "judge": {

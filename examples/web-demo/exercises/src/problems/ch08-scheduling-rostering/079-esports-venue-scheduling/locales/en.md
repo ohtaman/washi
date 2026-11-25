@@ -1,24 +1,24 @@
 # #079. e-Sports League Match & Venue Scheduling
 
 <!-- section:scenario -->
-An e-sports league schedules candidate tournament matches across $V$ arenas and $S$ broadcast timeslots.
+An e-sports league schedules up to $M$ candidate tournament matches across $V$ venues and $S$ broadcast timeslots.
 
 The schedule is governed by the following rules:
-- **Match attributes**: Each match has a required broadcast duration, a viewership score if scheduled, and a set of compatible venues (unscheduled matches earn zero score).
-- **Venue-slot capacity and overtime**: Every venue-slot block has a regular broadcast length that may be extended up to a fixed overtime cap at a linear per-unit overtime penalty.
-- **Objective**: Assign matches to compatible venue-slot blocks to maximize total viewership score minus total overtime cost.
+- **Match attributes and optional scheduling**: Each match has a required broadcast duration, a viewership score if scheduled, and a set of compatible venues. Each match is scheduled at most once and may be left unscheduled (for zero score).
+- **Venue-slot capacity and overtime**: Multiple matches may share a `(venue, slot)` block as long as their combined duration does not exceed `regularLength` plus that block's overtime (up to `maxOvertime`), with each unit of overtime incurring a linear penalty.
+- **Objective**: Assign matches to compatible `(venue, slot)` blocks to maximize total viewership score minus total overtime cost.
 
 <!-- section:io -->
 ### Input
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `durations` | `number[]` | Duration $d_m$ of each match $m$ |
-| `scores` | `number[]` | Viewership score $p_m$ earned if match $m$ is scheduled |
+| `durations` | `number[]` | Duration of each match $m$ |
+| `scores` | `number[]` | Viewership score earned if match $m$ is scheduled |
 | `compatible` | `number[][]` | Binary $M \times V$ matrix indicating whether match $m$ can be hosted at venue $v$ |
 | `numSlots` | `number` | Number of timeslots $S$ per venue |
-| `regularLength` | `number` | Regular broadcast length $B$ of each `(venue, slot)` block |
-| `maxOvertime` | `number` | Maximum allowed overtime $O_{\max}$ per `(venue, slot)` block |
+| `regularLength` | `number` | Regular broadcast length of each `(venue, slot)` block |
+| `maxOvertime` | `number` | Maximum allowed overtime per `(venue, slot)` block |
 | `overtimeCost` | `number` | Penalty cost per unit of overtime above regular length |
 
 ### Output
@@ -27,7 +27,7 @@ The schedule is governed by the following rules:
 | --- | --- | --- |
 | `assignedVenue` | `number[]` | Venue index 0 to $V-1$ per match, or -1 if unscheduled |
 | `assignedSlot` | `number[]` | Timeslot index 0 to $S-1$ per match, or -1 if unscheduled |
-| `overtime` | `number[][]` | Non-negative overtime $o_{v,s}$ used in each `(venue, slot)` ($V \times S$) |
+| `overtime` | `number[][]` | Non-negative overtime used in each `(venue, slot)` ($V \times S$) |
 | `netScore` | `number` | Maximized viewership total minus overtime cost |
 
 <!-- section:example -->

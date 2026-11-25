@@ -17,7 +17,7 @@ $$
 
 ## 核心要点
 
-- **可选排程（`<= 1`）将加时转化为成本收益权衡**：由于无需安排全部比赛，只有当收视增益 $p_m$ 高于加时惩罚 $c_{\text{ot}} \cdot \Delta o$ 时才值得动用加时（示例中加时单价为 25，得分 18 的比赛 4 因此被放弃）。
+- **可选排程（$\le 1$）将加时转化为成本收益权衡**：由于无需安排全部比赛，只有当收视增益 $p_m$ 高于加时惩罚 $c_{\text{ot}} \cdot \Delta o$ 时才值得动用加时（示例中若安排时长为 2、得分 18 的比赛 4，将需要 1 单位加时，加时成本 25 > 得分 18，因此该比赛被放弃）。
 - **连续松弛变量 $o_{v,s}$ 刻画弹性时长**：用 $B + o_{v,s}$（$0 \le o_{v,s} \le O_{\max}$）替代硬容量 $B$，无需额外二元变量即可实现分段线性惩罚。
 - **场馆兼容掩码约束舞台/设备限制**：将不兼容的 `(m, v)` 指派固定为零可缩小分支定界搜索空间并满足场馆设施要求。
 - 相关定义：[指南与术语表 — 核心建模要素](?view=guide&lang=zh#building-blocks) / [变量类型](?view=guide&lang=zh#variable-types)
@@ -57,5 +57,5 @@ for m in range(num_matches):
             prob += pulp.lpSum(x[m][v]) == 0
 for v in range(num_venues):
     for s in range(num_slots):
-        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= reg_len + overtime[v][s]
+        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= regular_length + overtime[v][s]
 ```

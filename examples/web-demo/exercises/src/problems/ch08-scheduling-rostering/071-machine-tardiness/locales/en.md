@@ -1,9 +1,9 @@
 # #071. Single-Machine Weighted Tardiness with Release Dates
 
 <!-- section:scenario -->
-A single non-preemptive automated PCB inspection machine at an electronics assembly plant must process several board inspection jobs. Each job has a release date before which it cannot start, a processing time, a due date, and a tardiness weight.
+A single non-preemptive automated PCB inspection machine at an electronics assembly plant must process several board inspection jobs. Each job has a release date before which it cannot start, a processing time, a due date, and a tardiness weight; all times and weights may be non-negative real (fractional) numbers.
 
-Two jobs cannot overlap on the machine at any time. Choose the start time of every job so as to minimize the total weighted tardiness across all jobs.
+Two jobs cannot overlap on the machine at any time. A job's tardiness is how late it finishes past its due date, or 0 if it completes on or before the due date. Choose the start time of every job so as to minimize the total weighted tardiness across all jobs.
 
 <!-- section:io -->
 ### Input

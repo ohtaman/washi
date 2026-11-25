@@ -19,7 +19,7 @@ $$
 ## ポイント
 
 - **段階分割より統合最適化が優れる理由**: 人員割当だけ先に決めてから設備容量や枠ペナルティを合わせようとすると、特定スロットへの設備集中や不要な残業を招きます。3 次元テンソル $x_{j,i,t}$ で同時最適化することで、設備・枠・残業のトレードオフを厳密に扱えます。
-- **補助 0-1 変数なしの残業エピグラフ**: $c^{\text{ot}}_i > 0$ かつ $o_i \ge 0$、$o_i \ge \text{work}_i - R_i$ により、最小化すれば自動的に $o_i = \max(0, \text{work}_i - R_i)$ が達成されます。
+- **補助 0-1 変数なしの残業エピグラフ**: $\text{work}_i = \sum_{j,t} x_{j,i,t}$ とおくと、$c^{\text{ot}}_i > 0$ かつ $o_i \ge 0$、$o_i \ge \text{work}_i - R_i$ により、最小化すれば自動的に $o_i = \max(0, \text{work}_i - R_i)$ が達成されます。
 - **無資格ペアの事前固定**: $\text{cert}_{i,j} = 0$ の変数を 0 に固定して探索空間を小さく保ちます。
 - 用語の確認: [ガイド・用語集 — 基本構成要素](?view=guide&lang=ja#building-blocks) / [変数の種類](?view=guide&lang=ja#variable-types)
 
@@ -62,7 +62,7 @@ for i in range(num_staff):
         prob += pulp.lpSum(x[j][i][t] for j in range(num_jobs)) <= 1
     staff_load = pulp.lpSum(x[j][i][t] for j in range(num_jobs) for t in range(num_slots))
     prob += staff_load <= max_limits[i]
-    prob += overtime[i] >= staff_load - reg_limits[i]
+    prob += overtime[i] >= staff_load - regular_limits[i]
 for t in range(num_slots):
     prob += pulp.lpSum(equip_needs[j] * x[j][i][t] for j in range(num_jobs) for i in range(num_staff)) <= equip_cap
 ```

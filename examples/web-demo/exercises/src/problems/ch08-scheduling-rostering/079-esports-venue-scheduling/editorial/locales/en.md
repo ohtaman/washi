@@ -17,7 +17,7 @@ $$
 
 ## Key Points
 
-- **Optional scheduling (`<= 1`) turns overtime into a cost-benefit trade-off**: Because not all matches must be broadcast, a match is added into overtime only when its viewership gain $p_m$ outweighs the overtime charge $c_{\text{ot}} \cdot \Delta o$—which is why match 4 ($p_4 = 18$) is left unscheduled in the example when overtime costs $25$ per unit.
+- **Optional scheduling ($\le 1$) turns overtime into a cost-benefit trade-off**: Because not all matches must be broadcast, a match is added into overtime only when its viewership gain $p_m$ outweighs the overtime charge $c_{\text{ot}} \cdot \Delta o$—which is why match 4 (duration 2, $p_4 = 18$) is left unscheduled in the example, as scheduling it would require 1 unit of overtime (cost 25 > score 18).
 - **Elastic block length via continuous slack $o_{v,s}$**: Replacing a hard length $B$ with $B + o_{v,s}$ ($0 \le o_{v,s} \le O_{\max}$) models piecewise-linear slot expansion without extra binary variables.
 - **Venue compatibility masks prevent stage/rig conflicts**: Zeroing out incompatible `(m, v)` entries shrinks the branch-and-bound tree and enforces arena equipment rules.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
@@ -57,5 +57,5 @@ for m in range(num_matches):
             prob += pulp.lpSum(x[m][v]) == 0
 for v in range(num_venues):
     for s in range(num_slots):
-        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= reg_len + overtime[v][s]
+        prob += pulp.lpSum(durations[m] * x[m][v][s] for m in range(num_matches)) <= regular_length + overtime[v][s]
 ```

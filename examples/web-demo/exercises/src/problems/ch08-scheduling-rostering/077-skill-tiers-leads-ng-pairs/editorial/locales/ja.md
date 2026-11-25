@@ -8,8 +8,8 @@ $$
 \begin{aligned}
 \min \quad & \sum_{i=0}^{N-1} \sum_{d=0}^{D-1} \sum_{s=0}^{S-1} c_{i,s} x_{i,d,s} \\
 \text{s.t.} \quad & \sum_{s=0}^{S-1} x_{i,d,s} \le 1 && \forall i, d \\
-& \sum_{i=0}^{N-1} x_{i,d,s} \ge D_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : D_{d,s} > 0 \\
-& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : D_{d,s} > 0, \; \forall k \\
+& \sum_{i=0}^{N-1} x_{i,d,s} \ge r_{d,s}, \quad \sum_{i=0}^{N-1} L_i x_{i,d,s} \ge 1 && \forall (d, s) : r_{d,s} > 0 \\
+& \sum_{i=0}^{N-1} A_{i,k} x_{i,d,s} \ge R_{s,k} && \forall (d, s) : r_{d,s} > 0, \; \forall k \\
 & x_{a,d,s} + x_{b,d,s} \le 1 && \forall (a, b) \in \text{NG}, \; \forall d, s \\
 & x_{i,d,s} \in \{0, 1\} && \forall i, d, s
 \end{aligned}
