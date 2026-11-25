@@ -1,0 +1,46 @@
+import pulp
+
+
+def solve(
+    order_costs,
+    shortage_costs,
+    salvage_values,
+    warehouse_cap,
+    probs,
+    demands,
+) -> dict:
+    """Return {"orders": list[float], "expected_cost": float}."""
+    n = len(order_costs)
+    S = len(probs)
+
+    prob = pulp.LpProblem("two_stage_stochastic", pulp.LpMinimize)
+    # First-stage order quantities committed before demand is revealed
+    orders = [pulp.LpVariable(f"x_{j}", lowBound=0) for j in range(n)]
+    # Second-stage recourse per scenario s: unmet demand (shortage) and excess inventory (leftover)
+    shortage = [
+        [pulp.LpVariable(f"short_{s}_{j}", lowBound=0) for j in range(n)]
+        for s in range(S)
+    ]
+    leftover = [
+        [pulp.LpVariable(f"left_{s}_{j}", lowBound=0) for j in range(n)]
+        for s in range(S)
+    ]
+
+    # First-stage warehouse capacity and second-stage scenario demand balance
+    prob += pulp.lpSum(orders) <= warehouse_cap
+    for s in range(S):
+        for j in range(n):
+            prob += orders[j] + shortage[s][j] - leftover[s][j] == demands[s][j]
+
+    # Minimize first-stage order cost plus expected second-stage shortage cost minus salvage revenue
+    stage2_expected = pulp.lpSum(
+        probs[s] * (pulp.lpDot(shortage_costs, shortage[s]) - pulp.lpDot(salvage_values, leftover[s]))
+        for s in range(S)
+    )
+    prob += pulp.lpDot(order_costs, orders) + stage2_expected
+    prob.solve(pulp.HiGHS(msg=False))
+
+    return {
+        "orders": [float(pulp.value(v)) for v in orders],
+        "expected_cost": float(pulp.value(prob.objective)),
+    }

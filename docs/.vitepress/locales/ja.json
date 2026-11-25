@@ -9,7 +9,7 @@
       "activeMatch": "^/ja/(?:getting-started|guide|solvers|examples)/"
     },
     { "text": "ショーケース", "link": "/ja/showcase/", "activeMatch": "^/ja/showcase/" },
-    { "text": "100本ノック", "link": "/exercises/?lang=ja", "target": "_self" }
+    { "text": "N本ノック", "link": "/exercises/?lang=ja", "target": "_self" }
   ],
   "sidebar": [
     {

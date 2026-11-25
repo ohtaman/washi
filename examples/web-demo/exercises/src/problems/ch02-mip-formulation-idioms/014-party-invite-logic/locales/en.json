@@ -1,5 +1,5 @@
 {
-  "title": "#014. Party Invitation & Seating Logic Puzzle",
+  "title": "#014. Party Invitation & Logic Puzzle",
   "subtitle": "Model guest invitations, conditional gift budgets, implications, conflicts, and group quotas with tight Big-M bounds.",
   "tags": [
     "MIP",

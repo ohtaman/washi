@@ -3,7 +3,10 @@
 <!-- section:scenario -->
 An enterprise policy governance system enforces mandatory hard rules alongside weighted soft preferences over Boolean and bounded-integer state attributes.
 
-First check whether all hard and soft rules are jointly consistent. If consistent, return a valid assignment with empty cores and zero repair cost; if inconsistent, extract an irreducible minimal unsatisfiable subset across all rules and synthesize a minimum-weight soft-rule relaxation together with a repaired variable assignment that satisfies every hard rule and every retained soft rule.
+Diagnose and repair the rule set as follows:
+- **Consistency check**: First check whether all hard and soft rules are jointly satisfiable.
+- **If consistent**: Return a valid assignment with empty cores, empty relaxed rules, and zero repair cost.
+- **If inconsistent**: Extract a minimal unsatisfiable core (MUS) across all rules, and find a minimum-weight soft-rule relaxation together with a repaired variable assignment satisfying every hard rule and every remaining soft rule.
 
 <!-- section:io -->
 ### Input
@@ -14,6 +17,19 @@ First check whether all hard and soft rules are jointly consistent. If consisten
 | `intVars` | `Array<{ name: string; lb: number; ub: number }>` | Bounded integer variable definitions |
 | `hardRules` | `Array<{ id: string; expr: SmtFormula }>` | Mandatory hard rules that cannot be relaxed |
 | `softRules` | `Array<{ id: string; weight: number; expr: SmtFormula }>` | Weighted soft rules that can be relaxed at cost `weight` |
+
+`SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
 
 ### Output
 

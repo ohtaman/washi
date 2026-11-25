@@ -3,7 +3,6 @@
   "subtitle": "Balance efficiency against L2 variance fairness across teams using WaSHI's native convex Quadratic Programming.",
   "tags": [
     "QP",
-    "LP",
     "Fairness",
     "WaSHI Only"
   ],

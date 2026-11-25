@@ -1,4 +1,4 @@
-# Optimization 100 Exercises — Authoring & Style Guidelines (`AGENTS.md`)
+# Optimization N Exercises — Authoring & Style Guidelines (`AGENTS.md`)
 
 Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercises/` must follow for uniform clarity, low cognitive noise, and idiomatic WaSHI / PuLP (`HiGHS`) code.
 
@@ -10,7 +10,7 @@ Conventions that every exercise (`#000`–`#100`) in `examples/web-demo/exercise
 - **Minimal Input Schema**: Avoid splitting constants into excessive scalar fields (e.g., do not expose 8 separate camelCase coefficients for a 2-variable LP). Keep inputs to the essential dimensions (`2`–`4` clean fields, concise vectors, or a single matrix).
 - **Concise Problem Tab (`locales/{en,ja,zh}.md`)**:
   - Header `# #NNN. <Title>` followed by:
-    - `<!-- section:scenario -->`: 2–4 crisp sentences stating decision quantities, rules, and objective. No fenced code blocks or constraint formulas (inline backticks are allowed for identifiers only; enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
+    - `<!-- section:scenario -->`: 2–4 crisp sentences (or a brief intro plus a concise bulleted list when there are 3 or more distinct conditions) stating decision quantities, rules, and objective. No fenced code blocks or constraint formulas (inline backticks are allowed for identifiers only; enforced by tests) and no repetitive UI/terminology tutorials. State *what* must hold, never *how* to model or compute it: no constraint formulas, variable recipes, or algorithm step lists. When the technique itself is the learning objective (e.g., column generation or Benders in Chapter 10), name the technique and what it must produce, and leave the steps to the hints.
     - `<!-- section:io -->`: `### Input` and `### Output` using clean GFM tables (`Field | Type | Description`).
     - `<!-- section:example -->`: Minimal `json` Input and Output blocks matching `cases.json[0]`, plus a concise 1-sentence arithmetic check confirming constraint satisfaction and objective value calculation (do not reveal modeling intuition, trade-offs, or why greedy/heuristic rules fail; reserve those for the Editorial tab).
   - Keep `caseNames` in `locales/{en,ja,zh}.json` descriptive and neutral—never embed expected optimal values or solution-strategy hints.
@@ -53,9 +53,10 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 
 ## 3. Code & TypeScript / Python Idioms
 
+- **Reference Solution Comments (`washi/solution.ts`, `pulp/solution.py`)**: Unlike starters (which forbid modeling recipes), reference solutions should include concise English comments explaining what decision variables represent, what each constraint/objective block models, and why non-obvious formulations, linearizations, or multi-phase steps are needed.
 - **Strict `solve()` Module Contract**:
   - TypeScript (`washi/{starter,solution}.ts`): declare `export interface PNNNInput`, `export interface PNNNOutput`, and `export async function solve(input: PNNNInput): Promise<PNNNOutput>`.
-  - Python (`highspy/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
+  - Python (`pulp/{starter,solution}.py`): declare `def solve(<snake_case_input_fields...>) -> dict:` accepting the problem's camelCase input fields mapped to `snake_case` parameters and returning a `dict` with `snake_case` keys matching `PNNNOutput`, with a concise `"""Return {...}."""` schema docstring.
 - **Idiomatic WaSHI (TypeScript)**:
   - **Prefer `.map()` + batch `m.constraint([...])` over C-style `for (let i = 0; ...)` loops**:
     ```ts
@@ -83,7 +84,7 @@ Every exercise uses a consistent 4-section editorial loaded lazily into the `Edi
 - **Honest Verdict Classification (`judge.ts`)**: Never return `VIOLATION` for missing/non-finite fields or malformed output shapes — use `runtimeError(...)` (`RUNTIME_ERROR`). Reserve `VIOLATION` for broken constraints/bounds and `SUBOPTIMAL` for feasible non-optimal objectives (`sense`-aware).
 - **Source Language Purity**: Keep all `.ts`, `.py`, `cases.json`, `meta.json`, and root/docs English `.md` files free of Japanese Kana; localized content belongs exclusively under `/locales/{en,ja,zh}.{json,md}` (including `editorial/locales/` and `src/guide/locales/`).
 - **Per-Exercise Discussions**: Link finalized exercises in `meta.json` to a dedicated GitHub Discussions thread via `"discussionNumber"` (`#281`+ under `https://github.com/ohtaman/washi/discussions/<number>`). Omit `"discussionNumber"` until the problem is reviewed and finalized (the workspace omits the Discussions footer cleanly when `discussionNumber` is absent).
-- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "highspy"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); omit the `highspy/` directory when `runtimes` is `["washi"]`, and the workbench UI hides `#tab-highspy` and displays `washiOnlyHint`.
+- **Runtime Selection (`meta.runtimes`)**: Use `["washi", "pulp"]` for LP / MIP exercises expressible in both WaSHI and PuLP. Use `["washi"]` for WaSHI-specific paradigms (CP global constraints, SMT / Unsat Core, convex QP, and decomposition orchestrators); omit the `pulp/` directory when `runtimes` is `["washi"]`, and the workbench UI hides `#tab-pulp` and displays `washiOnlyHint`.
 - **Pre-PR Verification**:
   - `REQUIRE_HIGHSPY_PYTHON=1 npx vitest run test/exercises-ch1.test.ts test/exercises-platform.test.ts test/source-language-purity.test.ts`
   - `npm test`

@@ -1,11 +1,11 @@
 # Optimization Guide & Glossary
 
-A concise reference for reading problem statements, building optimization models, and interpreting judge verdicts across **Optimization 100**.
+A concise reference for reading problem statements, building optimization models, and interpreting judge verdicts across **Optimization N**.
 
 ## 1. How Judging Works (`solve()`) {#solve-contract}
 
 - Every exercise asks you to implement a single `solve` function: `solve(input)` in **WaSHI (TypeScript)** (receiving an input object and returning an output object) or `solve(<snake_case_fields...>)` in **PuLP (Python)** (receiving each camelCase input field as a `snake_case` keyword argument and returning a `dict` with `snake_case` keys).
-- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **PuLP (Python)** runs PuLP backed by HiGHS inside Pyodide so Python users can practice in the browser and compare idioms side by side.
+- WaSHI itself is a TypeScript / JavaScript library (not a Python package); **PuLP (Python)** runs PuLP backed by HiGHS inside Pyodide for **LP and MIP** exercises so Python users can practice in the browser and compare idioms side by side. Exercises for **CP, SMT, convex QP, and decomposition** (Chapters 4–5 and parts of Chapters 8–10) are **WaSHI (TypeScript)-only**.
 - Pressing **Run & Judge** calls your `solve` function once per test case and checks the object (or Python `dict`) you return.
 - Solving an exercise in **either** runtime marks it solved (`✓`). Console logs are shown for debugging, while grading always inspects the return value.
 
@@ -51,7 +51,7 @@ A concise reference for reading problem statements, building optimization models
 
 ## 5. Related Documentation & Learning Resources {#resources}
 
-Official documentation and reference materials centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**):
+Official documentation and independent learning resources centered on combinatorial optimization and constraint programming (**LP / MIP / CP / SMT**). Note that the external references listed below are independent learning resources, and all exercises, test cases, and solutions in Optimization N are original to WaSHI:
 
 ### Choosing the Right Resource
 

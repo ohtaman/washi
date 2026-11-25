@@ -9,8 +9,8 @@ import p091Ja from "./091-tight-big-m-scaling/locales/ja.json";
 import p091Zh from "./091-tight-big-m-scaling/locales/zh.json";
 import p091WashiStarter from "./091-tight-big-m-scaling/washi/starter.ts?raw";
 import p091WashiSolution from "./091-tight-big-m-scaling/washi/solution.ts?raw";
-import p091HighspyStarter from "./091-tight-big-m-scaling/highspy/starter.py?raw";
-import p091HighspySolution from "./091-tight-big-m-scaling/highspy/solution.py?raw";
+import p091PulpStarter from "./091-tight-big-m-scaling/pulp/starter.py?raw";
+import p091PulpSolution from "./091-tight-big-m-scaling/pulp/solution.py?raw";
 import { judge as p091Judge } from "./091-tight-big-m-scaling/judge.js";
 
 // #092
@@ -21,8 +21,8 @@ import p092Ja from "./092-symmetry-cover-cuts/locales/ja.json";
 import p092Zh from "./092-symmetry-cover-cuts/locales/zh.json";
 import p092WashiStarter from "./092-symmetry-cover-cuts/washi/starter.ts?raw";
 import p092WashiSolution from "./092-symmetry-cover-cuts/washi/solution.ts?raw";
-import p092HighspyStarter from "./092-symmetry-cover-cuts/highspy/starter.py?raw";
-import p092HighspySolution from "./092-symmetry-cover-cuts/highspy/solution.py?raw";
+import p092PulpStarter from "./092-symmetry-cover-cuts/pulp/starter.py?raw";
+import p092PulpSolution from "./092-symmetry-cover-cuts/pulp/solution.py?raw";
 import { judge as p092Judge } from "./092-symmetry-cover-cuts/judge.js";
 
 // #093
@@ -33,8 +33,8 @@ import p093Ja from "./093-iterative-subtour-cuts/locales/ja.json";
 import p093Zh from "./093-iterative-subtour-cuts/locales/zh.json";
 import p093WashiStarter from "./093-iterative-subtour-cuts/washi/starter.ts?raw";
 import p093WashiSolution from "./093-iterative-subtour-cuts/washi/solution.ts?raw";
-import p093HighspyStarter from "./093-iterative-subtour-cuts/highspy/starter.py?raw";
-import p093HighspySolution from "./093-iterative-subtour-cuts/highspy/solution.py?raw";
+import p093PulpStarter from "./093-iterative-subtour-cuts/pulp/starter.py?raw";
+import p093PulpSolution from "./093-iterative-subtour-cuts/pulp/solution.py?raw";
 import { judge as p093Judge } from "./093-iterative-subtour-cuts/judge.js";
 
 // #094
@@ -95,8 +95,8 @@ import p099Ja from "./099-lns-fix-and-optimize/locales/ja.json";
 import p099Zh from "./099-lns-fix-and-optimize/locales/zh.json";
 import p099WashiStarter from "./099-lns-fix-and-optimize/washi/starter.ts?raw";
 import p099WashiSolution from "./099-lns-fix-and-optimize/washi/solution.ts?raw";
-import p099HighspyStarter from "./099-lns-fix-and-optimize/highspy/starter.py?raw";
-import p099HighspySolution from "./099-lns-fix-and-optimize/highspy/solution.py?raw";
+import p099PulpStarter from "./099-lns-fix-and-optimize/pulp/starter.py?raw";
+import p099PulpSolution from "./099-lns-fix-and-optimize/pulp/solution.py?raw";
 import { judge as p099Judge } from "./099-lns-fix-and-optimize/judge.js";
 
 // #100
@@ -126,8 +126,8 @@ export const CH10_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p091WashiStarter,
     washiSolution: p091WashiSolution,
-    highspyStarter: p091HighspyStarter,
-    highspySolution: p091HighspySolution,
+    pulpStarter: p091PulpStarter,
+    pulpSolution: p091PulpSolution,
     judge: p091Judge,
   }),
   hydrateProblem({
@@ -146,8 +146,8 @@ export const CH10_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p092WashiStarter,
     washiSolution: p092WashiSolution,
-    highspyStarter: p092HighspyStarter,
-    highspySolution: p092HighspySolution,
+    pulpStarter: p092PulpStarter,
+    pulpSolution: p092PulpSolution,
     judge: p092Judge,
   }),
   hydrateProblem({
@@ -166,8 +166,8 @@ export const CH10_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p093WashiStarter,
     washiSolution: p093WashiSolution,
-    highspyStarter: p093HighspyStarter,
-    highspySolution: p093HighspySolution,
+    pulpStarter: p093PulpStarter,
+    pulpSolution: p093PulpSolution,
     judge: p093Judge,
   }),
   hydrateProblem({
@@ -276,8 +276,8 @@ export const CH10_PROBLEMS: ProblemDefinition[] = [
     },
     washiStarter: p099WashiStarter,
     washiSolution: p099WashiSolution,
-    highspyStarter: p099HighspyStarter,
-    highspySolution: p099HighspySolution,
+    pulpStarter: p099PulpStarter,
+    pulpSolution: p099PulpSolution,
     judge: p099Judge,
   }),
   hydrateProblem({

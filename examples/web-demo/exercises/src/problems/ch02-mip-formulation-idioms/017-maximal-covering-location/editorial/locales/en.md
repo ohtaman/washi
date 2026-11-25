@@ -15,7 +15,7 @@ $$
 
 ## Key Points
 
-- **Why `covered[i] <= sum(...)` suffices without an upper-bound OR constraint**: Because each `covered[i]` is binary and has a positive objective weight `demands[i] >= 0`, the solver naturally sets `z_i = 1` whenever at least one nearby site is open, while forcing `z_i = 0` when none is open (including unreachable zones where the neighborhood is empty).
+- **Why `covered[i] <= sum(...)` suffices without lower-bound OR constraints**: Because each `covered[i]` is binary and has a positive objective weight `demands[i] >= 0`, the solver naturally sets `z_i = 1` whenever at least one nearby site is open, while forcing `z_i = 0` when none is open (including unreachable zones where the neighborhood is empty).
 - **MCLP vs. Set Covering**: Set Covering requires covering 100% of elements and minimizes cost; MCLP fixes the facility budget `p` and maximizes the covered demand when complete coverage is impossible or too costly.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Variable Types](?view=guide&lang=en#variable-types).
 

@@ -39,7 +39,7 @@ const EXPECTED_IDS = [
 ] as const;
 
 const EXPECTED_RUNTIMES = Object.fromEntries(
-  EXPECTED_IDS.map((id) => [id, ["washi", "highspy"] as const])
+  EXPECTED_IDS.map((id) => [id, ["washi", "pulp"] as const])
 );
 
 function extractObjective(_id: string, output: unknown): number | null {
@@ -459,7 +459,7 @@ describe("Exercises Chapter 7 Python parity (#069 minFinalSoc)", () => {
 
   itHighspy("enforces max(minSoc, minFinalSoc) in final period in PuLP solution.py", () => {
     const batch = runHighspyBatch([
-      { id: "069_minsoc", code: p069.highspySolution, inputs: [BATTERY_MIN_SOC_LOW_FINAL_INPUT] },
+      { id: "069_minsoc", code: p069.pulpSolution, inputs: [BATTERY_MIN_SOC_LOW_FINAL_INPUT] },
     ]);
     expect(batch["069_minsoc"].ok).toBe(true);
     const out = batch["069_minsoc"].outputs![0] as { soc: number[]; totalCost: number };

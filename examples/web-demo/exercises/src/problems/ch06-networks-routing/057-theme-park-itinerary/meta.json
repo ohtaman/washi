@@ -8,12 +8,11 @@
   "difficulty": 4,
   "estimatedMinutes": 22,
   "paradigms": [
-    "MIP",
-    "CP"
+    "MIP"
   ],
   "runtimes": [
     "washi",
-    "highspy"
+    "pulp"
   ],
   "solvers": [
     "highs"

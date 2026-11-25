@@ -277,7 +277,7 @@ export default withMermaid(
             activeMatch: "^/(?:getting-started|guide|solvers|examples)/",
           },
           { text: "Showcase", link: "/showcase/", activeMatch: "^/showcase/" },
-          { text: "100 Exercises", link: "/exercises/", target: "_self" },
+          { text: "Optimization N", link: "/exercises/", target: "_self" },
         ],
         sidebar: [
           {

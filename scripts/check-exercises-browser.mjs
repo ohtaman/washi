@@ -127,7 +127,7 @@ async function run() {
 
     // 1. Verify VitePress top nav links in EN, JA, ZH
     for (const navCase of [
-      { docsPath: "/", linkText: "100 Exercises", expectedBrand: exEn.ui.brandTitle },
+      { docsPath: "/", linkText: "Optimization N", expectedBrand: exEn.ui.brandTitle },
       { docsPath: "/ja/", linkText: docsJa.nav[2].text, expectedBrand: exJa.ui.brandTitle },
       { docsPath: "/zh/", linkText: docsZh.nav[2].text, expectedBrand: exZh.ui.brandTitle },
     ]) {
@@ -193,7 +193,7 @@ async function run() {
     assert(!/\/\s*200/.test(indexLayout.text), "Unexpected /200 denominator on Exercise Index");
     assert(indexLayout.text.includes("Drafted by Gemini"), "Expected Drafted by Gemini footnote on Exercise Index");
     assert(
-      (await page.locator("#about-heading").innerText()).includes("About Optimization 100") &&
+      (await page.locator("#about-heading").innerText()).includes("About Optimization N") &&
         (await page.locator("#about-exercises").innerText()).includes("not a Python package") &&
         (await page.locator("#about-exercises").innerText()).includes("Reviewed by ..."),
       "Expected About section heading, runtime clarification, and AI/review note in #about-exercises"
@@ -286,7 +286,7 @@ async function run() {
     await page.click("#guide-back-to-map-btn");
     await page.waitForSelector("#hero-primary-cta");
 
-    // 3. Page-by-page verification of #000 + all 10 Chapter 1 problems (#001-#010) across WaSHI AND real Pyodide highspy
+    // 3. Page-by-page verification of #000 + all 10 Chapter 1 problems (#001-#010) across WaSHI AND real Pyodide pulp
     const ids = ["000", "001", "002", "003", "004", "005", "006", "007", "008", "009", "010"];
 
     for (const id of ids) {
@@ -541,8 +541,8 @@ async function run() {
       await page.locator("#tab-washi").focus();
       await page.keyboard.press("ArrowRight");
       assert(
-        (await page.locator("#tab-highspy").getAttribute("aria-selected")) === "true",
-        `${id}: ArrowRight did not activate highspy tab`
+        (await page.locator("#tab-pulp").getAttribute("aria-selected")) === "true",
+        `${id}: ArrowRight did not activate pulp tab`
       );
       assert(
         (await page.locator("#panel-washi").getAttribute("hidden")) !== null,
@@ -552,32 +552,32 @@ async function run() {
       // Verify #000-#003 starters in real Pyodide PuLP too
       if (id === "000" || id === "001" || id === "002" || id === "003") {
         if (id === "001") {
-          const origPyStarter = await page.locator("#editor-highspy").inputValue();
+          const origPyStarter = await page.locator("#editor-pulp").inputValue();
           await page
-            .locator("#editor-highspy")
+            .locator("#editor-pulp")
             .fill(origPyStarter.replace(/^\s*prob\.solve\(.*\)$/m, ""));
-          await page.click('button[data-action="run"][data-runtime="highspy"]');
+          await page.click('button[data-action="run"][data-runtime="pulp"]');
           await page.waitForSelector("#judge-results .verdict-pill.is-error", { timeout: 120_000 });
-          await page.click('button[data-action="reset"][data-runtime="highspy"]');
+          await page.click('button[data-action="reset"][data-runtime="pulp"]');
         }
-        await page.click('button[data-action="run"][data-runtime="highspy"]');
+        await page.click('button[data-action="run"][data-runtime="pulp"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-violation", { timeout: 120_000 });
       }
 
       // Reveal & Run real Python PuLP solution in Pyodide Web Worker
-      const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
+      const pySolBtn = page.locator('button[data-action="solution"][data-runtime="pulp"]');
       await pySolBtn.click();
       await pySolBtn.click();
       if (id === "001") {
         // Also verify zero-argument `prob.solve()` defaults to HiGHS in Pyodide (instead of failing on CBC subprocess)
-        const pySol = await page.locator("#editor-highspy").inputValue();
-        await page.locator("#editor-highspy").fill(pySol.replace("prob.solve(pulp.HiGHS(msg=False))", "prob.solve()"));
-        await page.click('button[data-action="run"][data-runtime="highspy"]');
+        const pySol = await page.locator("#editor-pulp").inputValue();
+        await page.locator("#editor-pulp").fill(pySol.replace("prob.solve(pulp.HiGHS(msg=False))", "prob.solve()"));
+        await page.click('button[data-action="run"][data-runtime="pulp"]');
         await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
-        await page.locator("#editor-highspy").fill(pySol);
+        await page.locator("#editor-pulp").fill(pySol);
       }
       if (id === "007" || id === "010") {
-        const pySol = await page.locator("#editor-highspy").inputValue();
+        const pySol = await page.locator("#editor-pulp").inputValue();
         const poisoned =
           id === "007"
             ? pySol.replace(
@@ -588,12 +588,12 @@ async function run() {
                 "prob.solve(pulp.HiGHS(msg=False))",
                 "prob += quantities[0] >= 9999\n    prob.solve(pulp.HiGHS(msg=False))"
               );
-        await page.locator("#editor-highspy").fill(poisoned);
-        await page.click('button[data-action="run"][data-runtime="highspy"]');
+        await page.locator("#editor-pulp").fill(poisoned);
+        await page.click('button[data-action="run"][data-runtime="pulp"]');
         await page.waitForSelector("#judge-results .verdict-pill.is-infeasible", { timeout: 120_000 });
-        await page.locator("#editor-highspy").fill(pySol);
+        await page.locator("#editor-pulp").fill(pySol);
       }
-      await page.click('button[data-action="run"][data-runtime="highspy"]');
+      await page.click('button[data-action="run"][data-runtime="pulp"]');
       await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
       if (id !== "000") {
         assert(
@@ -602,8 +602,8 @@ async function run() {
         );
       }
 
-      const pyCheckText = await page.locator("#tab-highspy .runtime-tab-check").innerText();
-      assert(pyCheckText.includes("✓"), `${id}: expected highspy tab checkmark after Python AC`);
+      const pyCheckText = await page.locator("#tab-pulp .runtime-tab-check").innerText();
+      assert(pyCheckText.includes("✓"), `${id}: expected pulp tab checkmark after Python AC`);
 
       console.log(`  [PASS] Problem ${id}: WaSHI AC + Pyodide PuLP AC verified.`);
     }
@@ -674,20 +674,20 @@ async function run() {
     // 4a. Representative milestone verifications for Chapters 2+
     {
       const milestoneCases = [
-        { id: "011", expectHighspy: true },
-        { id: "027", expectHighspy: true },
-        { id: "036", expectHighspy: false },
-        { id: "042", expectHighspy: false },
-        { id: "046", expectHighspy: false },
-        { id: "048", expectHighspy: false },
-        { id: "054", expectHighspy: true },
-        { id: "068", expectHighspy: true },
-        { id: "073", expectHighspy: false },
-        { id: "084", expectHighspy: false },
-        { id: "094", expectHighspy: false },
-        { id: "097", expectHighspy: false },
-        { id: "098", expectHighspy: false },
-        { id: "100", expectHighspy: false },
+        { id: "011", expectPulp: true },
+        { id: "027", expectPulp: true },
+        { id: "036", expectPulp: false },
+        { id: "042", expectPulp: false },
+        { id: "046", expectPulp: false },
+        { id: "048", expectPulp: false },
+        { id: "054", expectPulp: true },
+        { id: "068", expectPulp: true },
+        { id: "073", expectPulp: false },
+        { id: "084", expectPulp: false },
+        { id: "094", expectPulp: false },
+        { id: "097", expectPulp: false },
+        { id: "098", expectPulp: false },
+        { id: "100", expectPulp: false },
       ];
       for (const mc of milestoneCases) {
         await page.goto(`${baseUrl}/exercises/?id=${mc.id}&lang=en`, { waitUntil: "networkidle" });
@@ -696,22 +696,22 @@ async function run() {
           (await page.locator("#ws-discussion-link").count()) === 0,
           `${mc.id}: expected #ws-discussion-link omitted when discussionNumber is absent`
         );
-        if (mc.expectHighspy) {
-          assert((await page.locator("#tab-highspy").count()) === 1, `${mc.id}: expected #tab-highspy`);
+        if (mc.expectPulp) {
+          assert((await page.locator("#tab-pulp").count()) === 1, `${mc.id}: expected #tab-pulp`);
         } else {
-          assert((await page.locator("#tab-highspy").count()) === 0, `${mc.id}: expected WaSHI-only (no #tab-highspy)`);
+          assert((await page.locator("#tab-pulp").count()) === 0, `${mc.id}: expected WaSHI-only (no #tab-pulp)`);
         }
         const washiSolBtn = page.locator('button[data-action="solution"][data-runtime="washi"]');
         await washiSolBtn.click();
         await washiSolBtn.click();
         await page.click('button[data-action="run"][data-runtime="washi"]');
         await page.waitForSelector("#judge-results .ac-celebration", { timeout: 60_000 });
-        if (mc.expectHighspy) {
-          await page.click("#tab-highspy");
-          const pySolBtn = page.locator('button[data-action="solution"][data-runtime="highspy"]');
+        if (mc.expectPulp) {
+          await page.click("#tab-pulp");
+          const pySolBtn = page.locator('button[data-action="solution"][data-runtime="pulp"]');
           await pySolBtn.click();
           await pySolBtn.click();
-          await page.click('button[data-action="run"][data-runtime="highspy"]');
+          await page.click('button[data-action="run"][data-runtime="pulp"]');
           await page.waitForSelector("#judge-results .ac-celebration", { timeout: 120_000 });
         }
         console.log(`  [PASS] Milestone ${mc.id}: real-browser AC verified.`);
@@ -724,12 +724,12 @@ async function run() {
       const racePage = await raceCtx.newPage();
       await racePage.goto(`${baseUrl}/exercises/?id=001&lang=en`, { waitUntil: "networkidle" });
       await waitForCoiReady(racePage);
-      await racePage.waitForSelector("#tab-highspy");
-      await racePage.click("#tab-highspy");
-      const solBtn = racePage.locator('button[data-action="solution"][data-runtime="highspy"]');
+      await racePage.waitForSelector("#tab-pulp");
+      await racePage.click("#tab-pulp");
+      const solBtn = racePage.locator('button[data-action="solution"][data-runtime="pulp"]');
       await solBtn.click();
       await solBtn.click();
-      await racePage.click('button[data-action="run"][data-runtime="highspy"]');
+      await racePage.click('button[data-action="run"][data-runtime="pulp"]');
       await racePage.click("#back-to-map-btn");
       await racePage.waitForSelector('.toc-list a[data-nav-id="002"]');
       await racePage.click('.toc-list a[data-nav-id="002"]');
@@ -983,14 +983,14 @@ async function run() {
           `Expected #judge-results visible in viewport [0, ${longMetrics.vh}], got [${longMetrics.resTop}, ${longMetrics.resBottom}]`
         );
 
-        // Switch to highspy tab while #judge-results is populated to verify .python-lazy-note + toolbar fit cleanly too
-        await longPage.click("#tab-highspy");
-        await longPage.locator("#editor-highspy").fill(
+        // Switch to pulp tab while #judge-results is populated to verify .python-lazy-note + toolbar fit cleanly too
+        await longPage.click("#tab-pulp");
+        await longPage.locator("#editor-pulp").fill(
           Array.from({ length: 120 }, (_, idx) => `# python line ${idx + 1}`).join("\n")
         );
         const pyMetrics = await longPage.evaluate(() => {
-          const panel = document.querySelector("#panel-highspy");
-          const toolbar = document.querySelector("#panel-highspy .editor-toolbar");
+          const panel = document.querySelector("#panel-pulp");
+          const toolbar = document.querySelector("#panel-pulp .editor-toolbar");
           const results = document.querySelector("#judge-results");
           if (!panel || !toolbar || !results) return null;
           return {
@@ -999,11 +999,11 @@ async function run() {
             resTop: results.getBoundingClientRect().top,
           };
         });
-        assert(pyMetrics, `Missing highspy long-code elements at ${vp.width}x${vp.height}`);
+        assert(pyMetrics, `Missing pulp long-code elements at ${vp.width}x${vp.height}`);
         assert(
           pyMetrics.toolbarBottom <= pyMetrics.resTop + 1 &&
             pyMetrics.toolbarBottom <= pyMetrics.panelBottom + 1,
-          `Expected highspy .editor-toolbar (${pyMetrics.toolbarBottom}) unclipped above #judge-results (${pyMetrics.resTop}) at ${vp.width}x${vp.height}`
+          `Expected pulp .editor-toolbar (${pyMetrics.toolbarBottom}) unclipped above #judge-results (${pyMetrics.resTop}) at ${vp.width}x${vp.height}`
         );
         await longCtx.close();
       }
@@ -1172,8 +1172,8 @@ async function run() {
       await gtagPage.goto(`${baseUrl}/exercises/?id=000&lang=en`, { waitUntil: "networkidle" });
       await gtagPage.waitForSelector("#ws-problem-title");
       await gtagPage.click("#stmt-tab-editorial");
-      await gtagPage.click("#tab-highspy");
-      await gtagPage.locator("#editor-highspy").fill("# BROWSER_SECRET_EDIT_CHECK");
+      await gtagPage.click("#tab-pulp");
+      await gtagPage.locator("#editor-pulp").fill("# BROWSER_SECRET_EDIT_CHECK");
       await gtagPage.click("#tab-washi");
       const solBtn = gtagPage.locator('button[data-action="solution"][data-runtime="washi"]');
       await solBtn.click();
@@ -1247,7 +1247,7 @@ async function run() {
     assert(pageErrors.length === 0, `Uncaught page errors observed: ${pageErrors.join(" | ")}`);
     assert(httpErrors.length === 0, `HTTP >=400 responses observed: ${httpErrors.join(" | ")}`);
 
-    console.log("All Exercises browser checks passed cleanly (all 10 problems x WaSHI + Pyodide highspy, 3 locales, mobile audit)!");
+    console.log("All Exercises browser checks passed cleanly (all 10 problems x WaSHI + Pyodide pulp, 3 locales, mobile audit)!");
   } finally {
     await browser.close();
     server.close();

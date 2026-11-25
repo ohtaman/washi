@@ -25,6 +25,8 @@ export async function solve(input: P058Input): Promise<P058Output> {
   const Q = input.capacity;
   const m = new Model("PickupDelivery");
 
+  // x[i][j][k] in {0, 1}: binary indicator that vehicle k traverses arc i -> j (i != j; 0 is depot)
+  // t[i]: continuous visit-order index for node i (0 at depot, 1..n-1 at stops)
   const x = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) =>
       i === j ? null : m.binary(K, { prefix: `x_${i}_${j}` })
@@ -34,12 +36,14 @@ export async function solve(input: P058Input): Promise<P058Output> {
     m.continuous(`t_${i}`, { lb: i === 0 ? 0 : 1, ub: i === 0 ? 0 : n - 1 })
   );
 
+  // Net load change at each stop (+demand at pickup, -demand at delivery)
   const delta = new Array(n).fill(0);
   for (const r of input.requests) {
     delta[r.pickup] = r.demand;
     delta[r.delivery] = -r.demand;
   }
 
+  // load[i]: vehicle load immediately after visiting node i, tightened by delta[i]
   const load = Array.from({ length: n }, (_, i) =>
     m.continuous(`L_${i}`, {
       lb: i === 0 ? 0 : Math.max(0, delta[i]),
@@ -112,6 +116,7 @@ export async function solve(input: P058Input): Promise<P058Output> {
     }
   }
 
+  // Minimize total travel distance across all vehicles
   const costTerms = [];
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -125,6 +130,7 @@ export async function solve(input: P058Input): Promise<P058Output> {
   m.objective(minimize(sum(costTerms)));
   await m.solve();
 
+  // Reconstruct each active vehicle's route from depot 0 back to depot 0
   const routes: number[][] = [];
   for (let k = 0; k < K; k++) {
     let start = -1;

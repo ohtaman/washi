@@ -3,7 +3,10 @@
 <!-- section:scenario -->
 企业策略治理引擎在布尔属性与有界整数属性上同时维护不可违背的硬规则与带惩罚权重的软偏好规则。
 
-请先检查全部硬规则与软规则是否联合一致：若一致，则返回空冲突核、空松弛集和零修复代价；若不一致，则从全部规则中提取极小不可满足核心（MUS），并合成使所有硬规则和未松弛软规则均满足的最小代价软规则松弛方案与修复后赋值。
+请按以下步骤进行诊断与修复：
+- **一致性检查**：先检查全部硬规则与软规则是否可以同时满足。
+- **若一致**：返回空冲突核、空松弛集、零修复代价及一组可行赋值。
+- **若不一致**：从全部规则中提取极小不可满足核心（MUS），并求出总权重最小的软规则松弛方案以及满足所有硬规则和剩余软规则的修复后赋值。
 
 <!-- section:io -->
 ### 输入
@@ -14,6 +17,19 @@
 | `intVars` | `Array<{ name: string; lb: number; ub: number }>` | 有界整数变量定义 |
 | `hardRules` | `Array<{ id: string; expr: SmtFormula }>` | 不可松弛的强制硬规则 |
 | `softRules` | `Array<{ id: string; weight: number; expr: SmtFormula }>` | 带违背代价 `weight` 的软规则 |
+
+`SmtFormula` 是由布尔变量名（`string`）、线性整数比较（`SmtCmp`）及逻辑连接词组成的递归联合类型：
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
 
 ### 输出
 

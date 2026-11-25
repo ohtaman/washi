@@ -14,9 +14,11 @@ export interface P037Output {
 }
 
 export async function solve(input: P037Input): Promise<P037Output> {
+  // Upper bound on strip height: stacking all rectangles vertically
   const maxHeight = input.heights.reduce((acc, h) => acc + h, 0);
   const m = new Model("RectangleStripPacking");
 
+  // (x[i], y[i]): bottom-left corner coordinates of rectangle i within the strip
   const x = input.widths.map((w, i) =>
     m.integer(`x_${i}`, { lb: 0, ub: input.stripWidth - w })
   );
@@ -24,6 +26,7 @@ export async function solve(input: P037Input): Promise<P037Output> {
     m.integer(`y_${i}`, { lb: 0, ub: maxHeight - h })
   );
 
+  // Pairwise non-overlap: for every pair (i, j), i is left of, right of, below, or above j
   m.constraint(
     input.widths.flatMap((_, i) =>
       input.widths.slice(i + 1).map((__, off) => {
@@ -38,11 +41,13 @@ export async function solve(input: P037Input): Promise<P037Output> {
     )
   );
 
+  // Minimize total strip height (topmost edge across all rectangles)
   m.objective(
     minimize(max(y.map((yi, i) => expr`${yi} + ${input.heights[i]}`)))
   );
   await m.solve({ solver: "pumpkin" });
 
+  // Round solver output to clean integers and normalize -0 to 0
   return {
     x: x.map((v) => Math.round(v.value!) || 0),
     y: y.map((v) => Math.round(v.value!) || 0),

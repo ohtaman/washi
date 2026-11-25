@@ -15,6 +15,19 @@
 | `rules` | `SmtFormula[]` | 適用中のポリシールール一覧 |
 | `safeInvariant` | `SmtFormula` | 検証対象の安全不変条件 |
 
+`SmtFormula` は真偽値変数名（`string`）、線形整数比較（`SmtCmp`）、論理結合子からなる再帰的な直和型です:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

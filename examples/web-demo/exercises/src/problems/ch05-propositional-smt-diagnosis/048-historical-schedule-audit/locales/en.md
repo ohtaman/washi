@@ -15,6 +15,19 @@ Given the Boolean variables, bounded integer variables, named compliance rules, 
 | `rules` | `Array<{ id: string; expr: SmtFormula }>` | Named compliance rules |
 | `candidateValues` | `Record<string, boolean / number>` | Historical variable assignment to audit |
 
+`SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### Output
 
 | Field | Type | Description |

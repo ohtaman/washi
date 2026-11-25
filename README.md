@@ -37,7 +37,7 @@
 ## 📚 Documentation & Links
 
 - **[Documentation](https://washi.ohtaman.dev/)**: Modeling guide, solver references, and deployment guides
-- **[Interactive Showcase](https://washi.ohtaman.dev/showcase/) · [Browser Playground](https://washi.ohtaman.dev/demo/) · [Optimization 100 Exercises](https://washi.ohtaman.dev/exercises/)**: Try live optimization apps, practice 100 modeling workouts, and edit models in the browser
+- **[Interactive Showcase](https://washi.ohtaman.dev/showcase/) · [Browser Playground](https://washi.ohtaman.dev/demo/) · [Optimization N Exercises](https://washi.ohtaman.dev/exercises/)**: Try live optimization apps, practice interactive modeling workouts, and edit models in the browser
 - **[Examples](https://washi.ohtaman.dev/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
 - **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: Workflow skill and machine-readable docs for AI coding agents
 

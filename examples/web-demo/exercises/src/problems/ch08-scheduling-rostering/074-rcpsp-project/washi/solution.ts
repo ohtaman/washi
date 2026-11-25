@@ -14,19 +14,23 @@ export interface P074Output {
 }
 
 export async function solve(input: P074Input): Promise<P074Output> {
+  // Solve via Pumpkin CP solver using global cumulative resource constraints
   const m = new Model("RcpspProjectCP", { solver: "pumpkin" });
   const horizon = input.durations.reduce((a, b) => a + b, 0);
 
+  // starts[i]: integer start time of activity i in [0, horizon - durations[i]]
   const starts = input.durations.map((d, i) =>
     m.integer(`s_${i}`, { lb: 0, ub: horizon - d })
   );
 
+  // Precedence relations: predecessor u must finish before successor v starts
   m.constraint(
     input.precedences.map(
       ([u, v]) => expr`${starts[u]} + ${input.durations[u]} <= ${starts[v]}`
     )
   );
 
+  // Renewable resource capacity: total demand of active tasks at any time <= capacities[r]
   input.capacities.forEach((cap, r) => {
     const tasks = input.durations
       .map((duration, i) => ({
@@ -40,12 +44,14 @@ export async function solve(input: P074Input): Promise<P074Output> {
     }
   });
 
+  // Objective: minimize project makespan (maximum activity completion time)
   m.objective(
     minimize(max(starts.map((s, i) => expr`${s} + ${input.durations[i]}`)))
   );
   await m.solve();
 
   return {
+    // Round integer values to strip solver representation noise
     starts: starts.map((v) => Math.round(v.value!) || 0),
     makespan: Math.round(m.objectiveValue!) || 0,
   };

@@ -3,7 +3,14 @@
 <!-- section:scenario -->
 A manufacturing cell scheduler is planning a schedule for multiple machining jobs. Each job has a fixed assigned machine, processing duration (in minutes), and operating power (in kW), and you must decide both its start time (in minutes) and its operating mode. Each operating mode trades off off-machine pre-staging setup time (in minutes) against post-processing cooldown time (in minutes).
 
-Every job can only start after its pre-staging setup completes, and the schedule must simultaneously satisfy non-overlap on each machine, the factory's total power limit (in kW), precedence constraints waiting for post-processing completion, and mode compatibility tables for specified job pairs. Minimize the overall completion time (makespan, in minutes).
+The schedule must satisfy all of the following conditions:
+- **Pre-staging setup**: Every job can start only after its pre-staging setup completes.
+- **Machine non-overlap**: Jobs assigned to the same machine cannot overlap in time.
+- **Power cap**: Total simultaneous power across running jobs cannot exceed the factory limit (in kW).
+- **Precedence**: Preceding jobs must finish post-processing before dependent jobs can start.
+- **Allowed mode pairs**: Specified job pairs must use one of their allowed mode combinations.
+
+Minimize the overall completion time (makespan, in minutes).
 
 <!-- section:io -->
 ### Input
@@ -14,6 +21,10 @@ Every job can only start after its pre-staging setup completes, and the schedule
 | `jobs` | `JobSpec[]` | Job specifications (`duration`, `power`, `machine`, `setupTimes`, `postTimes`) |
 | `precedences` | `number[][]` | Precedence pairs `[u, v]` requiring `starts[u] + duration[u] + postTimes[u][modes[u]] <= starts[v]` |
 | `modeRules` | `ModeRule[]` | Allowed mode pair tables `{ jobs: [u, v], allowedPairs }` |
+
+Type definitions:
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }` (times in minutes, `power` in kW, `machine` 0-based; `setupTimes[m]` and `postTimes[m]` give pre-staging setup and post-processing cooldown for mode `m`).
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: [number, number][] }`, where `jobs` is a pair `[u, v]` of 0-based job indices and `allowedPairs` lists permitted `[modes[u], modes[v]]` pairs.
 
 ### Output
 

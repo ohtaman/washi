@@ -1,9 +1,12 @@
 # #079. e-Sports League Match & Venue Scheduling
 
 <!-- section:scenario -->
-An e-sports league schedules candidate tournament matches across V arenas and S broadcast timeslots. Each match has a required broadcast duration, a viewership priority score if scheduled, and a venue compatibility mask; unscheduled matches earn zero score.
+An e-sports league schedules candidate tournament matches across $V$ arenas and $S$ broadcast timeslots.
 
-Every venue-slot block has a regular broadcast length that may be extended up to a fixed overtime cap at a linear per-unit overtime penalty. Select which matches to broadcast and assign them to compatible venue-slot blocks to maximize total viewership score minus total overtime cost.
+The schedule is governed by the following rules:
+- **Match attributes**: Each match has a required broadcast duration, a viewership score if scheduled, and a set of compatible venues (unscheduled matches earn zero score).
+- **Venue-slot capacity and overtime**: Every venue-slot block has a regular broadcast length that may be extended up to a fixed overtime cap at a linear per-unit overtime penalty.
+- **Objective**: Assign matches to compatible venue-slot blocks to maximize total viewership score minus total overtime cost.
 
 <!-- section:io -->
 ### Input

@@ -15,7 +15,7 @@ $$
 
 ## Key Points
 
-- **CP `disjoint` vs. Big-M MIP**: A Big-M MIP formulation of JSSP introduces a binary variable $y_{ab}$ and two weak Big-M inequalities for every pair of operations on the same machine, producing loose LP relaxations where $S_{j,o}$ fractions allow overlapping jobs. By contrast, Pumpkin's native `disjoint` propagator performs edge-finding and energetic reasoning directly over integer time windows without $O(n^2)$ Big-M rows.
+- **CP `disjoint` vs. Big-M MIP**: A Big-M MIP formulation of JSSP introduces a binary variable $y_{ab}$ and two weak Big-M inequalities for every pair of operations on the same machine, producing loose LP relaxations where $S_{j,o}$ fractions allow overlapping jobs. By contrast, Pumpkin's native `disjoint` propagator performs Vilím edge-finding directly over integer time windows without $O(n^2)$ Big-M rows.
 - **Tight horizon bounds**: Setting `ub: horizon - d` with `horizon = sum(durations)` keeps finite integer domains compact, speeding up Lazy Clause Generation (LCG) conflict learning.
 - **WaSHI-only CP capability**: Because `disjoint` and `max` compile natively to Pumpkin's LCG engine, this problem uses `{ solver: "pumpkin" }` in WaSHI (TypeScript).
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).

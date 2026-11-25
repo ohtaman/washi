@@ -37,7 +37,7 @@
 ## 📚 文档与链接
 
 - **[在线文档](https://washi.ohtaman.dev/zh/)**：建模指南、求解器说明与运行环境配置
-- **[案例展示](https://washi.ohtaman.dev/zh/showcase/) · [浏览器演示](https://washi.ohtaman.dev/demo/) · [数理优化百题训练](https://washi.ohtaman.dev/exercises/?lang=zh)**：在线体验交互式应用、浏览器建模演练场与百题实战训练营
+- **[案例展示](https://washi.ohtaman.dev/zh/showcase/) · [浏览器演示](https://washi.ohtaman.dev/demo/) · [数理优化 N 题训练](https://washi.ohtaman.dev/exercises/?lang=zh)**：在线体验交互式应用、浏览器建模演练场与 N 题实战训练营
 - **[示例目录](https://washi.ohtaman.dev/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
 - **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**：面向 AI 编程助手的技能定义与机器可读文档
 

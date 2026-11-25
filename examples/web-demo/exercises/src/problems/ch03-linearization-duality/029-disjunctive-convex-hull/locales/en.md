@@ -1,9 +1,14 @@
 # #029. Disjunctive Operating Bands (Convex Hull)
 
 <!-- section:scenario -->
-A plant operations manager is planning how to run multiple production units to supply at least a target demand (in t/h). Each unit must operate in exactly one mutually exclusive band—such as idle (0 output), a low-load eco band, or a high-load turbo band—with forbidden output gaps between adjacent bands.
+A plant operations manager is planning how to run multiple production units to supply at least a target demand (in t/h).
 
-Each operating band has its own fixed startup cost (in 10k JPY) and unit variable cost (in 10k JPY/(t/h)). Using a convex-hull formulation—which tightly represents a disjunctive constraint (choosing one among multiple mutually exclusive operating regimes) as the smallest convex set containing the disjoint intervals—find the band selection and output levels that meet demand while **minimizing total fixed plus variable cost (in 10k JPY)**.
+The operating plan must satisfy all of the following conditions:
+- **Exclusive operating modes**: Each unit must run in exactly one mode—such as idle (0 output), a low-load eco mode, or a high-load turbo mode.
+- **Output ranges with gaps**: Each mode has its own output interval, with forbidden output gaps between adjacent modes.
+- **Total demand**: Total output across all units must be at least the target demand.
+
+Each mode has its own fixed startup cost (in 10k JPY) and unit variable cost (in 10k JPY/(t/h)). Using a convex-hull formulation—which tightly represents choosing one mode among mutually exclusive alternatives (an OR / disjunctive constraint) as the smallest convex set over split output variables and mode indicators—find the mode selection and output levels that meet demand while **minimizing total fixed plus variable cost (in 10k JPY)**.
 
 <!-- section:io -->
 ### Input

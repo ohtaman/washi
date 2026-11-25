@@ -15,6 +15,19 @@
 | `rules` | `Array<{ id: string; expr: SmtFormula }>` | 命名合规规则列表 |
 | `candidateValues` | `Record<string, boolean / number>` | 待审计的历史赋值记录 |
 
+`SmtFormula` 是由布尔变量名（`string`）、线性整数比较（`SmtCmp`）及逻辑连接词组成的递归联合类型：
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

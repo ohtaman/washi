@@ -25,6 +25,7 @@ export interface P046Output {
   coreRules: string[];
 }
 
+// Encode a single puzzle clue as a named linear constraint over binary cell variables x[cell] in {0, 1}
 function addClueConstraint(m: Model, clue: PuzzleClue, x: Record<string, Var>): void {
   switch (clue.type) {
     case "mineCount":
@@ -43,17 +44,20 @@ function addClueConstraint(m: Model, clue: PuzzleClue, x: Record<string, Var>): 
       m.constraint(x[clue.cell].eq(1), clue.id);
       break;
     case "impliesMine":
+      // Binary implication: ifMine == 1 => thenMine == 1 (x[ifMine] <= x[thenMine])
       m.constraint(x[clue.ifMine].le(x[clue.thenMine]), clue.id);
       break;
     case "same":
       m.constraint(x[clue.a].eq(x[clue.b]), clue.id);
       break;
     case "different":
+      // Binary XOR: x[a] + x[b] == 1
       m.constraint(x[clue.a].add(x[clue.b]).eq(1), clue.id);
       break;
   }
 }
 
+// Check satisfiability of a candidate clue subset; x[cell] in {0, 1} indicates mine presence
 async function checkSubset(input: P046Input, activeIds: string[]): Promise<CheckResult> {
   const m = new Model("PuzzleClueDiagnosis");
   const x: Record<string, Var> = {};
@@ -72,8 +76,11 @@ async function checkSubset(input: P046Input, activeIds: string[]): Promise<Check
 export async function solve(input: P046Input): Promise<P046Output> {
   const allIds = input.clues.map((c) => c.id);
   const initial = await checkSubset(input, allIds);
+  // Seed MUS minimization from solver-reported unsatCore (or all clues if none reported)
   let core = Array.from(new Set(initial.unsatCore ?? allIds));
 
+  // Deletion-based MUS extraction: try dropping each clue in core; keep dropped if still Unsat,
+  // tightening further using any smaller unsatCore returned by Z3
   for (const clueId of [...core]) {
     if (!core.includes(clueId)) continue;
     const candidate = core.filter((id) => id !== clueId);

@@ -3,7 +3,6 @@
   "subtitle": "Chapter 4 synthesis: couple machine disjoint(), power cumulative(), mode-table allowed(), and setup/post lookups at() to minimize makespan.",
   "tags": [
     "CP",
-    "MIP",
     "Scheduling Synthesis",
     "Capstone"
   ],

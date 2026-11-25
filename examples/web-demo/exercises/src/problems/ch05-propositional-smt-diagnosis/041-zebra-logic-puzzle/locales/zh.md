@@ -1,7 +1,12 @@
 # #041. 斑马谜题（逻辑网格）
 
 <!-- section:scenario -->
-从左到右排列的每个位置都必须从每个类别中恰好分配一个属性值，且每个属性值在所有位置中恰好出现一次。结构化线索限制了属性值的位置、同位绑定、互斥组合以及左右或相邻的相对位置关系。
+这是一个将属性分配到从左到右排列位置的逻辑网格谜题。
+
+有效分配方案必须满足以下所有条件：
+- **每个位置每类一值**：每个位置必须从每个类别中恰好分配一个属性值。
+- **同类别不重复**：同一类别中的每个属性值恰好只出现在一个位置。
+- **满足所有线索**：所有给定线索（指定位置、同位置、蕴含关系、互斥组合以及左右或相邻位置关系）均须成立。
 
 给定位置数量、各类别的属性列表以及线索列表，判断是否存在满足所有条件的分配；若可满足，则返回一组完整分配。
 
@@ -13,6 +18,14 @@
 | `n` | `number` | 位置数量（从左到右编号为 0 到 `n - 1`） |
 | `categories` | `Record<string, string[]>` | 类别名称到其 `n` 个不同属性值列表的映射 |
 | `clues` | `ZebraClue[]` | 结构化线索（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
+
+其中 `CategoryValue` 为 `[category: string, value: string]`，每条 `ZebraClue` 为以下变体之一：
+- `{ type: "at", position: number, category: string, value: string }`（`position` 从 0 开始）
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` 表示 `pos(right) === pos(left) + 1`，否则表示 `pos(left) < pos(right)`）
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }`（`|pos(a) - pos(b)| === 1`）
 
 ### 输出
 

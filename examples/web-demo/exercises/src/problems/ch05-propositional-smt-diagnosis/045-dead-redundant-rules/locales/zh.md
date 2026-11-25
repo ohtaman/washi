@@ -14,6 +14,17 @@
 | `baseRules` | `PropFormula[]` | 全局生效的基础背景规则 |
 | `rules` | `Array<{ id: string; condition: PropFormula; effect: PropFormula }>` | 有序的条件-结论规则列表 |
 
+`PropFormula` 为递归联合类型：
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### 输出
 
 | 字段 | 类型 | 说明 |

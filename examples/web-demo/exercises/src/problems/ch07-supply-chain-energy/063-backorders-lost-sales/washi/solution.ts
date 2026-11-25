@@ -24,19 +24,23 @@ export async function solve(input: P063Input): Promise<P063Output> {
   const T = input.demands.length;
   const m = new Model("BackordersLostSales");
 
+  // production[t]: units produced in period t (0 <= prod <= capacities[t])
   const production = input.capacities.map((ub, t) =>
     m.continuous({ lb: 0, ub, name: `prod_${t}` })
   );
+  // sales[t], inventory[t]: units sold and ending on-hand stock in period t (>= 0)
   const sales = m.continuous(T, { lb: 0, prefix: "sales" });
   const inventory = m.continuous(T, { lb: 0, prefix: "inv" });
+  // backlog[t]: unfilled demand carried to next period (forced to 0 at horizon end T - 1)
   const backlog = input.demands.map((_, t) =>
     m.continuous({ lb: 0, ub: t === T - 1 ? 0 : Infinity, name: `back_${t}` })
   );
+  // lostSales[t]: demand permanently forfeited in period t (0 <= lost <= demands[t])
   const lostSales = input.demands.map((ub, t) =>
     m.continuous({ lb: 0, ub, name: `lost_${t}` })
   );
 
-  // Physical inventory conservation
+  // Physical inventory conservation: previous stock + production - sales = ending stock
   m.constraint(
     input.demands.map((_, t) => {
       const prevInv = t === 0 ? input.initialInventory : inventory[t - 1];
@@ -44,7 +48,7 @@ export async function solve(input: P063Input): Promise<P063Output> {
     })
   );
 
-  // Demand split across sales, backlog change, and lost sales
+  // Demand balance: prior backlog + new demand is fulfilled as sales, lost, or carried as backlog
   m.constraint(
     input.demands.map((demand, t) => {
       const prevBack = t === 0 ? 0 : backlog[t - 1];
@@ -52,6 +56,7 @@ export async function solve(input: P063Input): Promise<P063Output> {
     })
   );
 
+  // Objective: maximize sales revenue minus production, holding, backorder, and lost-sale penalty costs
   m.objective(
     maximize(
       expr`${input.unitPrice} * ${sum(sales)} - dot(${input.prodCosts}, ${production}) - ${input.holdCost} * ${sum(inventory)} - ${input.backorderCost} * ${sum(backlog)} - ${input.lostSalePenalty} * ${sum(lostSales)}`

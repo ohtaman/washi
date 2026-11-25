@@ -1,9 +1,11 @@
 # #100. 综合 S&OP 策略审计与最小扰动重排产（综合压轴）
 
 <!-- section:scenario -->
-在化工与材料制造商的产销协同计划（S&OP）中，排产团队会同时收到产线运行的设备硬性约束以及来自现场和销售部门的带权重软性方针。当方针之间互相冲突，或导致有效产能不足以满足需求时，必须在制定生产计划前先以最小权重代价化解方针矛盾。
+在化工与材料制造商的产销协同计划（S&OP）中，排产团队会同时收到产线运行的设备硬性约束以及来自现场和销售部门的带权重软性方针。当方针之间互相冲突，或导致有效产能不足以满足需求时，必须在制定生产计划前，以最小化被放弃方针的总权重来化解矛盾。
 
-采用 Z3 SMT 冲突分析与 HiGHS 混合整数规划相结合的两阶段混合方法求解。第一阶段找出总权重最小的待放弃软策略子集，使所有硬规则与总需求产能同时可满足；第二阶段在保留的规则下分配各产线启停与产量，最小化固定开机费、单位生产成本及相对基准计划的变更惩罚之和。
+请采用 Z3 SMT 冲突分析与 HiGHS 混合整数规划相结合的两阶段混合方法求解：
+- **第一阶段（矛盾化解）**：找出总权重最小的待放弃软策略子集，使所有硬规则与总需求产能同时可满足。
+- **第二阶段（生产排产）**：在保留的规则下分配各产线启停与产量，最小化固定开机费、单位生产成本及相对基准计划的变更惩罚之和。
 
 <!-- section:io -->
 ### 输入
@@ -18,6 +20,12 @@
 | `disruptionPenalty` | `number` | 每条产线偏离基准启停状态一次产生的变更惩罚 |
 | `hardRules` | `PolicyRule[]` | 必须严格执行的硬性业务规则 |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | 带有松弛惩罚权重的软性策略规则 |
+
+每个 `PolicyRule` 为带有 `id: string` 及以下 `type` 变体之一的标签对象（`line`、`lines`、`ifLine`、`thenLine` 均为从 0 开始的产线索引）：
+- `"must_run"`: `{ id, type: "must_run", line: number }` — 要求 `active[line] === 1`
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — 要求 `active[line] === 0`
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — 要求 `lines` 中至少有一条产线满足 `active[idx] === 1`
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — 要求若 `active[ifLine] === 1` 则 `active[thenLine] === (thenActive ? 1 : 0)`
 
 ### 输出
 

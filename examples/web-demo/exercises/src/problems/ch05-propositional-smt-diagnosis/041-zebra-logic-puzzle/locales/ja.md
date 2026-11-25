@@ -1,9 +1,14 @@
 # #041. ゼブラパズル（ロジックグリッド）
 
 <!-- section:scenario -->
-左から右へ並んだ各位置に対して、すべてのカテゴリからちょうど1つずつの属性値を割り当て、同じカテゴリ内の各値はちょうど1つの位置にだけ現れるようにします。構造化されたヒント集合は、特定位置の指定、同位置・含意・同居禁止、および左右・隣接の位置関係を制約します。
+左から右へ並んだ各位置に対して、属性を割り当てるロジックパズルです。
 
-位置数、カテゴリごとの値リスト、ヒント一覧が与えられたとき、すべての条件を満たす割り当てが存在するかを判定し、充足可能なら完全な割り当てを1つ返してください。
+割り当ては次の条件をすべて満たす必要があります。
+- **各位置への割り当て**: すべての位置に、各カテゴリからちょうど 1 つずつ属性値を割り当てる
+- **値の重複禁止**: 同じカテゴリ内の各値は、ちょうど 1 つの位置にだけ現れる
+- **ヒントの充足**: 与えられたヒント（特定位置の指定、同じ位置、含意、同じ位置の禁止、左右・隣接の位置関係）をすべて満たす
+
+位置数、カテゴリごとの値リスト、ヒント一覧が与えられたとき、すべての条件を満たす割り当てが存在するかを判定し、充足可能なら完全な割り当てを 1 つ返してください。
 
 <!-- section:io -->
 ### 入力
@@ -13,6 +18,14 @@
 | `n` | `number` | 位置の数（左から右へ 0 から `n - 1`） |
 | `categories` | `Record<string, string[]>` | カテゴリ名から `n` 個の相異なる属性値配列へのマップ |
 | `clues` | `ZebraClue[]` | 構造化ヒント（`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`） |
+
+`CategoryValue` を `[category: string, value: string]` として、各 `ZebraClue` は以下のいずれかです:
+- `{ type: "at", position: number, category: string, value: string }`（`position` は 0 始まり）
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }`（`immediate: true` なら `pos(right) === pos(left) + 1`、それ以外は `pos(left) < pos(right)`）
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }`（`|pos(a) - pos(b)| === 1`）
 
 ### 出力
 

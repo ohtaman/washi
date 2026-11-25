@@ -14,16 +14,16 @@ registerChapterExerciseSuite({
   dirName: "ch09-multiobjective-uncertainty",
   expectedIds: ["081", "082", "083", "084", "085", "086", "087", "088", "089", "090"],
   expectedRuntimes: {
-    "081": ["washi", "highspy"],
-    "082": ["washi", "highspy"],
-    "083": ["washi", "highspy"],
+    "081": ["washi", "pulp"],
+    "082": ["washi", "pulp"],
+    "083": ["washi", "pulp"],
     "084": ["washi"],
-    "085": ["washi", "highspy"],
-    "086": ["washi", "highspy"],
-    "087": ["washi", "highspy"],
-    "088": ["washi", "highspy"],
-    "089": ["washi", "highspy"],
-    "090": ["washi", "highspy"],
+    "085": ["washi", "pulp"],
+    "086": ["washi", "pulp"],
+    "087": ["washi", "pulp"],
+    "088": ["washi", "pulp"],
+    "089": ["washi", "pulp"],
+    "090": ["washi", "pulp"],
   },
   objectiveTol: 1e-2,
   enforceScaffoldPolicy: true,
@@ -149,9 +149,9 @@ registerChapterExerciseSuite({
     {
       const p = getProblem(problems, "084");
       expect(p.meta.runtimes).toEqual(["washi"]);
-      expect(p.meta.paradigms).toEqual(["QP", "LP"]);
-      expect(p.highspyStarter).toBe("");
-      expect(p.highspySolution).toBe("");
+      expect(p.meta.paradigms).toEqual(["QP"]);
+      expect(p.pulpStarter).toBe("");
+      expect(p.pulpSolution).toBe("");
 
       const runRes = await runWashiExerciseCode(p.washiSolution, [structuredClone(p.cases[0].input)]);
       expect(runRes.ok).toBe(true);

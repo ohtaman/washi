@@ -42,7 +42,7 @@ aside: false
 
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-exercises.png" alt="数理优化百题训练" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-exercises.png" alt="数理优化 N 题训练" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
@@ -51,10 +51,10 @@ aside: false
           <span class="washi-showcase-badge">WaSHI (TS) × PuLP (Python)</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/exercises/?lang=zh" target="_self" class="washi-showcase-title-link">数理优化百题训练</a>
+          <a href="/exercises/?lang=zh" target="_self" class="washi-showcase-title-link">数理优化 N 题训练</a>
         </div>
         <p class="washi-showcase-desc">
-          在浏览器本地运行的交互式数理优化百题训练。支持并排对比 TypeScript 版 WaSHI 与 Python 版 PuLP（Pyodide 上的 <code>highspy</code>），并提供自动评测与建模说明。
+          在浏览器本地运行的交互式数理优化 N 题训练。支持并排对比 TypeScript 版 WaSHI 与 Python 版 PuLP（Pyodide 上的 <code>highspy</code>），并提供自动评测与建模说明。
         </p>
       </div>
       <div class="washi-showcase-actions">

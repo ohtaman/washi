@@ -1,9 +1,9 @@
 {
   "ui": {
-    "brandTitle": "Optimization 100",
+    "brandTitle": "Optimization N",
     "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Exercises (WaSHI & PuLP)",
-    "aboutTitle": "About Optimization 100",
-    "aboutBody": "Knowing optimization algorithms at a high level is rarely enough to develop an instinct for translating a problem into variables and constraints—or diagnosing why a model turns out INFEASIBLE. This 100-exercise drill lets you write models directly in the browser without local setup and practice core formulation patterns across LP, MIP, convex QP, CP, and SMT with automated grading.",
+    "aboutTitle": "About Optimization N",
+    "aboutBody": "Knowing optimization algorithms at a high level is rarely enough to develop an instinct for translating a problem into variables and constraints—or diagnosing why a model turns out INFEASIBLE. This interactive exercise series lets you write models directly in the browser without local setup and practice core formulation patterns across LP, MIP, convex QP, CP, and SMT with automated grading.",
     "aboutPoints": [
       {
         "label": "Zero-setup automated grading",
@@ -15,7 +15,7 @@
       },
       {
         "label": "PuLP (Python) runtime alongside WaSHI",
-        "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser so Python practitioners can work through the same exercises and compare idioms side by side."
+        "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser for LP and MIP exercises so Python practitioners can work through them and compare idioms side by side. Exercises for CP, SMT, convex QP, and decomposition algorithms are WaSHI (TypeScript)-only."
       },
       {
         "label": "AI-generated exercises with ongoing review",
@@ -55,7 +55,11 @@
     },
     "provenance": {
       "generatedBy": "Drafted by Gemini",
-      "reviewedBy": "Reviewed by {handles}"
+      "reviewedBy": "Reviewed by {handles}",
+      "unreviewedBadge": "Unreviewed",
+      "reviewedBadge": "Reviewed",
+      "legendUnreviewed": "Drafted by Gemini (Unreviewed)",
+      "legendReviewed": "Reviewed"
     },
     "workspace": {
       "jumpToEditorBtn": "Jump to Answer Editor ↓",
@@ -69,7 +73,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "PuLP (Python)",
+      "pulp": "PuLP (Python)",
       "tablistLabel": "Solver runtime tabs",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) loads in a background Web Worker on your first Python run."
     },
@@ -173,7 +177,7 @@
     },
     "10": {
       "title": "Strengthening, Decomposition & Hybrid Solver Architecture",
-      "description": "Tighter Big-M & scaling, cover/symmetry cuts, iterative subtour cuts, cutting-stock & routing column generation, Dantzig-Wolfe, classical & logic-based Benders, LNS, and S&OP synthesis."
+      "description": "Tighter Big-M & scaling, cover/symmetry cuts, iterative subtour cuts, cutting-stock & routing column generation, Dantzig-Wolfe, classical & logic-based Benders, Fix-and-Optimize, and S&OP synthesis."
     }
   },
   "judgeHelpers": {

@@ -17,12 +17,14 @@ export interface P095Output {
 export async function solve(input: P095Input): Promise<P095Output> {
   const D = input.demands.length;
   const master = new Model("ShiftRosteringMaster");
+  // Set-covering master: minimize total shift-pattern costs across selected worker schedules
   master.objective(minimize(0));
 
   for (let d = 0; d < D; d++) {
     master.constraint(expr`0 >= ${input.demands[d]}`, `demand_${d}`);
   }
 
+  // Seed RMP with single-day shifts so every day with positive demand is initially coverable
   const initCols: Array<{ variable: Var; pattern: number[] }> = [];
   for (let d = 0; d < D; d++) {
     if (input.demands[d] <= 0) continue;
@@ -38,12 +40,14 @@ export async function solve(input: P095Input): Promise<P095Output> {
   }
 
   let genCounter = 0;
+  // Column generation loop over LP relaxation, followed by integer MIP solve on generated columns
   const result = await solveColumnGeneration<number[]>({
     master,
     maxIterations: 100,
     reducedCostTolerance: 1e-5,
     finalizeAsMIP: true,
     pricing: async ({ getDual }) => {
+      // Pricing subproblem: find a valid multi-day shift pattern a[d] in {0, 1} with negative reduced cost
       const sub = new Model("ShiftPricing");
       const a = sub.binary(D, { prefix: "a" });
       let netGain = expr`0`;
@@ -51,6 +55,7 @@ export async function solve(input: P095Input): Promise<P095Output> {
         netGain = netGain.add(a[d].mul(getDual(`demand_${d}`) - input.shiftCosts[d]));
       }
       sub.objective(maximize(netGain));
+      // Shift legality: non-empty, total work days <= maxWorkDays, and sliding-window max consecutive days
       sub.constraint(expr`sum(${a}) >= 1`, "nonempty");
       sub.constraint(expr`sum(${a}) <= ${input.maxWorkDays}`, "max_work");
 
@@ -64,10 +69,12 @@ export async function solve(input: P095Input): Promise<P095Output> {
       const status = await sub.solve();
       if (status !== "Optimal") return null;
 
+      // Reduced cost = baseCost - sum_d (dual_d - shiftCost_d) * a_d
       const reducedCost = input.baseCost - (sub.objectiveValue ?? 0);
       if (reducedCost >= -1e-5) return null;
 
       genCounter++;
+      // Round binary pattern from pricing subproblem
       const pat = a.map((v) => Math.round(v.value ?? 0) || 0);
       const cost =
         input.baseCost + pat.reduce((acc, v, d) => acc + v * input.shiftCosts[d], 0);

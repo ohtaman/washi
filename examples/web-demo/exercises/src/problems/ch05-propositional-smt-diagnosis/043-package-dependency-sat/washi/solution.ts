@@ -34,6 +34,8 @@ export interface P043Output {
 
 export async function solve(input: P043Input): Promise<P043Output> {
   const m = new Model("PackageResolver");
+  // pick[pkg][ver]: Boolean decision for installing (pkg, ver)
+  // used[pkg][ver]: 0/1 integer mirror of pick[pkg][ver] so total installed count can be summed in the objective
   const pick: Record<string, Record<string, BoolVar>> = {};
   const used: Record<string, Record<string, Var>> = {};
   const allUsed: Var[] = [];
@@ -47,9 +49,11 @@ export async function solve(input: P043Input): Promise<P043Output> {
       pick[pkg][ver] = b;
       used[pkg][ver] = u;
       allUsed.push(u);
+      // Channel Boolean pick into binary integer used (b <=> u == 1)
       m.constraint(implies(b, expr`${u} == 1`), `link_on_${pkg}_${ver}`);
       m.constraint(implies(not(b), expr`${u} == 0`), `link_off_${pkg}_${ver}`);
     }
+    // At-most-one version installed per package
     for (let i = 0; i < versions.length; i++) {
       for (let j = i + 1; j < versions.length; j++) {
         m.constraint(
@@ -60,11 +64,13 @@ export async function solve(input: P043Input): Promise<P043Output> {
     }
   }
 
+  // Root packages must have at least one version installed
   for (const root of input.roots) {
     const vars = input.packages[root].map((v) => pick[root][v]);
     m.constraint(vars.length === 1 ? vars[0] : or(...vars), `root_${root}`);
   }
 
+  // Dependency implications: installing (pkg, ver) requires one of depVersions (or forbids pkg@ver if empty)
   input.requires.forEach((req, idx) => {
     const deps = req.depVersions.map((dv) => pick[req.depPkg][dv]);
     const rhs = deps.length === 0 ? not(pick[req.pkg][req.ver]) : deps.length === 1 ? deps[0] : or(...deps);
@@ -74,10 +80,12 @@ export async function solve(input: P043Input): Promise<P043Output> {
     );
   });
 
+  // Pairwise package-version conflicts
   input.conflicts.forEach(([[p1, v1], [p2, v2]], idx) => {
     m.constraint(not(and(pick[p1][v1], pick[p2][v2])), `conf_${idx}`);
   });
 
+  // Minimize total number of installed package versions
   if (allUsed.length > 0) {
     m.objective(minimize(sum(allUsed)));
   }

@@ -1,6 +1,6 @@
 export type Locale = "en" | "ja" | "zh";
 
-export type RuntimeId = "washi" | "highspy";
+export type RuntimeId = "washi" | "pulp";
 
 export type ParadigmId = "LP" | "QP" | "MIP" | "CP" | "SMT";
 
@@ -73,8 +73,8 @@ export interface ProblemDefinition<TInput = any, TOutput = any> {
   cases: ProblemCase<TInput>[];
   washiStarter: string;
   washiSolution: string;
-  highspyStarter: string;
-  highspySolution: string;
+  pulpStarter: string;
+  pulpSolution: string;
   judge: (
     input: TInput,
     output: TOutput,

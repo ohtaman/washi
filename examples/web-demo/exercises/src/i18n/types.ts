@@ -34,6 +34,10 @@ export interface ExercisesUiStrings {
   provenance: {
     generatedBy: string;
     reviewedBy: (handles: string[]) => string;
+    unreviewedBadge: string;
+    reviewedBadge: string;
+    legendUnreviewed: string;
+    legendReviewed: string;
   };
   workspace: {
     jumpToEditorBtn: string;
@@ -47,7 +51,7 @@ export interface ExercisesUiStrings {
   };
   tabs: {
     washi: string;
-    highspy: string;
+    pulp: string;
     tablistLabel: string;
     pythonLazyNote: string;
   };

@@ -3,7 +3,14 @@
 <!-- section:scenario -->
 制造单元的进度管理员正在为多项加工作业制定调度计划。每项作业都已确定负责机器、加工时长（分钟）和运行功率（kW），需要同时决定其开始时间（分钟）和运行模式。不同运行模式在机外前段准备时间（分钟）与加工后冷却及后处理时间（分钟）之间存在权衡。
 
-每项作业必须在机外准备完成后才能开始，且必须同时满足同一台机器上的非重叠约束、全厂总消耗功率上限（kW）、等待后处理完成的先后约束以及指定作业对的模式兼容表。请最小化整体完工时间（makespan，分钟）。
+调度方案必须满足以下所有条件：
+- **前段准备完成**：每项作业必须在机外准备完成后才能开始。
+- **同机非重叠**：同一台机器上的作业在时间上不能重叠。
+- **总功率上限**：同时运行作业的总功耗不得超过全厂上限（kW）。
+- **先后关系**：前置作业必须完成后处理，后续作业才能开始。
+- **允许模式组合**：指定的作业对只能选用允许列表中的模式组合。
+
+请最小化整体完工时间（makespan，分钟）。
 
 <!-- section:io -->
 ### 输入
@@ -14,6 +21,10 @@
 | `jobs` | `JobSpec[]` | 各作业的规格（`duration`, `power`, `machine`, `setupTimes`, `postTimes`） |
 | `precedences` | `number[][]` | 需满足 `starts[u] + duration[u] + postTimes[u][modes[u]] <= starts[v]` 的先后作业对 `[u, v]` |
 | `modeRules` | `ModeRule[]` | 作业对 `{ jobs: [u, v], allowedPairs }` 的允许模式二元组表 |
+
+类型定义：
+- `JobSpec`: `{ duration: number, power: number, machine: number, setupTimes: number[], postTimes: number[] }`（时间单位为分钟，`power` 为 kW，`machine` 从 0 开始；`setupTimes[m]` 与 `postTimes[m]` 分别为模式 `m` 下的前段准备与后处理冷却时间）
+- `ModeRule`: `{ jobs: [number, number], allowedPairs: [number, number][] }`（`jobs` 为从 0 开始的作业索引对 `[u, v]`，`allowedPairs` 为允许的 `[modes[u], modes[v]]` 组合列表）
 
 ### 输出
 

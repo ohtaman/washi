@@ -8,8 +8,7 @@
   "difficulty": 3,
   "estimatedMinutes": 15,
   "paradigms": [
-    "QP",
-    "LP"
+    "QP"
   ],
   "runtimes": [
     "washi"

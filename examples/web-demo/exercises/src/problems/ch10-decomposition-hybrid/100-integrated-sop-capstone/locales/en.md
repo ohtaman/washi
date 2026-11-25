@@ -1,9 +1,11 @@
 # #100. Integrated S&OP Audit & Rescheduling (Capstone)
 
 <!-- section:scenario -->
-In Sales & Operations Planning (S&OP) at a chemical and materials manufacturer, production planners are given mandatory equipment constraints on line operations alongside weighted soft policies from operations and sales teams. When policies mutually contradict or fail to leave enough capacity to meet demand, the contradiction must be resolved at minimum weight sacrifice before building the production schedule.
+In Sales & Operations Planning (S&OP) at a chemical and materials manufacturer, production planners are given mandatory equipment constraints on line operations alongside weighted soft policies from operations and sales teams. When policies mutually contradict or fail to leave enough capacity to meet demand, the contradiction must be resolved by minimizing the total weight of dropped soft policies before building the production schedule.
 
-Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming. First, identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable. Second, allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
+Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mixed-integer programming:
+- **Phase 1 (Conflict resolution)**: Identify a minimum-weight subset of soft policies to drop so that all hard mandates and aggregate demand capacity are simultaneously satisfiable.
+- **Phase 2 (Production scheduling)**: Allocate production quantities and line activations under the retained policies to minimize fixed startup costs, unit production costs, and disruption penalties relative to the baseline schedule.
 
 <!-- section:io -->
 ### Input
@@ -18,6 +20,12 @@ Solve this two-phase hybrid problem using Z3 SMT conflict analysis and HiGHS mix
 | `disruptionPenalty` | `number` | Penalty incurred for each line whose active status differs from baseline |
 | `hardRules` | `PolicyRule[]` | Mandatory non-negotiable operational constraints |
 | `softRules` | `Array<PolicyRule & { weight: number }>` | Negotiable management rules with relaxation weights |
+
+Each `PolicyRule` is a tagged object with `id: string` and one of the following `type` variants (where `line`, `lines`, `ifLine`, `thenLine` are 0-based line indices):
+- `"must_run"`: `{ id, type: "must_run", line: number }` — requires `active[line] === 1`
+- `"must_idle"`: `{ id, type: "must_idle", line: number }` — requires `active[line] === 0`
+- `"min_active"`: `{ id, type: "min_active", lines: number[] }` — requires at least one `idx` in `lines` to satisfy `active[idx] === 1`
+- `"implies"`: `{ id, type: "implies", ifLine: number, thenLine: number, thenActive: boolean }` — requires `active[ifLine] === 1 => active[thenLine] === (thenActive ? 1 : 0)`
 
 ### Output
 

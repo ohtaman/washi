@@ -11,6 +11,7 @@ import {
   type PuzzleResult,
   type StageSpec,
 } from "./generator.ts";
+import { solveTitanPack } from "./solver.ts";
 import enCatalog from "./locales/en.json";
 import jaCatalog from "./locales/ja.json";
 import zhCatalog from "./locales/zh.json";
@@ -631,41 +632,63 @@ function init() {
     };
   }
 
-  // Solver / Hint button (Step-by-step hint or full solve)
-  const btnSolve = document.getElementById("btn-solve");
+  // Solver / Hint button (Real WaSHI HiGHS MILP solver)
+  const btnSolve = document.getElementById("btn-solve") as HTMLButtonElement | null;
+  let isSolving = false;
   if (btnSolve) {
-    btnSolve.onclick = () => {
-      // Find parts from solution that are not yet placed
-      const unplacedSolBlocks = currentPuzzle.solution.filter((sb) => !isPartPlaced(sb.partId));
+    btnSolve.onclick = async () => {
+      if (isSolving || isCutting) return;
+      isSolving = true;
+      btnSolve.disabled = true;
+      const stageNumSnapshot = currentStageNum;
+      const puzzleSnapshot = currentPuzzle;
+      try {
+        // Respect currently placed parts first; if they form a dead-end, solve from an empty board.
+        let solveResult = await solveTitanPack(puzzleSnapshot, placedParts);
+        if (stageNumSnapshot !== currentStageNum) return;
 
-      if (unplacedSolBlocks.length > 0) {
-        // Place one step hint
-        const nextHint = unplacedSolBlocks[0];
-        // Remove any conflicting placed blocks at target cells before inserting hint
-        placedParts = removeCollidingBlocks(placedParts, nextHint);
-        placedParts.push({
-          partId: nextHint.partId,
-          col: nextHint.col,
-          row: nextHint.row,
-          w: nextHint.w,
-          h: nextHint.h,
-        });
-        activePartId = null;
-        isRotated = false;
-        sndSnap();
-        render();
+        if (!solveResult.verified) {
+          solveResult = await solveTitanPack(puzzleSnapshot, []);
+          if (stageNumSnapshot !== currentStageNum) return;
+        }
 
-        const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
-        if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
+        if (!solveResult.verified || solveResult.placements.length === 0) {
+          sndError();
+          throw new Error(
+            `WaSHI MILP solver could not find a verified placement (status=${solveResult.status}).`
+          );
+        }
+
+        const unplacedSolBlocks = solveResult.placements.filter((sb) => !isPartPlaced(sb.partId));
+        if (unplacedSolBlocks.length > 0) {
+          const nextHint = unplacedSolBlocks[0];
+          placedParts = removeCollidingBlocks(placedParts, nextHint);
+          placedParts.push({
+            partId: nextHint.partId,
+            col: nextHint.col,
+            row: nextHint.row,
+            w: nextHint.w,
+            h: nextHint.h,
+          });
+          activePartId = null;
+          isRotated = false;
+          sndSnap();
+          render();
+
+          const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
+          if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
+            triggerCutClear();
+          }
+        } else {
+          placedParts = solveResult.placements.map((p) => ({ ...p }));
+          activePartId = null;
+          isRotated = false;
+          render();
           triggerCutClear();
         }
-      } else {
-        // All placed already, re-apply full solution
-        placedParts = currentPuzzle.solution.slice();
-        activePartId = null;
-        isRotated = false;
-        render();
-        triggerCutClear();
+      } finally {
+        isSolving = false;
+        btnSolve.disabled = false;
       }
     };
   }

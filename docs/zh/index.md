@@ -9,7 +9,7 @@ hero:
       text: 快速入门
       link: /zh/getting-started/
     - theme: alt
-      text: 百题训练
+      text: N 题训练
       link: /exercises/?lang=zh
     - theme: alt
       text: 案例展示
@@ -135,7 +135,7 @@ features:
 - **实战案例 — LP / MIP / QP**: [实际案例与 API 功能索引](/zh/examples/) · [生产计划问题](/zh/examples/production) · [0-1 背包问题](/zh/examples/knapsack) · [运输与分配网络](/zh/examples/transportation) · [营养问题与灵敏度分析](/zh/examples/diet-sensitivity) · [投资组合优化 (QP)](/zh/examples/portfolio-qp)
 - **实战案例 — 排班、指示符 MIP 与 CP**: [员工排班与休假冲突诊断](/zh/examples/shift-scheduling) · [电商购物车与优惠券优化](/zh/examples/ecommerce-coupons) · [资源受限项目调度 (CP)](/zh/examples/project-scheduling)
 - **实战案例 — SMT、诊断与分解法**: [SMT 安全策略验证](/zh/examples/smt-security) · [约束冲突诊断 (Unsat Core)](/zh/examples/unsat-core) · [车辆路径规划问题 (CVRP)](/zh/examples/vehicle-routing) · [旅行商问题 (TSP)](/zh/examples/traveling-salesperson)
-- **交互式 Playground 与应用**: [案例展示](/zh/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理优化百题训练</a> · <a href="/apps/ai-shift/" target="_self">护士排班 AI 助手</a> · <a href="/apps/ai-timetable/" target="_self">大学排课 AI Copilot</a>
+- **交互式 Playground 与应用**: [案例展示](/zh/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理优化 N 题训练</a> · <a href="/apps/ai-shift/" target="_self">护士排班 AI 助手</a> · <a href="/apps/ai-timetable/" target="_self">大学排课 AI Copilot</a>
 - **优化解谜游戏**: <a href="/games/demon-castle-shift/" target="_self">魔王城24小时警备排班</a> · <a href="/games/mofumofu-sheep/" target="_self">毛茸茸绵羊的牧场围栏</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

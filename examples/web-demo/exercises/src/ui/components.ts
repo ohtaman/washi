@@ -83,11 +83,15 @@ export function getProblemDiscussionUrl(
   return null;
 }
 
+export function isReviewedProblem(meta: ProblemMeta): boolean {
+  return meta.provenance.reviewedBy.length > 0;
+}
+
 export function renderProvenanceText(
   meta: ProblemMeta,
   strings: ExercisesUiStrings
 ): string {
-  if (meta.provenance.reviewedBy.length > 0) {
+  if (isReviewedProblem(meta)) {
     return `${strings.provenance.generatedBy} · ${strings.provenance.reviewedBy(
       meta.provenance.reviewedBy
     )}`;
@@ -159,6 +163,7 @@ function renderSidebarProblemItemHtml(
 ): string {
   const solved = isProblemSolved(progress, p.meta.id);
   const active = activeProblemId === p.meta.id;
+  const reviewed = isReviewedProblem(p.meta);
   const classes = [
     "book-sidebar-link",
     active ? "is-active" : "",
@@ -174,7 +179,9 @@ function renderSidebarProblemItemHtml(
         class="${classes}"
         data-sidebar-id="${escapeHtml(p.meta.id)}"
         data-nav-id="${escapeHtml(p.meta.id)}"
+        data-reviewed="${reviewed ? "true" : "false"}"
       >
+        <span class="book-sidebar-review-dot" aria-hidden="true"></span>
         <span class="book-sidebar-label">#${escapeHtml(p.meta.id)} ${escapeHtml(
           stripProblemIdPrefix(p.meta.title[locale])
         )}</span>
@@ -352,6 +359,7 @@ function renderTocRowHtml(
 ): string {
   const { meta } = prob;
   const solved = isProblemSolved(progress, meta.id);
+  const reviewed = isReviewedProblem(meta);
   const isCapstone = meta.role === "capstone";
   const roleLabel = strings.roleLabels[meta.role] ?? meta.role;
 
@@ -371,8 +379,12 @@ function renderTocRowHtml(
     .map((part) => escapeHtml(part))
     .join(" · ");
 
+  const reviewLabel = reviewed
+    ? strings.provenance.reviewedBadge
+    : strings.provenance.unreviewedBadge;
+
   return `
-    <li class="${rowClasses}" data-problem-id="${escapeHtml(meta.id)}">
+    <li class="${rowClasses}" data-problem-id="${escapeHtml(meta.id)}" data-reviewed="${reviewed ? "true" : "false"}">
       <span class="toc-num">#${escapeHtml(meta.id)}</span>
       <div class="toc-row-main">
         <a
@@ -384,6 +396,7 @@ function renderTocRowHtml(
       </div>
       <div class="toc-row-meta">
         <span class="toc-meta-tags"><span class="toc-role${isCapstone ? " is-capstone" : ""}">${escapeHtml(roleLabel)}</span> · ${metaParts}</span>
+        <span class="review-status" data-reviewed="${reviewed ? "true" : "false"}">${escapeHtml(reviewLabel)}</span>
         ${renderSolvedStatusBadgeHtml(solved, strings)}
       </div>
     </li>
@@ -469,6 +482,16 @@ export function renderExerciseIndexHtml(params: {
               )
               .join("")}
           </ul>
+          <div class="provenance-legend" role="note">
+            <span class="provenance-legend-item" data-reviewed="false">
+              <span class="provenance-legend-swatch" aria-hidden="true"></span>
+              <span>${escapeHtml(strings.provenance.legendUnreviewed)}</span>
+            </span>
+            <span class="provenance-legend-item" data-reviewed="true">
+              <span class="provenance-legend-swatch" aria-hidden="true"></span>
+              <span>${escapeHtml(strings.provenance.legendReviewed)}</span>
+            </span>
+          </div>
         </section>
 
         ${
@@ -596,7 +619,7 @@ export function renderWorkspaceHtml(params: {
   progress: ProgressState;
   activeRuntime: RuntimeId;
   washiCode: string;
-  highspyCode: string;
+  pulpCode: string;
 }): string {
   const {
     locale,
@@ -612,15 +635,15 @@ export function renderWorkspaceHtml(params: {
     progress,
     activeRuntime,
     washiCode,
-    highspyCode,
+    pulpCode,
   } = params;
   const { meta } = problem;
   const sections = parseProblemMarkdown(problemMarkdown);
   const solvedRuntimes = progress.solved[meta.id]?.runtimes ?? [];
   const solvedAny = isProblemSolved(progress, meta.id);
   const washiSolved = solvedRuntimes.includes("washi");
-  const highspySolved = solvedRuntimes.includes("highspy");
-  const supportsHighspy = meta.runtimes.includes("highspy");
+  const pulpSolved = solvedRuntimes.includes("pulp");
+  const supportsPulp = meta.runtimes.includes("pulp");
   const discussionUrl = getProblemDiscussionUrl(meta);
   const effectiveRuntime: RuntimeId = meta.runtimes.includes(activeRuntime)
     ? activeRuntime
@@ -667,7 +690,7 @@ export function renderWorkspaceHtml(params: {
     return `
       <div class="tab-panel-inner">
         ${
-          runtime === "highspy"
+          runtime === "pulp"
             ? `<p class="python-lazy-note">${escapeHtml(strings.tabs.pythonLazyNote)}</p>`
             : ""
         }
@@ -778,7 +801,7 @@ export function renderWorkspaceHtml(params: {
               <h1 id="ws-problem-title" class="ws-title">${escapeHtml(meta.title[locale])}</h1>
               <p class="ws-subtitle">${escapeHtml(meta.subtitle[locale])}</p>
 
-              <p class="ws-provenance">${escapeHtml(renderProvenanceText(meta, strings))}</p>
+              <p class="ws-provenance" data-reviewed="${isReviewedProblem(meta) ? "true" : "false"}"><span class="ws-provenance-dot" aria-hidden="true"></span><span>${escapeHtml(renderProvenanceText(meta, strings))}</span></p>
 
               <div
                 role="tablist"
@@ -875,7 +898,7 @@ export function renderWorkspaceHtml(params: {
                 <div>
                   <h2 class="answer-workbench-title">${escapeHtml(strings.editor.workbenchTitle)}</h2>
                   <p class="answer-workbench-hint">${escapeHtml(
-                    supportsHighspy ? strings.editor.eitherRuntimeHint : strings.editor.washiOnlyHint
+                    supportsPulp ? strings.editor.eitherRuntimeHint : strings.editor.washiOnlyHint
                   )}</p>
                 </div>
               </div>
@@ -899,18 +922,18 @@ export function renderWorkspaceHtml(params: {
                   <span class="runtime-tab-check">${washiSolved ? "✓" : ""}</span>
                 </button>
                 ${
-                  supportsHighspy
+                  supportsPulp
                     ? `<button
                   type="button"
                   role="tab"
-                  id="tab-highspy"
+                  id="tab-pulp"
                   class="runtime-tab"
-                  data-runtime="highspy"
-                  aria-selected="${effectiveRuntime === "highspy" ? "true" : "false"}"
-                  tabindex="${effectiveRuntime === "highspy" ? "0" : "-1"}"
+                  data-runtime="pulp"
+                  aria-selected="${effectiveRuntime === "pulp" ? "true" : "false"}"
+                  tabindex="${effectiveRuntime === "pulp" ? "0" : "-1"}"
                 >
-                  <span>${escapeHtml(strings.tabs.highspy)}</span>
-                  <span class="runtime-tab-check">${highspySolved ? "✓" : ""}</span>
+                  <span>${escapeHtml(strings.tabs.pulp)}</span>
+                  <span class="runtime-tab-check">${pulpSolved ? "✓" : ""}</span>
                 </button>`
                     : ""
                 }
@@ -924,13 +947,13 @@ export function renderWorkspaceHtml(params: {
               >${renderToolbarAndEditor("washi", washiCode)}</div>
 
               ${
-                supportsHighspy
+                supportsPulp
                   ? `<div
                 role="tabpanel"
-                id="panel-highspy"
-                aria-labelledby="tab-highspy"
-                ${effectiveRuntime !== "highspy" ? "hidden" : ""}
-              >${renderToolbarAndEditor("highspy", highspyCode)}</div>`
+                id="panel-pulp"
+                aria-labelledby="tab-pulp"
+                ${effectiveRuntime !== "pulp" ? "hidden" : ""}
+              >${renderToolbarAndEditor("pulp", pulpCode)}</div>`
                   : ""
               }
 

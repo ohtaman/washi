@@ -26,15 +26,18 @@ export async function solve(input: P086Input): Promise<P086Output> {
   const inventories: number[] = [];
   const shortfalls: number[] = [];
 
+  // Rolling-horizon MPC loop: re-solve over [t, t + windowLen) using current inventory
   for (let t = 0; t < T; t++) {
     const end = Math.min(T, t + input.windowLen);
     const L = end - t;
     const m = new Model(`MPC_${t}`);
 
+    // Lookahead variables: production (capped by prodCap), ending inventory, and unmet-demand shortfall
     const x = m.continuous(L, { lb: 0, ub: input.prodCap, prefix: "x" });
     const inv = m.continuous(L, { lb: 0, prefix: "inv" });
     const sh = m.continuous(L, { lb: 0, prefix: "sh" });
 
+    // Inventory flow balance against forecast demands over the lookahead window
     m.constraint(
       Array.from({ length: L }, (_, k) => {
         const prev = k === 0 ? invCurr : inv[k - 1];
@@ -42,6 +45,7 @@ export async function solve(input: P086Input): Promise<P086Output> {
       })
     );
 
+    // Minimize lookahead production, holding, and shortfall penalty costs
     const windowCosts = input.prodCosts.slice(t, end);
     m.objective(
       minimize(
@@ -50,6 +54,7 @@ export async function solve(input: P086Input): Promise<P086Output> {
     );
     await m.solve();
 
+    // Commit only the first-period decision x[0] and advance state against actual demand
     const xt = x[0].value!;
     const supply = invCurr + xt;
     const actualDemand = input.actualDemands[t];

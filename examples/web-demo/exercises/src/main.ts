@@ -126,13 +126,13 @@ function syncThemeMetaFromStorage(): void {
 
 export interface ExercisesAppDeps {
   runWashi?: typeof runWashiExerciseCode;
-  runHighspy?: typeof runHighspyExerciseCode;
+  runPulp?: typeof runHighspyExerciseCode;
 }
 
 export class ExercisesApp {
   private root: HTMLElement;
   private runWashi: typeof runWashiExerciseCode;
-  private runHighspy: typeof runHighspyExerciseCode;
+  private runPulp: typeof runHighspyExerciseCode;
   private locale: Locale;
   private progress: ProgressState;
   private viewMode: "index" | "guide" | "workspace";
@@ -161,7 +161,7 @@ export class ExercisesApp {
   constructor(root: HTMLElement, deps: ExercisesAppDeps = {}) {
     this.root = root;
     this.runWashi = deps.runWashi ?? runWashiExerciseCode;
-    this.runHighspy = deps.runHighspy ?? runHighspyExerciseCode;
+    this.runPulp = deps.runPulp ?? runHighspyExerciseCode;
     this.locale = detectInitialLocale();
     this.progress = loadProgress();
     const route = parseRouteState();
@@ -369,7 +369,7 @@ export class ExercisesApp {
   private getDraftCode(prob: ProblemDefinition, runtime: RuntimeId): string {
     const draft = this.progress.drafts[prob.meta.id]?.[runtime];
     if (draft !== undefined) return draft;
-    return runtime === "washi" ? prob.washiStarter : prob.highspyStarter;
+    return runtime === "washi" ? prob.washiStarter : prob.pulpStarter;
   }
 
   private syncEditorOverlay(runtime: RuntimeId): void {
@@ -430,24 +430,24 @@ export class ExercisesApp {
     this.armedSolutionRuntime = null;
 
     const washiTab = this.root.querySelector<HTMLButtonElement>("#tab-washi");
-    const highspyTab = this.root.querySelector<HTMLButtonElement>("#tab-highspy");
+    const pulpTab = this.root.querySelector<HTMLButtonElement>("#tab-pulp");
     const washiPanel = this.root.querySelector<HTMLElement>("#panel-washi");
-    const highspyPanel = this.root.querySelector<HTMLElement>("#panel-highspy");
+    const pulpPanel = this.root.querySelector<HTMLElement>("#panel-pulp");
 
-    if (washiTab && highspyTab && washiPanel && highspyPanel) {
+    if (washiTab && pulpTab && washiPanel && pulpPanel) {
       washiTab.setAttribute("aria-selected", next === "washi" ? "true" : "false");
       washiTab.tabIndex = next === "washi" ? 0 : -1;
-      highspyTab.setAttribute("aria-selected", next === "highspy" ? "true" : "false");
-      highspyTab.tabIndex = next === "highspy" ? 0 : -1;
+      pulpTab.setAttribute("aria-selected", next === "pulp" ? "true" : "false");
+      pulpTab.tabIndex = next === "pulp" ? 0 : -1;
 
       if (next === "washi") {
         washiPanel.removeAttribute("hidden");
-        highspyPanel.setAttribute("hidden", "");
+        pulpPanel.setAttribute("hidden", "");
         if (focusTab) washiTab.focus();
       } else {
-        highspyPanel.removeAttribute("hidden");
+        pulpPanel.removeAttribute("hidden");
         washiPanel.setAttribute("hidden", "");
-        if (focusTab) highspyTab.focus();
+        if (focusTab) pulpTab.focus();
       }
       this.syncEditorScroll(next);
     }
@@ -678,7 +678,7 @@ export class ExercisesApp {
       saveProgress(this.progress);
       const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
       if (editor) {
-        editor.value = runtime === "washi" ? prob.washiStarter : prob.highspyStarter;
+        editor.value = runtime === "washi" ? prob.washiStarter : prob.pulpStarter;
         this.syncEditorOverlay(runtime);
       }
     } else if (action === "solution") {
@@ -694,7 +694,7 @@ export class ExercisesApp {
         }, 5000);
         return;
       }
-      const solCode = runtime === "washi" ? prob.washiSolution : prob.highspySolution;
+      const solCode = runtime === "washi" ? prob.washiSolution : prob.pulpSolution;
       this.progress = saveDraft(this.progress, prob.meta.id, runtime, solCode);
       saveProgress(this.progress);
       const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
@@ -799,9 +799,9 @@ export class ExercisesApp {
           e.key === "Home"
             ? "washi"
             : e.key === "End"
-              ? "highspy"
+              ? "pulp"
               : this.activeRuntime === "washi"
-                ? "highspy"
+                ? "pulp"
                 : "washi";
         this.switchRuntimeTab(next, true);
       }
@@ -903,7 +903,7 @@ export class ExercisesApp {
           return this.strings.editor.runningPython;
         };
         setStatusLabel(this.strings.editor.loadingPyodide);
-        const runRes = await this.runHighspy(code, inputs, {
+        const runRes = await this.runPulp(code, inputs, {
           onPhase: (phase) => setStatusLabel(phaseToLabel(phase)),
         });
         this.applyRunResult(
@@ -1099,7 +1099,7 @@ export class ExercisesApp {
   private refreshWorkspaceRuntimeStatus(problemId: string): void {
     const solvedRuntimes = this.progress.solved[problemId]?.runtimes ?? [];
     const washiSolved = solvedRuntimes.includes("washi");
-    const highspySolved = solvedRuntimes.includes("highspy");
+    const pulpSolved = solvedRuntimes.includes("pulp");
     const solvedAny = isProblemSolved(this.progress, problemId);
 
     const statusContainer = this.root.querySelector("#ws-solve-status");
@@ -1120,8 +1120,8 @@ export class ExercisesApp {
     }
     const washiCheck = this.root.querySelector("#tab-washi .runtime-tab-check");
     if (washiCheck) washiCheck.textContent = washiSolved ? "✓" : "";
-    const highspyCheck = this.root.querySelector("#tab-highspy .runtime-tab-check");
-    if (highspyCheck) highspyCheck.textContent = highspySolved ? "✓" : "";
+    const pulpCheck = this.root.querySelector("#tab-pulp .runtime-tab-check");
+    if (pulpCheck) pulpCheck.textContent = pulpSolved ? "✓" : "";
 
     // Also update sidebar solved marker, progress label, and clear-all-solved controls
     const sidebarLinks = this.root.querySelectorAll<HTMLElement>(
@@ -1267,7 +1267,7 @@ export class ExercisesApp {
         progress: this.progress,
         activeRuntime: effectiveRuntime,
         washiCode: this.getDraftCode(prob, "washi"),
-        highspyCode: prob.meta.runtimes.includes("highspy") ? this.getDraftCode(prob, "highspy") : "",
+        pulpCode: prob.meta.runtimes.includes("pulp") ? this.getDraftCode(prob, "pulp") : "",
       });
     } else if (this.viewMode === "guide") {
       let guideMarkdown = this.guideCache.get(locale);

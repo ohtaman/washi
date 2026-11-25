@@ -15,6 +15,19 @@
 | `rules` | `Array<{ id: string; expr: SmtFormula }>` | 名前付きコンプライアンスルール一覧 |
 | `candidateValues` | `Record<string, boolean / number>` | 監査対象となる過去の実績値マップ |
 
+`SmtFormula` は真偽値変数名（`string`）、線形整数比較（`SmtCmp`）、論理結合子からなる再帰的な直和型です:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### 出力
 
 | フィールド | 型 | 説明 |

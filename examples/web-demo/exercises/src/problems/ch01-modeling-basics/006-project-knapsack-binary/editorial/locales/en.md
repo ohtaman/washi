@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **Why greedy fails on 0-1 knapsack**: Picking items in decreasing score-to-cost order can leave unusable leftover budget and miss the global optimum (score 36 in the example). An exact MIP solver searches all combinations to find the optimal subset.
+- **Why greedy fails on 0-1 knapsack**: Picking items in decreasing score-to-cost order can leave unusable leftover budget and miss the global optimum (score 36 in the example). An exact MIP solver uses branch-and-bound with LP relaxation bounds to prove and find the globally optimal subset without exhaustively enumerating all combinations.
 - **Clean binary extraction**: In PuLP (Python), floating-point tolerances can still return `0.999999999` or `-0.0`, so round outputs with `round(pulp.value(v))`. In WaSHI, `Binary` `v.value` entries are automatically normalized to exact integers, so `v.value!` can be used directly.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 

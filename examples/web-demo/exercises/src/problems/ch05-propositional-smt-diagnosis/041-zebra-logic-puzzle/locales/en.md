@@ -1,7 +1,12 @@
 # #041. Zebra Logic Grid Puzzle
 
 <!-- section:scenario -->
-A row of houses or seats indexed from left to right must each be assigned exactly one attribute value from every category, with each value appearing at most once across all positions. A list of structured clues restricts where values sit, which pairs share a position, which pairs are forbidden together, and which values lie to the left of or next to another.
+This is a logic grid puzzle where attributes are assigned to positions ordered from left to right.
+
+A valid assignment must satisfy all of the following rules:
+- **One value per category at each position**: Every position receives exactly one attribute value from each category.
+- **No duplicate values**: Each value within a category appears at exactly one position.
+- **Clue satisfaction**: All given clues (fixed positions, matching positions, implications, forbidden pairings, and left-of or adjacent relationships) must hold.
 
 Given the number of positions, the category value lists, and the clue list, decide whether a valid assignment exists and, when satisfiable, return one complete grid assignment.
 
@@ -13,6 +18,14 @@ Given the number of positions, the category value lists, and the clue list, deci
 | `n` | `number` | Number of positions (0 through `n - 1` from left to right) |
 | `categories` | `Record<string, string[]>` | Map from each category name to its `n` distinct attribute values |
 | `clues` | `ZebraClue[]` | Structured clues (`at`, `same`, `implies`, `notTogether`, `leftOf`, `nextTo`) |
+
+Where `CategoryValue` is `[category: string, value: string]`, each `ZebraClue` is one of:
+- `{ type: "at", position: number, category: string, value: string }` (`position` is 0-based)
+- `{ type: "same", a: CategoryValue, b: CategoryValue }`
+- `{ type: "implies", a: CategoryValue, b: CategoryValue }`
+- `{ type: "notTogether", a: CategoryValue, b: CategoryValue }`
+- `{ type: "leftOf", left: CategoryValue, right: CategoryValue, immediate?: boolean }` (`immediate: true` means `pos(right) === pos(left) + 1`, otherwise `pos(left) < pos(right)`)
+- `{ type: "nextTo", a: CategoryValue, b: CategoryValue }` (`|pos(a) - pos(b)| === 1`)
 
 ### Output
 

@@ -9,7 +9,7 @@ hero:
       text: はじめに
       link: /ja/getting-started/
     - theme: alt
-      text: 100本ノック
+      text: N本ノック
       link: /exercises/?lang=ja
     - theme: alt
       text: ショーケース
@@ -135,7 +135,7 @@ features:
 - **実践例 — LP・MIP・QP**: [実践例・サンプル集](/ja/examples/) · [生産計画問題](/ja/examples/production) · [0-1 ナップサック問題](/ja/examples/knapsack) · [輸送・物流ネットワーク問題](/ja/examples/transportation) · [栄養問題と感度分析](/ja/examples/diet-sensitivity) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp)
 - **実践例 — シフト・Indicator・CP**: [スタッフのシフト作成](/ja/examples/shift-scheduling) · [EC カートのクーポン最適化](/ja/examples/ecommerce-coupons) · [プロジェクトスケジューリング (CP)](/ja/examples/project-scheduling)
 - **実践例 — SMT・診断・分解法**: [セキュリティポリシー検証 (SMT)](/ja/examples/smt-security) · [制約矛盾の診断 (Unsat Core)](/ja/examples/unsat-core) · [車両配送計画問題 (CVRP)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (TSP)](/ja/examples/traveling-salesperson)
-- **Playground・実務アプリ**: [ショーケース](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理最適化100本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a>
+- **Playground・実務アプリ**: [ショーケース](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">数理最適化N本ノック</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a>
 - **パズルゲーム**: <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

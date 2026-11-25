@@ -18,20 +18,25 @@ export async function solve(input: P022Input): Promise<P022Output> {
   const n = input.targets.length;
   const m = new Model("L1Deviation");
 
+  // Decision variables: allocations[i] in [0, upperBounds[i]], plus non-negative split variables
+  // dPlus[i] and dMinus[i] representing positive and negative deviations from targets[i].
   const allocations = input.upperBounds.map((ub, i) =>
     m.continuous(`x_${i}`, { lb: 0, ub })
   );
   const dPlus = m.continuous(n, { lb: 0, prefix: "dp" });
   const dMinus = m.continuous(n, { lb: 0, prefix: "dm" });
 
+  // Total output and budget constraints.
   m.constraint(expr`${sum(allocations)} == ${input.totalOutput}`, "total_output");
   m.constraint(expr`dot(${input.costs}, ${allocations}) <= ${input.budget}`, "budget");
+  // L1 linearization: x_i - target_i = dPlus_i - dMinus_i; minimizing weighted sum ensures at most one is > 0.
   m.constraint(
     input.targets.map(
       (target, i) => expr`${allocations[i]} - ${target} == ${dPlus[i]} - ${dMinus[i]}`
     )
   );
 
+  // Objective: minimize weighted L1 deviation sum(weights[i] * |x_i - targets[i]|).
   m.objective(
     minimize(expr`dot(${input.weights}, ${dPlus}) + dot(${input.weights}, ${dMinus})`)
   );

@@ -9,7 +9,7 @@ hero:
       text: Getting Started
       link: /getting-started/
     - theme: alt
-      text: 100 Exercises
+      text: Optimization N
       link: /exercises/
     - theme: alt
       text: Showcase
@@ -135,7 +135,7 @@ Block wolf entry paths with limited wooden fences while maximizing safe pasture 
 - **Examples — LP, MIP & QP**: [Examples & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack Problem](/examples/knapsack) · [Transportation & Allocation Network](/examples/transportation) · [Diet Problem & Sensitivity Analysis](/examples/diet-sensitivity) · [Portfolio Optimization (QP)](/examples/portfolio-qp)
 - **Examples — Scheduling, Indicator MIP & CP**: [Staff Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Cart & Coupon Optimizer](/examples/ecommerce-coupons) · [Project Scheduling (CP)](/examples/project-scheduling)
 - **Examples — SMT, Diagnosis & Decomposition**: [SMT Security Policies](/examples/smt-security) · [Conflict Diagnosis (Unsat Core)](/examples/unsat-core) · [Vehicle Routing (CVRP)](/examples/vehicle-routing) · [Traveling Salesperson (TSP)](/examples/traveling-salesperson)
-- **Playground & Apps**: [Showcase](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">Optimization 100</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a>
+- **Playground & Apps**: [Showcase](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/exercises/" target="_self">Optimization N</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a>
 - **Optimization Games**: <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

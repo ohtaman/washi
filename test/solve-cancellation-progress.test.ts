@@ -33,13 +33,14 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
 
   it("emits real progress events and supports mid-solve cancellation via AbortSignal in HiGHS", async () => {
     const model = new Model();
-    const n = 14;
+    const n = 26;
     const x = Array.from({ length: n }, (_, i) => model.binary(`x_${i}`));
-    // Subset sum / knapsack MIP that explores multiple checkpoints/incumbents
-    const weights = [13, 17, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71];
-    const values = [19, 23, 29, 37, 41, 47, 53, 59, 61, 67, 71, 73, 79, 83];
+    // Hard-ratio knapsack MIP with presolve off so HiGHS explores multiple B&B checkpoints/incumbents
+    const weights = Array.from({ length: n }, (_, i) => 101 + i * 7 + (i % 5) * 3);
+    const values = weights.map((w, i) => w + 10 + (i % 7) * 2);
+    const cap = Math.floor(weights.reduce((a, b) => a + b, 0) * 0.45);
     model.constraint(
-      sum(x.map((xi, i) => xi.mul(weights[i]))).le(180),
+      sum(x.map((xi, i) => xi.mul(weights[i]))).le(cap),
       "cap"
     );
     // Add an objective constant (+100) to verify progress metrics shift by offset

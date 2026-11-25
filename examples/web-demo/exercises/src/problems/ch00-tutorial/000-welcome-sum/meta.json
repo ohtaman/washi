@@ -10,7 +10,7 @@
   "paradigms": [],
   "runtimes": [
     "washi",
-    "highspy"
+    "pulp"
   ],
   "solvers": [],
   "provenance": {

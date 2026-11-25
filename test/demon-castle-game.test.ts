@@ -1268,4 +1268,22 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       (globalThis as { window?: unknown }).window = prevWindow;
     }
   });
+
+  it("throws when generateVerifiedStageWithHighs exhausts retries and returns null optimalScore when infeasible", async () => {
+    const infeasibleStage = {
+      ...CAMPAIGN_STAGES[0],
+      requirements: CAMPAIGN_STAGES[0].requirements.map((r, i) =>
+        i === 0 ? { ...r, requiredPower: 9999 } : r
+      ),
+    };
+
+    const infeasibleResult = await solveOptimalSchedule(infeasibleStage);
+    expect(infeasibleResult.status).toBe("Infeasible");
+    expect(infeasibleResult.optimalScore).toBeNull();
+    expect(infeasibleResult.verified).toBe(false);
+
+    await expect(
+      generateVerifiedStageWithHighs(() => infeasibleStage, 3)
+    ).rejects.toThrow();
+  });
 });

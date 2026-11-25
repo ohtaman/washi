@@ -10,7 +10,7 @@ export interface SolvedEntry {
 
 export interface DraftEntry {
   washi?: string;
-  highspy?: string;
+  pulp?: string;
 }
 
 // Exercises whose v1 schemas/problem definitions were redesigned in v2:
@@ -37,8 +37,10 @@ export function createEmptyProgress(): ProgressState {
   };
 }
 
-function isValidRuntime(v: unknown): v is RuntimeId {
-  return v === "washi" || v === "highspy";
+function normalizeRuntime(v: unknown): { runtime: RuntimeId; wasLegacy: boolean } | null {
+  if (v === "washi" || v === "pulp") return { runtime: v, wasLegacy: false };
+  if (v === "highspy") return { runtime: "pulp", wasLegacy: true };
+  return null;
 }
 
 function normalizeProgress(raw: unknown): { state: ProgressState; migrated: boolean } {
@@ -51,6 +53,7 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
   }
   const migratingFromV1 = obj.version === 1;
   const migratingFromPreV3 = obj.version === 1 || obj.version === 2;
+  let migratedLegacyRuntime = false;
   const shouldResetId = (id: string): boolean =>
     (migratingFromV1 && V1_TO_V2_RESET_IDS.has(id)) ||
     (migratingFromPreV3 && V2_TO_V3_RESET_IDS.has(id));
@@ -64,13 +67,22 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
       throw new Error(`Invalid solved entry for "${id}".`);
     }
     const entry = entryVal as Record<string, unknown>;
-    if (!Array.isArray(entry.runtimes) || entry.runtimes.some((r) => !isValidRuntime(r))) {
+    if (!Array.isArray(entry.runtimes)) {
       throw new Error(`Invalid runtimes array for "${id}".`);
+    }
+    const normalizedRuntimes: RuntimeId[] = [];
+    for (const r of entry.runtimes) {
+      const norm = normalizeRuntime(r);
+      if (!norm) {
+        throw new Error(`Invalid runtimes array for "${id}".`);
+      }
+      if (norm.wasLegacy) migratedLegacyRuntime = true;
+      normalizedRuntimes.push(norm.runtime);
     }
     if (shouldResetId(id)) {
       continue;
     }
-    const uniqueRuntimes = Array.from(new Set(entry.runtimes));
+    const uniqueRuntimes = Array.from(new Set(normalizedRuntimes));
     const solvedAt =
       typeof entry.solvedAt === "string" && entry.solvedAt.length > 0
         ? entry.solvedAt
@@ -100,14 +112,21 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
         if (typeof dObj.washi !== "string") throw new Error(`Invalid washi draft for "${id}".`);
         draft.washi = dObj.washi;
       }
+      if (dObj.pulp !== undefined) {
+        if (typeof dObj.pulp !== "string") throw new Error(`Invalid pulp draft for "${id}".`);
+        draft.pulp = dObj.pulp;
+      }
       if (dObj.highspy !== undefined) {
         if (typeof dObj.highspy !== "string") throw new Error(`Invalid highspy draft for "${id}".`);
-        draft.highspy = dObj.highspy;
+        migratedLegacyRuntime = true;
+        if (draft.pulp === undefined) {
+          draft.pulp = dObj.highspy;
+        }
       }
       if (shouldResetId(id)) {
         continue;
       }
-      if (draft.washi !== undefined || draft.highspy !== undefined) {
+      if (draft.washi !== undefined || draft.pulp !== undefined) {
         drafts[id] = draft;
       }
     }
@@ -120,7 +139,7 @@ function normalizeProgress(raw: unknown): { state: ProgressState; migrated: bool
       drafts,
       ...(obj.tutorialDismissed === true ? { tutorialDismissed: true } : { tutorialDismissed: false }),
     },
-    migrated: migratingFromPreV3,
+    migrated: migratingFromPreV3 || migratedLegacyRuntime,
   };
 }
 
@@ -231,7 +250,7 @@ export function clearDraft(
   const nextEntry: DraftEntry = { ...prev };
   delete nextEntry[runtime];
   const nextDrafts = { ...state.drafts };
-  if (nextEntry.washi === undefined && nextEntry.highspy === undefined) {
+  if (nextEntry.washi === undefined && nextEntry.pulp === undefined) {
     delete nextDrafts[problemId];
   } else {
     nextDrafts[problemId] = nextEntry;

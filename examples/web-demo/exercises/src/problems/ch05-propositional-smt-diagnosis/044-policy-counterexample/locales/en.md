@@ -15,6 +15,19 @@ Determine whether any state satisfies all policy rules while violating the safet
 | `rules` | `SmtFormula[]` | Active firewall/security policy rules |
 | `safeInvariant` | `SmtFormula` | Safety property to prove or refute |
 
+`SmtFormula` is a recursive union over boolean variables (`string`), linear integer comparisons (`SmtCmp`), and boolean connectives:
+```ts
+type SmtCmp = { terms: Record<string, number>; sense: "<=" | ">=" | "==" | "!="; rhs: number };
+type SmtFormula =
+  | string
+  | { not: SmtFormula }
+  | { and: SmtFormula[] }
+  | { or: SmtFormula[] }
+  | { implies: [SmtFormula, SmtFormula] }
+  | { xor: SmtFormula[] }
+  | SmtCmp;
+```
+
 ### Output
 
 | Field | Type | Description |

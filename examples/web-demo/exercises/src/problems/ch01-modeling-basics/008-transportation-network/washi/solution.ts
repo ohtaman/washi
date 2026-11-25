@@ -14,10 +14,12 @@ export interface P008Output {
 export async function solve(input: P008Input): Promise<P008Output> {
   const m = new Model("Transportation");
 
+  // Decision variables: continuous non-negative flow shipped from source i to destination j.
   const shipments = input.supplies.map((_, i) =>
     input.demands.map((_, j) => m.continuous(`ship_${i}_${j}`, { lb: 0 }))
   );
 
+  // Supply limits at each source and demand satisfaction at each destination.
   m.constraint(
     shipments.map((row, i) => expr`${sum(row)} <= ${input.supplies[i]}`)
   );
@@ -27,6 +29,7 @@ export async function solve(input: P008Input): Promise<P008Output> {
     )
   );
 
+  // Objective: minimize total shipping cost across all routes.
   const totalExpr = sum(
     shipments.flatMap((row, i) =>
       row.map((flow, j) => expr`${input.unitCosts[i][j]} * ${flow}`)

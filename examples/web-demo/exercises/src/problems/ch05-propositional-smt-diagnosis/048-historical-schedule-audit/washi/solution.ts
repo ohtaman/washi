@@ -44,6 +44,7 @@ export interface P048Output {
   violatedRules: string[];
 }
 
+// Compile a mixed Boolean + linear-integer-arithmetic (SMT) AST into WaSHI expressions
 function compileSmt(
   node: SmtFormula,
   bools: Record<string, BoolVar>,
@@ -60,6 +61,7 @@ function compileSmt(
     );
   }
   if ("xor" in node) return xor(...node.xor.map((c) => compileSmt(c, bools, ints)));
+  // Linear arithmetic comparison leaf: sum(coeff * var) <sense> rhs
   let lhs = expr`0`;
   for (const [name, coeff] of Object.entries(node.terms)) {
     lhs = lhs.add(ints[name].mul(coeff));
@@ -72,16 +74,19 @@ function compileSmt(
 
 export async function solve(input: P048Input): Promise<P048Output> {
   const m = new Model("HistoricalAudit");
+  // Declare Boolean and bounded integer variables matching the audited state schema
   const bools = m.bool(input.boolVars);
   const ints: Record<string, Var> = {};
   for (const spec of input.intVars) {
     ints[spec.name] = m.integer(spec.name, { lb: spec.lb, ub: spec.ub });
   }
 
+  // Register each named audit rule so violations can be attributed by rule ID
   for (const r of input.rules) {
     m.constraint(compileSmt(r.expr, bools, ints), r.id);
   }
 
+  // Evaluate candidateValues directly against all constraints without invoking the solver
   const report = m.verify({ values: input.candidateValues });
   const violatedRules = Array.from(new Set(report.violations.map((v) => v.name))).sort();
 

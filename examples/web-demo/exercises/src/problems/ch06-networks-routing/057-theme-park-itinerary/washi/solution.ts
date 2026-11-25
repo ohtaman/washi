@@ -18,6 +18,9 @@ export async function solve(input: P057Input): Promise<P057Output> {
   const { travelTimes, earliest, latest, visitDurations } = input;
   const m = new Model("ThemeParkItinerary");
 
+  // x[i][j] in {0, 1}: binary indicator for traveling from node i to j (node 0 is park gate)
+  // t[i] in [earliest[i], latest[i]]: continuous arrival/start time at node i
+  // u[i] in [1, n-1]: continuous MTZ visit-order variable for attraction i > 0
   const x = travelTimes.map((row, i) =>
     row.map((_, j) => (i === j ? null : m.binary(`x_${i}_${j}`)))
   );
@@ -29,17 +32,20 @@ export async function solve(input: P057Input): Promise<P057Output> {
     i === 0 ? null : m.continuous(`u_${i}`, { lb: 1, ub: maxAttractions })
   );
 
+  // Anchor gate departure time; every attraction i > 0 is visited exactly once
   m.constraint(expr`${t[0]} == ${earliest[0]}`);
   for (let i = 1; i < n; i++) {
     m.constraint(expr`${sum(x[i].filter((v) => v !== null))} == 1`);
     m.constraint(expr`${sum(x.map((row) => row[i]).filter((v) => v !== null))} == 1`);
   }
 
+  // Gate flow balance and group count cap (<= maxGroups itineraries)
   const gateOut = sum(x[0].slice(1).filter((v) => v !== null));
   const gateIn = sum(x.slice(1).map((row) => row[0]).filter((v) => v !== null));
   m.constraint(expr`${gateOut} <= ${input.maxGroups}`);
   m.constraint(expr`${gateOut} == ${gateIn}`);
 
+  // Big-M time-window propagation from gate 0 to first attraction j
   for (let j = 1; j < n; j++) {
     const bigM0j = Math.max(0, earliest[0] + visitDurations[0] + travelTimes[0][j] - earliest[j]);
     m.constraint(
@@ -47,6 +53,7 @@ export async function solve(input: P057Input): Promise<P057Output> {
     );
   }
 
+  // Big-M return-to-gate deadline, inter-attraction time windows, and MTZ subtour elimination
   for (let i = 1; i < n; i++) {
     const bigMi0 = Math.max(0, latest[i] + visitDurations[i] + travelTimes[i][0] - latest[0]);
     m.constraint(
@@ -65,6 +72,7 @@ export async function solve(input: P057Input): Promise<P057Output> {
     }
   }
 
+  // Minimize total travel time across all group itineraries
   m.objective(
     minimize(
       sum(
@@ -76,6 +84,7 @@ export async function solve(input: P057Input): Promise<P057Output> {
   );
   await m.solve();
 
+  // Reconstruct each group's itinerary starting and ending at gate 0
   const itineraries: number[][] = [];
   for (let j = 1; j < n; j++) {
     if (Math.round(x[0][j]!.value!) === 1) {

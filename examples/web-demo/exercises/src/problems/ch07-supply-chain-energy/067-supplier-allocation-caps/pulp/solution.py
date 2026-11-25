@@ -1,0 +1,58 @@
+import pulp
+
+
+def solve(
+    demands,
+    unit_costs,
+    fixed_costs,
+    min_orders,
+    max_orders,
+    max_share,
+    min_suppliers,
+    max_suppliers,
+) -> dict:
+    """Return {"active": list[int], "allocations": list[list[float]], "total_cost": float}."""
+    n_sup = len(fixed_costs)
+    n_plants = len(demands)
+
+    prob = pulp.LpProblem("supplier_allocation_caps", pulp.LpMinimize)
+
+    # active[s]: 1 if supplier s is selected (binary)
+    # allocations[s][p]: order quantity from supplier s to plant p, bounded by max_share * demands[p]
+    active = [pulp.LpVariable(f"y_{s}", cat=pulp.LpBinary) for s in range(n_sup)]
+    allocations = [
+        [
+            pulp.LpVariable(f"q_{s}_{p}", lowBound=0, upBound=max_share * demands[p])
+            for p in range(n_plants)
+        ]
+        for s in range(n_sup)
+    ]
+
+    # Active supplier count bounds
+    prob += pulp.lpSum(active) >= min_suppliers
+    prob += pulp.lpSum(active) <= max_suppliers
+
+    # Semi-continuous order bounds: 0 if inactive, or in [min_orders[s], max_orders[s]] if active
+    for s in range(n_sup):
+        total_order = pulp.lpSum(allocations[s])
+        prob += total_order >= min_orders[s] * active[s]
+        prob += total_order <= max_orders[s] * active[s]
+
+    # Plant demand satisfaction
+    for p in range(n_plants):
+        prob += pulp.lpSum(allocations[s][p] for s in range(n_sup)) >= demands[p]
+
+    # Objective: minimize fixed supplier costs plus variable unit procurement costs
+    prob += pulp.lpDot(fixed_costs, active) + pulp.lpSum(
+        unit_costs[s][p] * allocations[s][p]
+        for s in range(n_sup)
+        for p in range(n_plants)
+    )
+    prob.solve(pulp.HiGHS(msg=False))
+
+    return {
+        # Round binary values to eliminate floating-point tolerance noise
+        "active": [round(pulp.value(v)) for v in active],
+        "allocations": [[float(pulp.value(v)) for v in row] for row in allocations],
+        "total_cost": float(pulp.value(prob.objective)),
+    }

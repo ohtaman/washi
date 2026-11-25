@@ -1,6 +1,6 @@
-# Optimization 100 Exercises — Review Rubric
+# Optimization N Exercises — Review Rubric
 
-Evaluation rubric for reviewing and authoring Optimization 100 exercises (`examples/web-demo/exercises/`).
+Evaluation rubric for reviewing and authoring Optimization N exercises (`examples/web-demo/exercises/`).
 Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, `-1`, `+1`, `+5`, `+10`).
 
 ---
@@ -13,6 +13,8 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **+10** | Standalone context | Self-contained without referencing or comparing against other problem numbers (e.g., "In #001..."). |
 | **+5** | Clear scenario setting | Clearly states who is making the decision and for what purpose. |
 | **+5** | Prerequisites stated | States all prerequisites needed to solve the problem (e.g., variable number of item types or resources determined by input data), regardless of whether the editorial mentions them. |
+| **+5** | Plain, idiomatic phrasing | Uses simple, everyday words and natural verb-object collocations in each locale instead of stiff literal translations or coined compound nouns. |
+| **+5** | Bulleted multi-condition layout | Lists constraints or rules as bullet points whenever a problem has 3 or more distinct conditions, rather than burying them in a dense paragraph. |
 | **+1** | Explicit units | Explicitly specifies the units of quantities (e.g., pieces, loaves, liters, kg). |
 | **+1** | Verbalized title operators | Uses natural words (e.g., "Upper Bounds & Maximization") in titles instead of raw math operators (`<=`, `>=`). |
 | **+1** | Natural title phrasing | Uses natural phrasing rather than stiff or literal translations. |
@@ -31,6 +33,9 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 | **-5** | Unit inconsistency | Mixes different unit notations across the scenario, I/O table, and editorial (e.g., mixing "liter" and "unit"). |
 | **-5** | Misplaced variable modifiers | Attaches variable properties (e.g., "non-negative continuous") to physical objects rather than the decision quantities (e.g., "blending amounts"). |
 | **-5** | Physical/domain contradiction | Combines concrete objects and attributes in a physically unrealistic way (e.g., assigning alloy composition percentages to pure elemental metals without clarifying they are alloy ingots). |
+| **-5** | Opaque literal translation | Contains nonsensical collocations or unnatural coined compounds caused by literal translation (e.g., translating "consumes workload categories" literally rather than using simple, everyday words) that obscure meaning. |
+| **-5** | Dense unbulleted conditions | Packs 3 or more distinct constraints or rules into continuous prose instead of using a bulleted list. |
+| **-5** | Algorithm / terminology conflation | Equates, conflates, or mislabels distinct algorithms, solver mechanisms, or domain terms across titles, scenarios, hints, editorials, or translations (e.g., labeling Fix-and-Optimize as "Large Neighborhood Search", translating Lazy Clause Generation (LCG) as "clause learning", translating "2-matching" as "quadratic matching", or calling public-infrastructure net benefit "net profit"). |
 | **-10** | Defect spoiler | Reveals which variable or constraint is broken in starter-fix exercises (excluding intentional onboarding guidance such as `#001`). |
 
 ---
@@ -39,8 +44,10 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 
 | Weight | Criterion | Evaluation Standard |
 | :---: | --- | --- |
+| **+5** | Self-contained I/O schema | Explicitly defines every custom, recursive, or union type referenced in `section:io` (including all allowed object variants, field names, and value domains) so the problem is solvable without inspecting `starter.ts`. |
 | **+5** | Objective calculation check | Includes an explicit arithmetic formula showing how the example output yields the objective value. |
 | **+1** | Data-first field descriptions | Describes input fields by their real-world data meaning (e.g., "available stock", "maximum count on hand") rather than modeling roles (e.g., "upper-bound constraint"). |
+| **-10** | Undocumented custom I/O types | References a custom or recursive type (e.g., `PropFormula`, `SmtFormula`, `PolicyRule`) in `section:io` without specifying all allowed variants and shapes in the problem statement. |
 | **-10** | Optimality claims in examples | Claims or explains optimality (e.g., "achieves the minimum/maximum") inside `section:example`. |
 
 ---
@@ -68,6 +75,7 @@ Each item evaluates **a single criterion** with a discrete weight (`-10`, `-5`, 
 
 | Weight | Criterion | Evaluation Standard |
 | :---: | --- | --- |
+| **+5** | Annotated reference solution | `solution.ts` and `solution.py` include concise English comments explaining decision variables, each constraint/objective block, and non-obvious modeling or decomposition steps ("why", not trivial syntax). |
 | **-5** | Python `snake_case` convention | Uses `camelCase` instead of `snake_case` for Python `solve()` parameters, returned dict keys, or Python snippets in editorials. |
 | **-10** | Signature mismatch | Problem statement, `starter`/`solution` code, and editorial snippets disagree on function arguments or return structure. |
 

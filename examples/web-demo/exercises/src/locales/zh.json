@@ -1,9 +1,9 @@
 {
   "ui": {
-    "brandTitle": "数理优化百题训练",
+    "brandTitle": "数理优化 N 题训练",
     "brandSubtitle": "LP · MIP · 凸QP · CP · SMT 交互式浏览器练习 (WaSHI & PuLP)",
-    "aboutTitle": "关于本百题训练",
-    "aboutBody": "在数理优化中，仅了解算法概念往往很难掌握“如何将实际条件拆解为变量与约束”或“模型无解（INFEASIBLE）时从何排查”的实战感觉。本百题训练无需本地配置环境，让你直接在浏览器中编写模型并通过自动判题检验约束满足与最优性，从而反复练习 LP、MIP、凸 QP、CP 与 SMT 的核心建模模式。",
+    "aboutTitle": "关于数理优化 N 题训练",
+    "aboutBody": "在数理优化中，仅了解算法概念往往很难掌握“如何将实际条件拆解为变量与约束”或“模型无解（INFEASIBLE）时从何排查”的实战感觉。本 N 题训练无需本地配置环境，让你直接在浏览器中编写模型并通过自动判题检验约束满足与最优性，从而反复练习 LP、MIP、凸 QP、CP 与 SMT 的核心建模模式。",
     "aboutPoints": [
       {
         "label": "免配置运行并自动判题",
@@ -15,7 +15,7 @@
       },
       {
         "label": "同时提供 PuLP（Python）环境",
-        "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上一并集成了 PuLP + HiGHS。"
+        "body": "WaSHI 本身是面向 TypeScript / JavaScript 的建模库而非 Python 包；为了让习惯 Python 的读者也能直接练习并对照写法，我们在 Pyodide 上为 LP 与 MIP 习题集成了 PuLP + HiGHS（CP、SMT、凸 QP 与分解算法习题仅支持 WaSHI (TypeScript)）。"
       },
       {
         "label": "由生成式 AI 编写并持续人工审阅",
@@ -55,7 +55,11 @@
     },
     "provenance": {
       "generatedBy": "Drafted by Gemini",
-      "reviewedBy": "Reviewed by {handles}"
+      "reviewedBy": "Reviewed by {handles}",
+      "unreviewedBadge": "未审阅",
+      "reviewedBadge": "已审阅",
+      "legendUnreviewed": "Drafted by Gemini（未审阅）",
+      "legendReviewed": "已审阅"
     },
     "workspace": {
       "jumpToEditorBtn": "跳转到答题区 ↓",
@@ -69,7 +73,7 @@
     },
     "tabs": {
       "washi": "WaSHI (TypeScript)",
-      "highspy": "PuLP (Python)",
+      "pulp": "PuLP (Python)",
       "tablistLabel": "切换求解运行时",
       "pythonLazyNote": "Pyodide v0.29 (PuLP + HiGHS) 仅在首次运行 Python 代码时于后台 Worker 按需加载。"
     },
@@ -173,7 +177,7 @@
     },
     "10": {
       "title": "建模加强、大规模分解算法与混合求解架构",
-      "description": "紧致 Big-M 与数值缩放、覆盖割、迭代子环消除、列生成、Dantzig-Wolfe、经典与逻辑 Benders 分解、LNS 及 S&OP 综合实战。"
+      "description": "紧致 Big-M 与数值缩放、覆盖割、迭代子环消除、列生成、Dantzig-Wolfe、经典与逻辑 Benders 分解、Fix-and-Optimize 及 S&OP 综合实战。"
     }
   },
   "judgeHelpers": {

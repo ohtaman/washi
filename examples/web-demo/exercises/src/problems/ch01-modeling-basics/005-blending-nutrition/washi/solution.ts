@@ -17,12 +17,15 @@ export interface P005Output {
 export async function solve(input: P005Input): Promise<P005Output> {
   const m = new Model("AlloyBlending");
 
+  // Decision variables: continuous amount of each raw material, bounded by availability.
   const amounts = input.availabilities.map((avail, i) =>
     m.continuous({ lb: 0, ub: avail, name: `amt_${i}` })
   );
 
+  // Batch size constraint: total blended weight must equal targetBatch.
   m.constraint(expr`${sum(amounts)} == ${input.targetBatch}`, "total_weight");
 
+  // Composition constraints: each element k must stay within [minRatio, maxRatio] of the batch.
   m.constraint(
     input.minRatios.flatMap((minRatio, k) => {
       const elemCol = input.compositions.map((row) => row[k]);
@@ -33,6 +36,7 @@ export async function solve(input: P005Input): Promise<P005Output> {
     })
   );
 
+  // Objective: minimize total raw material cost.
   m.objective(minimize(expr`dot(${input.costs}, ${amounts})`));
   await m.solve();
 

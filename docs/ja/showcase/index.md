@@ -42,7 +42,7 @@ aside: false
 
   <div class="washi-showcase-card">
     <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-exercises.png" alt="数理最適化100本ノック" class="washi-showcase-thumb-img" loading="lazy" />
+      <img src="/showcase/thumb-exercises.png" alt="数理最適化N本ノック" class="washi-showcase-thumb-img" loading="lazy" />
     </div>
     <div class="washi-showcase-card-body">
       <div>
@@ -51,10 +51,10 @@ aside: false
           <span class="washi-showcase-badge">WaSHI (TS) × PuLP (Python)</span>
         </div>
         <div class="washi-showcase-title">
-          <a href="/exercises/?lang=ja" target="_self" class="washi-showcase-title-link">数理最適化100本ノック</a>
+          <a href="/exercises/?lang=ja" target="_self" class="washi-showcase-title-link">数理最適化N本ノック</a>
         </div>
         <p class="washi-showcase-desc">
-          ブラウザ内で完結する全 100 問の対話型数理最適化演習です。TypeScript（WaSHI）と Python（PuLP / Pyodide 上の <code>highspy</code>）の解答を並べて実行・自動採点でき、数式解説も確認できます。
+          ブラウザ内で完結する対話型の数理最適化N本ノックです。TypeScript（WaSHI）と Python（PuLP / Pyodide 上の <code>highspy</code>）の解答を並べて実行・自動採点でき、数式解説も確認できます。
         </p>
       </div>
       <div class="washi-showcase-actions">

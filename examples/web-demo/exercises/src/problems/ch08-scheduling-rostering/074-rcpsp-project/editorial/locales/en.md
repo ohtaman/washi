@@ -15,7 +15,7 @@ $$
 
 ## Key Points
 
-- **Horizon-independent CP `cumulative` vs. time-indexed MIP**: A time-indexed MIP creates $O(n \cdot H)$ binary variables $x_{i,t}$ and capacity rows for every time instant $t \in [0, H)$, which grows quadratically as durations or horizons scale. Pumpkin's `cumulative` constraint uses only $n$ integer start variables regardless of $H$ and applies timetable and energetic reasoning.
+- **Horizon-independent CP `cumulative` vs. time-indexed MIP**: A time-indexed MIP creates $O(n \cdot H)$ binary variables $x_{i,t}$ and capacity rows for every time instant $t \in [0, H)$, which grows linearly with the horizon $H$ (and rapidly as durations or task counts scale). Pumpkin's `cumulative` constraint uses only $n$ integer start variables regardless of $H$ and applies time-table filtering.
 - **Resource contention shifts the critical path**: In the example, the unconstrained DAG critical path is only $8$, yet limited resource capacity ($C_0 = 3$) forces task 2 and task 1 to run sequentially, raising makespan to $12$.
 - **Filter zero-demand tasks cleanly**: Passing only tasks with `demand > 0` keeps each `cumulative(...)` propagator compact when multiple resource pools are sparse.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).

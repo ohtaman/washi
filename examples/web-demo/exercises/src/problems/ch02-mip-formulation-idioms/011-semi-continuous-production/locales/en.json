@@ -18,7 +18,7 @@
     "m0": "Output must be an object { active, quantities, totalMargin }.",
     "m1": "active[{p0}] must be binary 0 or 1 (received {p1}).",
     "m2": "quantities[{p0}] cannot be negative (received {p1}).",
-    "m3": "Product {p0} quantity ({p1}) violates semi-continuous bounds [{p3}, {p4}] for active[{p0}] = {p2}.",
+    "m3": "Beer style {p0} quantity ({p1}) violates semi-continuous bounds [{p3}, {p4}] for active[{p0}] = {p2}.",
     "m4": "Total resource usage ({p0}) exceeds capacity ({p1}).",
     "m5": "Reported totalMargin ({p0}) does not match computed margin ({p1}).",
     "m6": "Feasible production plan, but totalMargin ({p0}) is below optimal ({p1}).",

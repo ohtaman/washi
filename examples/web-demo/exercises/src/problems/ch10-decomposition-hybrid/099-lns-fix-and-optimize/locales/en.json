@@ -1,9 +1,9 @@
 {
-  "title": "#099. Large Neighborhood Search (Fix-and-Optimize)",
+  "title": "#099. Fix-and-Optimize Matheuristic (Rolling-Window MIP)",
   "subtitle": "Solve multi-period capacitated lot sizing by iteratively freeing overlapping setup windows in a Fix-and-Optimize matheuristic.",
   "tags": [
     "Fix-and-Optimize",
-    "LNS",
+    "Matheuristic",
     "Lot Sizing",
     "MIP"
   ],
@@ -23,6 +23,6 @@
     "m5": "Inventory flow conservation violated in period {p0}: net supply {p1} != demand {p2}.",
     "m6": "Reported totalCost ({p0}) does not match recomputed lot-sizing cost ({p1}).",
     "m7": "Lot-sizing schedule is feasible, but totalCost ({p0}) exceeds target ({p1}).",
-    "m8": "Fix-and-Optimize LNS lot-sizing plan verified (totalCost = {p0})."
+    "m8": "Fix-and-Optimize lot-sizing plan verified (totalCost = {p0})."
   }
 }

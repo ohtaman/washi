@@ -15,6 +15,8 @@
 | `requires` | `DependencyRule[]` | `{ pkg, ver, depPkg, depVersions }` 形式の依存関係 |
 | `conflicts` | `Array<[[string, string], [string, string]]>` | 同時導入できない `[pkg, ver]` ペアの組 |
 
+各 `DependencyRule` は `{ pkg: string, ver: string, depPkg: string, depVersions: string[] }` の形式で、`pkg` のバージョン `ver` を導入する場合、`depPkg` を `depVersions` のいずれかのバージョンで導入する必要があることを表します。
+
 ### 出力
 
 | フィールド | 型 | 説明 |
@@ -68,4 +70,4 @@
 すべての `(package, version)` ペアに対して導入有無を表す真偽値変数を設けます。各パッケージは高々 1 バージョン、各ルートパッケージは必ず 1 バージョンが選ばれるようにし、依存関係と競合関係を表現したうえで、導入パッケージ総数を最小化します。
 
 <!-- section:hint2 -->
-Z3 で最小化するのは算術変数 `Var` の和であり、論理結合子（`implies`, `or`, `not`, `and`）は `BoolVar` 上で動作するため、各 `m.bool(...)` に `m.binary(...)` 指示変数を対応づけて双方向の `implies` で連結します。`minimize(sum(allUsed))` と `await m.solve({ solver: "z3" })` で解き、`res.status === "Optimal"` を確認してください。
+Z3 で最小化するのは算術変数 `Var` の和であり、論理結合子（`implies`, `or`, `not`, `and`）は `BoolVar` 上で動作するため、各 `m.bool(...)` に `m.binary(...)` 指示変数を対応づけて双方向の `implies` で連結します。`minimize(sum(allUsed))` と `const status = await m.solve({ solver: "z3" })` で解き、`status === "Optimal"` を確認してください。

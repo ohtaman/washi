@@ -1,9 +1,16 @@
 # #014. Party Invitation & Logic Puzzle
 
 <!-- section:scenario -->
-You are organizing a dinner party and deciding which candidate guests to invite and how much gift budget to allocate to each invited guest within a total party budget. Inviting a guest brings a base enjoyment score plus an extra enjoyment bonus per dollar spent on their gift, and requires their gift budget to fall between their minimum and maximum spending bounds; uninvited guests receive zero gift budget.
+You are organizing a dinner party and deciding which candidate guests to invite and how much gift budget to allocate to each invited guest. Inviting a guest brings a base enjoyment score plus an extra enjoyment bonus per dollar spent on their gift.
 
-Social etiquette imposes three logical rules: implication pairs where inviting the first guest requires inviting the second, conflict pairs who cannot both attend, and group rules requiring at least a minimum number of guests from specified subsets. Choose who to invite and how much to spend on each guest to **maximize total enjoyment**.
+Your invitation plan must satisfy all of the following rules:
+- **Gift budget bounds**: Each invited guest must receive a gift budget between their minimum and maximum spending limits (uninvited guests receive `0`).
+- **Total budget cap**: The sum of gift budgets across all guests cannot exceed the total party budget.
+- **Pairing requirements**: Certain pairs require inviting the second guest whenever the first guest is invited.
+- **Conflicts**: Certain pairs of guests cannot both be invited.
+- **Group minimums**: Specified groups of guests require inviting at least a minimum number of people from that group.
+
+Choose who to invite and how much to spend on each guest to **maximize total enjoyment**.
 
 <!-- section:io -->
 ### Input

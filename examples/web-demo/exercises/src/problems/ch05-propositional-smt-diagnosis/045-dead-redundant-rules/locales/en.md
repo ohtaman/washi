@@ -14,6 +14,17 @@ Evaluate the ordered list of trigger rules sequentially on top of the base rules
 | `baseRules` | `PropFormula[]` | Background domain invariants |
 | `rules` | `Array<{ id: string; condition: PropFormula; effect: PropFormula }>` | Ordered trigger-effect implication rules |
 
+`PropFormula` is a recursive union:
+```ts
+type PropFormula =
+  | string
+  | { not: PropFormula }
+  | { and: PropFormula[] }
+  | { or: PropFormula[] }
+  | { implies: [PropFormula, PropFormula] }
+  | { xor: PropFormula[] };
+```
+
 ### Output
 
 | Field | Type | Description |

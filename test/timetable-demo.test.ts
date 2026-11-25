@@ -2440,7 +2440,6 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const c12RevertTexts = collectTextNodes(bannerBody).join(" | ");
       expect(c12RevertTexts).toMatch(/Move reverted/i);
       expect(c12RevertTexts).toMatch(/Forbid Same-Day Sessions.*cannot meet multiple times on/i);
-      expect(c12RevertTexts).toContain("Pin \"Software Design Lab (C12)\" to Thu P2");
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;

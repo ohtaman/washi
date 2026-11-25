@@ -8,8 +8,7 @@
   "difficulty": 4,
   "estimatedMinutes": 20,
   "paradigms": [
-    "CP",
-    "MIP"
+    "CP"
   ],
   "runtimes": [
     "washi"
