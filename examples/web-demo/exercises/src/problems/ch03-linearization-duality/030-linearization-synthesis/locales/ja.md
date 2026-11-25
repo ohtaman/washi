@@ -21,7 +21,7 @@
 | `minValue` | `number` | 合計提供価値（$\sum_i v_i x_i$、$x_i \in \{0, 1\}$ はサービス $i$ の配備選択）に課す下限 |
 | `loads` | `number[][]` | サービス $i$ 稼働時にゾーン $r$ へ加わる非負の負荷 `loads[r][i]`（ゾーン $r$ の総負荷は $L_r = \sum_i \text{loads}[r][i]\, x_i$） |
 | `targets` | `number[]` | ゾーン $r$ の目標負荷 $\tau_r$ |
-| `devWeights` | `number[]` | ゾーン $r$ の L1 偏差 $|L_r - \tau_r|$ に対する非負のペナルティ重み $\beta_r$ |
+| `devWeights` | `number[]` | ゾーン $r$ の L1 偏差 $\lvert L_r - \tau_r \rvert$ に対する非負のペナルティ重み $\beta_r$ |
 | `peakWeight` | `number` | 最大ゾーン負荷 $\max_r L_r$ にかかる正のコスト重み $\alpha > 0$ |
 | `pairs` | `number[][]` | 0 始まりのサービス番号 `i, j` による `[i, j, s]` のリスト（両方配備時にコスト $s$ を加算） |
 

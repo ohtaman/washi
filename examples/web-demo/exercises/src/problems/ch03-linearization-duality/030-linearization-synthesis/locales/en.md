@@ -21,7 +21,7 @@ Decide which services to deploy, the pairwise simultaneous-deployment indicators
 | `minValue` | `number` | Lower bound required on total delivered value ($\sum_i v_i x_i$, where $x_i \in \{0, 1\}$) |
 | `loads` | `number[][]` | Non-negative load `loads[r][i]` added to zone $r$ when service $i$ runs; zone $r$'s total load is $L_r = \sum_i \text{loads}[r][i]\, x_i$ |
 | `targets` | `number[]` | Target load $\tau_r$ for zone $r$ |
-| `devWeights` | `number[]` | Non-negative penalty weight $\beta_r$ per unit L1 deviation $|L_r - \tau_r|$ in zone $r$ |
+| `devWeights` | `number[]` | Non-negative penalty weight $\beta_r$ per unit L1 deviation $\lvert L_r - \tau_r \rvert$ in zone $r$ |
 | `peakWeight` | `number` | Positive cost weight $\alpha > 0$ on peak zone load $\max_r L_r$ |
 | `pairs` | `number[][]` | Interaction list `[i, j, s]` (0-based service indices `i, j`) added to cost when both $i$ and $j$ deploy |
 

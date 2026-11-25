@@ -21,7 +21,7 @@
 | `minValue` | `number` | 对总交付价值（$\sum_i v_i x_i$，其中 $x_i \in \{0, 1\}$ 为服务 $i$ 的部署选择）要求的下限 |
 | `loads` | `number[][]` | 服务 $i$ 上线后对区域 $r$ 施加的非负负载 `loads[r][i]`（区域 $r$ 的总负载为 $L_r = \sum_i \text{loads}[r][i]\, x_i$） |
 | `targets` | `number[]` | 区域 $r$ 的目标负载 $\tau_r$ |
-| `devWeights` | `number[]` | 区域 $r$ 的 L1 偏差 $|L_r - \tau_r|$ 对应的非负惩罚权重 $\beta_r$ |
+| `devWeights` | `number[]` | 区域 $r$ 的 L1 偏差 $\lvert L_r - \tau_r \rvert$ 对应的非负惩罚权重 $\beta_r$ |
 | `peakWeight` | `number` | 所有区域峰值负载 $\max_r L_r$ 的正成本权重 $\alpha > 0$ |
 | `pairs` | `number[][]` | 交互对列表 `[i, j, s]`（`i, j` 为从 0 开始的服务索引；同时部署 $i, j$ 时计入成本 $s$） |
 
