@@ -167,7 +167,7 @@ Pumpkin 与 Z3 原生求解逻辑公式，而 HiGHS 与 GLPK 会自动将其线�
 > [!IMPORTANT]
 > **求解器前置条件**：
 > - **Pumpkin**：所有数值变量都必须是具备有限 `lb` 与 `ub` 的 `Integer` 或 `Binary` 变量。
-> - **Z3**：需要安装可选对等依赖（`npm install z3-solver`）。在浏览器中运行 Z3 还需要配置支持 `SharedArrayBuffer` 的 `COOP`/`COEP` 响应头。
+> - **Z3**：需要安装可选依赖 `z3-solver`（`npm install z3-solver`）。在浏览器中运行 Z3 还需要配置支持 `SharedArrayBuffer` 的 `COOP`/`COEP` 响应头。
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";

@@ -10,7 +10,7 @@ AI コーディングエージェントで WaSHI を使う準備は 2 段階に�
 
 ### ランタイムライブラリのインストール
 
-`@ohtaman/washi` には、線形・混合整数・凸二次計画（`LP`/`MIP`/`QP`）向けの **HiGHS** が同梱されています。さらに、制約プログラミング（`CP`）向けの **Pumpkin** も外部依存ゼロで同梱されており、`@ohtaman/washi/solvers/pumpkin` からインポートできます：
+`@ohtaman/washi` には、線形・混合整数・凸二次計画（`LP`/`MIP`/`QP`）向けの **HiGHS** が同梱されています。さらに、制約プログラミング（`CP`）向けの **Pumpkin** も外部依存ゼロで同梱されています：
 
 ```bash
 npm install @ohtaman/washi
@@ -30,7 +30,7 @@ npm install @ohtaman/washi
 | **IDE `@Docs` 登録** | Cursor、Windsurf | `https://washi.ohtaman.dev/llms.txt` または `https://washi.ohtaman.dev/llms-full.txt` を追加 |
 | **Context7 MCP** | MCP 対応エージェント | ライブラリ ID `/ohtaman/washi` を指定 |
 
-Agent Skill を導入すると、エージェントのスキルディレクトリに `SKILL.md`（原本は `skills/washi/SKILL.md`、`node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）が配置されます。これにより、ソルバー選定、`expr` を使ったモデリング、`m.toLpString()`・`m.verify()`・`m.check()` による検証手順がエージェントに共有されます。
+Agent Skill を導入すると、エージェントのスキルディレクトリに `SKILL.md` が配置されます。これにより、ソルバー選定、`expr` を使ったモデリング、`m.toLpString()`・`m.verify()`・`m.check()` による検証手順がエージェントに共有されます。
 
 ---
 
@@ -150,7 +150,7 @@ CLI スクリプトでの定式化と検証が完了したら、同じモデル�
 ### オフラインのデスクトップ・モバイルアプリ（Vite + Tauri / Capacitor / PWA）
 
 ```text
-この Vite + TypeScript の @ohtaman/washi アプリを、バックエンドサーバーやソルバーのネイティブビルドを使わずオフラインで動作するデスクトップ / モバイルアプリとして構成してください（同梱の HiGHS または @ohtaman/washi/solvers/pumpkin を使用）。
+この Vite + TypeScript の @ohtaman/washi アプリを、バックエンドサーバーや外部ソルバーのインストールを使わずオフラインで動作するデスクトップ / モバイルアプリとして構成してください（同梱の HiGHS または @ohtaman/washi/solvers/pumpkin を使用）。
 - ソルバー実行はすべて @ohtaman/washi によるクライアント内完結とすること。
 - Content Security Policy で WebAssembly のコンパイル（script-src に 'wasm-unsafe-eval'）および Web Worker（worker-src 'self' blob:）を許可すること。
 ```

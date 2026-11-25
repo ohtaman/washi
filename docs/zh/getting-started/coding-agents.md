@@ -10,7 +10,7 @@
 
 ### 安装运行时库
 
-安装 `@ohtaman/washi` 即内置 **HiGHS**，用于线性、混合整数与凸二次规划（`LP`/`MIP`/`QP`）。同时还零外部依赖地内置了约束规划（`CP`）求解器 **Pumpkin**，入口为 `@ohtaman/washi/solvers/pumpkin`：
+安装 `@ohtaman/washi` 即内置 **HiGHS**，用于线性、混合整数与凸二次规划（`LP`/`MIP`/`QP`），同时也零外部依赖地内置了约束规划（`CP`）求解器 **Pumpkin**：
 
 ```bash
 npm install @ohtaman/washi
@@ -30,7 +30,7 @@ npm install @ohtaman/washi
 | **IDE `@Docs` 索引** | Cursor、Windsurf | 添加 `https://washi.ohtaman.dev/llms.txt` 或 `https://washi.ohtaman.dev/llms-full.txt` |
 | **Context7 MCP** | 支持 MCP 的助手 | 引用库 ID `/ohtaman/washi` |
 
-安装 Agent Skill 后，会将 `SKILL.md`（源文件位于 `skills/washi/SKILL.md`，也随包附带于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`）配置到编程助手的技能目录中。它帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试。
+安装 Agent Skill 后，会将 `SKILL.md` 配置到编程助手的技能目录中。它帮助助手掌握求解器选型、`expr` 建模，以及使用 `m.toLpString()`、`m.verify()` 和 `m.check()` 进行调试。
 
 ---
 

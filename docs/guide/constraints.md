@@ -167,7 +167,7 @@ Register optional backends with `@ohtaman/washi/solvers/pumpkin` or `@ohtaman/wa
 > [!IMPORTANT]
 > **Solver Preconditions**:
 > - **Pumpkin**: Every numeric variable must be `Integer` or `Binary` with finite `lb` and `ub`.
-> - **Z3**: Requires the optional peer dependency `z3-solver` (`npm install z3-solver`). In browsers, Z3 also requires `COOP`/`COEP` response headers for `SharedArrayBuffer`.
+> - **Z3**: Requires the optional dependency `z3-solver` (`npm install z3-solver`). In browsers, Z3 also requires `COOP`/`COEP` response headers for `SharedArrayBuffer`.
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";

@@ -1,12 +1,12 @@
 # Introduction & Installation
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings Python PuLP-style algebraic modeling to TypeScript and JavaScript. You write linear, quadratic, and logical expressions with tagged templates (`expr`). Bundled WebAssembly solvers execute those models directly in **Node.js 18+** and modern browsers.
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings Python PuLP-style algebraic modeling to TypeScript and JavaScript. You can write linear, quadratic, and logical expressions with tagged templates (`expr`) and model mathematical optimization and constraint programming problems directly in **Node.js (18+)** and modern browsers.
 
 ---
 
 ## 📦 Installation
 
-Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, with two additional solvers available as optional peer dependencies:
+Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, with two additional solvers available as optional dependencies:
 
 | Solver | Install | Problem Classes & Capabilities |
 | --- | --- | --- |
@@ -14,8 +14,6 @@ Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, 
 | **Pumpkin** | Bundled in `@ohtaman/washi` (`@ohtaman/washi/solvers/pumpkin`) | Constraint Programming (`CP`) and exact `unsatCore` conflict diagnosis on bounded integers and booleans. |
 | **Z3** | Optional (`z3-solver`) | Satisfiability Modulo Theories (`SMT`), continuous logic, and exact `unsatCore` diagnosis (including continuous variables). |
 | **GLPK** | Optional (`glpk.js`) | Alternative `LP` and `MIP` solver under the GPL-3.0 license. |
-
-An **unsatisfiable core** (`unsatCore`) is a subset of constraints that cannot all hold at once (naming constraints makes conflicts easy to identify). Both Pumpkin and Z3 extract `unsatCore` via `m.check()`.
 
 ::: code-group
 
@@ -37,7 +35,7 @@ bun add @ohtaman/washi
 
 :::
 
-Install optional peer dependencies when you need **Z3** or **GLPK**:
+Install optional dependencies when you need **Z3** or **GLPK**:
 
 ```bash
 npm install z3-solver   # Optional: SMT logic and unsatCore diagnosis for models with continuous variables
