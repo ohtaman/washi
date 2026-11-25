@@ -1,12 +1,12 @@
 # 安装与入门
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）是面向 TypeScript / JavaScript 的代数建模库。您可以像 Python PuLP 一样以直观的代数形式建模，通过标签模板（`expr`）编写数式，并用内置 WebAssembly 求解器在 **Node.js 18+** 与浏览器中直接求解。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）是面向 TypeScript / JavaScript 的代数建模库。您可以像 Python PuLP 一样以直观的代数形式，通过标签模板（`expr`）编写数式，在 **Node.js (18+)** 与现代浏览器中直接进行数理优化与约束规划建模。
 
 ---
 
 ## 📦 安装
 
-安装 `@ohtaman/washi` 即可开箱获得两个零外部依赖的内置求解器，另外两个求解器可作为可选对等依赖按需安装：
+安装 `@ohtaman/washi` 即可开箱获得两个零外部依赖的内置求解器，另外两个求解器可作为可选依赖按需安装：
 
 | 求解器 | 安装方式 | 支持的问题类型与能力 |
 | --- | --- | --- |
@@ -14,8 +14,6 @@
 | **Pumpkin** | 内置于 `@ohtaman/washi`（从 `@ohtaman/washi/solvers/pumpkin` 导入） | 约束规划（`CP`），并支持有界整数与布尔模型的精确 `unsatCore` 冲突诊断。 |
 | **Z3** | 可选（`z3-solver`） | 可满足性模理论（`SMT`）、连续变量逻辑约束，以及含连续变量模型的精确 `unsatCore` 诊断。 |
 | **GLPK** | 可选（`glpk.js`） | 基于 GPL-3.0 协议的备选 `LP` 与 `MIP` 求解器。 |
-
-**不可满足核心（`unsatCore`）** 是指一组无法同时成立的约束子集（为约束命名便于定位冲突来源）。Pumpkin 与 Z3 均可通过 `m.check()` 提取 `unsatCore`。
 
 ::: code-group
 
@@ -37,7 +35,7 @@ bun add @ohtaman/washi
 
 :::
 
-需要使用 **Z3** 或 **GLPK** 时，请按需安装可选对等依赖：
+需要使用 **Z3** 或 **GLPK** 时，请按需安装可选依赖：
 
 ```bash
 npm install z3-solver   # 可选：SMT 逻辑约束及含连续变量模型的 unsatCore 诊断

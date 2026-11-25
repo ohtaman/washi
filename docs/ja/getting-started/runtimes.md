@@ -1,6 +1,6 @@
 # ランタイム環境とデプロイ構成
 
-WaSHI はネイティブビルドなしで、JavaScript / TypeScript の多様なランタイムや配信形態で動作します。Node.js・Bun・Deno からモダンバンドラー、静的ホスティング、クラシック `<script>` タグ、オフライン WebView アプリまで幅広く対応します。
+WaSHI は WebAssembly ソルバーを同梱しており、JavaScript / TypeScript の多様なランタイムや配信形態でそのまま動作します。Node.js・Bun・Deno からモダンバンドラー、静的ホスティング、クラシック `<script>` タグ、オフライン WebView アプリまで幅広く対応します。
 
 | 対象環境 | エントリーポイント | Worker・ヘッダーの要点 |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ export default function OptimizerComponent() {
 
 ### デスクトップ・モバイル WebView アプリ（Tauri / Capacitor / PWA）
 
-標準の Vite フロントエンド構成のまま、**HiGHS** と **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を静的アセットとして同梱し、オフラインで実行できます。Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、オフライン PWA でネイティブビルドなしに動作します。
+標準の Vite フロントエンド構成のまま、**HiGHS** と **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を静的アセットとして同梱し、オフラインで実行できます。Tauri（`tauri://localhost` / `http://tauri.localhost`）、Capacitor のモバイル WebView、オフライン PWA でそのまま動作します。
 
 `tauri.conf.json` の `CSP` で WebAssembly コンパイル（`'wasm-unsafe-eval'`）と Web Worker（`worker-src 'self' blob:`）を許可します（求解時に `{ useWorker: false }` を渡してメインスレッドで実行する場合は `worker-src` を省けますが、`'wasm-unsafe-eval'` は引き続き必要です）：
 

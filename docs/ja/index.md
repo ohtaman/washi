@@ -18,7 +18,7 @@ hero:
 features:
   - icon: 🌐
     title: WebAssembly でネイティブ環境構築不要
-    details: Python サーバーや C/C++ のネイティブビルドは不要です。ブラウザ（Web Worker）や Node.js でそのままモデルを解けます。
+    details: Python サーバーや C/C++ の環境構築は不要です。ブラウザ（Web Worker）や Node.js でそのままモデルを解けます。
     link: /ja/getting-started/runtimes
     linkText: ランタイム環境設定
   - icon: ✍️
