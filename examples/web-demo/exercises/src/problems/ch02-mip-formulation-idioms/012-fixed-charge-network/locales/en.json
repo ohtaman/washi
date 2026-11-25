@@ -1,6 +1,6 @@
 {
   "title": "#012. Fixed-Charge Network Design",
-  "subtitle": "Combine binary lane-opening costs with continuous flow decisions via arc-capacity linking constraints.",
+  "subtitle": "Combine binary route-opening costs with continuous flow decisions via route-capacity linking constraints.",
   "tags": [
     "MIP",
     "Fixed-Charge Network",
@@ -8,8 +8,8 @@
     "Capacity Linking"
   ],
   "caseNames": [
-    "2x3 warehouse-store network",
-    "3x3 network with blocked lanes",
+    "2x3 collection center–supermarket network",
+    "3x3 network with blocked routes",
     "3x4 rectangular distribution",
     "4x3 multi-origin network",
     "4x5 fractional demand network"
@@ -20,7 +20,7 @@
     "m2": "Field \"shipments\" must be an array with {p0} rows.",
     "m3": "open[{p0}][{p1}] must be binary 0 or 1 (received {p2}).",
     "m4": "shipments[{p0}][{p1}] cannot be negative (received {p2}).",
-    "m5": "Lane ({p0}, {p1}) flow ({p2}) exceeds allowed capacity {p3} for open[{p0}][{p1}] = {p4}.",
+    "m5": "Route ({p0}, {p1}) flow ({p2}) exceeds allowed capacity {p3} for open[{p0}][{p1}] = {p4}.",
     "m6": "Collection center {p0} total outflow ({p1}) exceeds supply ({p2}).",
     "m7": "Supermarket {p0} total inflow ({p1}) is below demand ({p2}).",
     "m8": "Reported totalCost ({p0}) does not match computed fixed plus shipping cost ({p1}).",

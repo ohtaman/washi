@@ -20,7 +20,7 @@ While respecting each collection center's supply limit and meeting every superma
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `number[][]` | Binary (`0` or `1`) matrix indicating whether each route is open |
+| `open` | `number[][]` | Binary (0 or 1) matrix indicating whether each route is open |
 | `shipments` | `number[][]` | Non-negative continuous shipment quantities (tons) on route $(i, j)$ |
 | `totalCost` | `number` | Minimized sum of fixed contract fees and shipping costs |
 

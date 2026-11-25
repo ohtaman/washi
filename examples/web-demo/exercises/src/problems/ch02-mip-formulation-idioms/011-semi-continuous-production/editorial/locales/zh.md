@@ -15,7 +15,7 @@ $$
 
 ## 核心要点
 
-- **为何不能只用简单的下界 `lb`**：若直接在变量声明中写 `lb: L_i`，将强制要求“始终 $q_i \ge L_i$”，从而无法为了节省麦芽而把某个品种设为 0 并把资源让给其他品种。
+- **为何不能只用简单的下界 `lb`**：若直接在变量声明中将下界 `lb` 设为 $L_i$，将强制要求“始终 $q_i \ge L_i$”，从而无法为了节省麦芽而把某个品种设为 0 并把资源让给其他品种。
 - **双向关联约束（半连续变量）**：写成 $L_i y_i \le q_i \le U_i y_i$ 后，当 $y_i = 0$ 时得到 $0 \le q_i \le 0$（放弃酿造），当 $y_i = 1$ 时得到 $L_i \le q_i \le U_i$（不低于最小批量）。如果漏掉下界约束，就会出现处于区间 $(0, L_i)$ 内的违规小批量酿造。
 - 概念参考：[指南与术语表 — 变量类型](?view=guide&lang=zh#variable-types) / [常见模型分类](?view=guide&lang=zh#paradigms)
 
@@ -40,5 +40,4 @@ m.constraint(
 for i in range(n):
     prob += min_batches[i] * active[i] <= quantities[i]
     prob += quantities[i] <= max_batches[i] * active[i]
-prob += pulp.lpDot(usages, quantities) <= cap
 ```

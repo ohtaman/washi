@@ -1,10 +1,10 @@
 # #018. University Degree & Prerequisite Course Planner
 
 <!-- section:scenario -->
-A university student is planning which courses to take next semester. Each candidate course offers an interest score and requires a specific amount of multiple limited items (such as weekly study hours, lab slots, and credit limits).
+A university student is planning which courses to take next semester. Each candidate course offers an interest score and requires a specific amount of multiple limited workload categories (such as weekly study hours, lab slots, and credit limits).
 
 Your course plan must satisfy all of the following rules:
-- **Item caps**: Total usage of each item (study hours, lab slots, credits, etc.) cannot exceed its cap.
+- **Workload caps**: Total usage of each workload category (study hours, lab slots, credits, etc.) cannot exceed its cap.
 - **Prerequisites**: Taking a course that has a prerequisite requires taking its prerequisite course as well.
 - **Time conflicts**: Courses whose schedules overlap cannot both be taken.
 
@@ -16,8 +16,8 @@ Choose a subset of courses to **maximize total interest** while satisfying all r
 | Field | Type | Description |
 | --- | --- | --- |
 | `interest` | `number[]` | Interest score of each candidate course |
-| `requirements` | `number[][]` | Requirement matrix where `requirements[k][j]` is the amount of item $k$ used by course $j$ |
-| `caps` | `number[]` | Maximum allowed total for each item $k$ |
+| `requirements` | `number[][]` | Workload matrix where `requirements[k][j]` is the amount of category $k$ workload used by course $j$ |
+| `caps` | `number[]` | Maximum allowed total for category $k$ |
 | `prerequisites` | `number[][]` | Pairs `[prereq, course]` requiring `prereq` whenever `course` is taken |
 | `timeConflicts` | `number[][]` | Pairs `[a, b]` of courses that cannot both be taken due to overlapping schedules |
 
@@ -25,7 +25,7 @@ Choose a subset of courses to **maximize total interest** while satisfying all r
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `take` | `number[]` | Binary (`0` or `1`) enrollment choices per course |
+| `take` | `number[]` | Binary (0 or 1) enrollment choices per course |
 | `totalInterest` | `number` | Maximized total interest score |
 
 <!-- section:example -->
@@ -53,7 +53,7 @@ Choose a subset of courses to **maximize total interest** while satisfying all r
 }
 ```
 
-Taking courses `{0, 3, 4}` uses `5 + 5 + 3 = 13 <= 13` in category 0 and `3 + 4 + 6 = 13 <= 13` in category 1, satisfies prerequisite `0 -> 3` and avoids time conflict `[1, 2]`, and yields total interest $8 + 19 + 15 =$ **42**.
+Taking courses 0, 3, and 4 uses $5 + 5 + 3 = 13 \le 13$ in category 0 and $3 + 4 + 6 = 13 \le 13$ in category 1, satisfies prerequisite $0 \to 3$ and avoids time conflict (1, 2), and yields total interest $8 + 19 + 15 =$ **42**.
 
 <!-- section:hint1 -->
 Each candidate course is a binary selection variable. The model combines one capacity constraint per workload category with pairwise logical constraints for prerequisites and schedule conflicts.
