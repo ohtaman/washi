@@ -1,6 +1,6 @@
 ## 解法のアプローチ
 
-招待フラグ `invite[i]`（0-1変数）とギフト予算 `giftBudget[i]`（連続変数）を組み合わせ、タイトな条件付き上下界 `minSpend[i] * invite[i] <= giftBudget[i] <= maxSpend[i] * invite[i]` を課します。さらに含意・競合・グループ下限の各ルールを `invite` 上の線形不等式として記述し、総予算内で楽しさの合計を最大化します。
+各ゲスト $i$ に対して招待を表す 0-1 変数 $y_i$（`invite[i]`）とギフト予算を表す連続変数 $g_i$（`giftBudget[i]`）を用意し、`minSpend`（$L_i$）と `maxSpend`（$U_i$）によるタイトな条件付き上下界 $L_i y_i \le g_i \le U_i y_i$ を課します。さらに総予算 $B$（`budget`）のもとで、`implications`（$\mathcal{I}$）・`conflicts`（$\mathcal{C}$）・`groupRules`（$(G_r, k_r)$）を $y_i$ 上の線形不等式として記述し、`baseEnjoyment`（$e_i$）と `bonusRates`（$r_i$）による楽しさの合計を最大化します。
 
 ## 数理モデル
 

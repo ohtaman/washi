@@ -15,7 +15,7 @@ $$
 
 ## ポイント
 
-- **なぜ単純な下界 `lb` では表現できないか**: 変数宣言に `lb: L_i` を直接書くと「常に $q_i \ge L_i$」が強制され、モルト節約のために仕込みをゼロにして別銘柄へ回す選択ができなくなります。
+- **なぜ単純な下界 `lb` では表現できないか**: 変数宣言で下界 `lb` に $L_i$ を直接指定すると「常に $q_i \ge L_i$」が強制され、モルト節約のために仕込みをゼロにして別銘柄へ回す選択ができなくなります。
 - **両側の連結制約（半連続変数）**: $L_i y_i \le q_i \le U_i y_i$ と書くと、$y_i = 0$ のとき $0 \le q_i \le 0$（見送り）、$y_i = 1$ のとき $L_i \le q_i \le U_i$（最小バッチ以上）となります。下側の制約を忘れると区間 $(0, L_i)$ の不正な少量仕込みが発生します。
 - 用語の確認: [ガイド・用語集 — 変数の種類](?view=guide&lang=ja#variable-types) / [問題の分類](?view=guide&lang=ja#paradigms)
 
@@ -40,5 +40,4 @@ m.constraint(
 for i in range(n):
     prob += min_batches[i] * active[i] <= quantities[i]
     prob += quantities[i] <= max_batches[i] * active[i]
-prob += pulp.lpDot(usages, quantities) <= cap
 ```

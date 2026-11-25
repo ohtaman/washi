@@ -8,8 +8,8 @@
     "Procurement"
   ],
   "caseNames": [
-    "2-supplier dual bulk-tier split",
-    "2-supplier bulk threshold jump",
+    "2 suppliers, 2 tiers each",
+    "2 suppliers, 3-tier & 2-tier schedules",
     "3-supplier MOQ and tier gaps",
     "3-supplier fractional demand split",
     "4-supplier multi-bracket procurement"

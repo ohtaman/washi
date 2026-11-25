@@ -1,6 +1,6 @@
 ## 解题思路
 
-将二进制邀请标志 `invite[i]` 与连续礼金变量 `giftBudget[i]` 配对，施加紧凑的条件上下界 `minSpend[i] * invite[i] <= giftBudget[i] <= maxSpend[i] * invite[i]`，将每条逻辑规则转化为 `invite` 上的线性不等式，并在总预算约束下最大化总愉悦度。
+为每位宾客 $i$ 配对二进制邀请变量 $y_i$（`invite[i]`）与连续礼物预算变量 $g_i$（`giftBudget[i]`），并利用 `minSpend`（$L_i$）和 `maxSpend`（$U_i$）施加紧凑的条件上下界 $L_i y_i \le g_i \le U_i y_i$。在总预算 $B$（`budget`）限制下，将 `implications`（$\mathcal{I}$）、`conflicts`（$\mathcal{C}$）与 `groupRules`（$(G_r, k_r)$）转化为 $y_i$ 上的线性不等式，最大化由 `baseEnjoyment`（$e_i$）和 `bonusRates`（$r_i$）决定的总愉悦度。
 
 ## 数学模型
 

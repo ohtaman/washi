@@ -19,7 +19,7 @@ While meeting every café store's monthly demand (kg), choose which roasteries t
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `open` | `number[]` | Binary (`0` or `1`) opening choices per candidate roastery |
+| `open` | `number[]` | Binary (0 or 1) opening choices per candidate roastery |
 | `shipments` | `number[][]` | Non-negative continuous shipments (kg) from roastery $i$ to café store $j$ |
 | `totalCost` | `number` | Minimized sum of fixed operating costs and shipping costs |
 
@@ -53,10 +53,10 @@ While meeting every café store's monthly demand (kg), choose which roasteries t
 }
 ```
 
-Opening roasteries 1 and 2 satisfies capacity constraints (`50 <= 50` and `50 <= 55`) and café store demands `[25, 30, 20, 25]`, yielding total cost $(260 + 290) + (20 \times 7 + 30 \times 3 + 5 \times 10 + 20 \times 4 + 25 \times 3) =$ **985**.
+Opening roasteries 1 and 2 satisfies capacity constraints ($50 \le 50$ and $50 \le 55$) and café store demands 25, 30, 20, and 25 kg, yielding total cost $(260 + 290) + (20 \times 7 + 30 \times 3 + 5 \times 10 + 20 \times 4 + 25 \times 3) =$ **985**.
 
 <!-- section:hint1 -->
-Combine a binary opening variable per roastery with a continuous shipment matrix from roasteries to café stores. You need one capacity-linking constraint per roastery over its row sum of shipments, and one demand-satisfaction constraint per café store over its column sum of shipments.
+Combine a binary opening variable per roastery with a continuous shipment matrix from roasteries to café stores. You need one capacity-linking constraint per roastery over its total outbound shipments, and one demand-satisfaction constraint per café store over its total received shipments.
 
 <!-- section:hint2 -->
 Capping each roastery $i$'s total outflow (sum over all café stores $j$) at `capacities[i] * open[i]` simultaneously forbids shipments from closed roasteries and enforces the capacity limit on open ones. Include both fixed operating costs (`fixedCosts`) and unit shipping costs (`unitCosts`) in the minimization objective.

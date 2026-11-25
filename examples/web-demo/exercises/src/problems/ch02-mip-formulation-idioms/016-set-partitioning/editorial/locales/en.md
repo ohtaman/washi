@@ -1,6 +1,6 @@
 ## Approach
 
-Declare binary variables `selected[j]` for candidate routes, tighten the element-coverage constraints from inequalities (`>= 1`) to exact equalities (`== 1`), and minimize total route cost.
+With $n$ tasks (`numTasks`) and $m$ candidate routes $R_j$ (`routes[j]`) having operating costs $c_j$ (`costs[j]`), declare binary variables $x_j$ (`selected[j]`) for each route. Tighten the task-coverage constraints from inequalities (`>= 1`) to exact equalities (`== 1`) so every task is assigned once, and minimize total operating cost.
 
 ## Mathematical Model
 

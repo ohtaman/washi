@@ -1,6 +1,6 @@
 ## Approach
 
-Pair binary invitation flags `invite[i]` with continuous gift allocations `giftBudget[i]`, apply tight conditional bounds `minSpend[i] * invite[i] <= giftBudget[i] <= maxSpend[i] * invite[i]`, translate each logical rule into a linear inequality on `invite`, and maximize total enjoyment within the party budget.
+For each guest $i$, pair a binary invitation variable $y_i$ (`invite[i]`) with a continuous gift budget variable $g_i$ (`giftBudget[i]`), and gate spending with tight conditional bounds $L_i y_i \le g_i \le U_i y_i$ using `minSpend` ($L_i$) and `maxSpend` ($U_i$). Under the total budget $B$ (`budget`), translate `implications` ($\mathcal{I}$), `conflicts` ($\mathcal{C}$), and `groupRules` ($(G_r, k_r)$) into linear inequalities on $y_i$, and maximize total enjoyment from `baseEnjoyment` ($e_i$) and `bonusRates` ($r_i$).
 
 ## Mathematical Model
 

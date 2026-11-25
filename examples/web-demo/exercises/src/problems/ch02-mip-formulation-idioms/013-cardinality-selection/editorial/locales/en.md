@@ -17,8 +17,8 @@ $$
 
 ## Key Points
 
-- **Summing binary variables counts selected items**: Because each $x_i \in \{0, 1\}$, $\sum_{i \in G} x_i$ equals the exact cardinality $|S \cap G|$ of chosen items in subset $G$, letting `<= 1`, `== k`, and `>= 1` cover mutual exclusion, exact quota, and mandatory coverage uniformly.
-- **Overlapping groups work seamlessly**: A single project index may appear in multiple rules at once without extra variables, letting the solver satisfy coupled quota interactions globally.
+- **Summing binary variables counts selected projects**: Because each $x_i \in \{0, 1\}$, $\sum_{i \in G} x_i$ equals the number of selected projects in group $G$, letting `<= 1`, `== k`, and `>= 1` cover mutual exclusion, exact quota, and mandatory coverage uniformly.
+- **Overlapping groups need no extra variables**: A single project index may appear in multiple rules at once, letting the solver satisfy coupled quota interactions globally.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Core Building Blocks](?view=guide&lang=en#building-blocks).
 
 ## Key Implementation

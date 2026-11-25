@@ -15,7 +15,7 @@ $$
 
 ## Key Points
 
-- **Why a simple `lb` fails**: Setting `lb: L_i` directly on `q_i` forces $q_i \ge L_i$ at all times, preventing the brewery from skipping a style ($q_i = 0$) to save malt for another style.
+- **Why a simple `lb` fails**: Setting `lb` to $L_i$ directly on $q_i$ forces $q_i \ge L_i$ at all times, preventing the brewery from skipping a style ($q_i = 0$) to save malt for another style.
 - **Two-sided linking constraints (semi-continuous variables)**: Writing $L_i y_i \le q_i \le U_i y_i$ gives $0 \le q_i \le 0$ (skip) when $y_i = 0$, and $L_i \le q_i \le U_i$ (at least the minimum batch) when $y_i = 1$. Omitting the lower inequality allows invalid small batches in $(0, L_i)$.
 - Related definitions: [Guide & Glossary — Variable Types](?view=guide&lang=en#variable-types) and [Problem Families](?view=guide&lang=en#paradigms).
 
@@ -40,5 +40,4 @@ m.constraint(
 for i in range(n):
     prob += min_batches[i] * active[i] <= quantities[i]
     prob += quantities[i] <= max_batches[i] * active[i]
-prob += pulp.lpDot(usages, quantities) <= cap
 ```
