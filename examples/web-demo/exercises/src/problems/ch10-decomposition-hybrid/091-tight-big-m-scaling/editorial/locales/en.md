@@ -1,6 +1,6 @@
 ## Approach
 
-Compute the tight valid production upper bound $M_i = \min(\text{capacities}[i], \text{demand})$ for every plant $i$ so no plant's linking constraint permits opening fractionally at `demand / M` when `capacities[i] > demand`. Solve the model's LP relaxation first (`await m.relax()`) to obtain `lpBound`, then solve the MIP (`await m.solve()`) for the optimal integer plan.
+Introduce a binary plant activation variable $y_i \in \{0, 1\}$ and a continuous production quantity $q_i \ge 0$ for each plant $i$, minimizing total fixed plus variable cost subject to total demand $\sum_i q_i \ge D$ and the tight linking constraint $q_i \le \min(C_i, D)\,y_i$. Clamping the upper bound at $\min(C_i, D)$ prevents oversized plants ($C_i > D$) from opening fractionally at $D / C_i$ in the relaxation. Solve the continuous LP relaxation first to obtain `lpBound`, then solve the MIP for the optimal integer plan.
 
 ## Mathematical Model
 
@@ -15,14 +15,14 @@ $$
 
 ## Key Points
 
-- **Why naive Big-M fails**: In the LP relaxation, $y_i = q_i / M_i$ at optimality, so each unit produced at plant $i$ effectively incurs $c_i + F_i / M_i$. Using $M = 10^6$ or even unclipped $C_i = 500$ when $D = 60$ shrinks $F_i / M_i$, artificially depressing the LP lower bound and forcing branch-and-bound to explore weak nodes.
-- **Instance-derived tightening**: Because total demand is $D$, no feasible solution ever sets $q_i > D$. Clamping $M_i = \min(C_i, D)$ preserves every feasible integer solution while strengthening the LP relaxation without adding extra variables or cuts.
+- **Why naive Big-M fails**: In the LP relaxation, $y_i = q_i / M_i$ at optimality, so each unit produced at plant $i$ effectively incurs $c_i + F_i / M_i$. Using $M = 10^6$ or even an unclipped physical capacity (e.g., in the example, $C_0 = 500$ when $D = 60$) shrinks $F_i / M_i$, artificially depressing the LP lower bound and forcing branch-and-bound to explore weak nodes.
+- **Demand-based tightening**: Because unit costs satisfy $c_i \ge 0$ and total demand is $D$, no optimal integer solution needs $q_i > D$ even under the inequality $\sum_i q_i \ge D$. Clamping $M_i = \min(C_i, D)$ therefore preserves every optimal integer solution while strengthening the LP relaxation without adding extra variables or cuts.
 - **Numerical scaling**: Replacing huge arbitrary constants ($10^6$–$10^9$) with tight domain bounds also prevents ill-conditioned simplex basis matrices and floating-point feasibility drift.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation
 
-Generate all plant linking constraints at once inside `quantities.map(...)` using `Math.min(input.capacities[i], input.demand)` as the tight upper bound, then call `await m.relax()` on the same model `m` to obtain the LP relaxation lower bound before solving the MIP with `await m.solve()`.
+Generate all plant linking constraints at once inside `quantities.map(...)` using `Math.min(input.capacities[i], input.demand)` as the tight upper bound, then call `await m.relax()` on the same model `m` to obtain the LP relaxation lower bound before solving the MIP with `await m.solve()`. In PuLP, build the continuous relaxation and the MIP by toggling `cat` between `pulp.LpContinuous` and `pulp.LpBinary`.
 
 **WaSHI (TypeScript)**
 

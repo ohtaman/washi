@@ -8,21 +8,21 @@ $$
 \begin{aligned}
 \min \quad & \sum_{0 \le i < j < n} d_{ij} x_{ij} \\
 \text{s.t.} \quad & \sum_{j < i} x_{ji} + \sum_{j > i} x_{ij} = 2 && \forall i \in \{0, \dots, n-1\} \\
-& \sum_{\substack{i, j \in S \\ i < j}} x_{ij} \le |S| - 1 && \forall \text{ 被分离的子环 } S \subsetneq V \\
+& \sum_{\substack{i, j \in S \\ i < j}} x_{ij} \le |S| - 1 && \forall \text{ 被分离的子环 } \emptyset \neq S \subsetneq V \\
 & x_{ij} \in \{0, 1\} && \forall 0 \le i < j < n
 \end{aligned}
 $$
 
 ## 核心要点
 
-- **按需生成指数级约束**：真子集共有 $2^n - 2$ 个，但仅对当前整数解中真正出现的子环添加惰性 DFJ 割，通常只需极少几轮迭代就能收敛到全局最优。
+- **按需生成指数级约束**：非空真子集共有 $2^n - 2$ 个，但仅对当前整数解中真正出现的子环添加惰性 DFJ 割，通常只需极少几轮迭代就能收敛到全局最优。
 - **多割并行分离**：每轮把所有检测到的子环同时转化为割平面，比每次只加一条割能大幅减少重解次数（在 WaSHI 中也可通过 `master.solveBenders` 返回 `kind: "feasibility"` 割来实现）。
-- **无向边模型天然排除二元子环**：每对城市只设一个无向边变量，因此不存在长度为 2 的子环，最小子环长度为 3；这也是为什么 $n = 5$ 首轮即可连通而 $n \ge 6$ 会出现 $3+3$ 等子环分裂。
+- **无向边模型天然排除二元子环**：每对城市只设一个无向边变量，因此不存在长度为 2 的子环，最小子环长度为 3；这也是为什么 $n = 5$ 首轮即可连通而 $n \ge 6$ 可能出现 $3+3$ 等子环分裂。
 - 概念参考：[指南与术语表 — 常见优化问题类型](?view=guide&lang=zh#paradigms) / [求解状态术语](?view=guide&lang=zh#solver-status)
 
 ## 实现要点
 
-在 `while` 循环中保持同一个 `Model` 实例，调用 `await m.solve()` 求解；若尚未形成单一回路，则对找到的每个子环 `comp` 通过 `m.constraint(...)` 逐次添加 DFJ 割平面。
+在 `while` 循环中保持同一个模型实例（WaSHI 的 `Model` 或 PuLP 的 `LpProblem`）反复求解；若尚未形成单一回路，则对每个分离出的子环 `comp` 逐轮追加 DFJ 割平面。辅助函数 `extractCycles`（Python 中为 `extract_cycles`）用于提取当前选中边的连通分量，`collectInternalEdges` 则收集各子环内部的边。
 
 **WaSHI (TypeScript)**
 

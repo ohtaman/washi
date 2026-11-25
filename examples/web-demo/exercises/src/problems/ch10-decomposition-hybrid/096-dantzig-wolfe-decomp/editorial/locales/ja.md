@@ -1,6 +1,6 @@
 ## アプローチ
 
-全社共有制約 `shared_cap`（`0 <= sharedCap`）、部門ごとの凸結合制約 `conv_${k}`（`0 == 1`）、およびゼロ生産初期列 `init_${k}` を持つ最大化 RMP（`master`）を構築します。`finalizeAsMIP: false` で `solveColumnGeneration` を呼び出し、`pricing` 内で各部門の LP ブロックを独立に解いて改善端点を追加したのち、得られた重み $\lambda_{kp}$ の凸結合として `allocations[k][j]` を復元します。
+各工場のローカル制約を満たす生産量ベクトルを端点の凸結合 $\sum_p \lambda_{kp} x_{kp}$（$\sum_p \lambda_{kp} = 1, \lambda_{kp} \ge 0$）で表し、全社共有鋼材の上限制約を最大化 RMP で調整します。WaSHI では名前付きの結合制約 `shared_cap`、工場ごとの凸結合制約 `conv_${k}`、およびゼロ生産の初期列 `init_${k}` を `master` に登録し、`solveColumnGeneration({ master, finalizeAsMIP: false, pricing })` で各工場の独立ブロック LP を価格付けしたのち、最適重み $\lambda_{kp}$ の凸結合 $\sum_p \lambda_{kp} x_{kpj}$ として `allocations[k][j]` を復元します。
 
 ## 数理モデル
 
@@ -49,7 +49,18 @@ const result = await solveColumnGeneration<DwColumnMeta>({
       sub.constraint(expr`dot(${input.localUsages[k]}, ${x}) <= ${input.localCaps[k]}`);
       if ((await sub.solve()) !== "Optimal") continue;
       const rc = (sub.objectiveValue ?? 0) - muK;
-      if (rc > 1e-6) proposals.push(/* { cost, coefficients: { shared_cap, conv_k: 1 }, reducedCost: rc } */);
+      if (rc <= 1e-6) continue;
+      const xVals = x.map((v) => Math.max(0, v.value ?? 0));
+      const cost = xVals.reduce((acc, v, j) => acc + input.profits[k][j] * v, 0);
+      const shared = xVals.reduce((acc, v, j) => acc + input.sharedUsages[k][j] * v, 0);
+      proposals.push({
+        type: "Continuous",
+        lb: 0,
+        cost,
+        coefficients: { shared_cap: shared, [`conv_${k}`]: 1 },
+        reducedCost: rc,
+        meta: { k, x: xVals },
+      });
     }
     return proposals.length > 0 ? proposals : null;
   },

@@ -23,7 +23,7 @@ $$
 
 - **Separation without `theta`**: Because every objective term $c_{jm} x_{jm}$ lives inside the master problem, subproblems only verify combinatorial feasibility; omitting `theta` and returning `null` once every machine CP model returns `"Sat"` certifies global optimality immediately.
 - **Minimal conflict tightening**: Strengthening a full assignment $S_m$ down to a minimal infeasible subset $K_m$ (via greedy deletion calls to `check({ solver: "pumpkin" })`) removes entire families of redundant infeasible schedules in one cut instead of banning one full solution at a time.
-- **Boundary safety for zero or one job**: Before calling `sub.integer`, verify `ub >= lb` (since single-job time-window violations have $K_m = \{j\}$), and invoke `disjoint` whenever $|S_m| \ge 2$.
+- **Boundary safety for zero or one job**: Before calling `sub.integer`, verify $\text{ub} \ge \text{lb}$ (since single-job time-window violations have $K_m = \{j\}$), and invoke `disjoint` whenever $|S_m| \ge 2$.
 - Related definitions: [Guide & Glossary — Problem Families](?view=guide&lang=en#paradigms) and [Variable Types](?view=guide&lang=en#variable-types).
 
 ## Key Implementation

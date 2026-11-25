@@ -10,7 +10,7 @@ Return the optimal tour, its total distance, and the number of MIP solves execut
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `distances` | `number[][]` | Symmetric $n \times n$ pairwise distance matrix ($n \in [5, 8]$) |
+| `distances` | `number[][]` | Symmetric $n \times n$ pairwise distance matrix ($5 \le n \le 8$) |
 
 ### Output
 

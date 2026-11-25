@@ -1,6 +1,6 @@
 {
   "title": "#099. Fix-and-Optimize 固定并优化法（滚动窗口 MIP）",
-  "subtitle": "通过滚动释放重叠时间窗口内的启停变量并重优化连续生产与库存，实现多周期批量计划的 Fix-and-Optimize 求解。",
+  "subtitle": "通过滚动释放重叠时间窗口内的准备变量并重优化连续生产与库存，实现多周期批量计划的 Fix-and-Optimize 求解。",
   "tags": [
     "Fix-and-Optimize",
     "Matheuristic",
@@ -22,7 +22,7 @@
     "m4": "第 {p0} 期的产量 ({p1}) 超过已启用产能上限 ({p2})。",
     "m5": "第 {p0} 期库存物料平衡违背：净供给 {p1} != 需求 {p2}。",
     "m6": "返回的 totalCost ({p0}) 与重新计算的总成本 ({p1}) 不一致。",
-    "m7": "计划可行，但总成本 ({p0}) 高于目标最优值 ({p1})。",
-    "m8": "正确！已验证 Fix-and-Optimize 最优批量生产计划（totalCost = {p0}）。"
+    "m7": "计划可行，但总成本 ({p0}) 高于目标值 ({p1})。",
+    "m8": "正确！已验证 Fix-and-Optimize 批量生产计划（totalCost = {p0}）。"
   }
 }

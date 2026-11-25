@@ -1,6 +1,6 @@
 ## Approach
 
-Construct a maximization Restricted Master Problem (`master`) containing the global coupling row `shared_cap` (`0 <= sharedCap`), one convexity constraint `conv_${k}` (`0 == 1`) per division, and zero-production starter columns (`init_${k}`). Invoke `solveColumnGeneration` with `finalizeAsMIP: false`, solve each division LP block independently in `pricing`, and reconstruct `allocations[k][j] = sum_p lambda_{kp} * x_{kpj}` from the optimal extreme-point weights.
+Express each plant's local feasible production vector as a convex combination of its extreme points $\sum_p \lambda_{kp} x_{kp}$ ($\sum_p \lambda_{kp} = 1$, $\lambda_{kp} \ge 0$), while coordinating the company-wide shared steel limit in the maximization Restricted Master Problem (RMP). In WaSHI, build `master` with the named coupling row `shared_cap`, one convexity constraint `conv_${k}` per plant, and zero-production starter columns `init_${k}`, then invoke `solveColumnGeneration({ master, finalizeAsMIP: false, pricing })` to solve each plant's independent block LP and reconstruct `allocations[k][j]` as the convex combination $\sum_p \lambda_{kp} x_{kpj}$ from the optimal weights.
 
 ## Mathematical Model
 
@@ -49,7 +49,18 @@ const result = await solveColumnGeneration<DwColumnMeta>({
       sub.constraint(expr`dot(${input.localUsages[k]}, ${x}) <= ${input.localCaps[k]}`);
       if ((await sub.solve()) !== "Optimal") continue;
       const rc = (sub.objectiveValue ?? 0) - muK;
-      if (rc > 1e-6) proposals.push(/* { cost, coefficients: { shared_cap, conv_k: 1 }, reducedCost: rc } */);
+      if (rc <= 1e-6) continue;
+      const xVals = x.map((v) => Math.max(0, v.value ?? 0));
+      const cost = xVals.reduce((acc, v, j) => acc + input.profits[k][j] * v, 0);
+      const shared = xVals.reduce((acc, v, j) => acc + input.sharedUsages[k][j] * v, 0);
+      proposals.push({
+        type: "Continuous",
+        lb: 0,
+        cost,
+        coefficients: { shared_cap: shared, [`conv_${k}`]: 1 },
+        reducedCost: rc,
+        meta: { k, x: xVals },
+      });
     }
     return proposals.length > 0 ? proposals : null;
   },
