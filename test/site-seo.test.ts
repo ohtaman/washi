@@ -1069,13 +1069,17 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     }
 
     // Verify homepages link directly (1 hop) to Playground, Apps, Games, and newly added doc pages
-    for (const html of [enHtml, jaHtml, zhHtml]) {
+    for (const [html, exercisesQuery] of [
+      [enHtml, ""],
+      [jaHtml, "?lang=ja"],
+      [zhHtml, "?lang=zh"],
+    ] as const) {
       expect(html).toContain('hreflang="en" href="https://washi.ohtaman.dev/"');
       expect(html).toContain('hreflang="ja" href="https://washi.ohtaman.dev/ja/"');
       expect(html).toContain('hreflang="zh-CN" href="https://washi.ohtaman.dev/zh/"');
       expect(html).toContain('hreflang="x-default" href="https://washi.ohtaman.dev/"');
       expect(html).toContain('href="/demo/" target="_self"');
-      expect(html).toContain('href="/exercises/" target="_self"');
+      expect(html).toContain(`href="/exercises/${exercisesQuery}" target="_self"`);
       expect(html).toContain('href="/apps/ai-shift/" target="_self"');
       expect(html).toContain('href="/apps/ai-timetable/" target="_self"');
       expect(html).toContain('href="/games/demon-castle-shift/" target="_self"');
