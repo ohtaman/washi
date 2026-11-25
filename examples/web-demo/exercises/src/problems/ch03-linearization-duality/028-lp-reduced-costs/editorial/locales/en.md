@@ -14,7 +14,7 @@ $$
 
 ## Key Points
 
-- **Dual formula & optimality conditions**: Using the constraint duals $\pi \ge 0$, every variable's reduced cost equals $\bar{c}_j = c_j - \sum_k \pi_k A_{kj}$. By KKT optimality in a minimization LP with $x_j \ge 0$, active basic variables ($x_j > 0$) satisfy $\bar{c}_j = 0$, while variables at their lower bound ($x_j = 0$) satisfy $\bar{c}_j \ge 0$—and strictly $\bar{c}_j > 0$ under **dual non-degeneracy** (a unique primal optimum).
+- **Dual formula & optimality conditions**: Using the constraint duals $\pi \ge 0$, every variable's reduced cost equals $\bar{c}_j = c_j - \sum_k \pi_k A_{kj}$. By KKT optimality in a minimization LP with $x_j \ge 0$, basic variables (and any active variable with $x_j > 0$) satisfy $\bar{c}_j = 0$, while variables at their lower bound ($x_j = 0$) satisfy $\bar{c}_j \ge 0$—with strict $\bar{c}_j > 0$ for non-basic variables under **dual non-degeneracy**.
 - **Sensitivity, sign generalization & pricing**: Within the current optimal basis under primal non-degeneracy, $\bar{c}_j$ is both the minimum unit-cost reduction needed for $x_j$ to enter the optimal basis and the local marginal objective penalty per unit if $x_j$ is forced upward from zero. More generally, a non-basic variable at a finite upper bound in minimization has $\bar{c}_j \le 0$; in maximization, a non-basic variable at its lower bound has $\bar{c}_j \le 0$ so its profit must rise by $\lvert\bar{c}_j\rvert$ to enter. This exact pricing condition underlies **Column Generation** in later chapters.
 - Related definitions: [Guide & Glossary — Core Building Blocks](?view=guide&lang=en#building-blocks) and [Problem Families](?view=guide&lang=en#paradigms).
 
