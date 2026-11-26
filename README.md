@@ -1,24 +1,24 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - Mathematical Optimization Modeler in TypeScript" src="./assets/washi-header-light.png" width="420" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://washi.ohtaman.dev/washi-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://washi.ohtaman.dev/washi-header-light.png">
+    <img alt="WaSHI - Mathematical Optimization Modeler in TypeScript" src="https://washi.ohtaman.dev/washi-header-light.png" width="420" />
   </picture>
   <p><strong>Mathematical Optimization Modeler in TypeScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Convex Quadratic Programming (QP) • Constraint Programming (CP) • SMT &amp; Conflict Diagnosis</em>
   </p>
   <p>
-    <a href="./README.md">English</a> •
-    <a href="./README.ja.md">日本語</a> •
-    <a href="./README.zh-CN.md">简体中文</a>
+    <a href="https://github.com/ohtaman/washi/blob/main/README.md">English</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-ja.md">日本語</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-zh-CN.md">简体中文</a>
   </p>
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://washi.ohtaman.dev/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
+    <a href="https://github.com/ohtaman/washi/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
 
@@ -38,8 +38,8 @@
 
 - **[Documentation](https://washi.ohtaman.dev/)**: Modeling guide, solver references, and deployment guides
 - **[Interactive Showcase](https://washi.ohtaman.dev/showcase/) · [Browser Playground](https://washi.ohtaman.dev/demo/) · [Optimization N Exercises](https://washi.ohtaman.dev/exercises/)**: Try live optimization apps, practice interactive modeling workouts, and edit models in the browser
-- **[Examples](https://washi.ohtaman.dev/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
-- **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: Workflow skill and machine-readable docs for AI coding agents
+- **[Examples](https://washi.ohtaman.dev/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](https://github.com/ohtaman/washi/blob/main/examples/README.md))
+- **[Agent Skill (`SKILL.md`)](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: Workflow skill and machine-readable docs for AI coding agents
 
 ---
 
@@ -218,13 +218,13 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 > [!NOTE]
-> **Z3 in the Browser**: Because Z3's WebAssembly build uses `SharedArrayBuffer`, browsers require a **Secure Context** (`HTTPS` or `localhost`) and Cross-Origin Isolation headers (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [`examples/distribution/`](examples/distribution/README.md). **HiGHS**, **Pumpkin**, and **GLPK** work without Cross-Origin Isolation headers.
+> **Z3 in the Browser**: Because Z3's WebAssembly build uses `SharedArrayBuffer`, browsers require a **Secure Context** (`HTTPS` or `localhost`) and Cross-Origin Isolation headers (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). See the [Cross-Origin Isolation Guide](https://washi.ohtaman.dev/getting-started/cross-origin) and [`examples/distribution/`](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md). **HiGHS**, **Pumpkin**, and **GLPK** work without Cross-Origin Isolation headers.
 
 ---
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, running tests and benchmarks, rebuilding WebAssembly assets, and the release workflow.
+See [CONTRIBUTING.md](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md) for local development setup, running tests and benchmarks, rebuilding WebAssembly assets, and the release workflow.
 
 ---
 
@@ -242,5 +242,5 @@ WaSHI stands on the shoulders of the open-source mathematical optimization and a
 
 ## 📄 License
 
-- **`@ohtaman/washi`**: [MIT License](./LICENSE)
-- **Bundled / Optional Engines**: HiGHS (MIT), Pumpkin (MIT), Z3 (MIT), GLPK (GPL-3.0). See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for full details.
+- **`@ohtaman/washi`**: [MIT License](https://github.com/ohtaman/washi/blob/main/LICENSE)
+- **Bundled / Optional Engines**: HiGHS (MIT), Pumpkin (MIT), Z3 (MIT), GLPK (GPL-3.0). See [THIRD_PARTY_LICENSES.md](https://github.com/ohtaman/washi/blob/main/THIRD_PARTY_LICENSES.md) for full details.

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
@@ -47,12 +48,27 @@ function rewriteSnippetImports(jsCode: string): string {
 
 describe("README.md Code Snippets & Links Validation", () => {
   const readmeSpecs = [
-    { file: "README.md", docsUrl: "https://washi.ohtaman.dev/" },
-    { file: "README.ja.md", docsUrl: "https://washi.ohtaman.dev/ja/" },
-    { file: "README.zh-CN.md", docsUrl: "https://washi.ohtaman.dev/zh/" },
+    {
+      file: "README.md",
+      docsUrl: "https://washi.ohtaman.dev/",
+      crossOriginUrl: "https://washi.ohtaman.dev/getting-started/cross-origin",
+      crossOriginDocPath: "docs/getting-started/cross-origin.md",
+    },
+    {
+      file: "README-ja.md",
+      docsUrl: "https://washi.ohtaman.dev/ja/",
+      crossOriginUrl: "https://washi.ohtaman.dev/ja/getting-started/cross-origin",
+      crossOriginDocPath: "docs/ja/getting-started/cross-origin.md",
+    },
+    {
+      file: "README-zh-CN.md",
+      docsUrl: "https://washi.ohtaman.dev/zh/",
+      crossOriginUrl: "https://washi.ohtaman.dev/zh/getting-started/cross-origin",
+      crossOriginDocPath: "docs/zh/getting-started/cross-origin.md",
+    },
   ];
 
-  it("extracts and executes all fenced TypeScript snippets from README.md, README.ja.md, and README.zh-CN.md", async () => {
+  it("extracts and executes all fenced TypeScript snippets from README.md, README-ja.md, and README-zh-CN.md", async () => {
     for (const { file } of readmeSpecs) {
       const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
       const blocks = extractTsBlocks(content);
@@ -157,24 +173,104 @@ describe("README.md Code Snippets & Links Validation", () => {
     }
   });
 
-  it("links to the online documentation and valid relative docs/ files across README.md, README.ja.md, and README.zh-CN.md", () => {
-    for (const { file, docsUrl } of readmeSpecs) {
-      const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
-      expect(content).toContain(`](${docsUrl})`);
+  it("uses npm-safe absolute URLs for images, docs, and repo links across README.md, README-ja.md, and README-zh-CN.md", () => {
+    const githubBlobPrefix = "https://github.com/ohtaman/washi/blob/main/";
+    const expectedRepoTargets = [
+      "README.md",
+      "README-ja.md",
+      "README-zh-CN.md",
+      "LICENSE",
+      "THIRD_PARTY_LICENSES.md",
+      "CONTRIBUTING.md",
+      "examples/README.md",
+      "examples/distribution/README.md",
+      "skills/washi/SKILL.md",
+    ];
 
-      const relativeDocRegex = /\]\((docs\/[^)#\s]+)\)/g;
-      let match: RegExpExecArray | null;
-      const matchedPaths: string[] = [];
-      while ((match = relativeDocRegex.exec(content)) !== null) {
-        const relPath = match[1];
-        matchedPaths.push(relPath);
+    expect(
+      fs.existsSync(path.resolve(process.cwd(), "docs/public/washi-header-dark.png"))
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.resolve(process.cwd(), "docs/public/washi-header-light.png"))
+    ).toBe(true);
+
+    for (const { file, docsUrl, crossOriginUrl, crossOriginDocPath } of readmeSpecs) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      const proseWithoutCodeBlocks = content.replace(/```[\s\S]*?```/g, "");
+
+      expect(content).toContain(`](${docsUrl})`);
+      expect(content).toContain(`](${crossOriginUrl})`);
+      expect(
+        fs.existsSync(path.resolve(process.cwd(), crossOriginDocPath)),
+        `Expected doc source '${crossOriginDocPath}' for ${file} to exist`
+      ).toBe(true);
+
+      expect(proseWithoutCodeBlocks).toContain("https://washi.ohtaman.dev/washi-header-dark.png");
+      expect(proseWithoutCodeBlocks).toContain("https://washi.ohtaman.dev/washi-header-light.png");
+      expect(proseWithoutCodeBlocks).not.toContain("./assets/");
+
+      const mdTargets = [...proseWithoutCodeBlocks.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]);
+      const htmlTargets = [
+        ...proseWithoutCodeBlocks.matchAll(/\b(?:href|src|srcset)=["']([^"']+)["']/g),
+      ].map((m) => m[1]);
+      const allTargets = [...mdTargets, ...htmlTargets];
+      expect(allTargets.length).toBeGreaterThan(0);
+
+      for (const target of allTargets) {
+        expect(target, `Non-HTTPS target '${target}' in ${file}`).toMatch(/^https:\/\//);
+      }
+
+      const repoTargets = new Set(
+        allTargets
+          .filter((target) => target.startsWith(githubBlobPrefix))
+          .map((target) => target.slice(githubBlobPrefix.length).split("#")[0])
+      );
+      expect(repoTargets.size).toBeGreaterThanOrEqual(8);
+      for (const expectedTarget of expectedRepoTargets) {
+        expect(
+          repoTargets.has(expectedTarget),
+          `Expected GitHub blob link to '${expectedTarget}' in ${file}`
+        ).toBe(true);
+      }
+      for (const relPath of repoTargets) {
         const absPath = path.resolve(process.cwd(), relPath);
         expect(
           fs.existsSync(absPath),
-          `Expected relative doc path '${relPath}' in ${file} to exist`
+          `Expected linked repo path '${relPath}' in ${file} to exist`
         ).toBe(true);
       }
-      expect(matchedPaths.length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("ships only the canonical English README.md in package.json and npm pack tarball", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
+    ) as { files: string[] };
+
+    expect(pkg.files).toContain("README.md");
+    expect(
+      pkg.files.filter((entry) => /^readme[.-].+\.md$/i.test(entry)),
+      "Localized README entries must not be listed in package.json files"
+    ).toEqual([]);
+
+    const rootDotReadmes = fs
+      .readdirSync(process.cwd())
+      .filter((entry) => /^readme(?:\..+)?$/i.test(entry));
+    expect(
+      rootDotReadmes,
+      "Only README.md may match README.* at the repository root so npm does not auto-pack/select localized READMEs"
+    ).toEqual(["README.md"]);
+
+    const packJson = execFileSync(
+      "npm",
+      ["pack", "--dry-run", "--ignore-scripts", "--json"],
+      { cwd: process.cwd(), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
+    const packResult = JSON.parse(packJson) as Array<{ files: Array<{ path: string }> }>;
+    const packedPaths = packResult[0].files.map((entry) => entry.path);
+    const packedRootReadmes = packedPaths.filter(
+      (entry) => !entry.includes("/") && /^readme(?:[.-].*)?$/i.test(entry)
+    );
+    expect(packedRootReadmes).toEqual(["README.md"]);
   });
 });

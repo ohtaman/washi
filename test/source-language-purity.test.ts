@@ -23,8 +23,8 @@ function isAllowedLocalizedFile(filePath: string): boolean {
   if (
     filePath.startsWith("docs/ja/") ||
     filePath.startsWith("docs/zh/") ||
-    filePath === "README.ja.md" ||
-    filePath === "README.zh-CN.md"
+    filePath === "README-ja.md" ||
+    filePath === "README-zh-CN.md"
   ) {
     return true;
   }

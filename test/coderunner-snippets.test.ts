@@ -68,7 +68,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
   }
 
   it("verifies shipped READMEs and docs/ contain no retired API calls and all TypeScript blocks parse cleanly", () => {
-    for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
+    for (const readmeFile of ["README.md", "README-ja.md", "README-zh-CN.md"]) {
       const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
       expect(content).not.toMatch(
         /\.(constrain|optimize|setObjective|vars|constrs|getValues?|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
