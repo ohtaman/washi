@@ -10,8 +10,8 @@ Installing `@ohtaman/washi` bundles two zero-dependency solvers out of the box, 
 
 | Solver | Install | Problem Classes & Capabilities |
 | --- | --- | --- |
-| **HiGHS** *(default)* | Bundled in `@ohtaman/washi` | Linear, mixed-integer, and convex quadratic programming — `LP`, `MIP`, and `QP`. |
-| **Pumpkin** | Bundled in `@ohtaman/washi` (`@ohtaman/washi/solvers/pumpkin`) | Constraint Programming (`CP`) and exact `unsatCore` conflict diagnosis on bounded integers and booleans. |
+| **HiGHS** *(default)* | Bundled in `@ohtaman/washi` (no extra import; subpath `@ohtaman/washi/solvers/highs`) | Linear, mixed-integer, and convex quadratic programming — `LP`, `MIP`, and `QP`. |
+| **Pumpkin** | Bundled in `@ohtaman/washi` (`{ solver: "pumpkin" }`, no extra import; subpath `@ohtaman/washi/solvers/pumpkin`) | Constraint Programming (`CP`) and exact `unsatCore` conflict diagnosis on bounded integers and booleans. |
 | **Z3** | Optional (`z3-solver`) | Satisfiability Modulo Theories (`SMT`), continuous logic, and exact `unsatCore` diagnosis (including continuous variables). |
 | **GLPK** | Optional (`glpk.js`) | Alternative `LP` and `MIP` solver under the GPL-3.0 license. |
 

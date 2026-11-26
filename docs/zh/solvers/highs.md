@@ -155,7 +155,8 @@ if (model.hasPrimalSolution) {
 如果需要在主线程运行，或从自定义路径托管 `highs.wasm`，请使用 `useWorker`、`setHighsWasmUrl` 或 `wasmUrl`：
 
 ```typescript
-import { Model, HighsSolver, expr, maximize, setHighsWasmUrl } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
+import { HighsSolver, setHighsWasmUrl } from "@ohtaman/washi/solvers/highs";
 
 // 全局设置自定义 WASM 地址（传入 null 恢复内置资源）
 setHighsWasmUrl("/assets/wasm/highs.wasm");

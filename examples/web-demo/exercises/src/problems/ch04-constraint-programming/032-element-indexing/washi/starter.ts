@@ -1,5 +1,4 @@
 import { Model, at, distinct, minimize, sum } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface P032Input {
   costs: number[][];

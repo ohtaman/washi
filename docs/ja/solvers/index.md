@@ -6,27 +6,26 @@ WaSHI は、ソルバーを切り替えられるプラグイン構造を採用�
 
 ## ソルバー比較表
 
-| ソルバー | ライセンス | 対応問題クラス | 主な用途 | 提供形態と前提条件 |
+| ソルバー | ライセンス | 対応問題クラス・変数 | 主な用途 | 提供形態と前提条件 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](./highs.md)** | **MIT** | **LP, MIP, 凸 QP** | 実務・本番環境の数理最適化、オペレーションズ・リサーチ、凸 QP によるポートフォリオ最適化 | **標準搭載**（設定不要） |
-| **[Pumpkin](./pumpkin.md)** | **MIT** | **CP、命題論理、有界整数計画** | 非重複制約付きスケジューリング、CP グローバル制約、離散モデルの `unsatCore` | **同梱プラグイン**（`@ohtaman/washi/solvers/pumpkin`）。有界な整数変数・真偽値変数のみ対応（`Continuous` 変数は不可） |
-| **[Z3](./z3.md)**（`z3-solver` 経由） | **MIT** | **SMT、SAT、LP/MIP**（論理制約付き） | 連続変数や小数の係数・定数を含む論理ルール、連続・整数混在モデルの矛盾診断（`unsatCore`） | **オプション**（`@ohtaman/washi/solvers/z3`、要 `z3-solver`）。ブラウザでは Secure Context（`HTTPS` / `localhost`）と `COOP`/`COEP` ヘッダーが必要 |
-| **[GLPK](./glpk.md)**（`glpk.js` 経由） | **GPL-3.0** | **LP, MIP** | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | **オプション**（`@ohtaman/washi/solvers/glpk`、要 `glpk.js`。GPL-3.0 ライセンスに注意） |
+| **[HiGHS](./highs.md)** | **MIT** | **LP, MIP, 凸 QP**（連続・整数・真偽値） | 実務・本番環境の数理最適化、オペレーションズ・リサーチ、凸 QP によるポートフォリオ最適化 | **同梱デフォルト**（追加依存・インポート不要。個別 API は `@ohtaman/washi/solvers/highs`） |
+| **[Pumpkin](./pumpkin.md)** | **MIT** | **CP、命題論理**（有界な整数・真偽値のみ、`Continuous` 不可） | 非重複制約付きスケジューリング、CP グローバル制約、離散モデルの `unsatCore` | **同梱**（`{ solver: "pumpkin" }`、追加依存・インポート不要。個別 API は `@ohtaman/washi/solvers/pumpkin`） |
+| **[Z3](./z3.md)**（`z3-solver` 経由） | **MIT** | **SMT、SAT、LP/MIP**（連続・整数・真偽値） | 連続変数や小数の係数・定数を含む論理ルール、連続・整数混在モデルの矛盾診断（`unsatCore`） | **オプション**（`@ohtaman/washi/solvers/z3`、要 `z3-solver`）。ブラウザでは Secure Context（`HTTPS` / `localhost`）と `COOP`/`COEP` ヘッダーが必要 |
+| **[GLPK](./glpk.md)**（`glpk.js` 経由） | **GPL-3.0** | **LP, MIP**（連続・整数） | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | **オプション**（`@ohtaman/washi/solvers/glpk`、要 `glpk.js`。GPL-3.0 ライセンスに注意） |
 | **Mock**（`MockSolver`） | **MIT** | *任意*（固定応答スタブ） | WebAssembly を読み込まずに高速実行できる CI・単体テスト | **標準搭載**（`solver: "mock"` または `new MockSolver(...)`） |
 
 ---
 
 ## ソルバーの指定方法
 
-プラグイン型ソルバーはあらかじめインポートして登録し、`Model` の作成時、または `solve()` / `check()` 呼び出し時に使用するソルバーを指定します。
+同梱の **HiGHS**（デフォルト）と **Pumpkin**（`{ solver: "pumpkin" }`）は追加インポートなしでそのまま使えます。オプションのプラグイン型ソルバー（**Z3**・**GLPK**）を使う場合のみあらかじめインポートし、`Model` の作成時、または `solve()` / `check()` 呼び出し時に使用するソルバーを指定します。
 
 ```typescript
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 import "@ohtaman/washi/solvers/z3";
 import "@ohtaman/washi/solvers/glpk";
 
-// 1. Model 作成時にデフォルトソルバーを指定（HiGHS は標準搭載）
+// 1. Model 作成時にソルバーを指定（HiGHS がデフォルト、Pumpkin も追加インポート不要）
 const m = new Model({ solver: "highs" });
 const x = m.integer("x", { lb: 0, ub: 10 });
 m.objective(maximize(expr`${x}`));

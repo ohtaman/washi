@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) 是面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器，受到 Python **PuLP** 的启发。你可以在应用代码中定义变量、目标函数和约束，并在 Node.js 或浏览器本地使用内置 **HiGHS**（默认）和 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`），或按需加载 **Z3**、**GLPK** 插件进行求解。
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) 是面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器，受到 Python **PuLP** 的启发。你可以在应用代码中定义变量、目标函数和约束，并在 Node.js 或浏览器本地直接使用内置的 **HiGHS**（默认）与 **Pumpkin**（`{ solver: "pumpkin" }`），或按需加载 **Z3**、**GLPK** 插件进行求解。
 
 ## ✨ 核心特性
 
@@ -47,7 +47,7 @@
 
 ```bash
 npm install @ohtaman/washi
-# HiGHS (LP/MIP/QP) 与 Pumpkin (CP, @ohtaman/washi/solvers/pumpkin) 已内置打包，无需额外依赖
+# HiGHS (LP/MIP/QP, 默认) 与 Pumpkin (CP, { solver: "pumpkin" }) 均已内置打包，无需额外依赖或插件导入
 
 # 可选 peer-dependency 求解器插件
 npm install z3-solver   # 用于 SMT 逻辑与包含连续变量的精确冲突诊断
@@ -78,13 +78,13 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 | 求解器 | 许可证 | 支持问题类型 | 主要用途 | 引入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数值优化与冲突诊断（约束松弛） | 默认内置（零额外依赖） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP（惰性子句生成）, 逻辑, 有界整数 | 组合调度与有界整数 `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（内置 WASM，零额外依赖） |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数值优化与冲突诊断（约束松弛） | 内置默认（零额外依赖、无需导入插件） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP（惰性子句生成）, 逻辑, 有界整数 | 组合调度与有界整数 `unsatCore` | 内置（`{ solver: "pumpkin" }`，零额外依赖、无需导入插件） |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 逻辑, MIP | 逻辑规则、可满足性判定与精确 `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 线性与混合整数规划 | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | 单元与集成测试模拟响应 | 内置 (`MockSolver`) |
 
-导入对应插件后，可在 `new Model(...)`、`m.solve(...)` 或 `m.check(...)` 中传入 `{ solver: "pumpkin" }`、`{ solver: "z3" }` 或 `{ solver: "glpk" }`。
+内置的 HiGHS（默认）与 Pumpkin（`{ solver: "pumpkin" }`）可直接切换而无需额外导入；若使用可选插件 `{ solver: "z3" }` 或 `{ solver: "glpk" }`，请先导入对应插件模块。各求解器专属类与配置函数（如 `HighsSolver`、`setHighsWasmUrl`、`PumpkinSolver`、`setPumpkinWasmUrl` 等）均位于 `@ohtaman/washi/solvers/{highs,pumpkin,z3,glpk}`。
 
 ---
 
@@ -139,11 +139,10 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 
 ### 3. 约束规划与无重叠排程 (Pumpkin)
 
-使用内置的 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）求解有界整数调度与 CP 全局约束（`disjoint`、`distinct`、`cumulative`、`allowed`），无需任何额外依赖：
+使用内置的 **Pumpkin**（`{ solver: "pumpkin" }`）求解有界整数调度与 CP 全局约束（`disjoint`、`distinct`、`cumulative`、`allowed`），无需任何额外依赖或导入：
 
 ```ts
 import { Model, expr, disjoint, distinct, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("WorkshopCP", { solver: "pumpkin" });
 const start = m.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
@@ -175,8 +174,8 @@ console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/pumpkin"; // 内置：有界整数/布尔精确 unsatCore
-// import "@ohtaman/washi/solvers/z3";      // 可选：支持含连续变量的精确 SMT unsatCore
+// 传入 { solver: "pumpkin" } 即可直接提取有界整数/布尔精确 unsatCore（无需额外导入）
+// import "@ohtaman/washi/solvers/z3"; // 可选：支持含连续变量的精确 SMT unsatCore
 
 const m = new Model("StaffingRules");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
@@ -199,24 +198,23 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🌐 浏览器与 Web Worker 使用指南
 
 - **打包工具 (Vite / webpack 5)**：直接 `import { Model } from "@ohtaman/washi"` 即可。在标准源（`http://` / `https://`）的浏览器环境中，**HiGHS** 与 **Pumpkin** 默认在专用 Web Worker 中求解（`file://` 等不透明源会自动回退到 `{ useWorker: false }`，也可显式传入 `{ useWorker: false }` 在主线程执行）。
-- **原生 ESM / Script 标签 / CDN**：部署 `dist/browser/` 目录（含 `highs.wasm`、`solvers/pumpkin.wasm` 与 Worker 资源）或从 CDN 加载。
+- **原生 ESM / Script 标签 / CDN**：部署 `dist/browser/` 目录（含 `solvers/highs.wasm`、`solvers/pumpkin.wasm` 与 Worker 资源）或从 CDN 加载。`washi.js` 与 `washi.min.js` 均已开箱内置 HiGHS 与 Pumpkin。
 
 ```html
-<!-- 浏览器原生 ESM -->
+<!-- 浏览器原生 ESM（同时包含 HiGHS 与 Pumpkin） -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  // 内置或可选求解器插件:
-  // import "./washi/solvers/pumpkin.js"; // 内置 CP 求解器
+  // 可选求解器插件:
   // import "./washi/solvers/glpk.js";    // 可选 GLPK 插件
   // import "./washi/solvers/z3.js";      // 可选 Z3 插件（见下方说明）
   const m = new Model();
   await m.solve();
 </script>
 
-<!-- Script 标签 / CodePen (挂载全局变量 Washi) -->
+<!-- Script 标签 / CodePen (挂载全局变量 Washi，同时包含 HiGHS 与 Pumpkin) -->
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
 <!-- 可选求解器插件脚本（自动注册到 window.Washi）： -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
 ```
 
 > [!NOTE]

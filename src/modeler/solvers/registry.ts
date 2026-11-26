@@ -64,12 +64,6 @@ export function getSolver(solverOrName?: string | Solver, options?: SolverOption
           `Please import '@ohtaman/washi/solvers/z3' before selecting this solver.`
         );
       }
-      if (lowerName === "pumpkin") {
-        throw new Error(
-          `Solver 'pumpkin' not found. Available solvers: ${listAvailableSolvers().join(", ")}. ` +
-          `Please import '@ohtaman/washi/solvers/pumpkin' before selecting this solver.`
-        );
-      }
       throw new Error(
         `Solver '${solverOrName}' not found. Available solvers: ${listAvailableSolvers().join(", ")}`
       );

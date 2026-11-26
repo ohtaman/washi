@@ -68,7 +68,7 @@ export interface ModelOptions {
   name?: string;
   /** Default optimization direction (`"Minimize"` or `"Maximize"`, default: `"Minimize"`). */
   sense?: OptimizationSense;
-  /** Solver instance or registered solver name (`"highs"`, `"glpk"`, `"z3"`, or custom solver). */
+  /** Solver instance or registered solver name (`"highs"`, `"pumpkin"`, `"glpk"`, `"z3"`, or custom solver). */
   solver?: Solver | string;
 }
 
@@ -238,10 +238,10 @@ function assertValidCount(count: number, label: string): void {
  * running with WebAssembly solvers (HiGHS, Pumpkin, GLPK, Z3) in Node.js and browsers.
  *
  * **Solver capability notes**:
- * - `"highs"` (default, built-in): Supports LP, MIP, convex QP objectives (`supportsQP: true`),
+ * - `"highs"` (default, bundled): Supports LP, MIP, convex QP objectives (`supportsQP: true`),
  *   and `initialValue` warm starts (`supportsWarmStart: true`). Also supports `m.check()` on purely
  *   linear models via a zero-objective feasibility fallback. Throws if `BoolVar`/logical constraints are present.
- * - `"pumpkin"` (`import "@ohtaman/washi/solvers/pumpkin"`): Supports bounded `Integer`/`Binary` variables,
+ * - `"pumpkin"` (bundled, zero extra imports): Supports bounded `Integer`/`Binary` variables,
  *   integer linear constraints, native `BoolVar`/logical constraints (`and`, `or`, `not`, `implies`, `xor`),
  *   `initialValue` warm-start hints (`supportsWarmStart: true`), and `unsatCore` extraction (`m.check()`)
  *   without requiring `COOP`/`COEP` headers. Throws on `Continuous` variables, quadratic objectives, or `relax: true`.
@@ -2200,10 +2200,9 @@ export class Model {
    *   integer-valued expressions; `Continuous` or non-integer negated constraints require `{ solver: "z3" }`
    *   or explicit `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`), and conflicting constraints are diagnosed
    *   as `result.conflicts` via elastic slack relaxation (leaving `unsatCore: undefined`).
-   * - **Zero-`COOP`/`COEP` `unsatCore` (Pumpkin)**: Bundled Pumpkin (`{ solver: "pumpkin" }` after
-   *   `import "@ohtaman/washi/solvers/pumpkin"`) extracts `result.conflicts` and `result.unsatCore` (as well as
-   *   `m.conflicts` / `m.unsatCore`) over bounded integer and boolean models without `SharedArrayBuffer` or
-   *   Cross-Origin Isolation headers in browsers.
+   * - **Zero-`COOP`/`COEP` `unsatCore` (Pumpkin)**: Bundled Pumpkin (`{ solver: "pumpkin" }`, available out of the box)
+   *   extracts `result.conflicts` and `result.unsatCore` (as well as `m.conflicts` / `m.unsatCore`) over bounded
+   *   integer and boolean models without `SharedArrayBuffer` or Cross-Origin Isolation headers in browsers.
    * - **Exact SMT `unsatCore` (Z3)**: Unsatisfiable-core extraction (`result.conflicts` and `result.unsatCore`,
    *   as well as `m.conflicts` / `m.unsatCore`) also supports `Continuous` and mixed real-integer SMT constraints
    *   when using Z3 (`{ solver: "z3" }` after `import "@ohtaman/washi/solvers/z3"`). Both Pumpkin and Z3 report

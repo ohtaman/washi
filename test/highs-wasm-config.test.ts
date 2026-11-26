@@ -20,7 +20,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
   it("has valid highs.config.json structure with version, repo, and hashes", () => {
     expect(config.version).toMatch(/^v\d+\.\d+\.\d+/);
     expect(config.repo).toBe("https://github.com/ERGO-Code/HiGHS.git");
-    expect(config.wasm?.path).toBe("public/highs.wasm");
+    expect(config.wasm?.path).toBe("public/solvers/highs.wasm");
     expect(config.wasm?.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(config.runtime?.path).toBe("src/modeler/solvers/highs/runtime.js");
     expect(config.runtime?.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -132,7 +132,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
       version: "v99.0.0-test",
       repo: "https://github.com/ERGO-Code/HiGHS.git",
       wasm: {
-        path: "public/highs.wasm",
+        path: "public/solvers/highs.wasm",
         sha256: fixtureWasmSha,
         downloadUrl: "https://github.com/ohtaman/washi/releases/download/v99.0.0-test/highs.wasm",
       },

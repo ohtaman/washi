@@ -15,10 +15,10 @@ Select the solver engine and execution method that match the problem class:
 
 | Problem Class | Recommended Solver | Setup & Import | Execution Method |
 | :--- | :--- | :--- | :--- |
-| **LP / MIP / Convex QP** (`m.indicator()` Big-M, `initialValue` warm starts; only HiGHS supports `QuadExpr` objectives) | **HiGHS** (default) | Built-in (`import { Model } from "@ohtaman/washi"`) | `await m.solve()` |
-| **CP / Lazy Clause Generation (LCG) Bounded Integer, Scheduling & Global Constraints** (`distinct`, `disjoint`, `cumulative`, `allowed`, `at`, `max`/`min`/`abs`, `!=`, `initialValue` warm starts; integer bounds `[-(2^30 - 1), 2^30 - 1]`, throws on `Continuous`/fractional) | **Pumpkin** plugin (bundled WASM) | `import "@ohtaman/washi/solvers/pumpkin"` | `await m.solve({ solver: "pumpkin" })` or `await m.check({ solver: "pumpkin" })` |
-| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP), **Pumpkin** (bounded int), or **Z3** (native SMT incl. `Continuous`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
-| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (relaxation `conflicts`), **Pumpkin** (bounded int/bool `unsatCore`), or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `import "@ohtaman/washi/solvers/z3"` | `await m.check()` |
+| **LP / MIP / Convex QP** (`m.indicator()` Big-M, `initialValue` warm starts; only HiGHS supports `QuadExpr` objectives) | **HiGHS** (default) | Bundled (`import { Model } from "@ohtaman/washi"`) | `await m.solve()` |
+| **CP / Lazy Clause Generation (LCG) Bounded Integer, Scheduling & Global Constraints** (`distinct`, `disjoint`, `cumulative`, `allowed`, `at`, `max`/`min`/`abs`, `!=`, `initialValue` warm starts; integer bounds `[-(2^30 - 1), 2^30 - 1]`, throws on `Continuous`/fractional) | **Pumpkin** | Bundled (`import { Model } from "@ohtaman/washi"`, no extra import) | `await m.solve({ solver: "pumpkin" })` or `await m.check({ solver: "pumpkin" })` |
+| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP), **Pumpkin** (bounded int), or **Z3** (native SMT incl. `Continuous`) | Bundled for HiGHS & Pumpkin; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
+| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (relaxation `conflicts`), **Pumpkin** (bounded int/bool `unsatCore`), or **Z3** (`unsatCore`) | Bundled for HiGHS & Pumpkin; `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.check()` |
 | **LP / MIP with GLPK** (GPL-3.0; no QP, `initialValue`, or `useWorker: true`) | **GLPK** plugin | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` | `await m.solve({ solver: "glpk" })` |
 
 - **Browser runtime notes**:
@@ -198,7 +198,6 @@ export async function diagnoseAndVerifyWithZ3() {
 
 ```ts
 import { Model, expr, disjoint, distinct, implies, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export async function solveAndDiagnoseWithPumpkin() {
   // Part A: Bounded-integer CP scheduling with native global propagators

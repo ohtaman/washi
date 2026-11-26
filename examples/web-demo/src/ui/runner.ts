@@ -1,9 +1,9 @@
 import * as Modeler from "../../../../src/index.js";
-import { PumpkinSolver, registerPumpkinSolver } from "../../../../src/modeler/solvers/pumpkin.js";
+import { HighsSolver } from "../../../../src/modeler/solvers/highs.js";
+import { PumpkinSolver } from "../../../../src/modeler/solvers/pumpkin.js";
 import { GLPKSolver, registerGLPKSolver } from "../../../../src/modeler/solvers/glpk.js";
 import { Z3Solver, registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
 
-registerPumpkinSolver();
 registerGLPKSolver();
 registerZ3Solver();
 
@@ -49,6 +49,7 @@ export async function executeModelCode(code: string): Promise<ExecutionResult> {
     // Build context with all modeler exports
     const context: Record<string, any> = {
       ...Modeler,
+      HighsSolver,
       PumpkinSolver,
       GLPKSolver,
       Z3Solver,

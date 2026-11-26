@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Model, Constraint, expr, minimize, maximize, HighsSolver } from "../src/index.js";
+import { Model, Constraint, expr, minimize, maximize } from "../src/index.js";
+import { HighsSolver } from "../src/modeler/solvers/highs.js";
 
 describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP Relaxation)", () => {
   it("extracts constraint duals after continuous LP solve", async () => {

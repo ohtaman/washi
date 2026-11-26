@@ -92,7 +92,7 @@ npm install @ohtaman/washi
 ### 含先后顺序与共享资源的任务调度（CP — 内置 Pumpkin）
 
 ```text
-请使用 @ohtaman/washi 及其内置 CP 求解器（@ohtaman/washi/solvers/pumpkin），为 10 个发布流水线任务安排整数开始时间（lb: 0, ub: 120，给定固定持续时间），以最小化总完工时间（makespan）。
+请使用 @ohtaman/washi 及其内置 CP 求解器（{ solver: "pumpkin" }），为 10 个发布流水线任务安排整数开始时间（lb: 0, ub: 120，给定固定持续时间），以最小化总完工时间（makespan）。
 规则：
 - 满足依赖任务之间的“完成—开始”先后顺序约束。
 - 使用预发压测集群的任务之间不能在时间上重叠（使用 disjoint）。
@@ -113,7 +113,7 @@ npm install @ohtaman/washi
 ### 规则与配置冲突诊断（不可行判定 / Unsat Core）
 
 ```text
-请使用 @ohtaman/washi 与 @ohtaman/washi/solvers/pumpkin，通过 await m.check({ solver: "pumpkin" }) 检查一组基于有界整数与布尔变量的部署及特性开关规则是否可满足。
+请使用 @ohtaman/washi，通过 await m.check({ solver: "pumpkin" }) 检查一组基于有界整数与布尔变量的部署及特性开关规则是否可满足。
 构造一个包含相互矛盾具名规则的测试用例，打印 res.status 与 res.unsatCore（或 res.conflicts），展示具体是哪几条具名规则发生了冲突。
 ```
 
@@ -121,7 +121,7 @@ npm install @ohtaman/washi
 > `await m.check()` 默认即可配合内置 **HiGHS** 使用，并在 `res.conflicts` 中返回冲突约束名称。
 >
 > 若需提取精确的不可满足核心（`res.unsatCore`），请按变量类型选择求解器：
-> - **有界整数与布尔变量**：导入内置的 `@ohtaman/washi/solvers/pumpkin`（无需浏览器 `COOP`/`COEP` 响应头）。
+> - **有界整数与布尔变量**：传入 `{ solver: "pumpkin" }`（随 `@ohtaman/washi` 内置提供，无需额外导入与浏览器 `COOP`/`COEP` 响应头）。
 > - **连续变量或非整数（小数/分数）系数**：安装 `z3-solver` 并导入 `@ohtaman/washi/solvers/z3`。
 
 ---
@@ -144,7 +144,7 @@ npm install @ohtaman/washi
 ### 离线桌面端与移动端应用（Vite + Tauri / Capacitor / PWA）
 
 ```text
-请将这个 Vite + TypeScript 的 @ohtaman/washi 应用封装为离线运行的桌面端/移动端应用，使用内置 HiGHS（或 @ohtaman/washi/solvers/pumpkin），无需后端服务器，也无需本地编译原生求解器。
+请将这个 Vite + TypeScript 的 @ohtaman/washi 应用封装为离线运行的桌面端/移动端应用，使用内置 HiGHS（或 { solver: "pumpkin" }），无需后端服务器，也无需本地编译原生求解器。
 - 所有求解计算均通过 @ohtaman/washi 在客户端本地完成。
 - 配置内容安全策略（CSP）以允许 WebAssembly 编译（在 script-src 中加入 'wasm-unsafe-eval'）与 Web Worker（worker-src 'self' blob:）。
 ```

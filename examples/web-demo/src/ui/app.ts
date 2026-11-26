@@ -3,7 +3,6 @@ import { executeModelCode } from "./runner.js";
 import { DOCS_HTML, getDocsHtml } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
 import { setDefaultSolver } from "../../../../src/modeler/solvers/registry.js";
-import { registerPumpkinSolver } from "../../../../src/modeler/solvers/pumpkin.js";
 import { registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
 import { registerGLPKSolver } from "../../../../src/modeler/solvers/glpk.js";
 import {
@@ -101,7 +100,6 @@ export function detectSolverInCode(code: string): PlaygroundSolver | null {
 
 export function initApp() {
   initTheme();
-  registerPumpkinSolver();
   registerZ3Solver();
   registerGLPKSolver();
 

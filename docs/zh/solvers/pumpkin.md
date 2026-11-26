@@ -1,6 +1,6 @@
 # Pumpkin 约束规划求解器
 
-**Pumpkin** 是由 [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) 使用 Rust 开发的开源约束规划（CP）求解器。WaSHI 以 MIT 许可证在 `@ohtaman/washi/solvers/pumpkin` 中内置了 Pumpkin（`v0.5.0`，`pumpkin.wasm`，约 2.1 MB），无需安装额外依赖。
+**Pumpkin** 是由 [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) 使用 Rust 开发的开源约束规划（CP）求解器。WaSHI 与 HiGHS 一同以 MIT 许可证内置了 Pumpkin（`v0.5.0`，`pumpkin.wasm`，约 2.1 MB），无需安装额外依赖或导入插件，直接传入 `{ solver: "pumpkin" }` 即可使用（`PumpkinSolver` 与 `setPumpkinWasmUrl()` 等专属 API 位于 `@ohtaman/washi/solvers/pumpkin`）。
 
 由于单线程运行，在浏览器中无需 `SharedArrayBuffer` 或 `COOP`/`COEP` 响应头（见[跨域隔离指南](../getting-started/cross-origin.md)）。
 
@@ -10,7 +10,7 @@
 
 | 问题类型 | 推荐求解器 | 原因 |
 | :--- | :--- | :--- |
-| **排程调度、资源上限与离散全局约束** | **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`） | 原生支持 `disjoint`、`cumulative`、`distinct` 与 `allowed`，零额外配置。 |
+| **排程调度、资源上限与离散全局约束** | **Pumpkin**（`{ solver: "pumpkin" }`） | 原生支持 `disjoint`、`cumulative`、`distinct` 与 `allowed`，零额外配置。 |
 | **无需 `COOP`/`COEP` 的浏览器 `unsatCore`** | **Pumpkin**（`m.check({ solver: "pumpkin" })`） | 可在任意静态托管或 iframe 中提取有界整数和布尔模型的冲突约束。 |
 | **线性规划、混合整数规划与凸二次规划** | **[HiGHS](./highs.md)**（默认） | 支持连续变量、对偶值与松弛量、凸二次目标函数及连续松弛。 |
 | **含 `Continuous` 变量的逻辑规则** | **[Z3](./z3.md)** | 支持逻辑运算符中的实数不等式，以及连续/整数混合模型的 `unsatCore`。 |
@@ -27,13 +27,12 @@
 
 ## 使用示例
 
-只需导入一次 `@ohtaman/washi/solvers/pumpkin` 即可注册 `"pumpkin"` 求解器。对有界整数和布尔模型求目标最优值时调用 `model.solve()`，验证可满足性或排查冲突约束时调用 `model.check()`。
+Pumpkin 已随 `@ohtaman/washi` 自动注册，无需额外导入，直接在 `new Model()`、`model.solve()` 或 `model.check()` 中传入 `{ solver: "pumpkin" }` 即可使用。对有界整数和布尔模型求目标最优值时调用 `model.solve()`，验证可满足性或排查冲突约束时调用 `model.check()`。
 
 ### 1. 排程与全局约束 (`model.solve()`)
 
 ```typescript
 import { Model, disjoint, expr, implies, minimize, not } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("SchedulingStep", { solver: "pumpkin" });
 
@@ -63,7 +62,6 @@ console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
 
 ```typescript
 import { Model, expr, implies } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("PolicyConflict", { solver: "pumpkin" });
 const vip = model.bool("vip");
@@ -99,7 +97,6 @@ if (result.status === "Unsat") {
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("TimedSearch", { solver: "pumpkin" });
 const x = model.integer("x", { lb: 0, ub: 100 });

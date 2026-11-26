@@ -80,7 +80,7 @@ npx tsx examples/node/14-traveling-salesperson-benders.ts
 npx tsx examples/node/15-project-scheduling-cp.ts
 ```
 
-HiGHS and Pumpkin (`@ohtaman/washi/solvers/pumpkin`) are bundled in `@ohtaman/washi` with zero extra runtime dependencies. Repository development dependencies also include the optional engines; applications using the npm package install `z3-solver` or `glpk.js` when they use those plugins.
+HiGHS and Pumpkin are both bundled in `@ohtaman/washi` with zero extra runtime dependencies or solver plugin imports. Repository development dependencies also include the optional engines; applications using the npm package install `z3-solver` or `glpk.js` when they use those plugins.
 GLPK / glpk.js uses GPL-3.0; see the [third-party notices](../THIRD_PARTY_LICENSES.md).
 
 ## Browser distribution examples

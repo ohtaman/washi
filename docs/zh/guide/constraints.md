@@ -165,8 +165,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ## 命题逻辑与 SMT 约束 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
 WaSHI 的逻辑运算符可将 `m.bool()` 创建的 `BoolVar` 与线性 `Constraint` 自由组合。
-Pumpkin 与 Z3 原生求解逻辑公式，而 HiGHS 与 GLPK 会自动将其线性化为 0-1 MIP 约束。
-可通过导入 `@ohtaman/washi/solvers/pumpkin` 或 `@ohtaman/washi/solvers/z3` 注册对应后端。
+Pumpkin（`{ solver: "pumpkin" }`，内置且无需额外导入）与 Z3（`import "@ohtaman/washi/solvers/z3"`）原生求解逻辑公式，而 HiGHS 与 GLPK 会自动将其线性化为 0-1 MIP 约束。
 
 > [!IMPORTANT]
 > **求解器前置条件**：

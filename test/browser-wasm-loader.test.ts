@@ -70,7 +70,7 @@ describe("HiGHS WebAssembly Loader & Resolver", () => {
       const fetchMock = vi.fn().mockRejectedValue(new Error("network blocked"));
       vi.stubGlobal("fetch", fetchMock);
       const resolved = await resolveBrowserWasmUrl();
-      expect(resolved).toBe(new URL("../public/highs.wasm", import.meta.url).href);
+      expect(resolved).toBe(new URL("../public/solvers/highs.wasm", import.meta.url).href);
       expect(resolved).not.toBe(CDN_HIGHS_WASM_URL);
       expect(fetchMock).not.toHaveBeenCalled();
     });

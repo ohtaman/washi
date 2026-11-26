@@ -155,7 +155,8 @@ In browsers, WaSHI runs HiGHS inside a dedicated Web Worker by default. This kee
 To run on the main thread (for example, in environments that restrict Web Workers) or serve `highs.wasm` from a custom path, configure `useWorker`, `setHighsWasmUrl`, or `wasmUrl`:
 
 ```typescript
-import { Model, HighsSolver, expr, maximize, setHighsWasmUrl } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
+import { HighsSolver, setHighsWasmUrl } from "@ohtaman/washi/solvers/highs";
 
 // Configure a custom WASM URL globally (pass null to restore the bundled asset)
 setHighsWasmUrl("/assets/wasm/highs.wasm");

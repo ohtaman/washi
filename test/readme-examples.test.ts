@@ -82,6 +82,8 @@ describe("README.md Code Snippets & Links Validation", () => {
         let mod: Record<string, unknown>;
         if (specifier === "@ohtaman/washi") {
           mod = { ...Washi, Model: TrackedModel };
+        } else if (specifier === "@ohtaman/washi/solvers/highs") {
+          mod = await import("../src/modeler/solvers/highs.js");
         } else if (specifier === "@ohtaman/washi/solvers/pumpkin") {
           mod = await import("../src/modeler/solvers/pumpkin.js");
         } else if (specifier === "@ohtaman/washi/solvers/z3") {

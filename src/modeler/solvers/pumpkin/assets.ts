@@ -1,3 +1,3 @@
 export function getBundledPumpkinWasmUrl(): string {
-  return new URL("../../../../public/pumpkin.wasm", import.meta.url).href;
+  return new URL("../../../../public/solvers/pumpkin.wasm", import.meta.url).href;
 }

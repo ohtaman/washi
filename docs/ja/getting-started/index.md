@@ -10,8 +10,8 @@
 
 | ソルバー | 導入方法 | 対応する問題クラスと特徴 |
 | --- | --- | --- |
-| **HiGHS** *(標準)* | `@ohtaman/washi` に同梱 | 線形計画（`LP`）・混合整数計画（`MIP`）・凸二次計画（`QP`）に対応。 |
-| **Pumpkin** | `@ohtaman/washi` に同梱（`@ohtaman/washi/solvers/pumpkin` から読み込み） | 制約プログラミング（`CP`）と、有界整数・真偽値モデルでの厳密な `unsatCore` 抽出に対応。 |
+| **HiGHS** *(デフォルト)* | `@ohtaman/washi` に同梱（追加インポート不要。個別 API は `@ohtaman/washi/solvers/highs`） | 線形計画（`LP`）・混合整数計画（`MIP`）・凸二次計画（`QP`）に対応。 |
+| **Pumpkin** | `@ohtaman/washi` に同梱（`{ solver: "pumpkin" }`、追加インポート不要。個別 API は `@ohtaman/washi/solvers/pumpkin`） | 制約プログラミング（`CP`）と、有界整数・真偽値モデルでの厳密な `unsatCore` 抽出に対応。 |
 | **Z3** | オプション（`z3-solver`） | SMT（Satisfiability Modulo Theories）、連続変数の論理制約、連続変数を含むモデルでの厳密な `unsatCore` 抽出に対応。 |
 | **GLPK** | オプション（`glpk.js`） | GPL-3.0 ライセンスの代替ソルバー（`LP` / `MIP` に対応）。 |
 

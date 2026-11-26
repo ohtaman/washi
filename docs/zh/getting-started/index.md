@@ -10,8 +10,8 @@
 
 | 求解器 | 安装方式 | 支持的问题类型与能力 |
 | --- | --- | --- |
-| **HiGHS** *(默认)* | 内置于 `@ohtaman/washi` | 线性规划（`LP`）、混合整数规划（`MIP`）与凸二次规划（`QP`）。 |
-| **Pumpkin** | 内置于 `@ohtaman/washi`（从 `@ohtaman/washi/solvers/pumpkin` 导入） | 约束规划（`CP`），并支持有界整数与布尔模型的精确 `unsatCore` 冲突诊断。 |
+| **HiGHS** *(默认)* | 内置于 `@ohtaman/washi`（无需额外导入；专属 API 位于 `@ohtaman/washi/solvers/highs`） | 线性规划（`LP`）、混合整数规划（`MIP`）与凸二次规划（`QP`）。 |
+| **Pumpkin** | 内置于 `@ohtaman/washi`（`{ solver: "pumpkin" }`，无需额外导入；专属 API 位于 `@ohtaman/washi/solvers/pumpkin`） | 约束规划（`CP`），并支持有界整数与布尔模型的精确 `unsatCore` 冲突诊断。 |
 | **Z3** | 可选（`z3-solver`） | 可满足性模理论（`SMT`）、连续变量逻辑约束，以及含连续变量模型的精确 `unsatCore` 诊断。 |
 | **GLPK** | 可选（`glpk.js`） | 基于 GPL-3.0 协议的备选 `LP` 与 `MIP` 求解器。 |
 

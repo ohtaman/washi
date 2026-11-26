@@ -33,7 +33,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
   it("loads pumpkin.config.json and confirms checked-in WASM/runtime match recorded SHA-256 hashes", () => {
     const config = loadConfig();
     expect(config.version).toMatch(/^\d+\.\d+\.\d+/);
-    expect(config.wasm.path).toBe("public/pumpkin.wasm");
+    expect(config.wasm.path).toBe("public/solvers/pumpkin.wasm");
     expect(config.runtime.path).toBe("src/modeler/solvers/pumpkin/runtime.js");
     expect(config.wasm.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(config.runtime.sha256).toMatch(/^[0-9a-f]{64}$/);
@@ -65,7 +65,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
 
   it("detects missing files, SHA-256 mismatches, and updates hashes cleanly", () => {
     const tmp = createTempWorkspace();
-    const wasmRel = "public/pumpkin.wasm";
+    const wasmRel = "public/solvers/pumpkin.wasm";
     const runtimeRel = "src/modeler/solvers/pumpkin/runtime.js";
     const configPath = path.join(tmp, "pumpkin.config.json");
 
@@ -109,7 +109,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
     const config = {
       version: "0.5.0",
       wasm: {
-        path: "public/pumpkin.wasm",
+        path: "public/solvers/pumpkin.wasm",
         sha256: wasmSha,
         downloadUrl: "https://example.test/pumpkin.wasm",
       },
@@ -159,7 +159,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
     const configWithUrls = {
       version: "0.5.0",
       wasm: {
-        path: "public/pumpkin.wasm",
+        path: "public/solvers/pumpkin.wasm",
         sha256: "a".repeat(64),
         downloadUrl: "https://invalid.example.test/pumpkin.wasm",
       },
@@ -177,7 +177,7 @@ describe("Pumpkin WASM Config & Asset Verification", () => {
     const configWithoutUrls = {
       version: "0.5.0",
       wasm: {
-        path: "public/pumpkin.wasm",
+        path: "public/solvers/pumpkin.wasm",
         sha256: "a".repeat(64),
       },
       runtime: {

@@ -1,7 +1,7 @@
 # 约束规划 (CP) 建模
 
 WaSHI 支持用同一套 TypeScript API 编写数学规划（LP / MIP / QP）与约束规划（CP）模型。
-借助内置的 **Pumpkin** 求解器（`@ohtaman/washi/solvers/pumpkin`），您可以直接表达调度、资源容量、互不相同与查表规则，无需把模型展开成庞大的 0-1 矩阵。
+借助内置的 **Pumpkin** 求解器（`{ solver: "pumpkin" }`，无需额外导入），您可以直接表达调度、资源容量、互不相同与查表规则，无需把模型展开成庞大的 0-1 矩阵。
 
 ---
 
@@ -50,7 +50,6 @@ WaSHI 的 MIP 转换器会在 `cumulative` 超过 5,000 个时间步或 25,000 �
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("IntervalSchedulingCP", { solver: "pumpkin" });
 const tasks = ["prep", "mill", "drill", "coat"] as const;
@@ -101,7 +100,6 @@ console.log("总完工时间 (Makespan):", m.objectiveValue);
 
 ```typescript
 import { Model, expr, distinct, allowed, not, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("MachineAssignmentCP", { solver: "pumpkin" });
 const jobs = ["jobA", "jobB", "jobC"] as const;
@@ -146,7 +144,6 @@ Pumpkin 仅支持 $[-(2^{30} - 1),\, 2^{30} - 1]$ 范围内的有限整数。
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("SymmetryBreakingCP", { solver: "pumpkin" });
 const latencyMs = [600, 380, 420, 470, 550];

@@ -22,7 +22,7 @@ fn main() {
         .generate(&staging_dir)
         .unwrap();
 
-    let public_wasm = repo_root.join("public/pumpkin.wasm");
+    let public_wasm = repo_root.join("public/solvers/pumpkin.wasm");
     let solver_dir = repo_root.join("src/modeler/solvers/pumpkin");
     fs::create_dir_all(public_wasm.parent().unwrap()).unwrap();
     fs::create_dir_all(&solver_dir).unwrap();

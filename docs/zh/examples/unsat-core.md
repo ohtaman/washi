@@ -80,7 +80,7 @@ Z3 支持 `budget` 这类连续变量（`m.continuous()`）与小数系数。它
 
 ### Pumpkin（`m.check({ solver: "pumpkin" })`）
 
-Pumpkin 内置于 `@ohtaman/washi/solvers/pumpkin`，无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的 Unsat Core。
+Pumpkin 随 `@ohtaman/washi` 内置提供，无需额外导入、无需安装 `z3-solver`，也无需浏览器 `COOP` / `COEP` 响应头。若所有变量均为有界整数或布尔值（例如将 `budget` 改为 `m.integer()`），Pumpkin 同样可以提取与数值尺度无关的 Unsat Core。
 
 ### HiGHS（`m.check({ solver: "highs" })`）
 

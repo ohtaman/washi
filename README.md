@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for mathematical optimization and constraint programming in TypeScript and JavaScript, inspired by Python's **PuLP**. Define variables, objectives, and constraints in application code, and solve them locally in Node.js or the browser using bundled **HiGHS** (default) and **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`), or optional **Z3** and **GLPK** plugins.
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for mathematical optimization and constraint programming in TypeScript and JavaScript, inspired by Python's **PuLP**. Define variables, objectives, and constraints in application code, and solve them locally in Node.js or the browser using bundled **HiGHS** (default) and **Pumpkin** (`{ solver: "pumpkin" }`), or optional **Z3** and **GLPK** plugins.
 
 ## ✨ Key Features
 
@@ -47,7 +47,7 @@
 
 ```bash
 npm install @ohtaman/washi
-# HiGHS (LP/MIP/QP) and Pumpkin (CP, @ohtaman/washi/solvers/pumpkin) are bundled with zero extra dependencies
+# HiGHS (LP/MIP/QP, default) and Pumpkin (CP, { solver: "pumpkin" }) are bundled with zero extra dependencies or plugin imports
 
 # Optional peer-dependency solver plugins
 npm install z3-solver   # For SMT logic & exact real/integer unsat core diagnosis
@@ -78,13 +78,13 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 | Solver | License | Problem Classes | Primary Use Case | Setup |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & conflict diagnosis (constraint relaxation) | Built-in default (zero extra deps) |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP (Lazy Clause Generation), Logic, Bounded Integer | Combinatorial scheduling & bounded-integer `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"` (bundled WASM, zero deps) |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & conflict diagnosis (constraint relaxation) | Bundled default (zero deps, no extra import) |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP (Lazy Clause Generation), Logic, Bounded Integer | Combinatorial scheduling & bounded-integer `unsatCore` | Bundled (`{ solver: "pumpkin" }`, zero deps, no extra import) |
 | **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, Logic, MIP | Logical rules, satisfiability & exact `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
 | **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | Linear & mixed-integer optimization | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | Deterministic unit & integration testing | Built-in (`MockSolver`) |
 
-Pass `{ solver: "pumpkin" }`, `{ solver: "z3" }`, or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(...)`, or `m.check(...)` after importing the plugin.
+Switch between bundled HiGHS (default) and Pumpkin with `{ solver: "pumpkin" }` out of the box, or pass `{ solver: "z3" }` / `{ solver: "glpk" }` after importing the corresponding optional plugin. Solver-specific classes and loader helpers (`HighsSolver`, `setHighsWasmUrl`, `PumpkinSolver`, `setPumpkinWasmUrl`, etc.) live under `@ohtaman/washi/solvers/{highs,pumpkin,z3,glpk}`.
 
 ---
 
@@ -139,11 +139,10 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 
 ### 3. Constraint Programming & Disjunctive Scheduling (Pumpkin)
 
-Use bundled **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`) for bounded integer scheduling and CP global constraints (`disjoint`, `distinct`, `cumulative`, `allowed`) with zero external dependencies:
+Use bundled **Pumpkin** (`{ solver: "pumpkin" }`) for bounded integer scheduling and CP global constraints (`disjoint`, `distinct`, `cumulative`, `allowed`) with zero external dependencies or extra imports:
 
 ```ts
 import { Model, expr, disjoint, distinct, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("WorkshopCP", { solver: "pumpkin" });
 const start = m.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
@@ -175,8 +174,8 @@ Express logical implications and diagnose why a model is infeasible:
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/pumpkin"; // Bundled: exact unsatCore (bounded int/bool)
-// import "@ohtaman/washi/solvers/z3";      // Optional: exact SMT unsatCore including Continuous vars
+// Pass { solver: "pumpkin" } for bundled bounded-int/bool exact unsatCore (no extra import)
+// import "@ohtaman/washi/solvers/z3"; // Optional: exact SMT unsatCore including Continuous vars
 
 const m = new Model("StaffingRules");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
@@ -199,24 +198,23 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🌐 Browser & Web Worker Usage
 
 - **Bundlers (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` works out of the box. On standard browser origins (`http://` / `https://`), **HiGHS** and **Pumpkin** run in dedicated Web Workers by default (opaque origins such as `file://` default to `{ useWorker: false }`, and you can pass `{ useWorker: false }` explicitly for main-thread execution).
-- **Standalone ESM / Script Tag / CDN**: Serve `dist/browser/` (including `highs.wasm`, `solvers/pumpkin.wasm`, and worker chunks) or load from a CDN.
+- **Standalone ESM / Script Tag / CDN**: Serve `dist/browser/` (including `solvers/highs.wasm`, `solvers/pumpkin.wasm`, and worker chunks) or load from a CDN. `washi.js` and `washi.min.js` both include HiGHS and Pumpkin out of the box.
 
 ```html
-<!-- Browser ESM -->
+<!-- Browser ESM (includes both HiGHS and Pumpkin) -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  // Bundled / optional solver plugins:
-  // import "./washi/solvers/pumpkin.js"; // Bundled CP solver
+  // Optional solver plugins:
   // import "./washi/solvers/glpk.js";    // Optional GLPK plugin
   // import "./washi/solvers/z3.js";      // Optional Z3 plugin (see note below)
   const m = new Model();
   await m.solve();
 </script>
 
-<!-- Classic Script / CodePen (exposes global Washi) -->
+<!-- Classic Script / CodePen (exposes global Washi with both HiGHS and Pumpkin) -->
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
 <!-- Optional solver plugin scripts (auto-register on window.Washi): -->
-<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
 ```
 
 > [!NOTE]

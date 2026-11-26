@@ -40,10 +40,10 @@ registerChapterExerciseSuite({
   extractObjective,
   checkAdversarial: async (problems) => {
     for (const prob of problems) {
-      // Every Chapter 4 starter & solution must explicitly wire Pumpkin CP
-      expect(prob.washiStarter).toContain('import "@ohtaman/washi/solvers/pumpkin"');
+      // Every Chapter 4 starter & solution should use auto-registered Pumpkin CP without extra import
+      expect(prob.washiStarter).not.toContain('import "@ohtaman/washi/solvers/pumpkin"');
       expect(prob.washiStarter).toContain('solve({ solver: "pumpkin" })');
-      expect(prob.washiSolution).toContain('import "@ohtaman/washi/solvers/pumpkin"');
+      expect(prob.washiSolution).not.toContain('import "@ohtaman/washi/solvers/pumpkin"');
       expect(prob.washiSolution).toContain('solve({ solver: "pumpkin" })');
 
       // Execution speed check: 5-case run must complete cleanly in under 2 seconds

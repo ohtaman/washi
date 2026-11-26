@@ -63,7 +63,7 @@ jobs:
         with:
           name: pumpkin-wasm-assets
           path: |
-            public/pumpkin.wasm
+            public/solvers/pumpkin.wasm
             src/modeler/solvers/pumpkin/runtime.js
             src/modeler/solvers/pumpkin/runtime.d.ts
             pumpkin.config.json
@@ -80,14 +80,14 @@ jobs:
           echo "Target Release Tag: ${TAG_NAME}"
           if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
             gh release upload "${TAG_NAME}" \
-              public/pumpkin.wasm \
+              public/solvers/pumpkin.wasm \
               src/modeler/solvers/pumpkin/runtime.js \
               src/modeler/solvers/pumpkin/runtime.d.ts \
               --clobber
           else
             gh release create "${TAG_NAME}" \
               --target "${GITHUB_SHA}" \
-              public/pumpkin.wasm \
+              public/solvers/pumpkin.wasm \
               src/modeler/solvers/pumpkin/runtime.js \
               src/modeler/solvers/pumpkin/runtime.d.ts \
               --title "Pumpkin WebAssembly v${VERSION}" \

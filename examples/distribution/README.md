@@ -11,15 +11,13 @@ python3 -m http.server 8000 --directory examples/distribution
 ```
 
 ### Available Examples:
-- **`esm.html`**: Core HiGHS engine using modern browser ESM (`import { Model } from "./washi/washi.js"`).
-- **`script.html`**: Core HiGHS engine using classic `<script src="./washi/washi.min.js">` (exposes `window.Washi`).
+- **`esm.html`**: Bundled HiGHS (default) and Pumpkin engines using modern browser ESM (`import { Model } from "./washi/washi.js"`).
+- **`script.html`**: Bundled HiGHS (default) and Pumpkin engines using classic `<script src="./washi/washi.min.js">` (exposes `window.Washi`).
 - **`glpk-esm.html`**: GLPK MIP solver plugin via ESM (`import "./washi/solvers/glpk.js"`).
 - **`glpk-script.html`**: GLPK MIP solver plugin via `<script src="./washi/solvers/glpk.min.js">`.
 - **`z3-esm.html`**: Z3 SMT solver plugin via ESM (`import "./washi/solvers/z3.js"`).
 
-Bundled **Pumpkin** CP/LCG plugin assets are also emitted in `dist/browser/solvers/`:
-- **Browser ESM**: `import "./washi/solvers/pumpkin.js"` (uses `solvers/pumpkin.wasm`, `solvers/pumpkin-worker.js`, and `solvers/pumpkin-*.js` chunks).
-- **Classic `<script>` (IIFE)**: `<script src="./washi/solvers/pumpkin.min.js"></script>` (registers `"pumpkin"` on `window.Washi` and exposes `window.WashiPumpkin`).
+All solver runtimes, workers, and WebAssembly binaries (`highs.*`, `pumpkin.*`, `z3-*`, `glpk.*`) live uniformly under `dist/browser/solvers/`, and `washi.min.js` bundles both HiGHS and Pumpkin out of the box.
 
 Keep the entire `washi/` directory (including `solvers/` subdirectory, JS, Workers, and WASM) together.
 
@@ -31,12 +29,11 @@ Keep the entire `washi/` directory (including `solvers/` subdirectory, JS, Worke
 HiGHS, Pumpkin (including CP solving and `unsatCore` extraction on bounded integer/boolean models without `COOP`/`COEP` headers), and GLPK run smoothly in standard CodePen pens or iframes using CDN URLs.
 
 > [!NOTE]
-> The modular solver plugins under `dist/browser/solvers/` (`pumpkin.min.js`, `glpk.min.js`, `z3.min.js`) require no external CDN fallback; deploy `dist/browser/` together when self-hosting. For local testing with files in this directory, serve `./washi/...` from a local HTTP server.
+> `washi.min.js` includes both HiGHS and Pumpkin out of the box, and the optional solver plugins under `dist/browser/solvers/` (`glpk.min.js`, `z3.min.js`) require no external CDN fallback; deploy `dist/browser/` together when self-hosting. For local testing with files in this directory, serve `./washi/...` from a local HTTP server.
 
 In **Settings → JavaScript → External Scripts** (pin to `@latest` or a matching release tag):
 ```text
 https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js
-https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/solvers/pumpkin.min.js
 https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/solvers/glpk.min.js
 ```
 

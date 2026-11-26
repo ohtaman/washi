@@ -2,11 +2,11 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Constraint Programming (RCPSP) / Unsat Core Diagnosis | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (Schedule)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
+| Constraint Programming (RCPSP) / Unsat Core Diagnosis | Pumpkin (`{ solver: "pumpkin" }`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (Schedule)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
 
 The **Resource-Constrained Project Scheduling Problem (RCPSP)** schedules project tasks to minimize the maximum completion time, known as the **makespan**. It balances task precedence order, exclusive single-machine equipment, and limited team headcount at the same time.
 
-Using WaSHI's bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`):
+Using WaSHI's bundled **Pumpkin** solver (`{ solver: "pumpkin" }`, zero extra imports):
 1. Each task needs only one integer start variable (`start[task]`), avoiding binary variables for every `(task, hour)` pair.
 2. When a maintenance window or tight deadline makes the schedule `"Infeasible"`, `m.check()` isolates the conflicting rules (`unsatCore`) on the same model.
 
@@ -31,7 +31,6 @@ Ignoring the crew limit, `chassis` and `board` can start together at `0h`, givin
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 async function runProjectScheduling() {
   const horizon = 24;

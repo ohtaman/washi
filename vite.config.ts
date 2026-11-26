@@ -45,7 +45,7 @@ function z3DemoAssets(): Plugin {
       server.middlewares.use((req, res, next) => {
         if (!req.url) return next();
         const urlPath = req.url.split("?")[0];
-        if (urlPath === "/z3-built.js" || urlPath.endsWith("/z3-built.js")) {
+        if (urlPath === "/solvers/z3-built.js" || urlPath.endsWith("/solvers/z3-built.js")) {
           res.setHeader("Content-Type", "application/javascript");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
           res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
@@ -53,7 +53,7 @@ function z3DemoAssets(): Plugin {
           res.end(readFileSync(z3JsPath));
           return;
         }
-        if (urlPath === "/z3-built.wasm" || urlPath.endsWith("/z3-built.wasm")) {
+        if (urlPath === "/solvers/z3-built.wasm" || urlPath.endsWith("/solvers/z3-built.wasm")) {
           res.setHeader("Content-Type", "application/wasm");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
           res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
@@ -67,12 +67,12 @@ function z3DemoAssets(): Plugin {
     generateBundle() {
       this.emitFile({
         type: "asset",
-        fileName: "z3-built.js",
+        fileName: "solvers/z3-built.js",
         source: readFileSync(z3JsPath),
       });
       this.emitFile({
         type: "asset",
-        fileName: "z3-built.wasm",
+        fileName: "solvers/z3-built.wasm",
         source: readFileSync(z3WasmPath),
       });
     },

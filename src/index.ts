@@ -131,8 +131,6 @@ export {
   type SolveModelData,
   type CheckModelData,
   type LogicalConstraintItem,
-  HighsSolver,
-  HiGHS,
   MockSolver,
   type MockSolverOptions,
   registerSolver,
@@ -140,16 +138,4 @@ export {
   setDefaultSolver,
   listAvailableSolvers,
 } from "./modeler/solvers/index.js";
-
-// WASM Engine Access
-export {
-  getHighs,
-  solveLpWithHighs,
-  setHighsWasmUrl,
-  getHighsWasmUrl,
-  Highs,
-  type HighsSolutionResult,
-  type HighsSolutionColumn,
-  type HighsSolutionRow,
-} from "./modeler/solvers/highs/index.js";
 

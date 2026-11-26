@@ -99,4 +99,4 @@ The rule `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNigh
 
 ### Alternative Solver for Discrete Models
 
-This model contains only `BoolVar` variables and bounded integers (`luxLevel` in `[0, 1000]`). As a result, the same deduction and counterexample proof also work with bundled `@ohtaman/washi/solvers/pumpkin` via `m.check({ solver: "pumpkin" })`.
+This model contains only `BoolVar` variables and bounded integers (`luxLevel` in `[0, 1000]`). As a result, the same deduction and counterexample proof also work out of the box with bundled Pumpkin via `m.check({ solver: "pumpkin" })`.

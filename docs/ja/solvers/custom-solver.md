@@ -2,7 +2,7 @@
 
 このガイドでは、**WaSHI**（`@ohtaman/washi`）向けに独自のソルバープラグインを実装・テスト・配布する方法を説明します。
 
-コアパッケージ `@ohtaman/washi` は HiGHS WebAssembly エンジンと `MockSolver` を同梱し、`@ohtaman/washi/solvers/pumpkin` は制約プログラミング（CP）プラグインを提供します。これらに加えて、WebAssembly・ネイティブ C++・Web Worker・クラウド REST/RPC など任意のバックエンドを登録し、共通の `Model` API から呼び出せます。
+`@ohtaman/washi` は **HiGHS**（デフォルト、`@ohtaman/washi/solvers/highs`）、**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）、および `MockSolver` を同梱・自動登録し、オプションプラグイン（`@ohtaman/washi/solvers/glpk`、`@ohtaman/washi/solvers/z3`）はインポート時に登録されます。これらに加えて、WebAssembly・ネイティブ C++・Web Worker・クラウド REST/RPC など任意のバックエンドを登録し、共通の `Model` API から呼び出せます。
 
 ---
 
@@ -11,9 +11,9 @@
 ```mermaid
 graph TD
     A[WaSHI Model] --> B["ソルバーレジストリ (Symbol.for)"]
-    B --> C["HiGHS WASM エンジン (コア同梱)"]
+    B --> C["HiGHS WASM エンジン (同梱デフォルト / solvers/highs)"]
+    B --> H["Pumpkin WASM エンジン (同梱 / solvers/pumpkin)"]
     B --> D["MockSolver (コア同梱)"]
-    B --> H["Pumpkin WASM プラグイン (@ohtaman/washi/solvers/pumpkin)"]
     B --> E["GLPK プラグイン (@ohtaman/washi/solvers/glpk)"]
     B --> F["Z3 SMT プラグイン (@ohtaman/washi/solvers/z3)"]
     B --> G[カスタムソルバープラグイン]

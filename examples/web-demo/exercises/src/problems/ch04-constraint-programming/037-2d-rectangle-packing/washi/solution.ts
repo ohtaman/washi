@@ -1,5 +1,4 @@
 import { Model, expr, max, minimize, or } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface P037Input {
   stripWidth: number;

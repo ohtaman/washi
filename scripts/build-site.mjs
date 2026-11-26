@@ -1,5 +1,5 @@
 import { cpSync, mkdirSync, rmSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { generateLlms, populateSiteLlmsAssets } from "./generate-llms.mjs";
@@ -56,10 +56,10 @@ const SHARED_PUBLIC_ASSETS = [
   "washi-header-light.png",
   "washi-header-dark.png",
   "coi-serviceworker.js",
-  "z3-built.js",
-  "z3-built.wasm",
-  "highs.wasm",
-  "pumpkin.wasm",
+  "solvers/z3-built.js",
+  "solvers/z3-built.wasm",
+  "solvers/highs.wasm",
+  "solvers/pumpkin.wasm",
 ];
 
 function assertRequiredArtifact(targetPath, description) {
@@ -119,10 +119,13 @@ export function assembleUnifiedSite({
   for (const file of SHARED_PUBLIC_ASSETS) {
     const src = resolve(targetDemoDist, file);
     assertRequiredArtifact(src, `shared public asset "${file}"`);
-    cpSync(src, resolve(targetSiteDist, file), { recursive: true });
+    const destSite = resolve(targetSiteDist, file);
+    mkdirSync(dirname(destSite), { recursive: true });
+    cpSync(src, destSite, { recursive: true });
 
     const destDemo = resolve(demoTarget, file);
     if (!existsSync(destDemo)) {
+      mkdirSync(dirname(destDemo), { recursive: true });
       cpSync(src, destDemo, { recursive: true });
     }
   }

@@ -12,8 +12,6 @@
  */
 
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "../../src/index.js";
-// In your application, import: import "@ohtaman/washi/solvers/pumpkin";
-import "../../src/modeler/solvers/pumpkin.js";
 
 export interface RcpspTaskSpec {
   id: "chassis" | "board" | "firmware" | "assembly" | "calib" | "test";

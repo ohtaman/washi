@@ -51,15 +51,14 @@ if (result.status === "Unsat") {
 | 項目 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()` / `{ solver: "glpk" }`) |
 | :--- | :--- | :--- | :--- |
 | **向いているモデル** | 有界整数・真偽値のみのモデル | `Continuous` 変数や非整数を含むモデル | 汎用 LP / MIP モデル（HiGHS なら追加 import なしで手軽に確認可能） |
-| **準備・依存関係** | 同梱（`@ohtaman/washi/solvers/pumpkin`） | オプション（`z3-solver`） | 標準搭載（HiGHS）/ オプション（`glpk.js`） |
+| **準備・依存関係** | 同梱（追加インポート不要） | オプション（`z3-solver` + `@ohtaman/washi/solvers/z3`） | 同梱デフォルト（HiGHS）/ オプション（`glpk.js`） |
 | **ブラウザ HTTP ヘッダー** | 不要 | `COOP` / `COEP` ヘッダー必須 | 不要 |
 | **結果が入るフィールド** | `unsatCore` と `conflicts` | `unsatCore` と `conflicts` | `conflicts` のみ（`unsatCore` は `undefined`） |
 | **返される内容** | 充足不能コア（同時に満たせない制約集合） | 充足不能コア（同時に満たせない制約集合） | 弾性緩和による候補集合（緩和すると実行可能になる制約集合） |
 | **単位スケールの影響** | 影響を受けない | 影響を受けない | 影響を受ける（係数・右辺の桁数が小さい制約ほど選ばれやすい） |
 
 ```typescript
-// Pumpkin / Z3 を使う場合はファイルの先頭でインポートしてください:
-// import "@ohtaman/washi/solvers/pumpkin";
+// Z3 を使う場合のみファイルの先頭でインポートしてください（HiGHS と Pumpkin はインポート不要）:
 // import "@ohtaman/washi/solvers/z3";
 
 const status = await m.solve();

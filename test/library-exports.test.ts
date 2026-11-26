@@ -11,7 +11,6 @@ import {
   expr,
   maximize,
   minimize,
-  HiGHS,
   MockSolver,
   BoolVar,
   and,
@@ -29,9 +28,7 @@ import {
   allowed,
   GlobalConstraint,
   getSolver,
-  setHighsWasmUrl,
-  getHighsWasmUrl,
-  getHighs,
+  listAvailableSolvers,
   buildLpSymbolMaps,
   isLpExportResult,
   sanitizeIdentifier,
@@ -39,7 +36,7 @@ import {
 } from "../src/index.js";
 
 describe("WaSHI Library Entry Point Exports", () => {
-  it("exports all core modeler classes and default solvers from root and excludes retired diagnostic helpers", () => {
+  it("exports core modeler and solver-agnostic registry from root and excludes solver-specific and retired helpers", () => {
     expect(Model).toBeDefined();
     expect(Var).toBeDefined();
     expect(LinExpr).toBeDefined();
@@ -50,7 +47,6 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect(expr).toBeDefined();
     expect(maximize).toBeDefined();
     expect(minimize).toBeDefined();
-    expect(HiGHS).toBeDefined();
     expect(MockSolver).toBeDefined();
     expect(BoolVar).toBeDefined();
     expect(and).toBeDefined();
@@ -68,12 +64,26 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect(allowed).toBeDefined();
     expect(GlobalConstraint).toBeDefined();
     expect(getSolver).toBeDefined();
-    expect(setHighsWasmUrl).toBeDefined();
-    expect(getHighsWasmUrl).toBeDefined();
-    expect(getHighs).toBeDefined();
+    expect(listAvailableSolvers).toBeDefined();
     expect(buildLpSymbolMaps).toBeDefined();
     expect(isLpExportResult).toBeDefined();
     expect(sanitizeIdentifier).toBeDefined();
+
+    // Bundled HiGHS and Pumpkin are both auto-registered from root, with HiGHS as default
+    expect(listAvailableSolvers()).toEqual(expect.arrayContaining(["highs", "pumpkin", "mock"]));
+    expect(getSolver().name).toBe("HiGHS");
+
+    // Engine-specific APIs live under @ohtaman/washi/solvers/* rather than root
+    expect((WashiRoot as any).HighsSolver).toBeUndefined();
+    expect((WashiRoot as any).HiGHS).toBeUndefined();
+    expect((WashiRoot as any).Highs).toBeUndefined();
+    expect((WashiRoot as any).getHighs).toBeUndefined();
+    expect((WashiRoot as any).solveLpWithHighs).toBeUndefined();
+    expect((WashiRoot as any).setHighsWasmUrl).toBeUndefined();
+    expect((WashiRoot as any).getHighsWasmUrl).toBeUndefined();
+    expect((WashiRoot as any).PumpkinSolver).toBeUndefined();
+    expect((WashiRoot as any).setPumpkinWasmUrl).toBeUndefined();
+    expect((WashiRoot as any).getPumpkinWasmUrl).toBeUndefined();
 
     // Retired root aliases and internal WASM probe helpers must not be exported from root
     expect((WashiRoot as any).c).toBeUndefined();
@@ -85,7 +95,23 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect((WashiRoot as any).validateModelIntegrity).toBeUndefined();
   });
 
-  it("exports GLPK, Z3, and Pumpkin solvers as separate plugins", async () => {
+  it("exports HiGHS, Pumpkin, GLPK, and Z3 solvers symmetrically under solvers/* subpaths", async () => {
+    const highsModule = await import("../src/modeler/solvers/highs.js");
+    expect(highsModule.HighsSolver).toBeDefined();
+    expect(highsModule.HiGHS).toBeDefined();
+    expect(highsModule.Highs).toBeDefined();
+    expect(highsModule.registerHighsSolver).toBeDefined();
+    expect(highsModule.setHighsWasmUrl).toBeDefined();
+    expect(highsModule.getHighsWasmUrl).toBeDefined();
+    expect(highsModule.getHighs).toBeDefined();
+    expect(highsModule.solveLpWithHighs).toBeDefined();
+
+    const pumpkinModule = await import("../src/modeler/solvers/pumpkin.js");
+    expect(pumpkinModule.PumpkinSolver).toBeDefined();
+    expect(pumpkinModule.registerPumpkinSolver).toBeDefined();
+    expect(pumpkinModule.setPumpkinWasmUrl).toBeDefined();
+    expect(pumpkinModule.getPumpkinWasmUrl).toBeDefined();
+
     const glpkModule = await import("../src/modeler/solvers/glpk.js");
     expect(glpkModule.GLPKSolver).toBeDefined();
     expect(glpkModule.registerGLPKSolver).toBeDefined();
@@ -93,15 +119,9 @@ describe("WaSHI Library Entry Point Exports", () => {
     const z3Module = await import("../src/modeler/solvers/z3.js");
     expect(z3Module.Z3Solver).toBeDefined();
     expect(z3Module.registerZ3Solver).toBeDefined();
-
-    const pumpkinModule = await import("../src/modeler/solvers/pumpkin.js");
-    expect(pumpkinModule.PumpkinSolver).toBeDefined();
-    expect(pumpkinModule.registerPumpkinSolver).toBeDefined();
-    expect(pumpkinModule.setPumpkinWasmUrl).toBeDefined();
-    expect(pumpkinModule.getPumpkinWasmUrl).toBeDefined();
   });
 
-  it("can formulate and solve a simple MIP using only root exports", async () => {
+  it("can formulate and solve both MIP (HiGHS) and CP (Pumpkin) using only root exports", async () => {
     const m = new Model("RootExportTest");
     const x = m.integer("x", { lb: 0 });
     const y = m.integer("y", { lb: 0 });
@@ -114,6 +134,14 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect(m.objectiveValue).toBe(100);
     expect(y.value).toBe(5);
     expect(x.value).toBe(0);
+
+    const cp = new Model("RootPumpkinTest", { solver: "pumpkin" });
+    const a = cp.integer("a", { lb: 1, ub: 4 });
+    const b = cp.integer("b", { lb: 1, ub: 4 });
+    cp.constraint(distinct([a, b]), "diff");
+    cp.objective(maximize(a.add(b)));
+    expect(await cp.solve()).toBe("Optimal");
+    expect(cp.objectiveValue).toBe(7);
   });
 
   it("retires redundant aliases on Model, Var, LinExpr, and QuadExpr and rejects invalid runtime VarType / OptimizationSense literals", () => {

@@ -1,5 +1,4 @@
 import { Model, disjoint, expr, max, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 export interface P073Input {
   machines: number[][];

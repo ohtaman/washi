@@ -4,7 +4,7 @@
   "crate": "pumpkin-core",
   "repo": "https://github.com/ConSol-Lab/Pumpkin.git",
   "wasm": {
-    "path": "public/pumpkin.wasm",
+    "path": "public/solvers/pumpkin.wasm",
     "sha256": "fc7ddaf3ae17fcc841fb6e8ffb072b2ec503d71c10a223d830f26453b29597ae",
     "downloadUrl": "https://github.com/ohtaman/washi/releases/download/pumpkin-v0.5.0/pumpkin.wasm"
   },

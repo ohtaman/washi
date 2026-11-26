@@ -2,7 +2,7 @@
 // ==============================================================================
 // scripts/ensure-highs-wasm.mjs
 //
-// Ensures HiGHS WebAssembly (public/highs.wasm) and runtime (runtime.js) exist
+// Ensures HiGHS WebAssembly (public/solvers/highs.wasm) and runtime (runtime.js) exist
 // and match the configured version and SHA-256 hash in highs.config.json.
 //
 // Lifecycle:

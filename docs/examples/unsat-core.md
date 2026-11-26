@@ -80,7 +80,7 @@ Z3 supports continuous variables (`m.continuous()`, such as `budget` above) and 
 
 ### Pumpkin (`m.check({ solver: "pumpkin" })`)
 
-Pumpkin is bundled via `@ohtaman/washi/solvers/pumpkin` and needs neither `z3-solver` nor browser `COOP` / `COEP` headers. If every variable is a bounded integer or boolean (for example, changing `budget` to `m.integer()`), Pumpkin also extracts a scale-invariant Unsat Core.
+Pumpkin is bundled with `@ohtaman/washi` (no extra import required) and needs neither `z3-solver` nor browser `COOP` / `COEP` headers. If every variable is a bounded integer or boolean (for example, changing `budget` to `m.integer()`), Pumpkin also extracts a scale-invariant Unsat Core.
 
 ### HiGHS (`m.check({ solver: "highs" })`)
 

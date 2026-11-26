@@ -103,6 +103,3 @@ export type {
 
 // Pluggable Solvers Architecture (HiGHS, Pumpkin, Z3, GLPK, Remote, Mock, Custom)
 export * from "./solvers/index.js";
-
-// WASM loader
-export { getHighs, solveLpWithHighs, setHighsWasmUrl, getHighsWasmUrl } from "./solvers/highs/index.js";

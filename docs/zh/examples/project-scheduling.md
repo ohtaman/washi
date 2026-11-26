@@ -2,11 +2,11 @@
 
 | 问题类别 | 求解器 | 核心 API | 相关链接 |
 | :--- | :--- | :--- | :--- |
-| 约束规划 (RCPSP) / Unsat Core 诊断 | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (项目调度)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
+| 约束规划 (RCPSP) / Unsat Core 诊断 | Pumpkin (`{ solver: "pumpkin" }`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (项目调度)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">源代码</a></li><li><a href="/zh/guide/constraint-programming">CP 建模指南</a></li></ul> |
 
 **资源受限项目调度问题（RCPSP）** 用于安排项目工序，目标是最小化最大完工时间，即 **Makespan**。模型需要同时满足工序先后依赖、单台设备独占以及团队人力上限。
 
-借助内置的 **Pumpkin** 求解器（`@ohtaman/washi/solvers/pumpkin`）：
+借助内置的 **Pumpkin** 求解器（`{ solver: "pumpkin" }`，无需额外导入）：
 1. 每道工序只需一个整数开始时间变量 `start[task]`，不必为每个 `(工序, 小时)` 组合创建 0-1 变量。
 2. 当新增维护窗口或加急截止期导致 `"Infeasible"` 时，可直接在同一模型上调用 `m.check()` 提取冲突规则集合（`unsatCore`）。
 
@@ -31,7 +31,6 @@
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 async function runProjectScheduling() {
   const horizon = 24;

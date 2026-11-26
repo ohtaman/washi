@@ -333,18 +333,21 @@ export async function rebuildBenchmarkArtifacts({ includeBrowser = false } = {})
 async function loadWashiModules({ includeBrowser = false, rebuild } = {}) {
   if (process.env.VITEST && rebuild !== true) {
     const api = await import("../src/index.ts");
+    const highs = await import("../src/modeler/solvers/highs/index.ts");
     const glpk = await import("../src/modeler/solvers/glpk/index.ts");
-    return { api, glpk };
+    return { api, highs, glpk };
   }
   if (rebuild !== false) {
     await rebuildBenchmarkArtifacts({ includeBrowser });
   }
   const distWashi = path.join(repoRoot, "dist/lib/washi.js");
+  const distHighs = path.join(repoRoot, "dist/lib/solvers/highs.js");
   const distGlpk = path.join(repoRoot, "dist/lib/solvers/glpk.js");
   const cacheBust = `?v=${Date.now()}`;
   const api = await import(`${pathToFileURL(distWashi).href}${cacheBust}`);
+  const highs = await import(`${pathToFileURL(distHighs).href}${cacheBust}`);
   const glpk = await import(`${pathToFileURL(distGlpk).href}${cacheBust}`);
-  return { api, glpk };
+  return { api, highs, glpk };
 }
 
 function readNonEmptyString(value, description) {
@@ -983,7 +986,7 @@ export async function runBenchmarks(options = {}) {
   const includeBrowser = Boolean(
     options.includeBrowser ?? process.env.RUN_BENCH_BROWSER === "1"
   );
-  const { api, glpk } = await loadWashiModules({
+  const { api, highs, glpk } = await loadWashiModules({
     includeBrowser,
     rebuild: options.rebuild,
   });
@@ -1003,8 +1006,8 @@ export async function runBenchmarks(options = {}) {
       solverOptions: { presolve: "on" },
       serializationMode: "lp-string",
       coldCondition: "fresh-module-and-wasm-instance",
-      resetRuntime: () => api.setHighsWasmUrl(null),
-      initRuntime: () => api.getHighs(),
+      resetRuntime: () => highs.setHighsWasmUrl(null),
+      initRuntime: () => highs.getHighs(),
       api,
       iterations,
     })
@@ -1038,8 +1041,8 @@ export async function runBenchmarks(options = {}) {
     solverOptions: { presolve: "on" },
     serializationMode: "lp-string",
     coldCondition: "fresh-wasm-instance-after-cache-reset",
-    resetRuntime: () => api.setHighsWasmUrl(null),
-    initRuntime: () => api.getHighs(),
+    resetRuntime: () => highs.setHighsWasmUrl(null),
+    initRuntime: () => highs.getHighs(),
     api,
     iterations,
   });
@@ -1058,8 +1061,8 @@ export async function runBenchmarks(options = {}) {
       solverOptions: { presolve: "on" },
       serializationMode: "lp-string",
       coldCondition: "fresh-wasm-instance-after-cache-reset",
-      resetRuntime: () => api.setHighsWasmUrl(null),
-      initRuntime: () => api.getHighs(),
+      resetRuntime: () => highs.setHighsWasmUrl(null),
+      initRuntime: () => highs.getHighs(),
       api,
       iterations,
     })

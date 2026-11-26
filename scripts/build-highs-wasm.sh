@@ -120,7 +120,7 @@ echo "libhighs.a built successfully: $(ls -lh "${LIB_HIGHS}" | awk '{print $5}')
 
 # 4. Link into WebAssembly and ES module runtime
 OUTPUT_JS="${REPO_ROOT}/src/modeler/solvers/highs/runtime.js"
-OUTPUT_WASM="${REPO_ROOT}/public/highs.wasm"
+OUTPUT_WASM="${REPO_ROOT}/public/solvers/highs.wasm"
 TMP_WASM="${BUILD_DIR}/highs_raw.wasm"
 
 echo "Linking WebAssembly binary and ES runtime with em++..."
@@ -145,7 +145,7 @@ if [ ! -f "${BUILT_WASM}" ]; then
   exit 1
 fi
 
-# Move optimized wasm from em++ to public/highs.wasm
+# Move optimized wasm from em++ to public/solvers/highs.wasm
 mv "${BUILT_WASM}" "${OUTPUT_WASM}"
 
 # Adjust locateFile in runtime.js so default location resolves to highs.wasm

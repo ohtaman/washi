@@ -84,10 +84,10 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
       "washi-header-light.png",
       "washi-header-dark.png",
       "coi-serviceworker.js",
-      "z3-built.js",
-      "z3-built.wasm",
-      "highs.wasm",
-      "pumpkin.wasm",
+      "solvers/z3-built.js",
+      "solvers/z3-built.wasm",
+      "solvers/highs.wasm",
+      "solvers/pumpkin.wasm",
     ];
 
     const createSiteFixture = () => {
@@ -112,7 +112,9 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
       }
 
       for (const f of sharedFiles) {
-        fs.writeFileSync(path.join(demoDist, f), `asset:${f}`);
+        const dest = path.join(demoDist, f);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, `asset:${f}`);
       }
 
       return { tmpRoot, docsDist, demoDist, siteDist };
@@ -132,8 +134,8 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
       expect(fs.existsSync(path.join(valid.siteDist, "apps/ai-shift/index.html"))).toBe(true);
       expect(fs.existsSync(path.join(valid.siteDist, "games/titan-pack/index.html"))).toBe(true);
       expect(fs.existsSync(path.join(valid.siteDist, "assets/app.js"))).toBe(true);
-      expect(fs.existsSync(path.join(valid.siteDist, "highs.wasm"))).toBe(true);
-      expect(fs.existsSync(path.join(valid.siteDist, "demo/highs.wasm"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "solvers/highs.wasm"))).toBe(true);
+      expect(fs.existsSync(path.join(valid.siteDist, "demo/solvers/highs.wasm"))).toBe(true);
       const sitemap = fs.readFileSync(path.join(valid.siteDist, "sitemap.xml"), "utf8");
       expect(sitemap).toContain("https://washi.ohtaman.dev/demo/");
       expect(sitemap).toContain("https://washi.ohtaman.dev/exercises/");

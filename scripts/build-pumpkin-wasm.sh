@@ -3,7 +3,7 @@
 # scripts/build-pumpkin-wasm.sh
 #
 # Builds the Pumpkin WebAssembly bridge crate (wasm/pumpkin) into
-# public/pumpkin.wasm and generates browser/Node JS bindings at
+# public/solvers/pumpkin.wasm and generates browser/Node JS bindings at
 # src/modeler/solvers/pumpkin/runtime.{js,d.ts}.
 #
 # Requirements:
@@ -67,4 +67,4 @@ cargo run --ignore-rust-version --example bindgen
 cd "${REPO_ROOT}"
 node scripts/ensure-pumpkin-wasm.mjs --update-hashes
 
-echo "Built public/pumpkin.wasm ($(ls -lh public/pumpkin.wasm | awk '{print $5}'))"
+echo "Built public/solvers/pumpkin.wasm ($(ls -lh public/solvers/pumpkin.wasm | awk '{print $5}'))"

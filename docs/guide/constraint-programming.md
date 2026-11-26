@@ -1,7 +1,7 @@
 # Constraint Programming (CP) Modeling
 
 WaSHI lets you write both Mathematical Optimization (LP / MIP / QP) and Constraint Programming (CP) models with the same TypeScript API.
-Using the bundled **Pumpkin** solver (`@ohtaman/washi/solvers/pumpkin`), you can model scheduling, resource limits, all-different rules, and table lookups directly without expanding them into large 0-1 matrices.
+Using the bundled **Pumpkin** solver (`{ solver: "pumpkin" }`, zero extra imports), you can model scheduling, resource limits, all-different rules, and table lookups directly without expanding them into large 0-1 matrices.
 
 ---
 
@@ -51,7 +51,6 @@ Three primitives cover most interval-scheduling models:
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("IntervalSchedulingCP", { solver: "pumpkin" });
 const tasks = ["prep", "mill", "drill", "coat"] as const;
@@ -102,7 +101,6 @@ Instead of an $N \times M$ matrix of 0-1 assignment variables, give each job a s
 
 ```typescript
 import { Model, expr, distinct, allowed, not, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("MachineAssignmentCP", { solver: "pumpkin" });
 const jobs = ["jobA", "jobB", "jobC"] as const;
@@ -147,7 +145,6 @@ Adding `slot[0] < slot[1] < ...` enforces both uniqueness and a single canonical
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/pumpkin";
 
 const m = new Model("SymmetryBreakingCP", { solver: "pumpkin" });
 const latencyMs = [600, 380, 420, 470, 550];

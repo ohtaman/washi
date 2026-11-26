@@ -2,7 +2,7 @@
 // ==============================================================================
 // scripts/ensure-pumpkin-wasm.mjs
 //
-// Ensures Pumpkin WebAssembly (public/pumpkin.wasm) and JS bindings
+// Ensures Pumpkin WebAssembly (public/solvers/pumpkin.wasm) and JS bindings
 // (src/modeler/solvers/pumpkin/runtime.js) exist and match the SHA-256 hashes
 // configured in pumpkin.config.json.
 // ==============================================================================

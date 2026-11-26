@@ -92,7 +92,7 @@ Agent Skill を導入すると、エージェントのスキルディレクト�
 ### 先行順序・共有リソース制約付きタスクスケジューリング（CP — 同梱 Pumpkin）
 
 ```text
-@ohtaman/washi と同梱の CP ソルバー（@ohtaman/washi/solvers/pumpkin）を使って、10 件のリリース工程タスク（整数の開始時刻 lb: 0, ub: 120、固定所要時間）全体の完了時刻（メイクスパン）を最小化してください。
+@ohtaman/washi と同梱の CP ソルバー（{ solver: "pumpkin" }）を使って、10 件のリリース工程タスク（整数の開始時刻 lb: 0, ub: 120、固定所要時間）全体の完了時刻（メイクスパン）を最小化してください。
 条件:
 - 依存タスク間の終了→開始の先行順序制約を守る。
 - ステージング検証クラスタを使うタスク同士は時間帯が重ならないようにする（disjoint を使用）。
@@ -113,7 +113,7 @@ sum(w) == 1.0 とリージョン 0・1 の合計上限のもとで二乗誤差�
 ### ルール・設定の矛盾診断（実行不能判定 / Unsat Core）
 
 ```text
-@ohtaman/washi と @ohtaman/washi/solvers/pumpkin を使って、有界整数変数と真偽値変数からなるデプロイ・機能フラグ設定ルール群が充足可能かどうかを await m.check({ solver: "pumpkin" }) で検査してください。
+@ohtaman/washi を使って、有界整数変数と真偽値変数からなるデプロイ・機能フラグ設定ルール群が充足可能かどうかを await m.check({ solver: "pumpkin" }) で検査してください。
 意図的に矛盾する名前付きルールを含むテストケースを用意し、res.status と res.unsatCore（または res.conflicts）を出力して、どのルール同士が矛盾しているかを表示してください。
 ```
 
@@ -121,7 +121,7 @@ sum(w) == 1.0 とリージョン 0・1 の合計上限のもとで二乗誤差�
 > `await m.check()` は標準の **HiGHS** でも動作し、矛盾する制約名を `res.conflicts` に返します。
 >
 > 厳密な充足不能コア（`res.unsatCore`）を抽出したい場合は、変数の種類でソルバーを選びます：
-> - **有界整数・真偽値モデル**: 同梱の `@ohtaman/washi/solvers/pumpkin` をインポートします（ブラウザの `COOP`/`COEP` ヘッダー不要）。
+> - **有界整数・真偽値モデル**: `{ solver: "pumpkin" }` を指定します（`@ohtaman/washi` に同梱・追加インポート不要、ブラウザの `COOP`/`COEP` ヘッダー不要）。
 > - **連続変数・小数（非整数）係数を含むモデル**: `z3-solver` を追加し、`@ohtaman/washi/solvers/z3` をインポートします。
 
 ---
@@ -144,7 +144,7 @@ CLI スクリプトでの定式化と検証が完了したら、同じモデル�
 ### オフラインのデスクトップ・モバイルアプリ（Vite + Tauri / Capacitor / PWA）
 
 ```text
-この Vite + TypeScript の @ohtaman/washi アプリを、バックエンドサーバーや外部ソルバーのインストールを使わずオフラインで動作するデスクトップ / モバイルアプリとして構成してください（同梱の HiGHS または @ohtaman/washi/solvers/pumpkin を使用）。
+この Vite + TypeScript の @ohtaman/washi アプリを、バックエンドサーバーや外部ソルバーのインストールを使わずオフラインで動作するデスクトップ / モバイルアプリとして構成してください（同梱の HiGHS または { solver: "pumpkin" } を使用）。
 - ソルバー実行はすべて @ohtaman/washi によるクライアント内完結とすること。
 - Content Security Policy で WebAssembly のコンパイル（script-src に 'wasm-unsafe-eval'）および Web Worker（worker-src 'self' blob:）を許可すること。
 ```

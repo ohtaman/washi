@@ -99,4 +99,4 @@ verifySecurityRules();
 
 ### 离散模型的替代求解器
 
-此模型仅包含 `BoolVar` 和有界整数（`luxLevel` 范围为 `[0, 1000]`）。因此，使用内置的 `@ohtaman/washi/solvers/pumpkin` 并调用 `m.check({ solver: "pumpkin" })` 也能完成相同的推导与反例验证。
+此模型仅包含 `BoolVar` 和有界整数（`luxLevel` 范围为 `[0, 1000]`）。因此，无需额外导入，直接调用内置 Pumpkin（`m.check({ solver: "pumpkin" })`）也能完成相同的推导与反例验证。

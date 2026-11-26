@@ -165,8 +165,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ## Propositional Logic & SMT Constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
 WaSHI provides first-class logical operators that combine `BoolVar` variables from `m.bool()` with linear `Constraint` objects.
-Pumpkin and Z3 solve these formulas natively, while HiGHS and GLPK automatically linearize them into 0-1 MIP constraints.
-Register optional backends with `@ohtaman/washi/solvers/pumpkin` or `@ohtaman/washi/solvers/z3`.
+Pumpkin (`{ solver: "pumpkin" }`, bundled with zero extra imports) and Z3 (`import "@ohtaman/washi/solvers/z3"`) solve these formulas natively, while HiGHS and GLPK automatically linearize them into 0-1 MIP constraints.
 
 > [!IMPORTANT]
 > **Solver Preconditions**:

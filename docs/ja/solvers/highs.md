@@ -155,7 +155,8 @@ if (model.hasPrimalSolution) {
 メインスレッドで実行したい場合や、独自パスから `highs.wasm` を読み込みたい場合は `useWorker`・`setHighsWasmUrl`・`wasmUrl` を使います。
 
 ```typescript
-import { Model, HighsSolver, expr, maximize, setHighsWasmUrl } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
+import { HighsSolver, setHighsWasmUrl } from "@ohtaman/washi/solvers/highs";
 
 // グローバルに WASM の URL を指定（null を渡すと同梱バイナリに戻る）
 setHighsWasmUrl("/assets/wasm/highs.wasm");
