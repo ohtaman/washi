@@ -21,6 +21,7 @@ import {
   type CohortWeeklySummary,
   type ConstraintMeta,
   type CourseProfile,
+  type MovedSessionHint,
   type ProfessorProfile,
   type ProfessorWeeklySummary,
   type RoomProfile,
@@ -140,6 +141,7 @@ export function buildTimetableWashiModel(
   options?: {
     elasticWeightMode?: ElasticWeightMode;
     referenceTimetable?: WeeklyTimetableSolution | null;
+    movedSession?: MovedSessionHint | null;
   }
 ): BuiltTimetableWashiModel {
   const { config, rooms, professors, courses, customRules } = state;
@@ -1000,8 +1002,36 @@ export function buildTimetableWashiModel(
       const ref = options.referenceTimetable;
       const wSlot = config.weightPerturbationSlot ?? 10;
       const wRoom = config.weightPerturbationRoom ?? 3;
+      const moved = options.movedSession ?? undefined;
+      const isRoomOnlyMove =
+        moved !== undefined &&
+        moved.toDay !== undefined &&
+        moved.toPeriod !== undefined &&
+        moved.toDay === moved.fromDay &&
+        moved.toPeriod === moved.fromPeriod;
+
+      const refCoursesAtFromSlot = new Set<string>();
+      if (moved) {
+        for (const session of ref.sessions) {
+          if (session.day === moved.fromDay && session.period === moved.fromPeriod) {
+            refCoursesAtFromSlot.add(session.courseId);
+          }
+        }
+      }
 
       for (const session of ref.sessions) {
+        const isDraggedSource =
+          moved !== undefined &&
+          session.courseId === moved.courseId &&
+          session.day === moved.fromDay &&
+          session.period === moved.fromPeriod;
+
+        if (isDraggedSource) {
+          // Do not reward keeping the explicitly dragged session at its old slot/room so
+          // multi-session courses preserve their other session(s) and vacate the dragged slot.
+          continue;
+        }
+
         const vSameRoom =
           vAssign[session.courseId]?.[session.day]?.[session.period]?.[session.roomId];
         if (vSameRoom) {
@@ -1012,6 +1042,44 @@ export function buildTimetableWashiModel(
         for (const sv of slotVars) {
           // Bonus for preserving same slot (-(wSlot - wRoom)), so moving slot incurs net penalty wSlot
           objTerms.push(sv.mul(wRoom - wSlot));
+        }
+      }
+
+      // Softly discourage filling the vacated source slot/room with another newly-moved session
+      // when open alternatives exist, while keeping forced swaps feasible.
+      if (moved && wSlot > 0) {
+        const wVacate = wSlot > 1 ? wSlot - 1 : wSlot * 0.9;
+        if (isRoomOnlyMove) {
+          if (moved.fromRoomId && moved.fromRoomId !== moved.toRoomId) {
+            for (const c of courses) {
+              const v = vAssign[c.id]?.[moved.fromDay]?.[moved.fromPeriod]?.[moved.fromRoomId];
+              if (v) {
+                objTerms.push(v.mul(wVacate));
+              }
+            }
+          }
+        } else {
+          const movedCourse = courseMap.get(moved.courseId);
+          if (movedCourse) {
+            for (const c of courses) {
+              if (c.id !== moved.courseId && refCoursesAtFromSlot.has(c.id)) {
+                continue;
+              }
+              const isSameCourse = c.id === moved.courseId;
+              const sharesCohort = c.cohorts.some((k) => movedCourse.cohorts.includes(k));
+              const sharesProf = c.professorId === movedCourse.professorId;
+
+              for (const r of rooms) {
+                const fillsVacatedRoom = moved.fromRoomId !== undefined && r.id === moved.fromRoomId;
+                if (isSameCourse || sharesCohort || sharesProf || fillsVacatedRoom) {
+                  const v = vAssign[c.id]?.[moved.fromDay]?.[moved.fromPeriod]?.[r.id];
+                  if (v) {
+                    objTerms.push(v.mul(wVacate));
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -1488,6 +1556,7 @@ export async function solveTimetableWithWashi(
     signal?: AbortSignal;
     timeLimit?: number;
     referenceTimetable?: WeeklyTimetableSolution | null;
+    movedSession?: MovedSessionHint | null;
   }
 ): Promise<WashiTimetableSolveOutcome> {
   const t0 = performance.now();
@@ -1522,6 +1591,7 @@ export async function solveTimetableWithWashi(
 
   const { model, vAssign, constraintMeta } = buildTimetableWashiModel(state, {
     referenceTimetable: useRef ? options?.referenceTimetable : null,
+    movedSession: useRef ? options?.movedSession : null,
   });
 
   const lpFull = model.toLpString();

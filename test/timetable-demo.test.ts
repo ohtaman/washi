@@ -1626,6 +1626,313 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     }
   }, 30_000);
 
+  test("keeps vacated source slot open and preserves the non-dragged session of multi-session courses during drag-and-drop", async () => {
+    const {
+      getAppState,
+      getCurrentTimetable,
+      handleGenerateSample,
+      applyDropMove,
+      triggerSolve,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    const elements = new Map<string, any>();
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
+    const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
+      const el = createMockElement(id, initialProps);
+      elements.set(id, el);
+      return el;
+    };
+
+    registerMock("kpi-status-badge");
+    registerMock("kpi-summary-text");
+    registerMock("kpi-solve-time");
+    registerMock("conflict-alert");
+    registerMock("btn-abort-solve");
+    registerMock("chat-messages");
+    registerMock("view-cohorts-grid");
+    registerMock("view-matrix-wrap");
+    registerMock("chk-highlight-diff", { checked: false });
+    registerMock("matrix-25-thead");
+    registerMock("matrix-25-tbody");
+    registerMock("matrix-25-tfoot");
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => {
+        if (!elements.has(id)) {
+          registerMock(id);
+        }
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: (tag: string) => createMockElement(`tag_${tag}`),
+      createTextNode: (text: string) => createMockElement("text", { textContent: text }),
+    };
+
+    try {
+      // 1. Multi-session course (C15 Mathematical Optimization: 2 sessions/week):
+      // Moving session 2/2 out of its slot to an earlier empty slot must vacate session 2/2's slot
+      // and keep session 1/2 in place (never keeping session 2/2's old slot and moving 1/2 instead).
+      handleGenerateSample(false);
+      const initRes = await triggerSolve();
+      expect(initRes?.status).toBe("Optimal");
+      const baseTt = getCurrentTimetable()!;
+      const c15Before = baseTt.byCourse["C15"];
+      expect(c15Before).toHaveLength(2);
+      const firstC15 = c15Before[0];
+      const secondC15 = c15Before[1];
+
+      // Move 2/2 (Thu P5) to an open Y3 slot on an earlier day (Tue P3)
+      await applyDropMove(
+        {
+          courseId: "C15",
+          sessionIndex: secondC15.sessionIndex,
+          fromDay: secondC15.day,
+          fromPeriod: secondC15.period,
+          fromRoomId: secondC15.roomId,
+          fromProfId: "P01",
+          sourceView: "cohorts_4",
+        },
+        "Tue",
+        3
+      );
+
+      const ttAfterC15Move = getCurrentTimetable()!;
+      const c15After = ttAfterC15Move.byCourse["C15"];
+      expect(c15After).toHaveLength(2);
+      // Target slot Tue P3 has C15
+      expect(c15After.some((s) => s.day === "Tue" && s.period === 3)).toBe(true);
+      // Non-dragged session (1/2) remained at its original slot
+      expect(
+        c15After.some((s) => s.day === firstC15.day && s.period === firstC15.period)
+      ).toBe(true);
+      // Vacated source slot (secondC15) is now completely empty for Y3, P01, and C15 itself
+      const y3AtVacatedAfterC15 = (ttAfterC15Move.bySlot[`${secondC15.day}_${secondC15.period}`] ?? []).filter(
+        (s) => getAppState().courses.find((c) => c.id === s.courseId)?.cohorts.includes("Y3")
+      );
+      expect(y3AtVacatedAfterC15).toEqual([]);
+
+      // 2. Same-day conflict on multi-session course:
+      // Reset and drag C15 (2/2) from Thu P5 onto the same day as 1/2 (Wed P2 while 1/2 is at Wed P4).
+      // Because forbidSameCourseSameDay is ON, 1/2 must move off Wed — it must move to another open day
+      // rather than sliding into the vacated Thu P5 slot.
+      handleGenerateSample(false);
+      await triggerSolve();
+      const ttSameDayBase = getCurrentTimetable()!;
+      const c15SameDayBase = ttSameDayBase.byCourse["C15"];
+      const s1 = c15SameDayBase[0];
+      const s2 = c15SameDayBase[1];
+
+      await applyDropMove(
+        {
+          courseId: "C15",
+          sessionIndex: s2.sessionIndex,
+          fromDay: s2.day,
+          fromPeriod: s2.period,
+          fromRoomId: s2.roomId,
+          fromProfId: "P01",
+          sourceView: "cohorts_4",
+        },
+        s1.day,
+        2
+      );
+
+      const ttAfterSameDay = getCurrentTimetable()!;
+      const c15AfterSameDay = ttAfterSameDay.byCourse["C15"];
+      expect(c15AfterSameDay).toHaveLength(2);
+      expect(c15AfterSameDay.some((s) => s.day === s1.day && s.period === 2)).toBe(true);
+      expect(c15AfterSameDay.some((s) => s.day === s2.day && s.period === s2.period)).toBe(false);
+
+      // 3. Moving onto an occupied slot (C01 Fri P5 -> Mon P4 occupied by C02):
+      // Displaced C02 must move to another open Y1 slot rather than swapping into C01's vacated Fri P5.
+      handleGenerateSample(false);
+      await triggerSolve();
+      const ttOccBase = getCurrentTimetable()!;
+      const c01Base = ttOccBase.byCourse["C01"][0];
+      const c02Base = ttOccBase.byCourse["C02"][0];
+
+      await applyDropMove(
+        {
+          courseId: "C01",
+          sessionIndex: c01Base.sessionIndex,
+          fromDay: c01Base.day,
+          fromPeriod: c01Base.period,
+          fromRoomId: c01Base.roomId,
+          fromProfId: "P07",
+          sourceView: "cohorts_4",
+        },
+        c02Base.day,
+        c02Base.period
+      );
+
+      const ttAfterOccMove = getCurrentTimetable()!;
+      const c01After = ttAfterOccMove.byCourse["C01"][0];
+      expect(c01After.day).toBe(c02Base.day);
+      expect(c01After.period).toBe(c02Base.period);
+      // C01's vacated slot should stay open for Y1 since other open Y1 slots exist
+      const y1AtVacatedC01 = (ttAfterOccMove.bySlot[`${c01Base.day}_${c01Base.period}`] ?? []).filter(
+        (s) => getAppState().courses.find((c) => c.id === s.courseId)?.cohorts.includes("Y1")
+      );
+      expect(y1AtVacatedC01).toEqual([]);
+
+      // 4. Room-only move in rooms_matrix (same day/period, different room):
+      // Vacated room at (day, period) stays open when another room/slot is free, and for multi-session courses the other session stays put.
+      handleGenerateSample(false);
+      await triggerSolve();
+      const ttRoomBase = getCurrentTimetable()!;
+      const c15RoomBase = ttRoomBase.byCourse["C15"];
+      const rFirst = c15RoomBase[0];
+      const rSecond = c15RoomBase[1];
+      const altRoom = rSecond.roomId === "R102" ? "R201" : "R102";
+
+      await applyDropMove(
+        {
+          courseId: "C15",
+          sessionIndex: rSecond.sessionIndex,
+          fromDay: rSecond.day,
+          fromPeriod: rSecond.period,
+          fromRoomId: rSecond.roomId,
+          fromProfId: "P01",
+          sourceView: "rooms_matrix",
+        },
+        rSecond.day,
+        rSecond.period,
+        altRoom
+      );
+
+      const ttAfterRoomMove = getCurrentTimetable()!;
+      const c15AfterRoom = ttAfterRoomMove.byCourse["C15"];
+      expect(
+        c15AfterRoom.some(
+          (s) => s.day === rSecond.day && s.period === rSecond.period && s.roomId === altRoom
+        )
+      ).toBe(true);
+      expect(
+        c15AfterRoom.some(
+          (s) => s.day === rFirst.day && s.period === rFirst.period && s.roomId === rFirst.roomId
+        )
+      ).toBe(true);
+      expect(ttAfterRoomMove.bySlotAndRoom[`${rSecond.day}_${rSecond.period}_${rSecond.roomId}`]).toBeUndefined();
+
+      // 5. Honest feasibility fallback: if a displaced course has NO other valid slot except the vacated slot
+      // (a forced swap), the move must still succeed rather than reporting Infeasible.
+      const { solveTimetableWithWashi } = await import("../examples/web-demo/apps/ai-timetable/solver.js");
+      const { generateTimetableState } = await import("../examples/web-demo/apps/ai-timetable/generator.js");
+      const tightState = generateTimetableState();
+      tightState.rooms = tightState.rooms.slice(0, 1); // Only R101
+      tightState.courses = [
+        { ...tightState.courses[0], id: "C01", cohorts: ["Y1"], professorId: "P07", enrollment: 50, sessionsPerWeek: 1, requiredEquipment: [] },
+        { ...tightState.courses[2], id: "C03", cohorts: ["Y1"], professorId: "P06", enrollment: 50, sessionsPerWeek: 1, requiredEquipment: [] },
+      ];
+      for (const d of ["Mon", "Wed", "Thu", "Fri"] as const) {
+        for (const cId of ["C01", "C03"]) {
+          tightState.customRules.push({
+            id: `forbid_${cId}_${d}`,
+            kind: "forbid_slot",
+            enabled: true,
+            isHard: true,
+            courseId: cId,
+            days: [d],
+            periods: [1, 2, 3, 4, 5],
+            description: `Forbid ${cId} on ${d}`,
+          });
+        }
+      }
+      for (const p of [1, 4, 5] as const) {
+        for (const cId of ["C01", "C03"]) {
+          tightState.customRules.push({
+            id: `forbid_${cId}_Tue_P${p}`,
+            kind: "forbid_slot",
+            enabled: true,
+            isHard: true,
+            courseId: cId,
+            days: ["Tue"],
+            periods: [p],
+            description: `Forbid ${cId} on Tue P${p}`,
+          });
+        }
+      }
+      tightState.customRules = tightState.customRules.filter((r) => r.id !== "rule_default_1");
+
+      const tightBase = await solveTimetableWithWashi(tightState);
+      expect(tightBase.status).toBe("Optimal");
+      const sA = tightBase.timetable!.byCourse["C01"][0];
+      const sB = tightBase.timetable!.byCourse["C03"][0];
+
+      const forcedSwapState = {
+        ...tightState,
+        customRules: [
+          ...tightState.customRules,
+          {
+            id: "pin_c01_to_c03",
+            kind: "pin_slot" as const,
+            enabled: true,
+            isHard: true,
+            courseId: "C01",
+            days: [sB.day],
+            periods: [sB.period],
+            description: "Pin C01 to C03 slot",
+          },
+        ],
+      };
+      const forcedSwapRes = await solveTimetableWithWashi(forcedSwapState, {
+        referenceTimetable: tightBase.timetable,
+        movedSession: {
+          courseId: "C01",
+          fromDay: sA.day,
+          fromPeriod: sA.period,
+          fromRoomId: sA.roomId,
+          toDay: sB.day,
+          toPeriod: sB.period,
+        },
+      });
+      expect(forcedSwapRes.status).toBe("Optimal");
+      expect(forcedSwapRes.validatedByWashi).toBe(true);
+      expect(forcedSwapRes.timetable!.byCourse["C01"][0].day).toBe(sB.day);
+      expect(forcedSwapRes.timetable!.byCourse["C01"][0].period).toBe(sB.period);
+      expect(forcedSwapRes.timetable!.byCourse["C03"][0].day).toBe(sA.day);
+      expect(forcedSwapRes.timetable!.byCourse["C03"][0].period).toBe(sA.period);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
   test("starts with default master data, empty timetable on first view, and solves via triggerSolve (nurse shift demo parity)", async () => {
     const {
       getAppState,

@@ -6,6 +6,7 @@ import {
   type AssignedSession,
   type CustomRuleKind,
   type CustomTimetableRule,
+  type MovedSessionHint,
   type TimetableDay,
   type TimetableEvaluationReport,
   type TimetablePeriod,
@@ -87,6 +88,7 @@ let activeCrossFilter: { kind: "prof" | "room"; id: string } | null = null;
 
 let isSolving = false;
 let pendingSolveRequested = false;
+let pendingSolveOptions: { movedSession?: MovedSessionHint } | undefined;
 let pendingSolveWaiters: Array<{
   resolve: (res: WashiTimetableSolveOutcome | null) => void;
   reject: (err: unknown) => void;
@@ -2616,7 +2618,9 @@ export function readConfigFromForm(): boolean {
   return true;
 }
 
-export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
+export async function triggerSolve(
+  solveOptions?: { movedSession?: MovedSessionHint }
+): Promise<WashiTimetableSolveOutcome | null> {
   if (appState.courses.length === 0 || appState.rooms.length === 0) {
     if (typeof alert === "function") {
       alert(
@@ -2632,12 +2636,14 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
 
   if (isSolving) {
     pendingSolveRequested = true;
+    pendingSolveOptions = solveOptions;
     return new Promise<WashiTimetableSolveOutcome | null>((resolve, reject) => {
       pendingSolveWaiters.push({ resolve, reject });
     });
   }
   isSolving = true;
   pendingSolveRequested = false;
+  pendingSolveOptions = undefined;
   clearWorkspaceActionBanner();
 
   const abortCtrl = new AbortController();
@@ -2655,6 +2661,7 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
     outcome = await solveTimetableWithWashi(appState, {
       signal: abortCtrl.signal,
       referenceTimetable: currentTimetable,
+      movedSession: solveOptions?.movedSession,
     });
     lastSolveOutcome = outcome;
     if (outcome.timetable) {
@@ -2688,8 +2695,10 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
     updateToolbarButtonsState();
     if (pendingSolveRequested) {
       pendingSolveRequested = false;
+      const queuedOptions = pendingSolveOptions;
+      pendingSolveOptions = undefined;
       const waiters = pendingSolveWaiters.splice(0);
-      void triggerSolve().then(
+      void triggerSolve(queuedOptions).then(
         (queuedRes) => {
           for (const waiter of waiters) waiter.resolve(queuedRes);
         },
@@ -2834,7 +2843,17 @@ export async function applyDropMove(
         })
       : "";
 
-  const outcome = await triggerSolve();
+  const outcome = await triggerSolve({
+    movedSession: {
+      courseId: course.id,
+      fromDay: payload.fromDay,
+      fromPeriod: payload.fromPeriod,
+      fromRoomId: payload.fromRoomId,
+      toDay,
+      toPeriod,
+      toRoomId: targetRoom?.id,
+    },
+  });
 
   if (!outcome || outcome.status === "Infeasible" || !outcome.timetable) {
     // Target slot violated constraints: rollback customRules to previous state
