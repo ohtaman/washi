@@ -400,8 +400,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
   const docsJaIndexPath = path.resolve(rootDir, "docs/ja/index.md");
   const docsZhIndexPath = path.resolve(rootDir, "docs/zh/index.md");
   const readmeEnPath = path.resolve(rootDir, "README.md");
-  const readmeJaPath = path.resolve(rootDir, "README.ja.md");
-  const readmeZhPath = path.resolve(rootDir, "README.zh-CN.md");
+  const readmeJaPath = path.resolve(rootDir, "README-ja.md");
+  const readmeZhPath = path.resolve(rootDir, "README-zh-CN.md");
 
   it("configures SEO titleTemplate, description, OGP, and Twitter card in docs/.vitepress/config.mts", () => {
     const content = fs.readFileSync(vitepressConfigPath, "utf-8");

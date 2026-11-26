@@ -1,24 +1,24 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - TypeScript 数理优化建模器" src="./assets/washi-header-light.png" width="420" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://washi.ohtaman.dev/washi-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://washi.ohtaman.dev/washi-header-light.png">
+    <img alt="WaSHI - TypeScript 数理优化建模器" src="https://washi.ohtaman.dev/washi-header-light.png" width="420" />
   </picture>
   <p><strong>TypeScript 数理优化建模器</strong></p>
   <p>
     <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • 约束规划 (CP) • SMT逻辑约束与冲突诊断</em>
   </p>
   <p>
-    <a href="./README.md">English</a> •
-    <a href="./README.ja.md">日本語</a> •
-    <a href="./README.zh-CN.md">简体中文</a>
+    <a href="https://github.com/ohtaman/washi/blob/main/README.md">English</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-ja.md">日本語</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-zh-CN.md">简体中文</a>
   </p>
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://washi.ohtaman.dev/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://washi.ohtaman.dev/demo/?lang=zh"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
+    <a href="https://github.com/ohtaman/washi/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
 
@@ -38,8 +38,8 @@
 
 - **[在线文档](https://washi.ohtaman.dev/zh/)**：建模指南、求解器说明与运行环境配置
 - **[案例展示](https://washi.ohtaman.dev/zh/showcase/) · [浏览器演示](https://washi.ohtaman.dev/demo/?lang=zh) · [数理优化 N 题训练](https://washi.ohtaman.dev/exercises/?lang=zh)**：在线体验交互式应用、浏览器建模演练场与 N 题实战训练营
-- **[示例目录](https://washi.ohtaman.dev/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
-- **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**：面向 AI 编程助手的技能定义与机器可读文档
+- **[示例目录](https://washi.ohtaman.dev/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](https://github.com/ohtaman/washi/blob/main/examples/README.md)）
+- **[Agent Skill (`SKILL.md`)](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**：面向 AI 编程助手的技能定义与机器可读文档
 
 ---
 
@@ -218,13 +218,13 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 > [!NOTE]
-> **浏览器中使用 Z3**：Z3 的 WebAssembly 引擎依赖 `SharedArrayBuffer`，需要 **Secure Context**（`HTTPS` 或 `localhost`）以及跨源隔离响应头（`Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`）。详见[跨源隔离指南](docs/zh/getting-started/cross-origin.md)与 [`examples/distribution/`](examples/distribution/README.md)。**HiGHS**、**Pumpkin** 与 **GLPK** 均无需跨源隔离响应头即可运行。
+> **浏览器中使用 Z3**：Z3 的 WebAssembly 引擎依赖 `SharedArrayBuffer`，需要 **Secure Context**（`HTTPS` 或 `localhost`）以及跨源隔离响应头（`Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`）。详见[跨源隔离指南](https://washi.ohtaman.dev/zh/getting-started/cross-origin)与 [`examples/distribution/`](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)。**HiGHS**、**Pumpkin** 与 **GLPK** 均无需跨源隔离响应头即可运行。
 
 ---
 
 ## 🤝 参与开发与贡献
 
-关于本地开发、运行测试与基准测试、重新构建 WebAssembly 资源以及发布流程，请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+关于本地开发、运行测试与基准测试、重新构建 WebAssembly 资源以及发布流程，请参阅 [CONTRIBUTING.md](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md)。
 
 ---
 
@@ -242,5 +242,5 @@ WaSHI 的诞生离不开数理优化与自动推理开源社区的卓越工作�
 
 ## 📄 许可证
 
-- **`@ohtaman/washi`**: [MIT 许可证](./LICENSE)
-- **内置与可选引擎**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。完整许可说明请参阅 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)。
+- **`@ohtaman/washi`**: [MIT 许可证](https://github.com/ohtaman/washi/blob/main/LICENSE)
+- **内置与可选引擎**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。完整许可说明请参阅 [THIRD_PARTY_LICENSES.md](https://github.com/ohtaman/washi/blob/main/THIRD_PARTY_LICENSES.md)。

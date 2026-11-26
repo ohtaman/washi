@@ -1,6 +1,6 @@
 # WaSHI examples
 
-[English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://washi.ohtaman.dev/examples/)
+[English README](../README.md) · [日本語 README](../README-ja.md) · [中文 README](../README-zh-CN.md) · [Online Example Docs](https://washi.ohtaman.dev/examples/)
 
 These examples show how to construct models with WaSHI and inspect results from
 HiGHS, Pumpkin, Z3, or GLPK. The solver performs the optimization or satisfiability check.

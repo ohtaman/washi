@@ -1,24 +1,24 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - TypeScript 数理最適化モデラー" src="./assets/washi-header-light.png" width="420" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://washi.ohtaman.dev/washi-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://washi.ohtaman.dev/washi-header-light.png">
+    <img alt="WaSHI - TypeScript 数理最適化モデラー" src="https://washi.ohtaman.dev/washi-header-light.png" width="420" />
   </picture>
   <p><strong>TypeScript 数理最適化モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • 制約プログラミング (CP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>
   <p>
-    <a href="./README.md">English</a> •
-    <a href="./README.ja.md">日本語</a> •
-    <a href="./README.zh-CN.md">简体中文</a>
+    <a href="https://github.com/ohtaman/washi/blob/main/README.md">English</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-ja.md">日本語</a> •
+    <a href="https://github.com/ohtaman/washi/blob/main/README-zh-CN.md">简体中文</a>
   </p>
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://washi.ohtaman.dev/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://washi.ohtaman.dev/demo/?lang=ja"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
-    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
+    <a href="https://github.com/ohtaman/washi/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
 
@@ -38,8 +38,8 @@
 
 - **[ドキュメント](https://washi.ohtaman.dev/ja/)**: モデリングガイド・ソルバー仕様・環境別の導入手順
 - **[ショーケース](https://washi.ohtaman.dev/ja/showcase/) · [ブラウザデモ](https://washi.ohtaman.dev/demo/?lang=ja) · [数理最適化N本ノック](https://washi.ohtaman.dev/exercises/?lang=ja)**: ブラウザ上で動くデモアプリ集・プレイグラウンド・N本ノックを体験できます
-- **[サンプル集](https://washi.ohtaman.dev/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](examples/README.md)）
-- **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのスキル定義・機械可読ドキュメント
+- **[サンプル集](https://washi.ohtaman.dev/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](https://github.com/ohtaman/washi/blob/main/examples/README.md)）
+- **[Agent Skill (`SKILL.md`)](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのスキル定義・機械可読ドキュメント
 
 ---
 
@@ -218,13 +218,13 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 > [!NOTE]
-> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、**Secure Context**（`HTTPS` または `localhost`）と Cross-Origin Isolation ヘッダー（`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [`examples/distribution/`](examples/distribution/README.md) を参照してください。**HiGHS**・**Pumpkin**・**GLPK** はこれらのヘッダーなしで動作します。
+> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、**Secure Context**（`HTTPS` または `localhost`）と Cross-Origin Isolation ヘッダー（`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](https://washi.ohtaman.dev/ja/getting-started/cross-origin) および [`examples/distribution/`](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md) を参照してください。**HiGHS**・**Pumpkin**・**GLPK** はこれらのヘッダーなしで動作します。
 
 ---
 
 ## 🤝 コントリビューション・開発
 
-ローカル開発、テスト・ベンチマークの実行、WebAssembly アセットの再ビルド、およびリリース手順については [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
+ローカル開発、テスト・ベンチマークの実行、WebAssembly アセットの再ビルド、およびリリース手順については [CONTRIBUTING.md](https://github.com/ohtaman/washi/blob/main/CONTRIBUTING.md) を参照してください。
 
 ---
 
@@ -242,5 +242,5 @@ WaSHI は、数理最適化および自動推論分野の素晴らしいオー�
 
 ## 📄 ライセンス
 
-- **`@ohtaman/washi`**: [MIT ライセンス](./LICENSE)
-- **同梱・外部ソルバー**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。詳細は [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) を参照してください。
+- **`@ohtaman/washi`**: [MIT ライセンス](https://github.com/ohtaman/washi/blob/main/LICENSE)
+- **同梱・外部ソルバー**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。詳細は [THIRD_PARTY_LICENSES.md](https://github.com/ohtaman/washi/blob/main/THIRD_PARTY_LICENSES.md) を参照してください。

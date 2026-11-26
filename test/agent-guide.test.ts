@@ -53,7 +53,7 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
       fs.readFileSync(path.resolve(process.cwd(), "skills/washi/SKILL.md"), "utf-8")
     ).toContain("docs/getting-started/ai-agents.md");
 
-    for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
+    for (const readmeFile of ["README.md", "README-ja.md", "README-zh-CN.md"]) {
       expect(
         fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8")
       ).not.toContain("ai-agents.md");
@@ -736,8 +736,8 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
 
     for (const file of [
       "README.md",
-      "README.ja.md",
-      "README.zh-CN.md",
+      "README-ja.md",
+      "README-zh-CN.md",
       "AGENTS.md",
       "docs/getting-started/ai-agents.md",
     ]) {
@@ -747,8 +747,8 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
 
     for (const file of [
       "README.md",
-      "README.ja.md",
-      "README.zh-CN.md",
+      "README-ja.md",
+      "README-zh-CN.md",
       "docs/getting-started/ai-agents.md",
       "docs/getting-started/coding-agents.md",
       "docs/ja/getting-started/coding-agents.md",

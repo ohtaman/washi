@@ -371,6 +371,32 @@ try {
   await writeFile(path.join(fixture, "package.json"), JSON.stringify({ private: true, type: "module" }));
   npm(["install", "--ignore-scripts", "--omit=optional", "--no-audit", "--no-fund", path.join(fixture, pack.filename)]);
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
+  const packedPaths = pack.files.map((f) => f.path);
+  const packedRootReadmes = packedPaths.filter((p) => !p.includes("/") && /^readme(?:[.-].*)?$/i.test(p));
+  assert.deepEqual(
+    packedRootReadmes,
+    ["README.md"],
+    `npm tarball must ship only README.md at package root, got: ${JSON.stringify(packedRootReadmes)}`
+  );
+  for (const excludedReadme of ["README.ja.md", "README.zh-CN.md", "README-ja.md", "README-zh-CN.md"]) {
+    assert(!existsSync(path.join(packageRoot, excludedReadme)), `npm tarball must not contain ${excludedReadme}`);
+  }
+  const shippedReadme = await readFile(path.join(packageRoot, "README.md"), "utf8");
+  assert(shippedReadme.includes("Mathematical Optimization Modeler in TypeScript"), "npm tarball README.md missing English header");
+  assert(shippedReadme.includes("https://washi.ohtaman.dev/"), "npm tarball README.md missing canonical docs URL");
+  assert(!shippedReadme.includes("https://washi.ohtaman.dev/ja/"), "npm tarball README.md must not point to /ja/ docs");
+  assert(!shippedReadme.includes("https://washi.ohtaman.dev/zh/"), "npm tarball README.md must not point to /zh/ docs");
+  const shippedReadmeProse = shippedReadme.replace(/```[\s\S]*?```/g, "");
+  assert(shippedReadmeProse.includes("https://washi.ohtaman.dev/washi-header-dark.png"), "npm tarball README.md missing dark header URL");
+  assert(shippedReadmeProse.includes("https://washi.ohtaman.dev/washi-header-light.png"), "npm tarball README.md missing light header URL");
+  assert(!shippedReadmeProse.includes("./assets/"), "npm tarball README.md must not use relative ./assets/ URLs");
+  for (const target of [
+    ...[...shippedReadmeProse.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]),
+    ...[...shippedReadmeProse.matchAll(/\b(?:href|src|srcset)=["']([^"']+)["']/g)].map((m) => m[1]),
+  ]) {
+    assert(/^https:\/\//.test(target), `npm tarball README.md contains non-HTTPS link/attribute: ${target}`);
+  }
+  console.log("PASS npm tarball: ships only English README.md with absolute URLs");
   const shippedAgentGuide = await readFile(path.join(packageRoot, "docs/getting-started/ai-agents.md"), "utf8");
   assert(shippedAgentGuide.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing AI agent guide");
   assert(!existsSync(path.join(packageRoot, "docs/getting-started/ecosystem.md")), "npm tarball should not contain removed ecosystem.md");
