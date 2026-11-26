@@ -200,6 +200,21 @@ export interface AssignedSession {
 }
 
 /**
+ * Hint describing an explicit drag-and-drop move from `(fromDay, fromPeriod, fromRoomId)`
+ * to `(toDay, toPeriod, toRoomId)` so minimal-perturbation mode vacates the dragged slot
+ * and preserves the non-dragged sessions of multi-session courses.
+ */
+export interface MovedSessionHint {
+  courseId: string;
+  fromDay: TimetableDay;
+  fromPeriod: TimetablePeriod;
+  fromRoomId?: string;
+  toDay?: TimetableDay;
+  toPeriod?: TimetablePeriod;
+  toRoomId?: string;
+}
+
+/**
  * Full weekly timetable assignment:
  * Maps `${day}_${period}_${roomId}` -> AssignedSession, plus a list of all assigned sessions.
  */
