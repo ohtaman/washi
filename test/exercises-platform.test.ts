@@ -1273,18 +1273,21 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       });
 
       expect(indexHtml).toContain('class="provenance-legend"');
+      expect(indexHtml).toContain('id="provenance-discussions-link"');
       expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.legendUnreviewed);
-      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.legendReviewed);
+      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.legendAction);
 
-      // Overview TOC rows
+      // Overview TOC rows: drafts show (draft), reviewed rows omit review clutter
       expect(indexHtml).toMatch(/class="toc-row[^"]*"[^>]*data-problem-id="001"[^>]*data-reviewed="false"/);
       expect(indexHtml).toMatch(/class="toc-row[^"]*"[^>]*data-problem-id="002"[^>]*data-reviewed="true"/);
-      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.unreviewedBadge);
-      expect(decodeHtmlEntities(indexHtml)).toContain(UI_STRINGS[locale].provenance.reviewedBadge);
+      expect(indexHtml).toMatch(/data-problem-id="001"[\s\S]*?<span class="toc-draft-tag">\(draft\)<\/span>/);
+      expect(indexHtml).not.toContain('class="review-status"');
 
-      // Sidebar TOC links
+      // Sidebar TOC links: drafts show (draft) without dots
       expect(indexHtml).toMatch(/class="book-sidebar-link[^"]*"[^>]*data-sidebar-id="001"[^>]*data-reviewed="false"/);
       expect(indexHtml).toMatch(/class="book-sidebar-link[^"]*"[^>]*data-sidebar-id="002"[^>]*data-reviewed="true"/);
+      expect(indexHtml).not.toContain('class="book-sidebar-review-dot"');
+      expect(indexHtml).toContain('class="book-sidebar-draft">(draft)</span>');
 
       // Solved status badge coexists cleanly with unreviewed state
       expect(indexHtml).toMatch(/data-problem-id="001"[\s\S]*?class="status-badge is-solved"/);
@@ -1305,6 +1308,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
         pulpCode: unreviewedProb.pulpStarter,
       });
       expect(unreviewedWs).toMatch(/<p class="ws-provenance" data-reviewed="false">/);
+      expect(decodeHtmlEntities(unreviewedWs)).toContain(`${UI_STRINGS[locale].provenance.generatedBy} (draft)`);
 
       const reviewedWs = renderWorkspaceHtml({
         locale,
@@ -1373,6 +1377,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       const p010WsHtml = wsHtml;
       expect(p010WsHtml).toContain('id="stmt-tab-problem"');
       expect(p010WsHtml).toContain('id="stmt-tab-editorial"');
+      expect(p010WsHtml).toContain('id="ws-review-link"');
       expect(p010WsHtml).toContain('id="ws-discussion-link"');
       expect(p010WsHtml).toContain(
         `href="https://github.com/ohtaman/washi/discussions/${p010.meta.discussionNumber}"`
@@ -1430,6 +1435,7 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
       });
       expect(noDiscussionHtml).not.toContain('class="ws-discussion-footer"');
       expect(noDiscussionHtml).not.toContain('id="ws-discussion-link"');
+      expect(noDiscussionHtml).not.toContain('id="ws-review-link"');
 
       const guideMd = await loadGuideMarkdown(locale);
       const guideCached = await loadGuideMarkdown(locale);
@@ -1477,6 +1483,17 @@ describe("Exercises Platform — Educational Book UI & Syntax Highlighter", () =
     );
     expect(getProblemDiscussionUrl({ id: "099" })).toBeNull();
     expect(getProblemDiscussionUrl({ id: "001", discussionNumber: 0 })).toBeNull();
+
+    // Every exercise #000-#100 has a unique discussionNumber and #000-#004 are reviewed by ohtaman
+    expect(PROBLEMS).toHaveLength(101);
+    const discussionNumbers = PROBLEMS.map((p) => p.meta.discussionNumber);
+    for (const prob of PROBLEMS) {
+      expect(Number.isInteger(prob.meta.discussionNumber), `${prob.meta.id} missing discussionNumber`).toBe(true);
+      expect(prob.meta.discussionNumber!).toBeGreaterThanOrEqual(281);
+      const expectedReviewed = Number(prob.meta.id) <= 4 ? ["ohtaman"] : [];
+      expect(prob.meta.provenance.reviewedBy, `${prob.meta.id} reviewedBy`).toEqual(expectedReviewed);
+    }
+    expect(new Set(discussionNumbers).size).toBe(PROBLEMS.length);
 
     // Multi-chapter Overview rendering & hiding upcoming syllabus when all chapters are available
     const ch1And2Chapters = CHAPTERS.map((ch) => ({

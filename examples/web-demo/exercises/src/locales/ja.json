@@ -18,8 +18,12 @@
         "body": "WaSHI 自体は TypeScript / JavaScript ライブラリであり Python パッケージではありませんが、Python に慣れた方でも取り組めるよう、LP・MIP の演習では Pyodide 上で PuLP + HiGHS も動かせるようにしています（CP・SMT・凸 QP・分解法の演習は WaSHI (TypeScript) 専用です）。"
       },
       {
-        "label": "生成 AI での作問と順次レビュー",
-        "body": "問題や解説は生成 AI（Gemini）を使って作成しており、人手によるレビューを順次進めています（レビュー済みには「Reviewed by ...」を表示）。確定済みの問題ページからは専用の GitHub Discussions スレッドで質問やフィードバックも共有できます。"
+        "label": "問題ごとの GitHub Discussions スレッド",
+        "body": "すべての問題（#000–#100）に専用の GitHub Discussions スレッドを用意しています。疑問点の質問、別解の共有、表現やテストケースへのフィードバックなどを気軽に投稿できます。"
+      },
+      {
+        "label": "生成 AI での作問と人手レビュー",
+        "body": "問題や解説は生成 AI（Gemini）を使って作成し、自動採点による検証を行っています（下書きには (draft)、人手レビューが完了した問題には「Reviewed by ...」を表示）。"
       }
     ],
     "navDocs": "ドキュメント",
@@ -56,10 +60,8 @@
     "provenance": {
       "generatedBy": "Drafted by Gemini",
       "reviewedBy": "Reviewed by {handles}",
-      "unreviewedBadge": "未レビュー",
-      "reviewedBadge": "レビュー済",
-      "legendUnreviewed": "Drafted by Gemini（未レビュー）",
-      "legendReviewed": "レビュー済"
+      "legendUnreviewed": "Drafted by Gemini",
+      "legendAction": "GitHub Discussions"
     },
     "workspace": {
       "jumpToEditorBtn": "解答欄へ移動 ↓",
@@ -68,6 +70,7 @@
       "statementTablistLabel": "問題と解説の切り替え",
       "problemTab": "問題",
       "editorialTab": "解説",
+      "reviewAction": "フィードバック・質問",
       "discussionNote": "この問題への質問・別解・表現に関するフィードバックはこちら",
       "discussionBtn": "GitHub Discussions で話す"
     },

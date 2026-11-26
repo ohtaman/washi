@@ -167,7 +167,9 @@ describe("Exercises Phase 1 — Chapter 1 (#001-#010)", () => {
       expect(prob.meta.runtimes).toEqual(["washi", "pulp"]);
       expect(prob.meta.provenance.generatedBy).toBe("AI (Gemini)");
       expect(prob.meta.provenance.autoVerified).toBe(true);
-      expect(prob.meta.provenance.reviewedBy).toEqual([]);
+      const expectedReviewedBy =
+        Number(prob.meta.id) <= 4 ? ["ohtaman"] : [];
+      expect(prob.meta.provenance.reviewedBy).toEqual(expectedReviewedBy);
       expect(Number.isInteger(prob.meta.discussionNumber)).toBe(true);
       expect(prob.meta.discussionNumber).toBeGreaterThanOrEqual(281);
       expect(prob.cases.length).toBeGreaterThanOrEqual(isTutorial ? 3 : 5);

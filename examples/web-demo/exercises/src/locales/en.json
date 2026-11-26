@@ -18,8 +18,12 @@
         "body": "While WaSHI itself is a TypeScript / JavaScript library (not a Python package), Pyodide runs PuLP backed by HiGHS in the browser for LP and MIP exercises so Python practitioners can work through them and compare idioms side by side. Exercises for CP, SMT, convex QP, and decomposition algorithms are WaSHI (TypeScript)-only."
       },
       {
-        "label": "AI-generated exercises with ongoing review",
-        "body": "Exercises and editorials are generated with generative AI (Gemini), verified against automated solver checks, and reviewed iteratively by hand (reviewed exercises display \"Reviewed by ...\"). Finalized exercises also link to dedicated GitHub Discussions threads for questions and feedback."
+        "label": "Per-exercise GitHub Discussions",
+        "body": "Every exercise (#000–#100) links to its own GitHub Discussions thread where you can ask questions, share alternative formulations, or report unclear wording and edge cases."
+      },
+      {
+        "label": "AI-drafted exercises with human review",
+        "body": "Exercises and editorials are drafted with generative AI (Gemini) and verified against automated solver checks (drafts are marked (draft); exercises with human review display \"Reviewed by ...\")."
       }
     ],
     "navDocs": "Docs",
@@ -56,10 +60,8 @@
     "provenance": {
       "generatedBy": "Drafted by Gemini",
       "reviewedBy": "Reviewed by {handles}",
-      "unreviewedBadge": "Unreviewed",
-      "reviewedBadge": "Reviewed",
-      "legendUnreviewed": "Drafted by Gemini (Unreviewed)",
-      "legendReviewed": "Reviewed"
+      "legendUnreviewed": "Drafted by Gemini",
+      "legendAction": "GitHub Discussions"
     },
     "workspace": {
       "jumpToEditorBtn": "Jump to Answer Editor ↓",
@@ -68,6 +70,7 @@
       "statementTablistLabel": "Statement and editorial tabs",
       "problemTab": "Problem",
       "editorialTab": "Editorial",
+      "reviewAction": "Feedback / Discuss",
       "discussionNote": "Have questions, alternative approaches, or wording feedback on this exercise?",
       "discussionBtn": "Discuss on GitHub"
     },

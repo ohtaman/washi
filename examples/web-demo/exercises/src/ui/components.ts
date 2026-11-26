@@ -96,7 +96,7 @@ export function renderProvenanceText(
       meta.provenance.reviewedBy
     )}`;
   }
-  return strings.provenance.generatedBy;
+  return `${strings.provenance.generatedBy} (draft)`;
 }
 
 export function renderHeaderHtml(
@@ -181,10 +181,9 @@ function renderSidebarProblemItemHtml(
         data-nav-id="${escapeHtml(p.meta.id)}"
         data-reviewed="${reviewed ? "true" : "false"}"
       >
-        <span class="book-sidebar-review-dot" aria-hidden="true"></span>
         <span class="book-sidebar-label">#${escapeHtml(p.meta.id)} ${escapeHtml(
           stripProblemIdPrefix(p.meta.title[locale])
-        )}</span>
+        )}${reviewed ? "" : ` <span class="book-sidebar-draft">(draft)</span>`}</span>
         <span class="book-sidebar-check">${solved ? "✓" : ""}</span>
       </a>
     </li>
@@ -379,10 +378,6 @@ function renderTocRowHtml(
     .map((part) => escapeHtml(part))
     .join(" · ");
 
-  const reviewLabel = reviewed
-    ? strings.provenance.reviewedBadge
-    : strings.provenance.unreviewedBadge;
-
   return `
     <li class="${rowClasses}" data-problem-id="${escapeHtml(meta.id)}" data-reviewed="${reviewed ? "true" : "false"}">
       <span class="toc-num">#${escapeHtml(meta.id)}</span>
@@ -391,12 +386,13 @@ function renderTocRowHtml(
           href="?id=${encodeURIComponent(meta.id)}&lang=${locale}"
           class="toc-title-link"
           data-nav-id="${escapeHtml(meta.id)}"
-        >${escapeHtml(stripProblemIdPrefix(meta.title[locale]))}</a>
+        >${escapeHtml(stripProblemIdPrefix(meta.title[locale]))}</a>${
+          reviewed ? "" : ` <span class="toc-draft-tag">(draft)</span>`
+        }
         <p class="toc-row-sub">${escapeHtml(meta.subtitle[locale])}</p>
       </div>
       <div class="toc-row-meta">
         <span class="toc-meta-tags"><span class="toc-role${isCapstone ? " is-capstone" : ""}">${escapeHtml(roleLabel)}</span> · ${metaParts}</span>
-        <span class="review-status" data-reviewed="${reviewed ? "true" : "false"}">${escapeHtml(reviewLabel)}</span>
         ${renderSolvedStatusBadgeHtml(solved, strings)}
       </div>
     </li>
@@ -484,13 +480,16 @@ export function renderExerciseIndexHtml(params: {
           </ul>
           <div class="provenance-legend" role="note">
             <span class="provenance-legend-item" data-reviewed="false">
-              <span class="provenance-legend-swatch" aria-hidden="true"></span>
+              <span class="toc-draft-tag">(draft)</span>
               <span>${escapeHtml(strings.provenance.legendUnreviewed)}</span>
             </span>
-            <span class="provenance-legend-item" data-reviewed="true">
-              <span class="provenance-legend-swatch" aria-hidden="true"></span>
-              <span>${escapeHtml(strings.provenance.legendReviewed)}</span>
-            </span>
+            <a
+              href="${GITHUB_DISCUSSIONS_BASE}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="provenance-legend-link"
+              id="provenance-discussions-link"
+            >${escapeHtml(strings.provenance.legendAction)} ↗</a>
           </div>
         </section>
 
@@ -801,7 +800,20 @@ export function renderWorkspaceHtml(params: {
               <h1 id="ws-problem-title" class="ws-title">${escapeHtml(meta.title[locale])}</h1>
               <p class="ws-subtitle">${escapeHtml(meta.subtitle[locale])}</p>
 
-              <p class="ws-provenance" data-reviewed="${isReviewedProblem(meta) ? "true" : "false"}"><span class="ws-provenance-dot" aria-hidden="true"></span><span>${escapeHtml(renderProvenanceText(meta, strings))}</span></p>
+              <div class="ws-provenance-row">
+                <p class="ws-provenance" data-reviewed="${isReviewedProblem(meta) ? "true" : "false"}">${escapeHtml(renderProvenanceText(meta, strings))}</p>
+                ${
+                  discussionUrl
+                    ? `<a
+                  href="${escapeHtml(discussionUrl)}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ws-review-link"
+                  id="ws-review-link"
+                >${escapeHtml(strings.workspace.reviewAction)} ↗</a>`
+                    : ""
+                }
+              </div>
 
               <div
                 role="tablist"

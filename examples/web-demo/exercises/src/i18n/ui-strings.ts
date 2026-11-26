@@ -43,10 +43,8 @@ function buildUiStrings(catalog: typeof enLocale.ui): ExercisesUiStrings {
         formatTemplate(catalog.provenance.reviewedBy, {
           handles: handles.map((h) => `@${h}`).join(", "),
         }),
-      unreviewedBadge: catalog.provenance.unreviewedBadge,
-      reviewedBadge: catalog.provenance.reviewedBadge,
       legendUnreviewed: catalog.provenance.legendUnreviewed,
-      legendReviewed: catalog.provenance.legendReviewed,
+      legendAction: catalog.provenance.legendAction,
     },
     workspace: catalog.workspace,
     tabs: catalog.tabs,
