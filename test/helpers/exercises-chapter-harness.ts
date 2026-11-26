@@ -233,7 +233,8 @@ export function registerChapterExerciseSuite(opts: ChapterSuiteOptions): void {
           autoVerified: true,
           reviewedBy: [],
         });
-        expect(prob.meta.discussionNumber).toBeUndefined();
+        expect(Number.isInteger(prob.meta.discussionNumber)).toBe(true);
+        expect(prob.meta.discussionNumber).toBeGreaterThanOrEqual(281);
         expect(prob.cases.length).toBeGreaterThanOrEqual(5);
 
         expect(prob.washiStarter).toContain(`interface P${prob.meta.id}Input`);

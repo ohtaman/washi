@@ -34,10 +34,8 @@ export interface ExercisesUiStrings {
   provenance: {
     generatedBy: string;
     reviewedBy: (handles: string[]) => string;
-    unreviewedBadge: string;
-    reviewedBadge: string;
     legendUnreviewed: string;
-    legendReviewed: string;
+    legendAction: string;
   };
   workspace: {
     jumpToEditorBtn: string;
@@ -46,6 +44,7 @@ export interface ExercisesUiStrings {
     statementTablistLabel: string;
     problemTab: string;
     editorialTab: string;
+    reviewAction: string;
     discussionNote: string;
     discussionBtn: string;
   };
